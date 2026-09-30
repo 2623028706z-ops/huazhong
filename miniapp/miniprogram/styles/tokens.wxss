@@ -9,6 +9,7 @@ page {
   --hz-bg: #f6ebdf; /* 浅杏墙：页面底色 */
   --hz-hair: #ecd4c6; /* 描边、禁用按钮底色 */
   --hz-line: #f8ebe4; /* 卡片内分隔线 */
+  --hz-rule: #3b2a2433; /* 墙上的细线（墨色 20%）：首页窗格、次按钮描边 */
   --hz-tint: #f8ebe4; /* 头像底色 */
   --hz-green: #4c6a48; /* 完成 */
   --hz-green-bg: #e7ecdf;
@@ -61,6 +62,7 @@ page {
   --hz-gap-sheet: 16px; /* 弹层内容 */
   --hz-card-pad: 16px;
   --hz-card-gap: 10px;
+  --hz-gap-controls: 16px; /* 控件区（搜索、筛选）和下面的内容 */
   --hz-row-pad: 12px;
   --hz-line-gap: 6px; /* 卡片内三行之间 */
 

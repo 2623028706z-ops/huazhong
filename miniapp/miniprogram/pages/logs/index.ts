@@ -1,11 +1,9 @@
-// M6 操作日志（06 章 M6）：筛选模块（多于一项才显示）、日期；点开弹层看原因和修改前后
+// M6 操作日志（06 章 M6）：筛选模块（多于一项才显示）、日期；按天分组；点开弹层先写是哪一条，再写原因和改动
 import {
   contract,
   copy,
-  formatTime,
   labels,
   shanghaiDateOf,
-  type LogDetail,
   type LogItem,
   type ModuleKey,
 } from '@huazhong/shared'
@@ -16,28 +14,9 @@ import { PagedList } from '../../core/list'
 import type { PagerView } from '../../core/pager'
 import { request } from '../../core/request'
 import { failureOf, loadMe } from '../../core/session'
+import { detailOf, groupsOf } from './view'
 
 const MODULE = 'module'
-
-function rowOf(item: LogItem) {
-  return {
-    id: item.id,
-    title: [item.action, item.targetLabel].join(copy.separator),
-    total: item.module === null ? copy.log.publicModule : labels.module[item.module],
-    meta: [formatTime(item.createdAt), item.actorLabel].join(copy.separator),
-  }
-}
-
-// 弹层：原因、修改前、修改后，按字段一行一项
-function sectionsOf(detail: LogDetail) {
-  const views = [
-    { title: copy.log.before, view: detail.before },
-    { title: copy.log.after, view: detail.after },
-  ]
-  return views.flatMap(({ title, view }) =>
-    view ? [{ title, rows: Object.entries(view).map(([label, value]) => ({ label, value })) }] : [],
-  )
-}
 
 Page({
   data: {
@@ -46,7 +25,7 @@ Page({
     emptyObject: copy.object.logs,
     filter: emptyFilter,
     dimensions: [] as FilterDimension[],
-    rows: [] as ReturnType<typeof rowOf>[],
+    groups: [] as ReturnType<typeof groupsOf>,
     loaded: false,
     skeleton: false,
     done: false,
@@ -55,7 +34,7 @@ Page({
     sheet: false,
     sheetTitle: copy.title.logDetail,
     reasonLabel: copy.log.reason,
-    detail: null as { reason: string; sections: ReturnType<typeof sectionsOf> } | null,
+    detail: null as ReturnType<typeof detailOf> | null,
     detailError: '',
   },
   list: null as PagedList<LogItem> | null,
@@ -69,7 +48,7 @@ Page({
       },
       (view: PagerView<LogItem>) => {
         const { items, ...rest } = view
-        this.setData({ ...rest, rows: items.map(rowOf) })
+        this.setData({ ...rest, groups: groupsOf(items, shanghaiDateOf(Date.now())) })
       },
       (patch) => {
         this.setData(patch)
@@ -108,7 +87,7 @@ Page({
       params: { id: event.currentTarget.dataset.key },
     })
     if (result.ok) {
-      this.setData({ detail: { reason: result.data.reason, sections: sectionsOf(result.data) } })
+      this.setData({ detail: detailOf(result.data) })
       return
     }
     const view = failureOf(result.failure, 'refresh')

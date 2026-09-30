@@ -16,6 +16,8 @@ function rowOf(item: InventoryItem) {
     id: item.id,
     title: item.name,
     total: formatQty(item.stockQty, item.unit),
+    // 库存数是这页的关键数字，加粗；库存 0 照常次要色（02 章第 4 节 hz-card）
+    keyTotal: item.stockQty > 0,
     meta: [item.code, item.categoryName].join(copy.separator),
     tags: item.enabled ? [] : [{ text: copy.tag.disabled, warn: false }],
   }

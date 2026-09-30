@@ -18,7 +18,8 @@
     { "root": "packages/supplier", "pages": ["pages/home/index"] }
   ],
   "window": {
-    "navigationStyle": "custom"
+    "navigationStyle": "custom",
+    "navigationBarTextStyle": "black"
   },
   "lazyCodeLoading": "requiredComponents",
   "style": "v2"

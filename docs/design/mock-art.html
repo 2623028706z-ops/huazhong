@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>首页与我的样稿</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.453.0/dist/umd/lucide.min.js"></script>
+<style>
+/* 首页和「我的」：细线窗格（2026-10-03 确认，方向「乙」）。入口不铺卡片底，一整块 --hz-rule 细线窗格，呼应背景里的窗。
+   背景、字标、身份行、底栏、待办卡片、提示条同 02 章。颜色取 02 章设计变量 */
+:root{--brand:#b75d45;--ink:#3b2a24;--muted:#7a5a4a;--paper:#fffbf6;--card:#fffbf6db;--bg:#f6ebdf;--hair:#ecd4c6;--amber:#8a5a1e;--amberBg:#f6e7d2;
+  --rule:rgba(59,42,36,.2);--r:12px;--serif:"Noto Serif SC","Songti SC",serif}
+*{box-sizing:border-box}
+body{margin:0;padding:28px;background:#ddd6cd;color:#3a302b;font-family:-apple-system,"PingFang SC",sans-serif}
+h1{margin:0;font-family:var(--serif);font-weight:500;font-size:24px}.lead{max-width:1160px;margin:8px 0 20px;font-size:13px;line-height:1.8}
+.set{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}.col{display:flex;flex-direction:column;align-items:center;gap:10px}.col>p{margin:0;font-size:13px}
+.phone{position:relative;width:390px;height:844px;overflow:hidden;border-radius:40px;box-shadow:0 10px 30px rgba(0,0,0,.14);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+.bgimg{position:absolute;inset:0;width:100%;height:100%}.soft{position:absolute;inset:0;background:rgba(246,235,223,.6)}
+.lucide{stroke-width:1.4;flex:none}
+.status{position:absolute;top:0;left:0;right:0;height:47px;display:flex;justify-content:space-between;align-items:center;padding:0 26px 0 34px;font-size:16px;font-weight:600;color:#1f1a17}
+.status .lucide{width:17px;height:17px;stroke-width:2;margin-left:4px}
+.capsule{position:absolute;top:51px;right:10px;width:87px;height:32px;border-radius:16px;background:rgba(255,255,255,.7);border:1px solid rgba(0,0,0,.07)}
+.hi{position:absolute;bottom:8px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#1a1a1a}
+.tab{position:absolute;left:0;right:0;bottom:0;height:96px;padding-bottom:34px;display:flex;background:var(--paper);border-top:1px solid var(--hair)}
+.tab span{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;color:var(--muted)}
+.tab .lucide{width:24px;height:24px}.tab .on{color:var(--ink);font-weight:600}.tab .on .lucide{color:var(--brand)}
+.tab i.n{position:absolute;top:6px;left:50%;margin-left:6px;min-width:16px;padding:0 4px;line-height:16px;border-radius:8px;font-size:10px}
+.n{display:inline-block;min-width:22px;padding:0 7px;line-height:22px;border-radius:11px;background:var(--brand);color:#fff;font-size:12px;font-style:normal;text-align:center}
+.head{position:absolute;top:103px;left:20px;right:20px}.head img{display:block;height:38px}.head .id{margin-top:16px}
+.id{display:flex;align-items:baseline;justify-content:space-between;font-size:13px}.id b{font-weight:600}.id span span{color:var(--muted)}.id time{font-size:12px;color:var(--muted)}
+.body{position:absolute;top:208px;left:20px;right:20px;display:flex;flex-direction:column;gap:12px}
+.notice{padding:10px 14px;border-radius:var(--r);background:var(--card);box-shadow:inset 2px 0 0 var(--brand);font-size:12px}.off{opacity:.45}
+.nav{position:absolute;top:47px;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:500;font-size:17px;letter-spacing:.1em}
+.nav .lucide{position:absolute;left:11px;width:22px;height:22px}.mbody{position:absolute;top:95px;left:20px;right:20px}.ent{margin-top:16px}
+.todo{display:flex;justify-content:space-between;align-items:baseline;margin:26px 0 10px}.todo h3{margin:0;font-family:var(--serif);font-weight:500;font-size:16px;letter-spacing:.12em}
+.txt{font-size:13px;font-weight:600;text-decoration:underline;text-decoration-color:var(--brand);text-underline-offset:4px}
+.lc{background:var(--card);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.lc div{display:flex;align-items:center;gap:8px}.lc .r1{justify-content:space-between;font-size:12px;color:var(--muted)}.lc .r2 b{flex:1;font-weight:500;font-size:15px}.lc .r2 span,.lc .r3{font-size:12px;color:var(--muted)}
+.st{font-size:11px;line-height:20px;padding:0 8px;border-radius:10px;background:var(--amberBg);color:var(--amber)}
+/* hz-entry-grid：一整块细线窗格，格子不铺底色 */
+.grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
+.grid span{position:relative;display:flex;flex-direction:column;justify-content:space-between;height:104px;padding:16px;border-top:1px solid var(--rule)}
+.grid span:nth-child(-n+2){border-top:0}.grid span:nth-child(even){border-left:1px solid var(--rule)}
+.grid .lucide{width:26px;height:26px;color:var(--brand)}.grid b{font-family:var(--serif);font-weight:500;font-size:17px;letter-spacing:.2em}
+.grid .go{position:absolute;right:14px;bottom:18px;width:16px;height:16px;color:var(--muted)}
+.grid span.wide{grid-column:1/3;height:64px;flex-direction:row;align-items:center;justify-content:flex-start;gap:16px}.grid span.wide .go{bottom:23px}
+.grid.compact span{height:78px;padding:14px}.grid.compact .lucide{width:22px;height:22px}.grid.compact b{font-size:15px;letter-spacing:.14em}.grid.compact span.wide{height:56px}.grid.compact span.wide .go{bottom:19px}
+/* hz-hub：主格 + 一排小格 */
+.hub{display:grid;border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
+.hub .hero{grid-column:1/-1;position:relative;display:flex;flex-direction:column;justify-content:space-between;height:150px;padding:20px 18px}
+.hub .hero>.lucide{width:32px;height:32px;color:var(--brand)}.hub .hero .go{position:absolute;right:16px;bottom:22px;width:18px;height:18px;color:var(--muted)}
+.hub .hero b{font-family:var(--serif);font-weight:500;font-size:22px;letter-spacing:.3em}.hub .hero small{display:block;margin-top:6px;font-size:13px;color:var(--muted)}
+.hub .hero .n{position:absolute;top:18px;right:16px}
+.hub .mini{display:flex;flex-direction:column;justify-content:space-between;height:100px;padding:16px;border-top:1px solid var(--rule)}.hub .mini+.mini{border-left:1px solid var(--rule)}
+.hub .mini .lucide{width:24px;height:24px;color:var(--brand)}.hub .mini b{font-size:15px;font-weight:600;letter-spacing:.12em}
+/* hz-profile：身份格 + 入口行，窗格外是次按钮 */
+.me{border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}.me .who{display:flex;align-items:center;gap:14px;padding:18px 16px}
+.avatar{flex:none;display:grid;place-items:center;width:48px;height:48px;border-radius:50%;box-shadow:inset 0 0 0 1px var(--rule);color:var(--brand);font-family:var(--serif);font-weight:500;font-size:18px}
+.me .who b{display:block;font-size:18px;font-weight:600;letter-spacing:.06em}.me .who small{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
+.me .row{display:flex;align-items:center;gap:12px;height:54px;padding:0 16px;font-size:15px;border-top:1px solid var(--rule)}
+.me .row .lucide{width:20px;height:20px;color:var(--brand)}.me em{flex:1;font-style:normal}.me .row .go{width:16px;height:16px;color:var(--muted)}
+.out{margin-top:12px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:var(--r);box-shadow:inset 0 0 0 1px var(--rule);font-size:15px;letter-spacing:.16em}
+</style></head><body>
+<h1>首页与我的 · 细线窗格</h1>
+<p class="lead">2026-10-03 确认：入口从半透明卡片改成一整块细线窗格（外框圆角 12px，格子之间 --hz-rule 细线，不铺底色），背景的窗光和梅影露出来。位置、大小、点法和原来一样。「我的」抬头写「我的」和日期，内容和首页同高，切底栏不跳。日期、人名、数量是示例。</p>
+<div class="set" id="app"></div>
+<script>
+const ic = (n, c = '') => `<i data-lucide="${n}"${c ? ` class="${c}"` : ''}></i>`;
+const bar = `<div class="status"><span>9:41</span><span>${ic('signal')}${ic('wifi')}${ic('battery-full')}</span></div><div class="capsule"></div>`;
+const phone = (inner, soft = false) => `<div class="phone"><img class="bgimg" src="../../miniapp/miniprogram/assets/backdrop.jpg" alt="">${soft ? '<div class="soft"></div>' : ''}${bar}${inner}<div class="hi"></div></div>`;
+const idLine = (lead, person) => `<div class="id"><span><b>${lead}</b>${person ? `<span> · ${person}</span>` : ''}</span><time>2026.10.03 周六</time></div>`;
+const head = (lead, person) => `<div class="head"><img src="logo.png" alt="花众">${idLine(lead, person)}</div>`;
+const tabs = (items, on) => `<div class="tab">${items.map(([t, i, n], k) => `<span class="${k === on ? 'on' : ''}">${ic(i)}${n ? `<i class="n">${n}</i>` : ''}${t}</span>`).join('')}</div>`;
+const STAFF = [['首页', 'house'], ['我的', 'user-round']];
+const STORE = [['首页', 'house'], ['购物车', 'shopping-cart', 3], ['我的', 'user-round']];
+const SUPPLIER = [['首页', 'house'], ['填报', 'clipboard-pen', 3], ['我的', 'user-round']];
+const MODS = [['销售', 'receipt'], ['发货', 'truck'], ['采购', 'flower-2'], ['仓库', 'boxes'], ['财务', 'wallet']];
+const WH = [['待收', 'package-check'], ['手工入库', 'arrow-down-to-line'], ['手工出库', 'arrow-up-from-line'], ['报损', 'package-x'], ['盘点', 'list-checks'], ['库存', 'boxes'], ['花材', 'flower']];
+const TODO = [['10-03', '春禾花材', '共 4 种花材', 'PO-261003-004 · 张采购'], ['10-03', '云南花田直供', '共 6 种花材', 'PO-261003-002 · 张采购'], ['10-02', '斗南鲜切花', '共 3 种花材', 'PO-261002-011 · 刘采购']];
+const todo = `<div class="todo"><h3>待办</h3><span class="txt">查看全部</span></div>${TODO.map(([d, who, qty, meta]) => `<div class="lc"><div class="r1"><span>${d}</span><span class="st">待收货</span></div><div class="r2"><b>${who}</b><span>${qty}</span></div><div class="r3">${meta}</div></div>`).join('')}`;
+const grid = (list, cls = '') => `<div class="grid${cls}">${list.map(([t, i], k) => `<span class="${k === list.length - 1 && list.length % 2 ? 'wide' : ''}">${ic(i)}<b>${t}</b>${ic('chevron-right', 'go')}</span>`).join('')}</div>`;
+const hub = ([t, i, sub, n], minis, off) => `<div class="hub" style="grid-template-columns:repeat(${minis.length},1fr)"><div class="hero${off ? ' off' : ''}">${n ? `<i class="n">${n}</i>` : ''}${ic(i)}<div><b>${t}</b><small>${sub}</small></div>${ic('chevron-right', 'go')}</div>${minis.map(([mt, mi]) => `<div class="mini">${ic(mi)}<b>${mt}</b></div>`).join('')}</div>`;
+const STORE_HUB = [['订货', 'shopping-bag', '今日可订 128 款'], [['订单', 'file-text'], ['售后', 'rotate-ccw'], ['对账', 'notebook-text']]];
+const me = (name, sub, menus) => `<div class="me"><div class="who"><span class="avatar">${name[0]}</span><div><b>${name}</b><small>${sub}</small></div></div>${menus.map(([t, i]) => `<div class="row">${ic(i)}<em>${t}</em>${ic('chevron-right', 'go')}</div>`).join('')}</div><span class="out">退出登录</span>`;
+const SCREENS = [
+  ['花众首页（管理员）', phone(`${head('管理员', '周总')}<div class="body">${grid(MODS)}</div>${tabs(STAFF, 0)}`)],
+  ['仓库首页（二级，compact）', phone(`<div class="nav">${ic('chevron-left')}仓库</div><div class="mbody">${idLine('管理员', '周总')}<div class="ent">${grid(WH, ' compact')}</div>${todo}</div>`, true)],
+  ['门店首页', phone(`${head('晨曦花艺 · 滨江店', '陈女士')}<div class="body">${hub(...STORE_HUB)}</div>${tabs(STORE, 0)}`)],
+  ['门店首页（客户停用）', phone(`${head('晨曦花艺 · 滨江店', '陈女士')}<div class="body"><div class="notice">这个客户已停用，不能再下新单，请联系花众</div>${hub(...STORE_HUB, true)}</div>${tabs(STORE, 0)}`)],
+  ['供应商首页', phone(`${head('春禾花材', '林先生')}<div class="body">${hub(['填报', 'clipboard-pen', '3 份邀请待填报', 3], [['采购单', 'file-text'], ['对账', 'notebook-text']])}</div>${tabs(SUPPLIER, 0)}`)],
+  ['我的（管理员）', phone(`${head('我的')}<div class="body">${me('周总', '管理员 · 137****0001', [['操作日志', 'scroll-text'], ['员工与岗位', 'users-round'], ['个人资料', 'id-card']])}</div>${tabs(STAFF, 1)}`)],
+  ['我的（门店）', phone(`${head('我的')}<div class="body">${me('陈女士', '晨曦花艺 · 滨江店 · 138****8001', [['个人资料', 'id-card']])}</div>${tabs(STORE, 2)}`)],
+];
+document.getElementById('app').innerHTML = SCREENS.map(([label, html]) => `<div class="col">${html}<p>${label}</p></div>`).join('');
+lucide.createIcons();
+</script>
+</body></html>

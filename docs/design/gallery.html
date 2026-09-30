@@ -5,7 +5,7 @@
 <style>
 /* 花众组件总览（样稿）：颜色、圆角全部取 02 章设计变量 */
 :root{--brand:#b75d45;--ink:#3b2a24;--muted:#7a5a4a;--paper:#fffbf6;--card:#fffbf6db;--bg:#f6ebdf;--hair:#ecd4c6;--line:#f8ebe4;--tint:#f8ebe4;
-  --green:#4c6a48;--greenBg:#e7ecdf;--amber:#8a5a1e;--amberBg:#f6e7d2;--grey:#6f665f;--greyBg:#eeeae5;--danger:#a3313d;--dangerBg:#f9e4e3;--r:12px;--ri:9px;--serif:"Noto Serif SC","Songti SC",serif}
+  --green:#4c6a48;--greenBg:#e7ecdf;--amber:#8a5a1e;--amberBg:#f6e7d2;--grey:#6f665f;--greyBg:#eeeae5;--danger:#a3313d;--dangerBg:#f9e4e3;--rule:rgba(59,42,36,.2);--r:12px;--ri:9px;--serif:"Noto Serif SC","Songti SC",serif}
 *{box-sizing:border-box}
 body{margin:0;padding:28px;background:var(--bg);color:var(--ink);font:14px/1.5 -apple-system,"PingFang SC",sans-serif}
 .lucide{stroke-width:1.4;width:18px;height:18px;flex:none}
@@ -24,23 +24,23 @@ h1{margin:0;font-family:var(--serif);font-weight:600;font-size:24px}.lead{margin
 .tabbar .lucide{width:24px;height:24px}.tabbar .on{color:var(--ink);font-weight:600}.tabbar .on .lucide{color:var(--brand)}
 .badge{position:absolute;top:6px;left:50%;margin-left:6px;min-width:16px;padding:0 4px;line-height:16px;border-radius:8px;background:var(--brand);color:#fff;font-size:10px;text-align:center;font-weight:400}
 /* 入口卡 */
-.entries{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.cell{position:relative;height:104px;border-radius:var(--r);background:var(--card);padding:16px;display:flex;flex-direction:column;justify-content:space-between}
-.cell .lucide{width:26px;height:26px;color:var(--brand)}.cell b{font-weight:600;font-size:16px;letter-spacing:.12em}
-.cell .go{position:absolute;right:14px;bottom:16px;width:16px;height:16px;color:var(--muted)}
-.cell.wide{grid-column:1/3;height:64px;flex-direction:row;align-items:center;justify-content:flex-start;gap:16px}.cell.wide .go{bottom:24px}
+.entries{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
+.cell{position:relative;height:104px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;border-top:1px solid var(--rule)}.cell:nth-child(-n+2){border-top:0}.cell:nth-child(even){border-left:1px solid var(--rule)}
+.cell .lucide{width:26px;height:26px;color:var(--brand)}.cell b{font-family:var(--serif);font-weight:500;font-size:17px;letter-spacing:.2em}
+.cell .go{position:absolute;right:14px;bottom:18px;width:16px;height:16px;color:var(--muted)}
+.cell.wide{grid-column:1/3;height:64px;flex-direction:row;align-items:center;justify-content:flex-start;gap:16px}.cell.wide .go{bottom:23px}
 .cell.off{opacity:.45}
 /* 列表卡片（三行） */
 .lc{background:var(--card);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:6px}
 .lc div{display:flex;align-items:center;gap:8px}.lc .r2 b{flex:1;font-weight:500;font-size:15px}
-.lc .r1{font-size:12px;color:var(--muted);justify-content:space-between}.lc .r3{font-size:12px;color:var(--muted)}.lc .r3 em{margin-left:auto;font-style:normal;font-weight:600;font-size:15px;color:var(--ink)}
+.lc .r1{font-size:12px;color:var(--muted);justify-content:space-between}.lc .r3{font-size:12px;color:var(--muted)}.lc .r3 em{margin-left:auto;font-style:normal;font-weight:600;font-size:15px;color:var(--ink)}.lc .r2 .key{font-size:15px;font-weight:600}
 /* 状态、标记 */
 .st,.tg{display:inline-block;font-size:11px;line-height:20px;padding:0 8px;border-radius:10px;white-space:nowrap}
 .st.w{background:var(--amberBg);color:var(--amber)}.st.d{background:var(--greenBg);color:var(--green)}.st.e{background:var(--greyBg);color:var(--grey)}
 .tg{box-shadow:inset 0 0 0 1px var(--hair);color:var(--muted)}.tg.warn{box-shadow:none;background:var(--amberBg);color:var(--amber)}
 /* 按钮 */
 .btn{height:44px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--r);font-size:15px;letter-spacing:.16em;flex:1}
-.pri{background:var(--brand);color:#fff;font-weight:600}.sec{box-shadow:inset 0 0 0 1px var(--hair);color:var(--ink)}
+.pri{background:var(--brand);color:#fff;font-weight:600}.sec{box-shadow:inset 0 0 0 1px var(--rule);color:var(--ink)}
 .dis{background:var(--hair);color:var(--muted)}.busy{background:var(--brand);color:#fff;opacity:.72}
 .txt{font-size:14px;font-weight:600;color:var(--ink);text-decoration:underline;text-decoration-color:var(--brand);text-underline-offset:4px}
 .spin{width:14px;height:14px;border-radius:50%;border:2px solid #ffffff66;border-top-color:#fff}
@@ -100,11 +100,11 @@ h1{margin:0;font-family:var(--serif);font-weight:600;font-size:24px}.lead{margin
 .up .x{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center}.up .x .lucide{width:12px;height:12px;stroke-width:2}
 .up .new{background:none;border:1px dashed var(--hair)}.up .new .lucide{color:var(--brand)}
 /* 整页状态、骨架 */
-.state{padding:26px 16px;text-align:center}.state:before{content:'';display:block;width:28px;height:1px;margin:0 auto 14px;background:var(--brand)}
+.state{padding:64px 16px 26px;text-align:center}.state:before{content:'';display:block;width:28px;height:1px;margin:0 auto 14px;background:var(--brand)}
 .state p{margin:0 0 14px;font-family:var(--serif);font-size:15px;letter-spacing:.14em}.state .btn{flex:none;width:120px;margin:0 auto;height:40px}
 .sk{display:flex;flex-direction:column;gap:8px}.sk i{display:block;height:12px;border-radius:6px;background:var(--line)}
 </style></head><body>
-<h1>组件总览</h1><p class="lead">样稿 · 2026-09-30，10-01 改筛选栏 ·主色 #b75d45 只上图标、主按钮、选中短线；小字全用墨色；状态用柔色胶囊</p>
+<h1>组件总览</h1><p class="lead">样稿 · 2026-09-30，10-01 改筛选栏，10-03 改入口窗格、次按钮描边、整页状态不装卡片 · 主色 #b75d45 只上图标、主按钮、选中短线；小字全用墨色；状态用柔色胶囊</p>
 <div class="grid" id="g"></div>
 <script>
 const ic = (n, c = '') => `<i data-lucide="${n}" class="${c}"></i>`;
@@ -112,8 +112,8 @@ const lc = (d, st, c, obj, qty, no, amt, tags = '') => `<div class="lc"><div cla
 const B = [
  ['顶栏 + 身份行', 'hz-navbar：一级页没有返回；首页、模块首页下面一行放身份和日期', `<div class="card stack"><div class="nav">${ic('chevron-left')}销售订单</div><div class="idrow"><span><b>销售、仓库</b> · 王芳</span><time>2026.09.30 周三</time></div></div>`],
  ['底栏', 'hz-tabbar：选中项图标陶土红、文字墨色加粗；角标', `<div class="stack"><div class="tabbar"><span class="on">${ic('house')}首页</span><span>${ic('shopping-cart')}<i class="badge">3</i>购物车</span><span>${ic('user')}我的</span></div><div class="tabbar"><span>${ic('house')}首页</span><span class="on">${ic('clipboard-pen')}<i class="badge">2</i>填报</span><span>${ic('user')}我的</span></div></div>`],
- ['入口卡', 'hz-entry-grid：两列；单数时最后一张占整行；不可用变灰', `<div class="entries"><div class="cell">${ic('file-text')}<b>销售</b>${ic('chevron-right', 'go')}</div><div class="cell">${ic('flower-2')}<b>采购</b>${ic('chevron-right', 'go')}</div><div class="cell off">${ic('shopping-bag')}<b>订货</b>${ic('chevron-right', 'go')}</div><div class="cell">${ic('package')}<b>仓库</b>${ic('chevron-right', 'go')}</div><div class="cell wide">${ic('truck')}<b>发货</b>${ic('chevron-right', 'go')}</div></div>`],
- ['列表卡片', 'hz-card：①日期 + 状态 ②对象 + 总数 ③单号 + 金额；标记接在第 3 行左边', `<div class="stack">${lc('09-30', '待确认', 'w', '静安花艺工作室 · 静安店', '共 32 束', 'SO-260930-012', '3,860.00')}${lc('09-29', '已发货', 'd', '云间花事 · 徐汇店', '共 58 束', 'SO-260929-038', '6,512.50', '<span class="tg warn">改价</span><span class="tg">改单</span>')}${lc('2025-12-28', '已取消', 'e', '花与器 FLORA', '共 12 束', 'SO-251228-004', '2,305.00')}</div>`],
+ ['入口窗格', 'hz-entry-grid：一整块细线窗格（--hz-rule）；单数时最后一格占整行；不能用的变淡；首页样子见 mock-art.html', `<div class="entries"><div class="cell">${ic('file-text')}<b>销售</b>${ic('chevron-right', 'go')}</div><div class="cell">${ic('flower-2')}<b>采购</b>${ic('chevron-right', 'go')}</div><div class="cell off">${ic('shopping-bag')}<b>订货</b>${ic('chevron-right', 'go')}</div><div class="cell">${ic('package')}<b>仓库</b>${ic('chevron-right', 'go')}</div><div class="cell wide">${ic('truck')}<b>发货</b>${ic('chevron-right', 'go')}</div></div>`],
+ ['列表卡片', 'hz-card：①日期 + 状态 ②对象 + 总数 ③单号 + 金额；标记接在第 3 行左边；没有金额的列表（库存）总数加粗', `<div class="stack">${lc('09-30', '待确认', 'w', '静安花艺工作室 · 静安店', '共 32 束', 'SO-260930-012', '3,860.00')}${lc('09-29', '已发货', 'd', '云间花事 · 徐汇店', '共 58 束', 'SO-260929-038', '6,512.50', '<span class="tg warn">改价</span><span class="tg">改单</span>')}${lc('2025-12-28', '已取消', 'e', '花与器 FLORA', '共 12 束', 'SO-251228-004', '2,305.00')}<div class="lc"><div class="r2"><b>粉雪山玫瑰</b><span class="key">228 枝</span></div><div class="r3"><span>HC-0001 · 玫瑰</span></div></div></div>`],
  ['状态标签、标记', 'hz-status：柔色胶囊，传状态码取中文和颜色；hz-tag：普通细线、警告琥珀', `<div class="card stack"><div class="inl"><span class="st w">待确认</span><span class="st w">待发货</span><span class="st w">部分收</span><span class="st w">待填报</span></div><div class="inl"><span class="st d">已发货</span><span class="st d">已收</span><span class="st d">已入库</span><span class="st d">已付款</span></div><div class="inl"><span class="st e">已取消</span><span class="st e">已作废</span><span class="st e">已过期</span><span class="st e">无需付款</span></div><div class="inl"><span class="tg">改单</span><span class="tg">售后抵扣</span><span class="tg warn">改价</span><span class="tg warn">少发</span><span class="tg warn">已停订</span></div></div>`],
  ['按钮', 'hz-button：主、次、文字、禁用（下面写原因）、提交中', `<div class="card stack"><div class="inl" style="gap:8px"><span class="btn sec">取消订单</span><span class="btn pri">确认订单</span></div><div class="inl"><span class="btn dis">确认订单</span></div><div class="reason">这家门店已停用，不能确认订单</div><div class="inl"><span class="btn busy"><i class="spin"></i>提交中</span></div><div class="inl" style="justify-content:center;gap:28px;padding-top:4px"><span class="txt">重试</span><span class="txt">查看全部</span></div></div>`],
  ['表单字段', 'hz-field：标签在上；正常、聚焦、出错、多行', `<div class="card stack"><div class="fl"><label>客户</label><div class="in">晨曦花艺</div></div><div class="fl"><label>出货日期</label><div class="in focus">2026-10-01${ic('calendar')}</div></div><div class="fl"><label>数量</label><div class="in err">0</div><span class="msg">数量须大于 0</span></div><div class="fl"><label>备注</label><div class="in area ph">选填</div></div></div>`],
@@ -128,7 +128,7 @@ const B = [
  ['记录列表', 'hz-records：左边时间和人，右边改了什么，下面原因', `<div class="card"><div class="rec"><div class="w">09-30 10:24<br>李敏</div><div>粉玫瑰花束 20 → 25<br>出货日期 10-01 → 10-02<div class="why">原因：门店追加</div></div></div><div class="rec"><div class="w">09-30 09:10<br>陈女士</div><div>提交订单</div></div></div>`],
  ['对账格', 'hz-statement：金额衬线；待付用琥珀底，不用红字', `<div class="card"><div class="stmt"><div>发货金额<b>¥18,420.00</b></div><div>售后<b>−¥272.00</b></div><div>已付<b>¥12,000.00</b></div><div class="due">待付<b>¥6,148.00</b></div></div></div>`],
  ['图片上传', 'hz-upload：1:1 缩略图，可删、可预览；加载前底色占位', `<div class="card"><div class="up"><i>${ic('image')}<span class="x">${ic('x')}</span></i><i>${ic('image')}<span class="x">${ic('x')}</span></i><i class="new">${ic('plus')}</i></div></div>`],
- ['整页状态', 'hz-state：空、断网、无权限（上方 28px 陶土短线 + 衬线一句）', `<div class="stack"><div class="card state"><p>暂无订单</p></div><div class="card state"><p>网络不太好，没有加载出来</p><span class="btn sec">重试</span></div><div class="card state"><p>没有权限查看这个页面</p><span class="btn sec">返回</span></div></div>`],
+ ['整页状态', 'hz-state：不装卡片；上方留白 64px + 28px 陶土短线 + 衬线一句', `<div class="stack"><div class="state"><p>暂无订单</p></div><div class="state"><p>网络不太好，没有加载出来</p><span class="btn sec">重试</span></div><div class="state"><p>没有权限查看这个页面</p><span class="btn sec">返回</span></div></div>`],
  ['骨架屏', 'hz-skeleton：列表页 3 张卡片的灰块', `<div class="stack">${[1, 2, 3].map(() => `<div class="card sk"><i style="width:40%"></i><i style="width:75%;height:14px"></i><i style="width:55%"></i></div>`).join('')}</div>`],
 ];
 document.getElementById('g').innerHTML = B.map(([t, k, h]) => `<section class="blk"><h2>${t}</h2><p class="k">${k}</p>${h}</section>`).join('');

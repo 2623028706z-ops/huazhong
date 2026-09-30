@@ -35,12 +35,27 @@
   </view>
 
   <view class="hz-gallery__section">
-    <view class="u-caption">入口卡 hz-entry-grid：单数时最后一张占整行；不能用的变淡</view>
+    <view class="u-caption">入口窗格 hz-entry-grid：单数时最后一格占整行；不能用的变淡；下面是模块首页的 compact</view>
     <hz-entry-grid entries="{{entries}}" />
+    <hz-entry-grid entries="{{moduleEntries}}" compact />
   </view>
 
   <view class="hz-gallery__section">
-    <view class="u-caption">列表卡片 hz-card</view>
+    <view class="u-caption">主格 + 小格 hz-hub：门店、供应商首页；主格带待办数</view>
+    <hz-hub hero="{{hub.hero}}" minis="{{hub.minis}}" />
+  </view>
+
+  <view class="hz-gallery__section">
+    <view class="u-caption">列表卡片 hz-card：没有金额的列表（库存）总数加粗，库存 0 次要色</view>
+    <hz-card
+      wx:for="{{stockCards}}"
+      wx:key="id"
+      title="{{item.title}}"
+      total="{{item.total}}"
+      key-total="{{item.key}}"
+      meta="{{item.meta}}"
+      tags="{{item.tags}}"
+    />
     <hz-card
       wx:for="{{cards}}"
       wx:key="id"
@@ -256,9 +271,9 @@
 </view>
 
 <hz-sheet show="{{sheet}}" title="{{texts.sheetTitle}}" footer bind:close="onCloseSheet">
-  <view wx:for="{{sheetRows}}" wx:key="label" class="u-sheet-section hz-gallery__kv">
-    <text>{{item.label}}</text>
-    <text>{{item.value}}</text>
+  <view wx:for="{{sheetRows}}" wx:key="label" class="u-sheet-section u-sheet-row">
+    <text class="u-sheet-row__label">{{item.label}}</text>
+    <text class="u-sheet-row__value">{{item.value}}</text>
   </view>
   <hz-button slot="footer" kind="secondary" text="{{texts.closeAfter}}" bind:press="onCloseSheet" />
   <hz-button slot="footer" text="{{texts.handleAfter}}" bind:press="onCloseSheet" />

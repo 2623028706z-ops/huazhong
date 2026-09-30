@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   addDays,
   formatCardDate,
+  formatClock,
   formatCount,
+  formatDayHeader,
   formatMoney,
   formatNavDate,
   formatQty,
@@ -10,7 +12,25 @@ import {
   maskPhone,
   monthStartOf,
   shanghaiDateOf,
+  shanghaiDayOf,
 } from '../src/format.ts'
+
+describe('列表按天分组', () => {
+  it('UTC 15:59 还是上海当天，16:00 算第二天', () => {
+    expect(shanghaiDayOf('2026-10-02T15:59:00.000Z')).toBe('2026-10-02')
+    expect(shanghaiDayOf('2026-10-02T16:00:00.000Z')).toBe('2026-10-03')
+  })
+  it('组里只写时:分', () => {
+    expect(formatClock('2026-10-03T01:40:00.000Z')).toBe('09:40')
+    expect(formatClock('2026-10-02T16:05:00.000Z')).toBe('00:05')
+  })
+  it('今年的组头写 月-日 周几', () => {
+    expect(formatDayHeader('2026-10-03', '2026-10-03')).toBe('10-03 周六')
+  })
+  it('不是今年的组头写全', () => {
+    expect(formatDayHeader('2025-12-28', '2026-10-03')).toBe('2025-12-28 周日')
+  })
+})
 
 describe('业务日期加减', () => {
   it('近 7 天从今天往前 6 天', () => {

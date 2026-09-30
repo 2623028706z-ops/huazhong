@@ -66,16 +66,29 @@ function formatQty(qty, unit) {
 function formatCardDate(date, today) {
     return date.slice(0, 4) === today.slice(0, 4) ? date.slice(5) : date;
 }
+function clockOf(minutes) {
+    var minuteOfDay = minutes - Math.floor(minutes / MINUTES_PER_DAY) * MINUTES_PER_DAY;
+    return pad2(Math.floor(minuteOfDay / 60)) + ':' + pad2(minuteOfDay % 60);
+}
+function weekdayOf(date) {
+    var weekday = (((daysOfDate(date) + 4) % 7) + 7) % 7;
+    return WEEK_PREFIX + WEEKDAY_NAMES.charAt(weekday);
+}
+function shanghaiDayOf(timestamp) {
+    return civilFromDays(Math.floor(shanghaiMinutesOf(timestamp) / MINUTES_PER_DAY));
+}
 function formatTime(timestamp) {
-    var minutes = shanghaiMinutesOf(timestamp);
-    var days = Math.floor(minutes / MINUTES_PER_DAY);
-    var minuteOfDay = minutes - days * MINUTES_PER_DAY;
-    return (civilFromDays(days) + ' ' + pad2(Math.floor(minuteOfDay / 60)) + ':' + pad2(minuteOfDay % 60));
+    return shanghaiDayOf(timestamp) + ' ' + clockOf(shanghaiMinutesOf(timestamp));
+}
+function formatClock(timestamp) {
+    return clockOf(shanghaiMinutesOf(timestamp));
 }
 function formatNavDate(date) {
-    var weekday = (((daysOfDate(date) + 4) % 7) + 7) % 7;
     var dotted = date.slice(0, 4) + '.' + date.slice(5, 7) + '.' + date.slice(8, 10);
-    return dotted + ' ' + WEEK_PREFIX + WEEKDAY_NAMES.charAt(weekday);
+    return dotted + ' ' + weekdayOf(date);
+}
+function formatDayHeader(date, today) {
+    return formatCardDate(date, today) + ' ' + weekdayOf(date);
 }
 function addDays(date, days) {
     return civilFromDays(daysOfDate(date) + days);
@@ -95,8 +108,11 @@ module.exports = {
   formatMoney: formatMoney,
   formatQty: formatQty,
   formatCardDate: formatCardDate,
+  shanghaiDayOf: shanghaiDayOf,
   formatTime: formatTime,
+  formatClock: formatClock,
   formatNavDate: formatNavDate,
+  formatDayHeader: formatDayHeader,
   addDays: addDays,
   monthStartOf: monthStartOf,
   formatCount: formatCount,

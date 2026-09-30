@@ -1,5 +1,5 @@
-// 门店首页、供应商首页的主卡 + 一排小卡（03 章第 8.5 节）：主卡右上角可带待办数（只有外部端显示）；
-// disabled 的卡整张变淡、不能点。点了发 select，detail 是卡的 key
+// 门店首页、供应商首页的主格 + 一排小格（02 章第 4 节、03 章第 8.5 节）：一整块细线窗格；
+// 主格右上角可带待办数（只有外部端显示）；disabled 的格变淡、不能点。点了发 select，detail 是格的 key
 type CardEvent = WechatMiniprogram.TouchEvent<
   WechatMiniprogram.IAnyObject,
   WechatMiniprogram.IAnyObject,

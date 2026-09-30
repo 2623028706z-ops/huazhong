@@ -1,24 +1,24 @@
 <wxs src="../../core/format.wxs" module="format" />
-<view
-  wx:if="{{hero}}"
-  class="u-card hz-hub__hero {{hero.disabled ? 'hz-hub--off' : ''}}"
-  data-key="{{hero.key}}"
-  data-disabled="{{hero.disabled}}"
-  bindtap="onTap"
->
-  <text wx:if="{{hero.badge > 0}}" class="hz-hub__badge">{{format.formatCount(hero.badge)}}</text>
-  <text class="hz-icon hz-icon--{{hero.icon}} hz-hub__hero-icon"></text>
-  <view>
-    <text class="hz-hub__hero-name u-serif-amount">{{hero.text}}</text>
-    <text wx:if="{{hero.sub}}" class="hz-hub__hero-sub">{{hero.sub}}</text>
+<view class="hz-hub" style="grid-template-columns: repeat({{minis.length || 1}}, 1fr)">
+  <view
+    wx:if="{{hero}}"
+    class="hz-hub__hero {{hero.disabled ? 'hz-hub--off' : ''}}"
+    data-key="{{hero.key}}"
+    data-disabled="{{hero.disabled}}"
+    bindtap="onTap"
+  >
+    <text wx:if="{{hero.badge > 0}}" class="hz-hub__badge">{{format.formatCount(hero.badge)}}</text>
+    <text class="hz-icon hz-icon--{{hero.icon}} hz-hub__hero-icon"></text>
+    <view>
+      <text class="hz-hub__hero-name u-serif">{{hero.text}}</text>
+      <text wx:if="{{hero.sub}}" class="hz-hub__hero-sub">{{hero.sub}}</text>
+    </view>
+    <text class="hz-icon hz-icon--chevron-right hz-hub__go"></text>
   </view>
-  <text class="hz-icon hz-icon--chevron-right hz-hub__go"></text>
-</view>
-<view class="hz-hub__minis" style="grid-template-columns: repeat({{minis.length}}, 1fr)">
   <view
     wx:for="{{minis}}"
     wx:key="key"
-    class="u-card hz-hub__mini {{item.disabled ? 'hz-hub--off' : ''}}"
+    class="hz-hub__mini {{item.disabled ? 'hz-hub--off' : ''}}"
     data-key="{{item.key}}"
     data-disabled="{{item.disabled}}"
     bindtap="onTap"

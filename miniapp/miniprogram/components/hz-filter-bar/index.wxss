@@ -1,7 +1,9 @@
+/* 和下面的内容隔 --hz-gap-controls：列表本身已有 --hz-card-gap，这里补上差值 */
 .hz-filter-bar {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-bottom: calc(var(--hz-gap-controls) - var(--hz-card-gap));
 }
 
 .hz-filter-bar__search {

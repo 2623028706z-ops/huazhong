@@ -51,6 +51,9 @@ export const copy = {
     reason: '原因',
     before: '修改前',
     after: '修改后',
+    changes: '改动',
+    // 改动「旧 → 新」里旧值后面接的箭头
+    arrow: ' → ',
     date: '操作日期',
   },
   // 账号字段名：员工弹层、个人资料、日志的修改前后共用
@@ -62,10 +65,12 @@ export const copy = {
     admin: '管理员',
     modules: '模块',
     org: '所属',
+    wechat: '微信',
   },
   statusValue: {
     enabled: '启用',
     disabled: '停用',
+    bound: '已绑定',
   },
   store: {
     customerDisabled: '这个客户已停用，不能再下新单，请联系花众',

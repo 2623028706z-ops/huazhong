@@ -29,6 +29,12 @@
   color: var(--hz-muted);
 }
 
+.hz-card__total--key {
+  font-size: var(--hz-font-md);
+  font-weight: 600;
+  color: var(--hz-ink);
+}
+
 .hz-card__row--foot {
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);

@@ -1,4 +1,4 @@
-// M7 员工与岗位（06 章 M7）：列表 + 弹层新增、修改；已绑定微信的员工弹层里有「解绑微信」
+// M7 员工与岗位（06 章 M7）：列表 + 弹层新增、修改；弹层分三组，已绑定微信的员工在「微信」一行解绑
 import {
   contract,
   copy,
@@ -36,6 +36,11 @@ function rowOf(item: StaffItem) {
   }
 }
 
+// 「微信」一行只在后端给了 unbindStaffWechat 时出现（已绑定）
+function canUnbindOf(item: StaffItem | null): boolean {
+  return item?.actions.some((action) => action.code === 'unbindStaffWechat') ?? false
+}
+
 Page({
   data: {
     title: copy.title.staff,
@@ -49,6 +54,7 @@ Page({
     canCreate: false,
     sheet: false,
     editing: null as StaffItem | null,
+    canUnbind: false,
     form: blankForm,
     initial: blankForm,
     fields: {},
@@ -63,6 +69,7 @@ Page({
       unbind: copy.log.unbind,
       field: copy.field,
       enabled: copy.statusValue.enabled,
+      bound: copy.statusValue.bound,
       allLoaded: copy.state.allLoaded,
     },
   },
@@ -101,6 +108,7 @@ Page({
     this.setData({
       sheet: true,
       editing,
+      canUnbind: canUnbindOf(editing),
       form,
       initial: form,
       fields: {},
@@ -185,6 +193,7 @@ Page({
       const latest = view.latest as StaffItem
       this.setData({
         editing: latest,
+        canUnbind: canUnbindOf(latest),
         form: formOf(latest),
         initial: formOf(latest),
         formError: view.message,
@@ -211,7 +220,7 @@ Page({
       this.afterSubmit(result)
       return
     }
-    this.setData({ editing: result.data })
+    this.setData({ editing: result.data, canUnbind: canUnbindOf(result.data) })
     showSuccess(copy.action.unbound)
     void this.refresh()
   },

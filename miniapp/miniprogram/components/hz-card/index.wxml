@@ -6,7 +6,7 @@
   </view>
   <view class="hz-card__row">
     <text class="hz-card__title u-ellipsis">{{title}}</text>
-    <text class="hz-card__total">{{total}}</text>
+    <text class="hz-card__total {{keyTotal ? 'hz-card__total--key' : ''}}">{{total}}</text>
   </view>
   <view class="hz-card__row hz-card__row--foot">
     <hz-tag wx:for="{{tags}}" wx:key="text" text="{{item.text}}" warn="{{item.warn}}" />

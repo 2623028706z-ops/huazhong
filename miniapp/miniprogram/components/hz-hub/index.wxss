@@ -1,8 +1,16 @@
-/* 主卡高 150px、小卡高 100px，间距 12px（docs/design/mock-ext.html） */
+/* 门店、供应商首页：主格 + 一排小格，和入口窗格同一种细线窗格（docs/design/mock-art.html） */
+.hz-hub {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--hz-rule);
+  border-radius: var(--hz-radius);
+}
+
 .hz-hub__hero {
   position: relative;
   display: flex;
   flex-direction: column;
+  grid-column: 1 / -1;
   justify-content: space-between;
   height: 150px;
   padding: 20px 18px;
@@ -16,7 +24,7 @@
 .hz-hub__hero-name {
   display: block;
   font-size: var(--hz-font-hero);
-  letter-spacing: 0.2em;
+  letter-spacing: 0.3em;
 }
 
 .hz-hub__hero-sub {
@@ -39,7 +47,7 @@
   top: 18px;
   right: var(--hz-card-pad);
   min-width: 22px;
-  padding: 0 9px;
+  padding: 0 7px;
   font-size: var(--hz-font-sm);
   line-height: 22px;
   color: var(--hz-on-brand);
@@ -48,18 +56,17 @@
   border-radius: var(--hz-radius-pill);
 }
 
-.hz-hub__minis {
-  display: grid;
-  gap: 12px;
-  margin-top: 12px;
-}
-
 .hz-hub__mini {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   height: 100px;
   padding: var(--hz-card-pad);
+  border-top: 1px solid var(--hz-rule);
+}
+
+.hz-hub__mini + .hz-hub__mini {
+  border-left: 1px solid var(--hz-rule);
 }
 
 .hz-hub__mini-icon {
@@ -73,7 +80,8 @@
   letter-spacing: 0.12em;
 }
 
-/* 同入口卡「不能用」：整张变淡 */
-.hz-hub--off {
+/* 不能用：格子里的东西变淡，窗格线不变 */
+.hz-hub--off > text,
+.hz-hub--off > view {
   opacity: 0.45;
 }

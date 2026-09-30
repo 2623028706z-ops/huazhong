@@ -43,11 +43,6 @@
   transform: translateZ(0);
 }
 
-.hz-gallery__kv {
-  display: flex;
-  justify-content: space-between;
-}
-
 .hz-gallery__swatch {
   display: flex;
   flex-direction: column;

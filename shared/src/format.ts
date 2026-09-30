@@ -94,21 +94,42 @@ export function formatCardDate(date: string, today: string): string {
   return date.slice(0, 4) === today.slice(0, 4) ? date.slice(5) : date
 }
 
+// 一天里的第几分钟 → 时:分
+function clockOf(minutes: number): string {
+  const minuteOfDay = minutes - Math.floor(minutes / MINUTES_PER_DAY) * MINUTES_PER_DAY
+  return pad2(Math.floor(minuteOfDay / 60)) + ':' + pad2(minuteOfDay % 60)
+}
+
+// YYYY-MM-DD → 周几
+function weekdayOf(date: string): string {
+  const weekday = (((daysOfDate(date) + 4) % 7) + 7) % 7
+  return WEEK_PREFIX + WEEKDAY_NAMES.charAt(weekday)
+}
+
+// 时间戳在上海是哪一天，YYYY-MM-DD（列表按天分组）
+export function shanghaiDayOf(timestamp: string): string {
+  return civilFromDays(Math.floor(shanghaiMinutesOf(timestamp) / MINUTES_PER_DAY))
+}
+
 // 时间：年-月-日 时:分（上海时间）
 export function formatTime(timestamp: string): string {
-  const minutes = shanghaiMinutesOf(timestamp)
-  const days = Math.floor(minutes / MINUTES_PER_DAY)
-  const minuteOfDay = minutes - days * MINUTES_PER_DAY
-  return (
-    civilFromDays(days) + ' ' + pad2(Math.floor(minuteOfDay / 60)) + ':' + pad2(minuteOfDay % 60)
-  )
+  return shanghaiDayOf(timestamp) + ' ' + clockOf(shanghaiMinutesOf(timestamp))
+}
+
+// 分组里的时间：时:分（上海时间）
+export function formatClock(timestamp: string): string {
+  return clockOf(shanghaiMinutesOf(timestamp))
 }
 
 // 顶栏日期：2026.09.30 周三
 export function formatNavDate(date: string): string {
-  const weekday = (((daysOfDate(date) + 4) % 7) + 7) % 7
   const dotted = date.slice(0, 4) + '.' + date.slice(5, 7) + '.' + date.slice(8, 10)
-  return dotted + ' ' + WEEK_PREFIX + WEEKDAY_NAMES.charAt(weekday)
+  return dotted + ' ' + weekdayOf(date)
+}
+
+// 列表分组头：今年的写 月-日 周几，不是今年的写全
+export function formatDayHeader(date: string, today: string): string {
+  return formatCardDate(date, today) + ' ' + weekdayOf(date)
 }
 
 // 业务日期往后（负数往前）挪几天：近 7 天 = addDays(today, -6) 到 today

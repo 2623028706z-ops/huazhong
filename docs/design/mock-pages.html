@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>其他页面层级</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.453.0/dist/umd/lucide.min.js"></script>
+<style>
+/* 其他页面的信息层级（2026-10-03 确认）：左「现在」按阶段 2 实现和实测尺寸画，右是定下的改法。颜色取 02 章设计变量，--rule 同 mock-art.html */
+:root{--brand:#b75d45;--ink:#3b2a24;--muted:#7a5a4a;--paper:#fffbf6;--card:#fffbf6db;--bg:#f6ebdf;--hair:#ecd4c6;--line:#f8ebe4;
+  --rule:rgba(59,42,36,.2);--r:12px;--serif:"Noto Serif SC","Songti SC",serif}
+*{box-sizing:border-box}
+body{margin:0;padding:28px;background:#ddd6cd;color:#3a302b;font-family:-apple-system,"PingFang SC",sans-serif}
+h1{margin:0;font-family:var(--serif);font-weight:500;font-size:24px}.lead{max-width:1100px;margin:8px 0 0;font-size:13px;line-height:1.8}
+ol,ul{max-width:1100px;margin:6px 0 0;padding-left:20px;font-size:13px;line-height:1.9}h3{margin:34px 0 0;font-family:var(--serif);font-weight:500;font-size:18px}
+.pair{display:flex;flex-wrap:wrap;gap:24px 40px;align-items:flex-start;margin-top:34px}
+.pair>header{flex:0 0 340px}.pair h2{margin:0 0 10px;font-family:var(--serif);font-weight:500;font-size:18px;letter-spacing:.06em}
+.pair header p{margin:0 0 10px;font-size:13px;line-height:1.8}.pair .ask{padding:8px 10px;border-radius:8px;background:#efe7de}
+.col{display:flex;flex-direction:column;align-items:center;gap:10px}.col>p{margin:0;font-size:13px}
+/* 手机外壳、顶栏（同其他样稿） */
+.phone{position:relative;width:390px;height:844px;overflow:hidden;border-radius:40px;box-shadow:0 10px 30px rgba(0,0,0,.14);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+.bgimg{position:absolute;inset:0;width:100%;height:100%}.fade{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(246,235,223,0) 52%,var(--bg) 88%)}
+.lucide{stroke-width:1.4;flex:none}
+.status{position:absolute;top:0;left:0;right:0;height:47px;display:flex;justify-content:space-between;align-items:center;padding:0 26px 0 34px;font-size:16px;font-weight:600;color:#1f1a17}
+.status .lucide{width:17px;height:17px;stroke-width:2;margin-left:4px}
+.capsule{position:absolute;top:51px;right:10px;width:87px;height:32px;border-radius:16px;background:rgba(255,255,255,.7);border:1px solid rgba(0,0,0,.07)}
+.hi{position:absolute;z-index:3;bottom:8px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#1a1a1a}
+.nav{position:absolute;top:47px;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:500;font-size:17px;letter-spacing:.1em}
+.nav .lucide{position:absolute;left:11px;width:22px;height:22px}
+/* 列表：控件区 → 卡片；建议稿控件区和内容隔 16px */
+.list{position:absolute;top:103px;left:16px;right:16px;display:flex;flex-direction:column;gap:10px}.list.new>.ctl{margin-bottom:6px}
+.hbox{display:flex;gap:8px}.search{flex:1;display:flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:var(--r);background:var(--card);color:var(--muted)}.search.typed{color:var(--ink)}
+.search .lucide,.fbtn .lucide{width:18px;height:18px;color:var(--muted)}.fbtn{flex:none;width:44px;height:44px;display:grid;place-items:center;border-radius:var(--r);background:var(--card)}.fbtn .lucide{color:var(--ink)}.fline{display:flex;justify-content:flex-end}
+.lc{display:flex;flex-direction:column;gap:6px;padding:14px 16px;border-radius:var(--r);background:var(--card)}
+.lc div{display:flex;align-items:center;gap:8px}.lc .t{flex:1;font-size:15px;font-weight:500}.lc .k{font-size:15px;font-weight:600}.lc .s,.lc .f{font-size:12px;color:var(--muted)}
+.tag{flex:none;font-size:11px;line-height:20px;padding:0 8px;border-radius:10px;box-shadow:inset 0 0 0 1px var(--hair);color:var(--muted)}
+.day{padding:6px 2px 0;font-size:13px;font-weight:600;letter-spacing:.04em}
+.abar{position:absolute;left:0;right:0;bottom:0;padding:9px 14px 43px;background:var(--paper)}
+.btn{flex:1;height:44px;display:flex;align-items:center;justify-content:center;border-radius:var(--r);font-size:15px;letter-spacing:.16em}.pri{background:var(--brand);color:#fff;font-weight:600}.sec2{box-shadow:inset 0 0 0 1px var(--hair)}
+.txt{font-size:14px;font-weight:600;color:var(--ink);text-decoration:underline;text-decoration-color:var(--brand);text-underline-offset:4px}
+/* 弹层：实测内容区左右边距 0（缺陷）；建议稿按 02 章 16px */
+.mask{position:absolute;inset:0;z-index:1;background:rgba(0,0,0,.6)}
+.sheet{position:absolute;z-index:2;left:0;right:0;bottom:0;max-height:75%;display:flex;flex-direction:column;border-radius:14px 14px 0 0;background:var(--paper)}
+.sheet header{position:relative;flex:none;height:48px;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:500;font-size:16px;letter-spacing:.08em}
+.sheet header .lucide{position:absolute;left:16px;top:14px;width:20px;height:20px}.sb{padding-bottom:34px}.sb.pad{padding-left:16px;padding-right:16px}.sb.hasfoot{padding-bottom:0}
+.sec{display:flex;flex-direction:column;gap:6px;padding:12px 0;font-size:13px}.sec+.sec{border-top:1px solid var(--line)}.sec h4{margin:0;font-size:12px;font-weight:400;color:var(--muted)}
+.kv{display:flex;justify-content:space-between;gap:12px}.kv>span:first-child,.kv i{color:var(--muted);font-style:normal}.sec.sum{gap:2px}.sum b{font-size:15px;font-weight:600}.sum small{font-size:12px;color:var(--muted)}
+.form{display:flex;flex-direction:column;gap:14px;padding:4px 0 12px}.fl{display:flex;flex-direction:column;gap:6px}.fl label{font-size:12px;color:var(--muted)}
+.in{height:42px;display:flex;align-items:center;padding:0 12px;border-radius:var(--r);background:var(--paper);box-shadow:inset 0 0 0 1px var(--hair)}
+.sw{display:flex;align-items:center;justify-content:space-between;min-height:44px;font-size:15px}.tg{position:relative;width:44px;height:24px;border-radius:12px;background:#dcdcdc}
+.tg:after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff}.tg.on{background:var(--brand)}.tg.on:after{left:22px}
+.pills{display:flex;flex-wrap:wrap;gap:0 8px}.pills span{height:32px;margin:6px 0;padding:0 14px;line-height:30px;border-radius:999px;border:1px solid var(--hair);background:var(--paper);color:var(--muted)}.pills .on{border-color:var(--brand);color:var(--ink);font-weight:600}
+.grp{display:flex;flex-direction:column;gap:4px;padding-top:6px;border-top:1px solid var(--line)}.wx{display:flex;align-items:center;gap:14px;font-size:14px;color:var(--muted)}
+.foot{flex:none;display:flex;gap:8px;padding:9px 14px 43px;border-top:1px solid var(--line)}
+/* 整页状态、登录 */
+.state{display:flex;flex-direction:column;align-items:center;padding:26px 16px;text-align:center}.state i{display:block;width:28px;height:1px;margin-bottom:14px;background:var(--brand)}
+.state p{margin:0;font-family:var(--serif);font-weight:500;font-size:15px;letter-spacing:.14em}.state.card{border-radius:var(--r);background:var(--card)}.state.float{padding-top:64px}
+.logo{position:absolute;top:251px;left:0;right:0;display:flex;justify-content:center}.logo img{height:46px}
+.lp{position:absolute;left:20px;right:20px;display:flex;flex-direction:column;gap:16px}
+.agree{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;font-size:12px;color:var(--muted)}
+.lp .btn{flex:none}
+.agree i{width:18px;height:18px;border-radius:50%;box-shadow:inset 0 0 0 1px var(--muted)}.agree u{color:var(--ink);text-decoration-color:var(--brand);text-underline-offset:3px}
+</style></head><body>
+<h1>其他页面 · 信息层级</h1>
+<p class="lead">左边按阶段 2 的实现和实测尺寸画，右边是 2026-10-03 定下的改法。层级规则已写进 02 章第 1 节：</p>
+<ol><li>一张卡、一行只有一个主信息（15px 墨色）；关键数字（金额、库存）墨色加粗靠右；其余 12–13px 次要色。列表一条一张卡。</li>
+<li>弹层先写「这是哪一条」，再写内容；改动写「旧 → 新」，只列改了的。</li>
+<li>控件区（搜索、筛选）和内容隔 16px，卡片之间 10px（右边的建议图都按 16px 画）。</li>
+<li>整页状态（空、出错、断网）不装卡片。</li>
+<li>弹层和表单左右留 16px，内容不贴边；表单按意思分组，组之间细线。</li></ol>
+<div id="app"></div>
+<h3>另外（不用画图）</h3>
+<ul><li>次按钮描边 --hz-hair 对墙色只有 1.2:1：「我的」的「退出登录」、墙上的「重试」「返回」几乎看不出是按钮。已定改用 --hz-rule（墨色 20%）。</li>
+<li>门店、供应商主卡名称和「我的」名字用了衬线 600，但 600 的字体子集只有数字和 ¥，这些字实际退回系统宋体，和 500 的标题字不是同一款。首页改窗格时主格名称用衬线 500，「我的」名字改无衬线加粗。</li>
+<li>个人资料弹层和日志、员工弹层是同一种写法，内容也会贴边（看代码，没有实测），一起修。</li></ul>
+<script>
+const ic = (n, c = '') => `<i data-lucide="${n}"${c ? ` class="${c}"` : ''}></i>`;
+const bar = `<div class="status"><span>9:41</span><span>${ic('signal')}${ic('wifi')}${ic('battery-full')}</span></div><div class="capsule"></div>`;
+const phone = (inner, bg = '') => `<div class="phone">${bg}${bar}${inner}<div class="hi"></div></div>`;
+const nav = (t) => `<div class="nav">${ic('chevron-left')}${t}</div>`;
+const search = (text, typed) => `<div class="hbox ctl"><div class="search${typed ? ' typed' : ''}">${ic('search')}${text}</div><span class="fbtn">${ic('sliders-horizontal')}</span></div>`;
+const sheet = (title, body, { pad = false, foot = '' } = {}) => `<div class="mask"></div><div class="sheet"><header>${ic('x')}${title}</header><div class="sb${pad ? ' pad' : ''}${foot ? ' hasfoot' : ''}">${body}</div>${foot ? `<div class="foot">${foot}</div>` : ''}</div>`;
+// 库存查询：[花材, 库存, 单位, 编码, 分类, 停用]
+const INV = [['粉雪山玫瑰', 228, '枝', 'HC-0001', '玫瑰'], ['卡罗拉红玫瑰', 160, '枝', 'HC-0002', '玫瑰'], ['向日葵', 60, '枝', 'HC-0003', '主花', 1], ['尤加利', 86, '枝', 'HC-0005', '叶材'], ['洋桔梗', 0, '枝', 'HC-0007', '配花'], ['满天星', 42, '扎', 'HC-0008', '配花']];
+const invOld = INV.map(([n, q, u, code, cat, off]) => `<div class="lc"><div><span class="t">${n}</span><span class="s">${q} ${u}</span></div><div class="f">${off ? '<span class="tag">已停用</span>' : ''}<span>${code} · ${cat}</span></div></div>`).join('');
+const invNew = INV.map(([n, q, u, code, cat, off]) => `<div class="lc"><div><span class="t">${n}</span><span class="${q ? 'k' : 's'}">${q} ${u}</span></div><div class="f">${off ? '<span class="tag">已停用</span>' : ''}<span>${code} · ${cat}</span></div></div>`).join('');
+// 操作日志：[日期, 时间, 操作, 对象, 模块, 操作人]
+const LOGS = [['10-03', '09:40', '确认订单', 'SO-261003-012', '销售', '李敏'], ['10-03', '09:12', '修改员工', '李敏', '公共', '周总'], ['10-03', '08:30', '修改客户', '云间花事', '销售', '李敏'],
+  ['10-02', '18:05', '确认收货', 'PO-261002-011', '仓库', '王芳'], ['10-02', '16:20', '新增员工', '王芳', '公共', '周总'], ['10-02', '11:02', '作废售后', 'SH-261002-004', '销售', '李敏']];
+const logCard = ([d, t, act, obj, mod, who], short) => `<div class="lc"><div><span class="t">${act} · ${obj}</span><span class="s">${mod}</span></div><div class="f">${short ? t : `2026-${d} ${t}`} · ${who}</div></div>`;
+const logFilter = `<div class="fline ctl"><span class="fbtn">${ic('sliders-horizontal')}</span></div>`;
+const logsOld = nav('操作日志') + `<div class="list">${logFilter}${LOGS.map((l) => logCard(l)).join('')}</div>`;
+const logsNew = nav('操作日志') + `<div class="list new">${logFilter}${[['10-03', '10-03 周六'], ['10-02', '10-02 周五']].map(([d, day]) => `<div class="day">${day}</div>${LOGS.filter((l) => l[0] === d).map((l) => logCard(l, true)).join('')}`).join('')}</div>`;
+const kv = (rows) => rows.map(([k, v]) => `<div class="kv"><span>${k}</span><span>${v}</span></div>`).join('');
+const logSheetOld = sheet('日志详情', `<div class="sec"><h4>原因</h4><span>同时解绑微信</span></div><div class="sec"><h4>修改前</h4>${kv([['名字', '李敏'], ['登录手机号', '13700000002'], ['岗位', '销售'], ['状态', '启用']])}</div><div class="sec"><h4>修改后</h4>${kv([['名字', '李敏'], ['登录手机号', '13700000018'], ['岗位', '销售'], ['状态', '启用']])}</div>`);
+const logSheetNew = sheet('日志详情', `<div class="sec sum"><b>修改员工 · 李敏</b><small>2026-10-03 09:12 · 周总 · 公共</small></div><div class="sec"><h4>原因</h4><span>同时解绑微信</span></div><div class="sec"><h4>改动</h4><div class="kv"><span>登录手机号</span><span><i>13700000002</i> → <b>13700000018</b></span></div></div>`, { pad: true });
+// 员工与岗位
+const STAFF = [['周总', '管理员', '137****0001'], ['李敏', '销售', '137****0002'], ['王芳', '销售、仓库', '137****0003'], ['陈青', '仓库', '137****0005', 1]];
+const staffBack = nav('员工与岗位') + `<div class="list">${STAFF.map(([n, role, ph, off]) => `<div class="lc"><div><span class="t">${n}</span><span class="s">${role}</span></div><div class="f">${off ? '<span class="tag">停用</span>' : ''}<span>${ph}</span></div></div>`).join('')}</div><div class="abar"><span class="btn pri">新增员工</span></div>`;
+const fields = `<div class="fl"><label>名字</label><div class="in">李敏</div></div><div class="fl"><label>登录手机号</label><div class="in">13700000002</div></div>`;
+const pills = `<div class="fl"><label>模块</label><div class="pills">${['销售', '发货', '采购', '仓库', '财务'].map((p, k) => `<span class="${k ? '' : 'on'}">${p}</span>`).join('')}</div></div>`;
+const sw = (t, on) => `<div class="sw"><span>${t}</span><span class="tg${on ? ' on' : ''}"></span></div>`;
+const staffOld = sheet('编辑员工', `<div class="form">${fields}${sw('管理员')}${pills}${sw('启用', 1)}</div>`, { foot: '<span class="btn sec2">解绑微信</span><span class="btn pri">保存</span>' });
+const staffNew = sheet('编辑员工', `<div class="form">${fields}<div class="grp">${sw('管理员')}${pills}</div><div class="grp">${sw('启用', 1)}<div class="sw"><span>微信</span><span class="wx">已绑定<span class="txt">解绑微信</span></span></div></div></div>`, { pad: true, foot: '<span class="btn pri">保存</span>' });
+// 空状态、登录
+const empty = (cls) => nav('库存查询') + `<div class="list${cls ? ' new' : ''}">${search('芍药', 1)}<div class="state ${cls || 'card'}"><i></i><p>暂无符合条件的库存</p></div></div>`;
+const loginBg = `<img class="bgimg" src="../../miniapp/miniprogram/assets/backdrop.jpg" alt=""><div class="fade"></div>`;
+const login = (pos) => phone(`<div class="logo"><img src="logo.png" alt="花众"></div><div class="lp" style="${pos}"><div class="agree"><i></i><span>我已阅读并同意<u>《花众小程序隐私保护指引》</u></span></div><span class="btn pri">手机号快速验证登录</span></div>`, loginBg);
+// [标题, 现在, 建议, 要你定, 现在图, 建议图]
+const PAIRS = [
+  ['库存查询', '库存数是这页最要看的数，却和编码、分类一样是 12px 次要色，放在第二行右边最弱的位置；每行一张卡，看起来能点开，其实只读。', '数量 15px 墨色加粗（库存 0 照常次要色）；编码 · 分类、「已停用」照旧在下面一行，还是一条一张卡。',
+    '一条一张卡，只把数量加粗；0 用次要色。', phone(nav('库存查询') + `<div class="list">${search('搜索花材')}${invOld}</div>`), phone(nav('库存查询') + `<div class="list new">${search('搜索花材')}${invNew}</div>`)],
+  ['日志详情弹层', '内容贴着屏幕左右边（实测左边距 0，02 章要 16px，这是缺陷，直接修）。弹层没说是哪一条日志；修改前、修改后各列一遍全部字段，要自己逐行对比才知道改了什么。', '顶部先写「修改员工 · 李敏」和「时间 · 操作人 · 模块」，再写原因；改动只列变了的字段「旧 → 新」（和变更记录一个写法）。新增类没有修改前的，照旧全列。',
+    '只列改动，06 章 M6 已改。', phone(logsOld + logSheetOld), phone(logsOld + logSheetNew)],
+  ['员工弹层', '同样贴边（缺陷，直接修）。五个控件间距一样，看不出哪些是一组；「解绑微信」和「保存」等宽并排，读起来像「取消 / 确定」，但解绑是马上生效的账号操作，和保存无关。', '分三组、细线隔开：名字、手机号 / 管理员、模块 / 启用、微信。「解绑微信」挪到微信那一行右边做文字按钮（只在已绑定时出现），底部只留「保存」。',
+    '分三组；解绑挪进微信行（写「已绑定」，列表仍不显示），底部只留「保存」。06 章 M7 已改。', phone(staffBack + staffOld), phone(staffBack + staffNew)],
+  ['空状态', '「暂无…」装在一张卡里，像列表里多了一张空卡。首页、我的墙上出现的断网、出错也是一张卡。', '不装卡：短线 + 衬线一句直接落在墙上，上面多留白。',
+    '整页状态都不装卡片，02 章 hz-state 已改。', phone(empty()), phone(empty('float'))],
+  ['登录页', '实测按钮底边在 624px，样稿是 786px（离底 58px）。原因是 .hz-login 用了 min-height: 70vh，登录区浮在中间、落在渐变还没亮起来的地方，下面空一截。', '按样稿贴底：离底 58px，勾选和按钮落在已经渐亮的墙色上。',
+    '改实现，按样稿贴底。', login('top:520px'), login('bottom:58px')],
+  ['操作日志列表', '层级基本对：操作 · 对象最重，模块在右，时间 · 操作人在最后。只是每张都写完整「2026-10-03 09:40」，同一天的日期重复很多遍。', '按天分组，组头写「10-03 周六」，卡片里只写时:分。组头是新写法，日期按 02 章第 6 节（今年的写月-日，不是今年的写全），以后订单、收付款记录也能用。',
+    '按天分组，格式写进 02 章第 6 节。', phone(logsOld), phone(logsNew)],
+];
+document.getElementById('app').innerHTML = PAIRS.map(([t, now, sug, ask, a, b]) => `<section class="pair"><header><h2>${t}</h2><p><b>现在</b>　${now}</p><p><b>建议</b>　${sug}</p><p class="ask"><b>已定</b>　${ask}</p></header><div class="col">${a}<p>现在</p></div><div class="col">${b}<p>建议</p></div></section>`).join('');
+lucide.createIcons();
+</script>
+</body></html>

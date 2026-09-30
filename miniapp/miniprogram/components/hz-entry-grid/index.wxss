@@ -1,7 +1,10 @@
+/* 一整块细线窗格：外框和格子之间都是 --hz-rule，不铺底色（docs/design/mock-art.html） */
 .hz-entry-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  overflow: hidden;
+  border: 1px solid var(--hz-rule);
+  border-radius: var(--hz-radius);
 }
 
 .hz-entry-grid__cell {
@@ -11,6 +14,16 @@
   justify-content: space-between;
   height: 104px;
   padding: var(--hz-card-pad);
+  border-top: 1px solid var(--hz-rule);
+}
+
+/* 第一行不要上线，右列加左线 */
+.hz-entry-grid__cell:nth-child(-n + 2) {
+  border-top: 0;
+}
+
+.hz-entry-grid__cell:nth-child(even) {
+  border-left: 1px solid var(--hz-rule);
 }
 
 .hz-entry-grid__cell--wide {
@@ -22,7 +35,8 @@
   height: 64px;
 }
 
-.hz-entry-grid__cell--off {
+/* 不能用：格子里的东西变淡，窗格线不变 */
+.hz-entry-grid__cell--off > text {
   opacity: 0.45;
 }
 
@@ -32,19 +46,41 @@
 }
 
 .hz-entry-grid__name {
-  font-size: var(--hz-font-lg);
-  font-weight: 600;
-  letter-spacing: 0.12em;
+  font-size: var(--hz-font-title);
+  letter-spacing: 0.2em;
 }
 
 .hz-entry-grid__go {
   position: absolute;
   right: 14px;
-  bottom: var(--hz-card-pad);
+  bottom: 18px;
   font-size: var(--hz-icon-sm);
   color: var(--hz-muted);
 }
 
 .hz-entry-grid__cell--wide .hz-entry-grid__go {
-  bottom: 24px;
+  bottom: 23px;
+}
+
+/* 模块首页：小一号 */
+.hz-entry-grid--compact .hz-entry-grid__cell {
+  height: 78px;
+  padding: 14px;
+}
+
+.hz-entry-grid--compact .hz-entry-grid__cell--wide {
+  height: 56px;
+}
+
+.hz-entry-grid--compact .hz-entry-grid__icon {
+  font-size: var(--hz-icon-nav);
+}
+
+.hz-entry-grid--compact .hz-entry-grid__name {
+  font-size: var(--hz-font-md);
+  letter-spacing: 0.14em;
+}
+
+.hz-entry-grid--compact .hz-entry-grid__cell--wide .hz-entry-grid__go {
+  bottom: 19px;
 }

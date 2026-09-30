@@ -1,4 +1,4 @@
-/* 字标高 38px；身份行 13px，日期 12px 次要色（docs/design/mock-ext.html） */
+/* 字标高 38px；身份行 13px，日期 12px 次要色（docs/design/mock-art.html） */
 .hz-brand {
   padding-top: 12px;
 }

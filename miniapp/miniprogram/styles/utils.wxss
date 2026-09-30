@@ -113,11 +113,101 @@
   color: var(--hz-danger);
 }
 
-/* 弹层里的区块：不套框，用细线分隔（hz-sheet） */
+/* 弹层里的区块：不套框，用细线分隔，左右留 --hz-gap-sheet（hz-sheet） */
 .u-sheet-section {
   padding: var(--hz-row-pad) var(--hz-gap-sheet);
   font-size: var(--hz-font-note);
   border-top: 1px solid var(--hz-line);
+}
+
+/* 区块的小标题（原因、改动） */
+.u-sheet-section__title {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+/* 弹层抬头：先写这是哪一条（02 章第 1 节） */
+.u-sheet-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.u-sheet-head__title {
+  font-size: var(--hz-font-md);
+  font-weight: 600;
+}
+
+.u-sheet-head__meta {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+/* 区块竖排：小标题 + 内容、多行「标签　值」 */
+.u-sheet-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-line-gap);
+}
+
+/* 「标签　值」一行（个人资料、日志详情、组件总览） */
+.u-sheet-row {
+  display: flex;
+  gap: var(--hz-row-pad);
+  justify-content: space-between;
+}
+
+.u-sheet-row__label {
+  flex: none;
+  color: var(--hz-muted);
+}
+
+.u-sheet-row__value {
+  min-width: 0;
+  text-align: right;
+}
+
+/* 改动「旧 → 新」：旧值次要色，新值加粗 */
+.u-sheet-row__from {
+  color: var(--hz-muted);
+}
+
+.u-sheet-row__to {
+  font-weight: 600;
+}
+
+/* 弹层里的表单：左右留 --hz-gap-sheet，按意思分组，组之间细线（02 章第 1 节） */
+.u-sheet-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: var(--hz-row-pad) var(--hz-gap-sheet);
+  border-top: 1px solid var(--hz-line);
+}
+
+.u-sheet-form__group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: var(--hz-line-gap);
+  border-top: 1px solid var(--hz-line);
+}
+
+/* 表单里「标签　内容 + 文字按钮」一行（员工弹层的微信），高同 hz-switch */
+.u-sheet-form__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--hz-tap);
+  font-size: var(--hz-font-md);
+}
+
+.u-sheet-form__value {
+  display: flex;
+  gap: var(--hz-line-gap);
+  align-items: center;
+  font-size: var(--hz-font);
+  color: var(--hz-muted);
 }
 
 /* 小标题：弹层里的「下单日期」、组件总览的分组说明 */
@@ -127,7 +217,7 @@
   color: var(--hz-muted);
 }
 
-/* 铺品牌背景的页面（各首页、我的）：左右 20px，抬头下面 32px 开始放卡片 */
+/* 铺品牌背景的页面（各首页、我的）：左右 20px，抬头下面 32px 开始放窗格 */
 .u-home {
   padding: 0 var(--hz-gap-home);
 }
@@ -145,6 +235,14 @@
   flex-direction: column;
   gap: var(--hz-card-gap);
   padding: 12px var(--hz-gap-page);
+}
+
+/* 按天分组的列表组头（操作日志）：13px 墨色加粗（02 章第 1 节、第 6 节） */
+.u-list__group {
+  padding: var(--hz-line-gap) 2px 0;
+  font-size: var(--hz-font-note);
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
 .u-list__end {

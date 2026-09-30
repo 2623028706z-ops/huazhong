@@ -4,23 +4,34 @@
   <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
   <hz-error wx:elif="{{failure}}" message="{{failure.message}}" request-id="{{failure.requestId}}" retry bind:retry="onFailureAction" />
   <hz-skeleton wx:if="{{skeleton}}" type="list" />
-  <hz-state wx:elif="{{loaded && rows.length === 0}}" object="{{emptyObject}}" />
-  <view wx:for="{{rows}}" wx:key="id" data-key="{{item.id}}" bindtap="onOpen">
-    <hz-card title="{{item.title}}" total="{{item.total}}" meta="{{item.meta}}" />
-  </view>
-  <text wx:if="{{done && rows.length > 0}}" class="u-list__end">{{allLoaded}}</text>
+  <hz-state wx:elif="{{loaded && groups.length === 0}}" object="{{emptyObject}}" />
+  <block wx:for="{{groups}}" wx:key="day" wx:for-item="group">
+    <text class="u-list__group">{{group.header}}</text>
+    <view wx:for="{{group.rows}}" wx:key="id" data-key="{{item.id}}" bindtap="onOpen">
+      <hz-card title="{{item.title}}" total="{{item.total}}" meta="{{item.meta}}" />
+    </view>
+  </block>
+  <text wx:if="{{done && groups.length > 0}}" class="u-list__end">{{allLoaded}}</text>
 </view>
 <hz-sheet show="{{sheet}}" title="{{sheetTitle}}" bind:close="onCloseSheet">
-  <hz-error wx:if="{{detailError}}" message="{{detailError}}" />
-  <view wx:if="{{detail.reason}}" class="hz-logs__section">
-    <text class="hz-logs__heading">{{reasonLabel}}</text>
-    <text>{{detail.reason}}</text>
+  <view wx:if="{{detailError}}" class="u-sheet-section">
+    <hz-error message="{{detailError}}" />
   </view>
-  <view wx:for="{{detail.sections}}" wx:key="title" wx:for-item="section" class="hz-logs__section">
-    <text class="hz-logs__heading">{{section.title}}</text>
-    <view wx:for="{{section.rows}}" wx:key="label" class="hz-logs__row">
-      <text class="hz-logs__label">{{item.label}}</text>
-      <text>{{item.value}}</text>
+  <block wx:if="{{detail}}">
+    <view class="u-sheet-section u-sheet-head">
+      <text class="u-sheet-head__title">{{detail.title}}</text>
+      <text class="u-sheet-head__meta">{{detail.meta}}</text>
     </view>
-  </view>
+    <view wx:if="{{detail.reason}}" class="u-sheet-section u-sheet-stack">
+      <text class="u-sheet-section__title">{{reasonLabel}}</text>
+      <text>{{detail.reason}}</text>
+    </view>
+    <view wx:for="{{detail.sections}}" wx:key="title" wx:for-item="section" class="u-sheet-section u-sheet-stack">
+      <text class="u-sheet-section__title">{{section.title}}</text>
+      <view wx:for="{{section.rows}}" wx:key="label" class="u-sheet-row">
+        <text class="u-sheet-row__label">{{item.label}}</text>
+        <text class="u-sheet-row__value"><text wx:if="{{item.from}}" class="u-sheet-row__from">{{item.from}}</text><text class="{{item.from ? 'u-sheet-row__to' : ''}}">{{item.value}}</text></text>
+      </view>
+    </view>
+  </block>
 </hz-sheet>

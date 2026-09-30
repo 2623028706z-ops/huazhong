@@ -1,13 +1,13 @@
-<view class="hz-entry-grid">
+<view class="hz-entry-grid {{compact ? 'hz-entry-grid--compact' : ''}}">
   <view
     wx:for="{{entries}}"
     wx:key="key"
-    class="u-card hz-entry-grid__cell {{index === entries.length - 1 && entries.length % 2 === 1 ? 'hz-entry-grid__cell--wide' : ''}} {{item.disabled ? 'hz-entry-grid__cell--off' : ''}}"
+    class="hz-entry-grid__cell {{index === entries.length - 1 && entries.length % 2 === 1 ? 'hz-entry-grid__cell--wide' : ''}} {{item.disabled ? 'hz-entry-grid__cell--off' : ''}}"
     data-index="{{index}}"
     bindtap="onTap"
   >
     <text class="hz-icon hz-icon--{{item.icon}} hz-entry-grid__icon"></text>
-    <text class="hz-entry-grid__name">{{item.text}}</text>
+    <text class="hz-entry-grid__name u-serif">{{item.text}}</text>
     <text class="hz-icon hz-icon--chevron-right hz-entry-grid__go"></text>
   </view>
 </view>

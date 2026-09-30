@@ -3,7 +3,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.453.0/dist/umd/lucide.min.js"></script>
 <style>
-/* 登录页（背景整屏 + 下部渐亮到墙色）、模块首页（背景淡化铺底）；取值同 02 章设计变量 */
+/* 登录页（背景整屏 + 下部渐亮到墙色，按钮离底 58px）；模块首页见 mock-art.html。取值同 02 章设计变量 */
 :root{--brand:#b75d45;--ink:#3b2a24;--muted:#7a5a4a;--paper:#fffbf6;--card:#fffbf6db;--bg:#f6ebdf;--hair:#ecd4c6;--line:#f8ebe4;
   --amber:#8a5a1e;--amberBg:#f6e7d2;--r:12px;--gapHome:20px;--serif:"Noto Serif SC","Songti SC",serif}
 *{box-sizing:border-box}
@@ -12,7 +12,6 @@ body{margin:0;padding:28px;background:#ddd6cd;font-family:-apple-system,"PingFan
 .col{display:flex;flex-direction:column;align-items:center;gap:10px}.col>p{margin:0;font-size:14px;color:#3a302b}
 .phone{position:relative;width:390px;height:844px;overflow:hidden;border-radius:40px;box-shadow:0 10px 30px rgba(0,0,0,.14);background:var(--bg);color:var(--ink)}
 .bgimg{position:absolute;inset:0;width:100%;height:100%}
-.soft{position:absolute;inset:0;background:rgba(246,235,223,.6)}
 .fade{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(246,235,223,0) 52%,var(--bg) 88%)}
 .lucide{stroke-width:1.4}
 .status{position:absolute;top:0;left:0;right:0;height:47px;display:flex;justify-content:space-between;align-items:center;padding:0 26px 0 34px;font-size:16px;font-weight:600;color:#1f1a17}
@@ -25,23 +24,6 @@ body{margin:0;padding:28px;background:#ddd6cd;font-family:-apple-system,"PingFan
 .agree{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;font-size:12px;color:var(--muted)}
 .agree i{width:18px;height:18px;border-radius:50%;box-shadow:inset 0 0 0 1px var(--muted)}.agree u{color:var(--ink);text-decoration-color:var(--brand);text-underline-offset:3px}
 .btn{height:44px;display:flex;align-items:center;justify-content:center;border-radius:var(--r);background:var(--brand);color:#fff;font-size:15px;font-weight:600;letter-spacing:.16em}
-/* 模块首页 */
-.nav{position:absolute;top:47px;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.1em}
-.nav .lucide{position:absolute;left:12px;width:22px;height:22px}
-.body{position:absolute;top:100px;left:var(--gapHome);right:var(--gapHome)}
-.id{display:flex;justify-content:space-between;align-items:baseline;font-size:13px}.id b{font-weight:600}.id time{font-size:12px;color:var(--muted)}
-.entries{margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.cell{position:relative;height:96px;border-radius:var(--r);background:var(--card);padding:16px;display:flex;flex-direction:column;justify-content:space-between}
-.cell .lucide{width:26px;height:26px;color:var(--brand)}.cell b{font-weight:600;font-size:15px;letter-spacing:.12em}
-.cell .go{position:absolute;right:14px;bottom:16px;width:16px;height:16px;color:var(--muted)}
-.cell.wide{grid-column:1/3;height:60px;flex-direction:row;align-items:center;justify-content:flex-start;gap:16px}.cell.wide .go{bottom:22px}
-.todo{margin:22px 2px 10px;display:flex;justify-content:space-between;align-items:baseline}
-.todo h3{margin:0;font-family:var(--serif);font-weight:600;font-size:16px;letter-spacing:.12em}
-.txt{font-size:13px;font-weight:600;text-decoration:underline;text-decoration-color:var(--brand);text-underline-offset:4px}
-.lc{background:var(--card);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
-.lc div{display:flex;align-items:center;gap:8px}.lc .r2 b{flex:1;font-weight:500;font-size:15px}
-.lc .r1{font-size:12px;color:var(--muted);justify-content:space-between}.lc .r3{font-size:12px;color:var(--muted)}.lc .r3 em{margin-left:auto;font-style:normal;font-weight:600;font-size:15px;color:var(--ink)}
-.st{font-size:11px;line-height:20px;padding:0 8px;border-radius:10px;background:var(--amberBg);color:var(--amber)}
 </style></head><body>
 <script>
 const ic = (n, c = '') => `<i data-lucide="${n}" class="${c}"></i>`;
@@ -49,15 +31,8 @@ const bar = `<div class="status"><span>9:41</span><span>${ic('signal')}${ic('wif
 const img = `<img class="bgimg" src="../../miniapp/miniprogram/assets/backdrop.jpg">`;
 const login = `<div class="phone">${img}<div class="fade"></div>${bar}<div class="logo"><img src="logo.png" alt="花众"></div>
   <div class="login"><div class="agree"><i></i><span>我已阅读并同意<u>《花众隐私保护指引》</u></span></div><div class="btn">手机号快速验证登录</div></div><div class="hi"></div></div>`;
-const MODS = [['销售订单', 'file-text'], ['客户门店', 'store'], ['产品管理', 'flower'], ['订货目录', 'book-open'], ['客户售后', 'rotate-ccw']];
-const lc = (d, st, obj, qty, no, amt) => `<div class="lc"><div class="r1"><span>${d}</span><span class="st">${st}</span></div><div class="r2"><b>${obj}</b><span style="font-size:12px;color:var(--muted)">${qty}</span></div><div class="r3"><span>${no}</span><em>¥${amt}</em></div></div>`;
-const mod = `<div class="phone">${img}<div class="soft"></div>${bar}<div class="nav">${ic('chevron-left')}销售</div>
-  <div class="body"><div class="id"><span><b>管理员</b> · 周总</span><time>2026.09.30 周三</time></div>
-  <div class="entries">${MODS.map(([n, i], k) => `<div class="cell${k === 4 ? ' wide' : ''}">${ic(i)}<b>${n}</b>${ic('chevron-right', 'go')}</div>`).join('')}</div>
-  <div class="todo"><h3>待办</h3><span class="txt">查看全部</span></div>
-  ${lc('09-30', '待确认', '静安花艺工作室 · 静安店', '共 32 束', 'SO-260930-012', '3,860.00')}${lc('09-30', '待确认', '南京西路 · 繁花', '共 12 束', 'SO-260930-011', '1,240.00')}${lc('09-29', '待处理', '云间花事 · 徐汇店', '售后 2 项', 'SH-260929-004', '272.00')}</div><div class="hi"></div></div>`;
 const col = (h, t) => `<div class="col">${h}<p>${t}</p></div>`;
-document.body.innerHTML = `<div class="set">${col(login, '登录页（full + 下部渐亮）')}${col(mod, '模块首页（soft，墙色 60%）')}</div>`;
+document.body.innerHTML = `<div class="set">${col(login, '登录页（full + 下部渐亮）')}</div>`;
 lucide.createIcons();
 </script>
 </body></html>

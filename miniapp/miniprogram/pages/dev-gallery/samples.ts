@@ -32,6 +32,45 @@ const entries = [
   { key: 'shipping', icon: 'truck', text: '发货', disabled: false },
 ]
 
+// 模块首页的小一号入口（仓库首页的入口数，图标先借现有的）
+const moduleEntries = [
+  { key: 'recv', icon: 'truck', text: '待收', disabled: false },
+  { key: 'in', icon: 'plus', text: '手工入库', disabled: false },
+  { key: 'out', icon: 'minus', text: '手工出库', disabled: false },
+  { key: 'loss', icon: 'trash-2', text: '报损', disabled: false },
+  { key: 'check', icon: 'clipboard-list', text: '盘点', disabled: false },
+  { key: 'stock', icon: 'boxes', text: '库存', disabled: false },
+  { key: 'material', icon: 'flower-2', text: '花材', disabled: true },
+]
+
+const hub = {
+  hero: {
+    key: 'supply',
+    icon: 'clipboard-pen',
+    text: '填报',
+    sub: '3 份邀请待填报',
+    badge: 3,
+    disabled: false,
+  },
+  minis: [
+    { key: 'orders', icon: 'file-text', text: '采购单', disabled: false },
+    { key: 'statement', icon: 'notebook-text', text: '对账', disabled: true },
+  ],
+}
+
+// 库存列表：没有金额，总数是关键数字；库存 0 照常次要色
+const stockCards = [
+  { id: 's1', title: '粉雪山玫瑰', total: '228 枝', key: true, meta: 'HC-0001 · 玫瑰', tags: [] },
+  {
+    id: 's2',
+    title: '洋桔梗',
+    total: '0 枝',
+    key: false,
+    meta: 'HC-0007 · 配花',
+    tags: [{ text: '已停用', warn: false }],
+  },
+]
+
 const cards = [
   {
     id: '1',
@@ -268,6 +307,7 @@ const swatches = [
   'grey-bg',
   'danger',
   'danger-bg',
+  'rule',
 ]
 
 // 一个对象导出：组件总览页整个铺进 data
@@ -277,6 +317,9 @@ export const samples = {
   supplierTabs,
   coverModes,
   entries,
+  moduleEntries,
+  hub,
+  stockCards,
   cards,
   statusRows,
   tags,

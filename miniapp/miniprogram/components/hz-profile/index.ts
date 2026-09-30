@@ -1,4 +1,5 @@
-// 「我的」（06 章 M4、S4、P3）：身份卡（头像取名字第一个字）→ 入口 → 个人资料（只读弹层）→ 退出登录。
+// 「我的」（06 章 M4、S4、P3）：一整块细线窗格，身份格（头像取名字第一个字）→ 入口 → 个人资料（只读弹层）；
+// 窗格外是退出登录。
 // 点入口发 select（detail 是入口 key），点退出登录发 logout，由页面确认后调解绑
 import { copy } from '@huazhong/shared'
 import type { KeyEvent } from '../../core/events'

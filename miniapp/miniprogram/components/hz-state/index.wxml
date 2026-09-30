@@ -1,4 +1,4 @@
-<view class="u-card hz-state">
+<view class="hz-state">
   <view class="hz-state__rule"></view>
   <text class="hz-state__text u-serif">{{text}}</text>
   <text wx:if="{{detail}}" class="hz-state__detail">{{detail}}</text>

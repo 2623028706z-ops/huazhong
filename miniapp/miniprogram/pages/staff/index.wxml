@@ -13,21 +13,25 @@
   <hz-button text="{{texts.create}}" bind:press="onCreate" />
 </hz-action-bar>
 <hz-sheet show="{{sheet}}" title="{{editing ? texts.edit : texts.create}}" guard="{{true}}" footer bind:close="onCloseSheet">
-  <view class="hz-staff__form">
+  <view class="u-sheet-form">
     <hz-error wx:if="{{formError}}" message="{{formError}}" request-id="{{requestId}}" />
     <hz-field label="{{texts.field.name}}" value="{{form.name}}" error="{{fields.name}}" bind:change="onName" />
     <hz-field label="{{texts.field.phone}}" value="{{form.phone}}" type="number" error="{{fields.phone}}" bind:change="onPhone" />
-    <hz-switch label="{{texts.field.admin}}" value="{{form.admin}}" bind:change="onAdmin" />
-    <hz-choices wx:if="{{!form.admin}}" label="{{texts.field.modules}}" options="{{moduleOptions}}" value="{{form.modules}}" error="{{fields.modules}}" bind:change="onModules" />
-    <hz-switch wx:if="{{editing}}" label="{{texts.enabled}}" value="{{form.enabled}}" bind:change="onEnabled" />
-  </view>
-  <view slot="footer" class="hz-staff__footer">
-    <view wx:if="{{editing.actions.length > 0}}" class="hz-staff__cell">
-      <hz-button kind="secondary" text="{{texts.unbind}}" bind:press="onUnbind" />
+    <view class="u-sheet-form__group">
+      <hz-switch label="{{texts.field.admin}}" value="{{form.admin}}" bind:change="onAdmin" />
+      <hz-choices wx:if="{{!form.admin}}" label="{{texts.field.modules}}" options="{{moduleOptions}}" value="{{form.modules}}" error="{{fields.modules}}" bind:change="onModules" />
     </view>
-    <view class="hz-staff__cell">
-      <hz-button text="{{texts.save}}" loading="{{saving}}" bind:press="onSave" />
+    <view wx:if="{{editing}}" class="u-sheet-form__group">
+      <hz-switch label="{{texts.enabled}}" value="{{form.enabled}}" bind:change="onEnabled" />
+      <view wx:if="{{canUnbind}}" class="u-sheet-form__row">
+        <text>{{texts.field.wechat}}</text>
+        <view class="u-sheet-form__value">
+          <text>{{texts.bound}}</text>
+          <hz-button kind="text" text="{{texts.unbind}}" bind:press="onUnbind" />
+        </view>
+      </view>
     </view>
   </view>
+  <hz-button slot="footer" text="{{texts.save}}" loading="{{saving}}" bind:press="onSave" />
 </hz-sheet>
 <hz-confirm id="hz-confirm" />

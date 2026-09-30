@@ -13,9 +13,9 @@
   --td-button-primary-disabled-border-color: var(--hz-hair);
   --td-button-primary-disabled-color: var(--hz-muted);
   --td-button-default-outline-color: var(--hz-ink);
-  --td-button-default-outline-border-color: var(--hz-hair);
+  --td-button-default-outline-border-color: var(--hz-rule);
   --td-button-default-outline-active-bg-color: var(--hz-paper);
-  --td-button-default-outline-active-border-color: var(--hz-hair);
+  --td-button-default-outline-active-border-color: var(--hz-rule);
   --td-button-default-outline-disabled-color: var(--hz-muted);
   --td-button-default-disabled-bg: var(--hz-hair);
   --td-button-default-disabled-border-color: var(--hz-hair);
@@ -34,6 +34,11 @@
 /* 微信原生 button:not([size=mini]) 默认 184px 宽，优先级高过 TDesign 的 --block，这里拉满 */
 .hz-button .hz-button__inner {
   width: 100%;
+}
+
+/* 次按钮描边：TDesign 画在原生 button 的 ::after 上，小程序里实测显示不出来，改在按钮本身用内阴影画 */
+.hz-button--secondary .hz-button__inner {
+  box-shadow: inset 0 0 0 1px var(--hz-rule);
 }
 
 .hz-button--busy {
