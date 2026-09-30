@@ -1,0 +1,34 @@
+<wxs src="../../core/format.wxs" module="format" />
+<view class="hz-gallery" style="padding-top: {{top}}px">
+  <view class="hz-gallery__title u-serif">{{title}}</view>
+
+  <view class="hz-gallery__section">
+    <view wx:for="{{swatches}}" wx:key="*this" class="hz-gallery__swatch">
+      <view class="hz-gallery__chip" style="background: var(--hz-{{item}})"></view>
+      <text class="hz-gallery__caption">{{item}}</text>
+    </view>
+  </view>
+
+  <view class="hz-gallery__section hz-gallery__section--column">
+    <view class="hz-gallery__row">
+      <text wx:for="{{modules}}" wx:key="*this" class="u-serif">{{item}}</text>
+    </view>
+    <view class="hz-gallery__row">
+      <text class="u-serif-amount">{{format.formatMoney(123450)}}</text>
+      <text class="u-serif-amount">{{format.formatMoney(-13600)}}</text>
+    </view>
+  </view>
+
+  <view class="hz-gallery__section">
+    <view wx:for="{{icons}}" wx:key="*this" class="hz-gallery__icon u-tap">
+      <text class="hz-icon hz-icon--{{item}}"></text>
+    </view>
+  </view>
+
+  <view class="hz-gallery__section hz-gallery__section--column">
+    <text>{{format.formatNavDate(today)}}</text>
+    <text>{{format.formatCardDate('2026-09-28', today)}}</text>
+    <text>{{format.formatTime('2026-09-30T00:10:00.000Z')}}</text>
+    <text>{{format.maskPhone('13800138001')}}</text>
+  </view>
+</view>

@@ -17,7 +17,7 @@
 | 调用方式 | `wx.cloud.callContainer`，不需要备案域名 |
 | 数据库 | 腾讯云 PostgreSQL，与云托管同地域，通过私有网络内网连接 |
 | ORM | Drizzle ORM，迁移用 Drizzle Kit |
-| 校验 | Zod，用 drizzle-zod 从表结构生成，放在 `shared` 包，前后端共用 |
+| 校验 | Zod。枚举和字段规则（手机号、金额是非负整数分、数量是正整数等）只在 `shared` 定义一次，接口契约用它们拼出请求、响应结构，前后端共用；Drizzle 的 `pgEnum` 和 `CHECK` 引用同一份 `shared` 定义。不用 drizzle-zod（它要把表定义打包进小程序） |
 | 后台任务 | pg-boss（用 PostgreSQL 当任务队列，不另开 Redis） |
 | 文件 | 腾讯云 COS，后端签名、前端直传 |
 | 测试 | 后端 Vitest + Testcontainers（每次测试起一个干净的 PostgreSQL）做接口测试；前端 miniprogram-automator 测关键流程 |
@@ -70,7 +70,7 @@ huazhong/
 ### 3.1 小程序
 
 - TypeScript 严格模式，开发者工具内置编译 TS（`project.config.json` 开 `useCompilerPlugins: ["typescript"]`）。样式直接写 WXSS，不经过预编译。
-- `shared` 包编译成 JS 后作为 npm 依赖，通过开发者工具的「构建 npm」进入 `miniprogram_npm`，和 TDesign 一样按需引入。
+- `shared` 包由 esbuild 连同它依赖的 Zod 打成一个 CommonJS 文件，放进 `miniprogram_npm/@huazhong/shared`（pnpm 的软链接目录开发者工具「构建 npm」认不全，自己打包还能去掉用不到的代码）；TDesign 仍走开发者工具的「构建 npm」。
 - 分包：主包放登录、花众首页、我的、公共组件和 `core`；每个业务端一个分包，按角色预下载（`preloadRule`）。主包体积目标见 00 章第 9 节。
 - 顶栏、底栏全部自定义。顶栏用 `navigationStyle: custom`，右侧按 `wx.getMenuButtonBoundingClientRect()` 给胶囊留位。底栏不用微信的 tabBar 配置（它要求标签页都在主包，而门店端、供应商端的标签页在分包里），改成每个标签页放 `hz-tabbar` 组件，切换标签用 `wx.reLaunch`，一级页面没有返回历史。
 - 页面放弃修改：页面内返回、弹层关闭走花众确认框；右滑返回和安卓返回键用 `wx.enableAlertBeforeUnload`。
@@ -85,7 +85,7 @@ huazhong/
 
 - 统一封装 `callContainer`：带环境 ID、服务名、`X-Idempotency-Key`（新建类操作）。
 - 统一处理后端错误码，转成 02 章第 5 节的界面状态。页面不自己判断错误码。
-- 超时 10 秒；只对读请求自动重试 1 次，写请求不自动重试（避免重复提交），由用户点「重试」。
+- 超时 `REQUEST_TIMEOUT_MS`；只对读请求在网络失败时自动重试 `READ_RETRY_COUNT` 次，写请求不自动重试（避免重复提交），由用户点「重试」。
 - 同一个按钮提交中禁止再次点击（按钮显示「提交中」）。
 
 ### 3.3 前端状态
@@ -150,8 +150,10 @@ huazhong/
 ## 8. 本章由我默认、可以改的
 
 - 单号格式加了年份（原型是 `SO-0929-018`，跨年会重号）。
-- 请求超时 10 秒、读请求自动重试 1 次。
+- 请求超时、读请求自动重试次数、断线重连间隔的初始值（05 章第 1.6 节）。
 - 生产环境发布要手动确认。
+
+2026-09-30 阶段 0 开工前确认：不用 drizzle-zod，枚举和字段规则在 `shared` 定义、表结构引用它（第 1 节）；接口契约按阶段增长（08 章）。
 
 ## 9. 版本表（搭项目时填写）
 
@@ -162,7 +164,7 @@ huazhong/
 | 微信基础库最低版本 | |
 | TDesign 小程序版 | |
 | NestJS | |
-| Drizzle ORM、Drizzle Kit、drizzle-zod | |
+| Drizzle ORM、Drizzle Kit | |
 | pg-boss | |
 | Testcontainers | |
 | Zod | |

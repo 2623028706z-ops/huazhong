@@ -1,0 +1,15 @@
+packages:
+  - shared
+  - server
+  - miniapp
+  - scripts
+
+# 依赖用精确版本（00 章第 11.7 节）
+savePrefix: ''
+
+# 安装脚本：只放行 esbuild（下载平台二进制）；Testcontainers 带进来的 ssh2 等原生加速模块不需要
+allowBuilds:
+  esbuild: true
+  cpu-features: false
+  ssh2: false
+  protobufjs: false

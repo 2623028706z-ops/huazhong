@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "customConditions": ["source"],
+    "types": ["node"]
+  },
+  "include": ["src", "db", "test", "vitest.config.ts", "drizzle.config.ts"]
+}

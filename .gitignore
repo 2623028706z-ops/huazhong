@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+.env
+*.log
+.DS_Store
+
+# 生成物：由 miniapp 的 prepare 脚本生成
+miniapp/miniprogram/miniprogram_npm/
+miniapp/miniprogram/config/env.ts
+miniapp/project.private.config.json
+
+# 字体原文件缓存（scripts/gen-font 下载）
+scripts/.cache/

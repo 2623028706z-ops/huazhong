@@ -1,0 +1,67 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "ignoreFiles": [
+    "miniapp/miniprogram/miniprogram_npm/**",
+    "miniapp/miniprogram/styles/iconfont.wxss"
+  ],
+  "rules": {
+    "color-no-hex": true,
+    "color-named": "never",
+    "function-disallowed-list": [
+      "rgb",
+      "rgba",
+      "hsl",
+      "hsla",
+      "hwb",
+      "lab",
+      "lch",
+      "oklab",
+      "oklch",
+      "color"
+    ],
+    "unit-disallowed-list": ["rpx"],
+    "declaration-property-value-allowed-list": {
+      "/^font-size$/": ["/^var\\(--hz-/", "inherit"],
+      "/^border-radius$/": ["/^var\\(--hz-/", "0", "50%"],
+      "/^font-family$/": ["/^var\\(--hz-/", "inherit", "hz-icon"]
+    },
+    "selector-type-no-unknown": [
+      true,
+      {
+        "ignoreTypes": [
+          "page",
+          "view",
+          "text",
+          "image",
+          "button",
+          "input",
+          "textarea",
+          "scroll-view",
+          "swiper",
+          "navigator",
+          "icon",
+          "picker",
+          "switch",
+          "label",
+          "form",
+          "rich-text"
+        ]
+      }
+    ],
+    "selector-class-pattern": [
+      "^(hz|u)-[a-z0-9]+(-[a-z0-9]+)*(__[a-z0-9]+(-[a-z0-9]+)*)?(--[a-z0-9]+(-[a-z0-9]+)*)?$",
+      { "message": "类名按「组件__部分--状态」命名，例如 hz-card__title、hz-btn--disabled" }
+    ],
+    "custom-property-pattern": [
+      "^(hz|td)-[a-z0-9]+(-[a-z0-9]+)*$",
+      { "message": "设计变量以 --hz- 开头（TDesign 主题变量以 --td- 开头）" }
+    ],
+    "import-notation": "string"
+  },
+  "overrides": [
+    {
+      "files": ["miniapp/miniprogram/styles/tokens.wxss"],
+      "rules": { "color-no-hex": null }
+    }
+  ]
+}

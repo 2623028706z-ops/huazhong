@@ -1,0 +1,35 @@
+{
+  "name": "@huazhong/server",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json && node -e \"require('node:fs').cpSync('db/migrations', 'dist/db/migrations', { recursive: true })\"",
+    "start": "node dist/src/main.js",
+    "db:generate": "drizzle-kit generate",
+    "db:reset": "node --env-file-if-exists=.env dist/db/seed/run.js"
+  },
+  "dependencies": {
+    "@huazhong/shared": "workspace:*",
+    "@nestjs/common": "12.1.1",
+    "@nestjs/core": "12.1.1",
+    "@nestjs/platform-express": "12.1.1",
+    "drizzle-orm": "0.45.3",
+    "pg": "8.23.0",
+    "pg-boss": "12.35.0",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "ws": "8.22.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "12.1.1",
+    "@testcontainers/postgresql": "12.1.0",
+    "@types/express": "5.0.6",
+    "@types/pg": "8.23.1",
+    "@types/ws": "8.18.2",
+    "drizzle-kit": "0.31.11"
+  }
+}

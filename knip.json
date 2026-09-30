@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    "shared": {
+      "entry": ["src/miniapp.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "server": {
+      "entry": ["src/main.ts", "db/seed/run.ts", "test/**/*.ts"],
+      "project": ["src/**/*.ts", "db/**/*.ts", "test/**/*.ts"]
+    },
+    "miniapp": {
+      "entry": ["miniprogram/app.ts", "miniprogram/pages/**/index.ts", "test/**/*.test.ts"],
+      "project": ["miniprogram/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"]
+    },
+    "scripts": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    }
+  }
+}

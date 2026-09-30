@@ -1,0 +1,21 @@
+# 00 章第 11.6 节：类型检查、ESLint、Stylelint、knip、jscpd、单元测试、接口测试全部在这里跑，只在这里跑
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # 接口测试用 Testcontainers，GitHub 的 ubuntu 机器自带 Docker
+      - run: pnpm run check

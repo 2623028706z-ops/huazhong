@@ -1,0 +1,49 @@
+/* 只写布局；颜色、字号、字体都来自 tokens */
+.hz-gallery {
+  padding-right: var(--hz-gap-page);
+  padding-left: var(--hz-gap-page);
+}
+
+.hz-gallery__title {
+  padding: var(--hz-row-pad) 0;
+  font-size: var(--hz-font-title);
+}
+
+.hz-gallery__section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--hz-card-gap);
+  padding: var(--hz-card-pad) 0;
+}
+
+.hz-gallery__section--column {
+  flex-direction: column;
+}
+
+.hz-gallery__row {
+  display: flex;
+  gap: var(--hz-card-gap);
+}
+
+.hz-gallery__swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--hz-line-gap);
+}
+
+.hz-gallery__chip {
+  width: var(--hz-tap);
+  height: var(--hz-tap);
+  border-radius: var(--hz-radius);
+}
+
+.hz-gallery__caption {
+  font-size: var(--hz-font-xs);
+  color: var(--hz-muted);
+}
+
+.hz-gallery__icon {
+  font-size: var(--hz-font-title);
+  color: var(--hz-brand);
+}

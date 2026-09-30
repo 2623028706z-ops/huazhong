@@ -5,9 +5,10 @@
 ## 阶段 0：骨架
 
 - pnpm monorepo：`miniapp`、`server`、`shared`；ESLint、Prettier、Stylelint、TypeScript 严格模式、knip（未使用的文件和导出）、jscpd（重复代码）；GitHub Actions 跑检查。
-- `shared`：接口契约（`contract`）、枚举和状态表、错误码（`errors`）、业务参数（`config`）、文案（`copy`）、格式化（`format`）。先写契约，前后端都从它生成类型（00 章）。
+- `shared`：接口契约（`contract`）、枚举和状态表、字段规则、错误码（`errors`）、业务参数（`config`）、文案（`copy`）、格式化（`format`）。先写契约，前后端都从它生成类型（00 章）。
+- 接口契约按阶段增长（2026-09-30 确认）：每个阶段先把本阶段的接口写进契约，再写实现；还没开始做的接口不进契约，所以「契约里有、后端没实现就失败」的检查每个阶段都能全绿。阶段 0 的契约只有 `GET /me`，用它把身份守卫、请求层、实时握手从头到尾跑通；事务、幂等、`STALE`、分页这些公共层能力用接口测试里的专用接口验证。
 - 后端：NestJS 骨架，统一响应和错误码、身份守卫（`X-WX-OPENID`）、权限两层、事务、幂等、日志拦截、分页；Drizzle 连本地 Docker PostgreSQL；Testcontainers 接口测试跑通。
-- 发号表、操作日志表、账号表、员工模块权限表。
+- 发号表、操作日志表、账号表、员工模块权限表、幂等表；账号外键要用的客户、门店、供应商表先只建名称、归属、启用列，其余列在阶段 3、4 加。pg-boss 每天清理过期的幂等键。
 - 实时同步底座：WebSocket 网关、`NOTIFY` / `LISTEN`、订阅和按权限过滤；前端 `core/realtime` 自动重连。
 - 小程序：`core/request`（错误码转界面状态、超时、读请求重试、防重复提交）、`styles/tokens.wxss`、`utils.wxss`、WXS 格式化工具、思源宋体子集加载、Lucide iconfont。
 - 版本号锁定，填进 01 章第 9 节。

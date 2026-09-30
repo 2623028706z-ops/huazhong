@@ -11,14 +11,15 @@
 - 所有接口定义在 `shared/contract`，每个接口只定义一次：方法、路径、允许的角色、请求结构（Zod）、响应结构（Zod）、可能返回的错误码。本章是契约的文字版，写代码时以 `shared/contract` 为准，两者要一起改。
 - 后端 controller 绑定契约：入参按请求结构校验，不通过返回 `VALIDATION_FAILED`；测试环境按响应结构校验出参，不符合就让测试失败。契约里有、后端没实现的接口，测试直接失败。
 - 前端的请求方法从契约生成（`core/request` 按契约调用），参数和返回值都有类型。页面不手写路径，也不手写接口类型。
-- 请求结构的 Zod 规则由 drizzle-zod 从表结构派生后再收紧，前端表单即时提示用同一份。
+- 请求结构用 `shared` 里的枚举和字段规则拼出来（和表结构的 `pgEnum`、`CHECK` 引用同一份），前端表单即时提示用同一份。
+- 契约按开发阶段增长：每个阶段先把本阶段要做的接口写进契约，再写实现；还没开始做的接口不进契约（08 章）。
 
 ### 1.2 调用方式
 
 | 项 | 规则 |
 |---|---|
 | 路径 | `/api/v1/...`，REST；资源用复数，动作用子路径（例如 `POST /orders/:id/confirm`） |
-| 身份 | 云托管注入 `X-WX-OPENID`，守卫查 `accounts`（`openid` 且 `enabled`）得到类型、模块、门店 ID、供应商 ID。不用 JWT。门店账号每次请求还要查 `stores.enabled`，供应商账号查 `suppliers.enabled`，停用就返回 `ACCOUNT_DISABLED`（登录、绑定同样） |
+| 身份 | 云托管注入 `X-WX-OPENID`，守卫按 `openid` 查 `accounts` 得到类型、模块、门店 ID、供应商 ID；查不到 → `UNAUTHENTICATED`，账号停用 → `ACCOUNT_DISABLED`。不用 JWT。门店账号每次请求还要查 `stores.enabled`，供应商账号查 `suppliers.enabled`，停用就返回 `ACCOUNT_DISABLED`（登录、绑定同样）；客户停用不影响登录（03 章第 5 节）。服务只接受云托管转发的请求，公网访问要关掉，否则请求头可以伪造 |
 | 权限 | 两层：守卫按契约里的「允许角色」放行（下表「谁」列）；service 按数据归属过滤（门店只看本店，供应商只看本家），查不到一律 `NOT_FOUND`。例外：供应商填报分享链接被别家供应商或非供应商账号打开时返回 `FORBIDDEN`（第 8 节） |
 | 幂等 | 新建类（下单、登记收款、付款、手工出入库等）带 `X-Idempotency-Key`（前端每次打开表单生成一个 UUID），重复提交返回上次结果；保留 `IDEMPOTENCY_TTL_HOURS` |
 | 请求 ID | 每个响应头带 `X-Request-Id`，`INTERNAL` 错误页显示，方便查云托管日志 |
@@ -139,6 +140,13 @@
 | `WS_IDLE_TIMEOUT_SECONDS` | 60 | 没收到心跳就断开 |
 | `DOC_NO_FORMAT` | `前缀-YYMMDD-三位序号` | 单号格式 |
 | `MATERIAL_CODE_PREFIX` | `HC-` | 花材编码默认前缀 |
+| `REQUEST_TIMEOUT_MS` | 10000 | 小程序请求超时 |
+| `READ_RETRY_COUNT` | 1 | 读请求网络失败时自动重试次数；写请求不重试 |
+| `RECONNECT_DELAYS_SECONDS` | 1、2、5、10、30 | WebSocket 和服务端 `LISTEN` 断线后依次等待的秒数，之后一直按最后一个 |
+| `SKELETON_DELAY_MS` | 300 | 首次加载多久没回来才出骨架屏 |
+| `SUBMIT_SPINNER_DELAY_MS` | 800 | 提交多久没回来按钮里加转圈 |
+| `SEARCH_DEBOUNCE_MS` | 300 | 搜索框输入停多久再查 |
+| `TOAST_DURATION_MS` | 1500 | 成功提示停留时间 |
 
 ### 1.7 事务约定
 
@@ -159,7 +167,7 @@
 | `POST /auth/bind-phone` | 未绑定的 openid | `{ code }`（`getPhoneNumber` 返回的动态令牌）→ 当前账号（同 `/me`） | 后端经云托管开放接口服务换手机号；找不到启用的预录账号 → `BUSINESS_RULE`「这个手机号还没开通，请联系花众管理员」；账号、门店、供应商停用 → `ACCOUNT_DISABLED`（门店停用 message「这家门店已停用，请联系花众」，供应商同理）；这个手机号的账号已绑别的微信 → `BUSINESS_RULE`「这个账号已绑定其他微信，请联系管理员解绑」 | 行锁账号；写 `bound_at`；日志「绑定微信」 |
 | `GET /store-invites/:token` | 任何 openid（可未绑定） | → `{ storeLabel, status, expiresAt }`（打开邀请页时显示是哪家门店） | token 不存在 → `NOT_FOUND`；已使用、已过期 → 返回状态，前端写「邀请已失效，请联系花众销售重新发送」 | — |
 | `POST /store-invites/:token/use` | 任何 openid（可未绑定） | `{ code }`（手机号快速验证令牌）→ 当前账号（同 `/me`） | 邀请 `pending` 且没过期，否则 `BUSINESS_RULE`「邀请已失效，请联系花众销售重新发送」；门店停用 → `ACCOUNT_DISABLED`「这家门店已停用，请联系花众」；换出的手机号和门店账号登录手机号不一致 → `BUSINESS_RULE`「手机号和门店登记的不一致，请用登记的手机号验证」；门店账号已绑定微信 → `BUSINESS_RULE`「这家门店账号已绑定微信，请联系销售解绑」 | 行锁邀请 + 账号；写 `openid`、`bound_at`；邀请改 `used`、写 `bound_account_id`、`bound_at`；日志「门店接受邀请」；推送 `store_invites:<storeId>` |
-| `GET /me` | 已绑定 | → `{ id, type, name, orgLabel, storeId, supplierId, modules, landing, menus, filters: { modules } }`，取值见下表 | — | — |
+| `GET /me` | 已绑定 | → `{ id, type, name, orgLabel, storeId, supplierId, modules, landing, menus }`，取值见下表 | — | — |
 | `POST /auth/unbind` | 已绑定（自己）或管理员（指定账号） | `{ accountId? }` → `{}` | 管理员解绑别人时账号必须存在 | 清空 `openid`；日志「解绑微信」；推送 `account:<id>`（对方连接断开） |
 
 退出登录 = 解绑：「我的 → 退出登录」调 `POST /auth/unbind` 清空 openid，下次进来重新手机号验证。门店账号也可以由销售或管理员在门店资料里解绑（`POST /stores/:id/unbind-wechat`）。
@@ -174,7 +182,8 @@
 | `modules` | 有权限的模块码数组（`sales`、`shipping`、`purchase`、`warehouse`、`finance`）：管理员全部五个；员工取 `account_modules`；门店、供应商为 `[]` |
 | `landing` | `store_shop`（门店 → 订货 S1）；`supplier_invites`（供应商 → 填报 P1）；`module:<key>`（只有一个模块的员工 → 该模块首页）；`home`（管理员和多模块员工 → 花众首页 M3） |
 | `menus` | 「我的」里的入口码数组，前端按顺序显示：员工 `inventory`（没有仓库模块权限时才有）、`logs`；管理员 `logs`、`staff`、`brand`；门店 `storeAfters`、`storeStatement`；供应商 `supplierStatement` |
-| `filters.modules` | 操作日志页可选的模块：管理员五个模块，员工是自己的模块；多于一项时前端才显示模块筛选；门店、供应商为 `[]` |
+
+操作日志页可选的模块就是 `modules`（管理员五个模块，员工是自己的模块），多于一项时前端才显示模块筛选；原来单列的 `filters.modules` 和 `modules` 完全相同，按 00 章第 7 节去掉。
 
 ## 3. 公共
 
@@ -216,11 +225,11 @@
 |---|---|---|---|---|
 | `GET /customers`、`GET /customers/:id` | 销售、财务 | → 客户和门店；门店项 `actions` ⊆ `inviteStore`、`unbindStoreWechat` | | — |
 | `POST /customers`、`PATCH /customers/:id` | 销售 | `{ name, enabled }` | 名称不重复；停用规则见 03 章第 5 节 | 日志「新增 / 修改客户」 |
-| `POST /stores`、`PATCH /stores/:id` | 销售 | `{ version?, customerId, name, contact, phone, address, enabled, loginPhone? }` | `loginPhone` 11 位，启用账号里不重复；填了就开通或更新门店账号，清空就停用门店账号（见第 14 节待确认第 1 条） | 同一事务写 `accounts`；日志「新增 / 修改门店」；停用时推送 `account:<storeAccountId>` |
+| `POST /stores`、`PATCH /stores/:id` | 销售 | `{ version?, customerId, name, contact, phone, address, enabled, loginPhone? }` | `loginPhone` 11 位，启用账号里不重复；填了就开通或更新门店账号，清空就停用门店账号（见第 14 节第 1 条） | 同一事务写 `accounts`；日志「新增 / 修改门店」；停用时推送 `account:<storeAccountId>` |
 | `POST /stores/:id/invites` | 销售 | `{}` + 幂等键 → `{ id, path, title, imageUrl, expiresAt }` 小程序卡片参数，`path` 带随机 token | 门店启用，且已有启用的门店账号（登录手机号已录入），否则 `BUSINESS_RULE`「请先在门店资料里填写登录手机号」 | 同一门店旧的待使用邀请改成 `voided`，再写 `store_invites`（有效期 `STORE_INVITE_TTL_DAYS`，库里只存 token 的哈希）；日志「生成门店邀请」；推送 `store_invites:<storeId>` |
 | `GET /stores/:id/invites` | 销售 | → 这家门店的邀请列表（状态含已作废、过期时间、绑定时间；已过期的按 `expires_at` 现算） | | 订阅 `store_invites:<storeId>` |
 | `POST /stores/:id/unbind-wechat` | 销售、管理员 | `{ version }`（门店账号的版本号） | 门店账号已绑定微信，否则 `BUSINESS_RULE`「这家门店账号还没绑定微信」 | 行锁账号 + 条件更新；清空 `openid`、`bound_at`；日志「解绑门店微信」；推送 `account:<storeAccountId>`（对方连接断开） |
-| `GET /products`、`POST /products`、`PATCH /products/:id` | 销售 | `{ version?, name, categoryId, unit, imageFileId?, enabled, bom[{materialId, qty}] }` | 配方花材须启用；`qty>0`；停用规则见 03 章第 5 节 | 整组替换配方；日志「新增 / 修改产品」 |
+| `GET /products`、`POST /products`、`PATCH /products/:id` | 销售 | `{ version?, name, categoryId, unit, imageFileId?, enabled, bom[{materialId, qty}] }` | 配方花材必须存在且启用；不存在的 `materialId` 拒绝保存，不部分写入；`qty>0`；停用规则见 03 章第 5 节 | 整组替换配方；日志「新增 / 修改产品」 |
 | `GET/POST/PATCH /product-categories` | 销售 | `{ name, sort }` | 名称不重复 | 日志 |
 | `GET /catalog/:customerId` | 销售 | → 目录项（产品、目录价 `listPriceCents`、停订）；销售新建订单时产品和默认单价从这里取 | | — |
 | `PUT /catalog/:customerId` | 销售 | `{ items[{productId, priceCents, enabled, version?}] }` | 停用的产品不能新加进目录（已在目录里的可以改成停订）；`priceCents>=0` | 逐项条件更新；日志「修改订货目录」（前后）；推送 `catalog:<customerId>` |
@@ -231,7 +240,7 @@
 
 | 接口 | 谁 | 入参 → 出参 | 校验和错误 | 锁 / 日志 / 推送 |
 |---|---|---|---|---|
-| `GET /store/catalog` | 门店 | `?categoryId=&q=` → 本客户启用的目录项（产品本身也须启用）（产品、分类、单位、目录价 `listPriceCents`、图片缩略图）、可订款数 | 门店或客户停用 → `ACCOUNT_DISABLED` | 订阅 `catalog:<customerId>` |
+| `GET /store/catalog` | 门店 | `?categoryId=&q=` → 本客户启用的目录项（产品本身也须启用）（产品、分类、单位、目录价 `listPriceCents`、图片缩略图）、可订款数 | 门店停用 → `ACCOUNT_DISABLED`（守卫统一拦）；客户停用 → `BUSINESS_RULE`「这个客户已停用，不能再下新单，请联系花众」，门店账号照常登录（03 章第 5 节） | 订阅 `catalog:<customerId>` |
 | `POST /store/orders` | 门店 | `{ shipDate, note, lines[{productId, qty}] }` + 幂等键 → 订单（`pending_confirm`） | 客户停用 → `BUSINESS_RULE`「这个客户已停用，不能再下新单，请联系花众」；出货日期 ≥ 今天；产品本身启用、在目录里且启用；单价取目录价（门店不能传单价） | 发号 SO；日志「门店下单」；推送 `orders`、`todo:sales` |
 | `PUT /store/orders/:id` | 门店 | `{ version, shipDate, note, lines[] }` → 订单 | 状态 `pending_confirm`，已取消 → `STALE`「订单已被取消，不能再修改」，已确认 → `STALE`「销售已确认，不能再修改，请联系销售」；出货日期 ≥ 今天；原单里已停订的产品还在 → `BUSINESS_RULE`「白绿清新花束已停订，请先删掉再提交」；内容没变 → 不写变更记录，直接返回 | 条件更新；整组替换明细；有差异写 `order_changes`（原因空）；日志「门店改单」；推送 `order:<id>`、`orders`、`todo:sales` |
 | `POST /store/orders/:id/cancel` | 门店 | `{ version }` | 状态 `pending_confirm`（不用原因）；已确认 → `STALE`「销售已确认，请联系销售取消」 | 条件更新；日志「门店取消订单」；推送同上 |
@@ -375,10 +384,10 @@
 ### 12.3 推送消息
 
 ```json
-{ "op": "changed", "type": "order", "id": 123, "version": 5, "scope": { "storeId": 9, "customerId": 3 } }
+{ "op": "changed", "topic": "order:123", "version": 5 }
 ```
 
-- 只带「哪张单变了」：`type`（单据类型或列表主题）、`id`、`version`（新版本号，列表主题为空）、`scope`（归属，用于服务端过滤，前端不用）。不带单据内容。
+- 只带「哪张单变了」：每个变更的主题一条消息，`topic` 就是订阅用的主题（单据 ID 在主题里，是字符串），`version` 是单据的新版本号（列表、待办这类主题为 `null`）。不带单据内容，也不带归属（归属只在服务端过滤时用，第 12.4 节）。通配订阅（`todo:*`、`ar:*`、`ap:*`）收到的是具体主题，例如 `todo:sales`。
 - 前端收到后：详情页比较 `version`，比当前新就重新拉接口，并在页面写「销售修改了这张订单，已刷新成最新内容」这类提示；表单页正在编辑时不直接覆盖，先提示并给「查看最新内容」；列表页、待办静默刷新。
 - `account:<id>` 收到后前端重新取 `/me`，停用了就进停用页。
 
@@ -386,9 +395,10 @@
 
 1. 写接口在业务事务里调用 `pg_notify('hz_changes', payload)`。PostgreSQL 在事务提交后才投递，回滚就不发，保证「推送的一定是已提交的数据」。
 2. 每个云托管实例启动时用一条专用连接 `LISTEN hz_changes`（不走连接池），断线自动重连，重连后给本实例所有 WebSocket 发一次 `{ op: "resync" }`，前端整页刷新。
-3. 收到通知后，按主题找本实例订阅了的连接，再按连接的角色和 `scope` 过滤（门店只收 `scope.storeId` 等于自己的，供应商只收 `scope.supplierId` 等于自己的），然后推送。
-4. payload 小于 8000 字节（PostgreSQL 限制），只放主题列表和 `scope`。
-5. 推送是尽力而为。丢了不影响正确性：提交时的版本号条件更新仍会返回 `STALE`。
+3. 收到通知后，按主题找本实例订阅了的连接（含通配订阅），再按连接的角色和 `scope` 过滤（门店只收 `scope.storeIds` 含本店的，供应商只收 `scope.supplierIds` 含本家的；财务的 `wh_doc` 只收带供应商的手工入库单），然后推送。一次写操作可能涉及多家门店（例如一笔收款核销了几家门店的发货单）或新旧两家供应商（换供应商），所以 `scope` 是数组。
+4. payload 小于 8000 字节（PostgreSQL 限制），格式 `{ changes: [{ topic, version }], scope: { storeIds, supplierIds } }`。
+5. `account:<id>` 有变更时，服务端重新查这个账号在本实例的连接：解绑 → 关闭（4401），停用 → 关闭（4403），改了模块 → 按新权限去掉没权限的订阅，再推 `account:<id>`。
+6. 推送是尽力而为。丢了不影响正确性：提交时的版本号条件更新仍会返回 `STALE`。
 
 每种写操作推哪些主题只写在该接口条目的「锁 / 日志 / 推送」列，不另列汇总表。
 
@@ -411,8 +421,11 @@
 
 03 章第 3 节每个状态都有枚举码，见 04 第 2 节（发货单收款状态、付款状态是算出来的，也有码）。
 
-## 14. 拿不准、需要确认的地方
+## 14. 现行接口规则与可调整参数
+
+第 1、3 条描述正文现行规则，按规格书实现；第 2、4 条中的数值默认值是技术参数，可按项目需要调整。新业务决定仍需确认。
 
 1. 门店账号的登录手机号录入位置：原型没有，本文放在销售「门店资料」里填（和供应商端账号对称）；绑定微信走邀请下单链接（已确认）。
 2. `COVER_MAX_BYTES`、`IMAGE_MAX_BYTES` 的初始值是本文默认值（见 1.6）。门店邀请有效期 `STORE_INVITE_TTL_DAYS`、填报链接不设有效期，已确认。
 3. 发货实发能否大于订货数量：原型不能多发（多发走补建订单），本文 `shippedQty ≤ qty`。
+4. 第 1.6 节 `RECONNECT_DELAYS_SECONDS` 的初始值是阶段 0 时由我默认的，可以改。

@@ -1,0 +1,50 @@
+/* 公共片段：组件用这些类，不复制粘贴（01 章第 3.1 节） */
+
+/* 1px 细线：伪元素 + 缩放，高分屏上也是一个物理像素 */
+.u-hairline-bottom {
+  position: relative;
+}
+
+.u-hairline-bottom::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  content: '';
+  background: var(--hz-line);
+  transform: scaleY(0.5);
+  transform-origin: 0 100%;
+}
+
+/* 单行省略 */
+.u-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 点击区域不小于 44px，外观可以更小 */
+.u-tap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--hz-tap);
+  min-height: var(--hz-tap);
+}
+
+/* 底部安全区 */
+.u-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* 衬线字：标题 500、金额 600 */
+.u-serif {
+  font-family: var(--hz-serif);
+  font-weight: 500;
+}
+
+.u-serif-amount {
+  font-family: var(--hz-serif);
+  font-weight: 600;
+}

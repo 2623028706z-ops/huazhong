@@ -1,6 +1,6 @@
 # 04 数据模型
 
-整理日期：2026-09-30。数据库 PostgreSQL，表定义用 Drizzle（`server/db/schema`，一张表一个 `pgTable`），迁移由 Drizzle Kit 生成，接口校验用 drizzle-zod 从表结构派生，再在 `shared/contract` 里收紧成各接口的请求、响应结构（05 第 1.1 节）。
+整理日期：2026-09-30。数据库 PostgreSQL，表定义用 Drizzle（`server/db/schema`，一张表一个 `pgTable`），迁移由 Drizzle Kit 生成。枚举和字段规则（手机号格式、金额非负、数量为正等）只在 `shared` 定义，表结构的 `pgEnum`、`CHECK` 和 `shared/contract` 的请求、响应结构都引用它（05 第 1.1 节）。
 
 依据：冻结原型 `huazhong-unified`（提交 5dd7d7c）各模块的真实字段；业务规则见 03 章，本文不复述。不参考老小程序代码。本文只写字段、约束和算法，不写完整代码。
 
@@ -18,7 +18,8 @@
 | 数量 | `INTEGER` + `CHECK`（原型所有数量都是整数） |
 | 名称快照 | 单据明细存 `name`、`unit` 快照（原型就是这样），主数据改名、改单位不影响历史单据 |
 | 主数据 | 只停用不删除（`enabled BOOLEAN NOT NULL DEFAULT true`）；外键一律 `ON DELETE RESTRICT` |
-| 状态 | PostgreSQL 原生 enum（Drizzle `pgEnum`）存英文码；中文名在 `shared` 包维护，见第 2 节 |
+| 状态 | PostgreSQL 原生 enum（Drizzle `pgEnum`）存英文码；英文码和中文名只在 `shared` 包定义，`pgEnum` 直接取 `shared` 的枚举值，见第 2 节 |
+| 例外 | 复合主键的支撑表（`account_modules`、`doc_sequences`、`idempotency_keys`）只有各自列出的字段；只插入的表（`operation_logs`、`stock_moves`）没有 `updated_at` |
 | JSONB | 只用在改单记录、改价记录的 `items`，盘点单的分类快照，日志的 `before`、`after`；其余都是独立表 |
 | 算出来的值 | 应收、已收、未收、预收、收款状态、应付、付款状态、库存、在途、可申请售后数量，以及单据的 `actions`、`lockedReason` 都不存，按第 8 节查询时算 |
 | 业务参数 | 上限、有效期、分页、编码前缀等只引用 `shared/config` 的配置名（05 第 1.6 节），本文不写数字 |
@@ -95,6 +96,8 @@
 
 约束：`CHECK ((type='store') = (store_id IS NOT NULL))`、`CHECK ((type='supplier') = (supplier_id IS NOT NULL))`。
 
+第一个管理员没有人创建它：插入时先从 `accounts_id_seq` 取号，`id` 和 `created_by` 都写这个号（`OVERRIDING SYSTEM VALUE`），其余账号的 `created_by` 是真实的操作人。
+
 索引：部分唯一 `(phone) WHERE enabled`；部分唯一 `(openid) WHERE openid IS NOT NULL`；部分唯一 `(store_id) WHERE type='store' AND enabled`（一店一账号）；部分唯一 `(supplier_id) WHERE type='supplier' AND enabled`（一家一个供应商端账号）。
 
 门店账号显示的组织名「客户 · 门店」、供应商账号的组织名都从关联表取，不另存（原型的 `org`）。
@@ -132,7 +135,7 @@
 | 表 | 字段 | 约束和说明 |
 |---|---|---|
 | `doc_sequences` | `prefix TEXT`、`day DATE`、`last INTEGER NOT NULL` | 主键 `(prefix, day)`。发号：`INSERT … VALUES (?, ?, 1) ON CONFLICT (prefix, day) DO UPDATE SET last = doc_sequences.last + 1 RETURNING last`，和业务写入在同一事务里 |
-| `idempotency_keys` | `account_id`、`key TEXT`、`endpoint TEXT`、`response JSONB`、`created_at` | 主键 `(account_id, key)`。同一键重复提交直接返回上次结果；保留 `IDEMPOTENCY_TTL_HOURS`（`shared/config`），pg-boss 每天清理 |
+| `idempotency_keys` | `account_id`、`key TEXT`、`endpoint TEXT`、`response JSONB NULL`、`created_at` | 主键 `(account_id, key)`。事务一开始先插入这一行占住键（并发的同一键会等前一个事务结束），业务写完在同一事务里填 `response`；同一键重复提交直接返回上次结果，换了接口返回 `VALIDATION_FAILED`；保留 `IDEMPOTENCY_TTL_HOURS`（`shared/config`），pg-boss 每天清理 |
 | `files` | `purpose TEXT`（after_image / product_image / brand_cover）、`cos_key TEXT UNIQUE`、`thumb_key TEXT NULL`、`size_bytes INTEGER CHECK (size_bytes > 0)`、`mime TEXT`、`status file_status`、`uploaded_by` | 上传完成登记；内容安全检测结果写 `status`，业务表只能引用 `status='ok'` 的文件 |
 | `brand_settings` | `id SMALLINT PRIMARY KEY CHECK (id=1)`、`cover_file_id BIGINT NULL → files.id`、`version` | 单行表。管理员上传封面原图；为空时前端用内置默认图。裁切在前端按固定比例做 |
 
@@ -548,9 +551,10 @@ erDiagram
 
 表数量：43 张。账号与公共 7 张（含 `doc_sequences`、`idempotency_keys`、`files`、`brand_settings` 4 张支撑表），销售 13 张（含 `store_invites`），采购 10 张，仓库 9 张，财务 4 张。
 
-## 10. 拿不准、需要确认的地方
+## 10. 模型约束与技术表示
 
-以下是原型和规则对不上、或原型没写到的，本文按括号里的做法先写，没有自己定业务规则：
+以下两条已写入当前模型和接口，属于现行实现约束；第 3 条是后续阶段需要统一的技术表示，不是新增业务决定：
 
 1. 同一订单同一产品只允许一行明细（原型按产品去重），`order_lines`、`purchase_order_lines`、`wh_doc_lines` 都加了唯一约束。
 2. 核销预收时多笔收款按收款时间先后扣（原型 `finSaveReceive`），本文照此写在 05 章，没有单独字段。
+3. `stores` 的联系人、电话、地址写的是可空 `TEXT`，`suppliers` 的是 `NOT NULL DEFAULT ''`，两种写法要统一成一种。阶段 0 只建了这两张表的名称、归属、启用列，其余列在阶段 3、4 加的时候一起定。

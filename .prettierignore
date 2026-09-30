@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+pnpm-lock.yaml
+docs
+server/db/migrations
+miniapp/miniprogram/miniprogram_npm
+miniapp/miniprogram/config/env.ts
+miniapp/miniprogram/core/format.wxs
+miniapp/miniprogram/styles/iconfont.wxss
+miniapp/miniprogram/core/font-data.ts
+scripts/.cache
+*.wxml

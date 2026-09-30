@@ -1,0 +1,48 @@
+/* 设计变量：唯一出处，取值见 02 章第 2 节。组件和 TDesign 主题都读这些变量 */
+page {
+  /* 颜色 */
+  --hz-brand: #934832; /* 主按钮、导航选中、图标、链接、待付金额 */
+  --hz-ink: #2f2622; /* 正文 */
+  --hz-muted: #766a60; /* 次要文字，对比度 ≥ 4.5:1 */
+  --hz-paper: #f6f1ea; /* 顶栏、底栏、首页底色 */
+  --hz-bg: #f5f1eb; /* 页面底色、对账格 */
+  --hz-hair: #e4dacd; /* 描边、分隔线、禁用按钮底色 */
+  --hz-line: #ece4da; /* 列表行分隔线 */
+  --hz-tint: #ecdcd1; /* 头像、购物车图标底色 */
+  --hz-green: #5d7a5f; /* 完成状态、入库数量 */
+  --hz-amber: #a4692a; /* 等待状态、改价标记 */
+  --hz-danger: #a83f36; /* 表单错误、出库数量、退出登录 */
+  --hz-danger-bg: #f8e9e6;
+  --hz-notice-bg: #f7ebe0;
+  --hz-notice-ink: #8a4f2c;
+
+  /* 字体 */
+  --hz-serif: 'HZ Serif', 'Songti SC', serif; /* 思源宋体子集，core/font.ts 加载 */
+  --hz-font: 14px;
+  --hz-font-sm: 12px;
+  --hz-font-xs: 11px;
+  --hz-font-title: 17px;
+
+  /* 尺寸 */
+  --hz-radius: 2px;
+  --hz-radius-sheet: 14px;
+  --hz-tap: 44px;
+  --hz-nav: 44px;
+  --hz-tabbar: 62px;
+  --hz-input: 42px;
+  --hz-textarea: 72px;
+
+  /* 间距 */
+  --hz-gap-page: 12px; /* 卡片左右 */
+  --hz-gap-home: 20px; /* 花众首页、模块首页 */
+  --hz-gap-bar: 14px; /* 顶栏、搜索栏、底栏 */
+  --hz-gap-sheet: 16px; /* 弹层内容 */
+  --hz-card-pad: 16px;
+  --hz-card-gap: 10px;
+  --hz-row-pad: 12px;
+  --hz-line-gap: 6px; /* 卡片内三行之间 */
+
+  /* TDesign 主题：只改变量，不覆盖内部样式。变量名已按 1.17.0 核对 */
+  --td-brand-color: var(--hz-brand);
+  --td-radius-default: var(--hz-radius);
+}

@@ -1,0 +1,8 @@
+{
+  "pages": ["pages/dev-gallery/index"],
+  "window": {
+    "navigationStyle": "custom"
+  },
+  "lazyCodeLoading": "requiredComponents",
+  "style": "v2"
+}

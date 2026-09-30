@@ -1,0 +1,30 @@
+{
+  "threshold": 3,
+  "minTokens": 50,
+  "reporters": ["console"],
+  "path": [
+    "shared/src",
+    "server/src",
+    "server/db/schema",
+    "server/test",
+    "miniapp/miniprogram",
+    "miniapp/scripts",
+    "scripts/src"
+  ],
+  "ignore": [
+    "**/node_modules/**",
+    "**/miniprogram_npm/**",
+    "**/format.wxs",
+    "**/iconfont.wxss",
+    "**/font-data.ts",
+    "**/config/env.ts",
+    "**/icon-names.ts"
+  ],
+  "formatsExts": {
+    "css": ["wxss"],
+    "markup": ["wxml"],
+    "javascript": ["wxs"]
+  },
+  "gitignore": true,
+  "absolute": false
+}

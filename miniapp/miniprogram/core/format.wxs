@@ -1,0 +1,91 @@
+// Generated file, do not edit. Source: shared/src/format.ts (scripts/src/gen-wxs.ts)
+var SHANGHAI_OFFSET_MINUTES = 8 * 60;
+var MS_PER_MINUTE = 60 * 1000;
+var MINUTES_PER_DAY = 24 * 60;
+var WEEK_PREFIX = '周';
+var WEEKDAY_NAMES = '日一二三四五六';
+var YUAN = '¥';
+var MINUS = '−';
+function pad2(value) {
+    return value < 10 ? '0' + value : '' + value;
+}
+function daysFromCivil(year, month, day) {
+    var shifted = month <= 2 ? year - 1 : year;
+    var era = Math.floor(shifted / 400);
+    var yearOfEra = shifted - era * 400;
+    var monthIndex = month > 2 ? month - 3 : month + 9;
+    var dayOfYear = Math.floor((153 * monthIndex + 2) / 5) + day - 1;
+    var dayOfEra = yearOfEra * 365 + Math.floor(yearOfEra / 4) - Math.floor(yearOfEra / 100) + dayOfYear;
+    return era * 146097 + dayOfEra - 719468;
+}
+function civilFromDays(days) {
+    var shifted = days + 719468;
+    var era = Math.floor(shifted / 146097);
+    var dayOfEra = shifted - era * 146097;
+    var yearOfEra = Math.floor((dayOfEra -
+        Math.floor(dayOfEra / 1460) +
+        Math.floor(dayOfEra / 36524) -
+        Math.floor(dayOfEra / 146096)) /
+        365);
+    var dayOfYear = dayOfEra - (365 * yearOfEra + Math.floor(yearOfEra / 4) - Math.floor(yearOfEra / 100));
+    var monthIndex = Math.floor((5 * dayOfYear + 2) / 153);
+    var day = dayOfYear - Math.floor((153 * monthIndex + 2) / 5) + 1;
+    var month = monthIndex < 10 ? monthIndex + 3 : monthIndex - 9;
+    var year = yearOfEra + era * 400 + (month <= 2 ? 1 : 0);
+    return year + '-' + pad2(month) + '-' + pad2(day);
+}
+function daysOfDate(date) {
+    return daysFromCivil(parseInt(date.slice(0, 4), 10), parseInt(date.slice(5, 7), 10), parseInt(date.slice(8, 10), 10));
+}
+function shanghaiMinutesOf(timestamp) {
+    var days = daysOfDate(timestamp.slice(0, 10));
+    var hours = parseInt(timestamp.slice(11, 13), 10);
+    var minutes = parseInt(timestamp.slice(14, 16), 10);
+    return days * MINUTES_PER_DAY + hours * 60 + minutes + SHANGHAI_OFFSET_MINUTES;
+}
+function shanghaiDateOf(epochMs) {
+    var minutes = Math.floor(epochMs / MS_PER_MINUTE) + SHANGHAI_OFFSET_MINUTES;
+    return civilFromDays(Math.floor(minutes / MINUTES_PER_DAY));
+}
+function formatMoney(cents) {
+    var sign = cents < 0 ? MINUS : '';
+    var absolute = Math.abs(cents);
+    var fen = absolute % 100;
+    var yuan = '' + Math.floor(absolute / 100);
+    var grouped = '';
+    while (yuan.length > 3) {
+        grouped = ',' + yuan.slice(yuan.length - 3) + grouped;
+        yuan = yuan.slice(0, yuan.length - 3);
+    }
+    return sign + YUAN + yuan + grouped + '.' + pad2(fen);
+}
+function formatQty(qty, unit) {
+    return qty + ' ' + unit;
+}
+function formatCardDate(date, today) {
+    return date.slice(0, 4) === today.slice(0, 4) ? date.slice(5) : date;
+}
+function formatTime(timestamp) {
+    var minutes = shanghaiMinutesOf(timestamp);
+    var days = Math.floor(minutes / MINUTES_PER_DAY);
+    var minuteOfDay = minutes - days * MINUTES_PER_DAY;
+    return (civilFromDays(days) + ' ' + pad2(Math.floor(minuteOfDay / 60)) + ':' + pad2(minuteOfDay % 60));
+}
+function formatNavDate(date) {
+    var weekday = (((daysOfDate(date) + 4) % 7) + 7) % 7;
+    var dotted = date.slice(0, 4) + '.' + date.slice(5, 7) + '.' + date.slice(8, 10);
+    return dotted + ' ' + WEEK_PREFIX + WEEKDAY_NAMES.charAt(weekday);
+}
+function maskPhone(phone) {
+    return phone.length === 11 ? phone.slice(0, 3) + '****' + phone.slice(7) : phone;
+}
+
+module.exports = {
+  shanghaiDateOf: shanghaiDateOf,
+  formatMoney: formatMoney,
+  formatQty: formatQty,
+  formatCardDate: formatCardDate,
+  formatTime: formatTime,
+  formatNavDate: formatNavDate,
+  maskPhone: maskPhone,
+};
