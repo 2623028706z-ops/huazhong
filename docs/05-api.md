@@ -31,7 +31,9 @@
 | 内容 | 格式 | 说明 |
 |---|---|---|
 | 分页参数 | `?cursor=&limit=`，默认 `PAGE_SIZE`，最大 `PAGE_SIZE_MAX` | 游标是最后一条的排序键加 id，编码后下发；没有下一页时 `nextCursor` 为 `null` |
-| 列表级操作 | 列表响应顶层多一个 `actions`，即 `{ items, nextCursor, actions }` | 见 1.5 |
+| 列表级操作 | 列表响应顶层多一个 `actions`，即 `{ items, nextCursor, actions, counts }` | 见 1.5 |
+| 状态计数 | 带状态筛选的列表顶层多 `counts: { [status]: number }`，只含等待类状态（`shared` 状态表里颜色为等待的，例如 `pending_confirm`、`to_ship`、`to_receive`、`pending`）；按除 `status`、`cursor`、`limit` 外的同样条件计数；列表里没有等待类状态的返回 `{}` | 筛选栏状态分段的数量（02 章第 4 节 `hz-filter-bar`，2026-10-01 确认）；实时推送后随列表一起重新拉 |
+| 日期筛选 | 列表的日期筛选统一 `?from=&to=`（业务日期，两头都含），都不传 = 全部；`to` 早于 `from` → `VALIDATION_FAILED` | 今天、近 7 天、本月由前端按 `Asia/Shanghai` 换成起止日期再传 |
 | 单据级操作 | 详情和列表项带 `actions: { code, enabled, disabledReason, reasonRequired }[]`、`lockedReason: string \| null` | 见 1.5 |
 
 ### 1.4 响应和错误码
@@ -202,13 +204,13 @@
 
 | 接口 | 谁 | 入参 → 出参 | 校验和错误（前提见 03 章第 5 节） | 锁 / 日志 / 推送 |
 |---|---|---|---|---|
-| `GET /orders` | 销售、发货、财务、门店（本店） | `?status=&customerId=&date=&q=&cursor=` → 卡片列表（金额、总数、`changed`、`repriced`，每项带 `actions`、`lockedReason`）；列表级 `actions` ⊆ `create`（销售） | 发货只能查 `to_ship`、`shipped` | 订阅 `orders` |
+| `GET /orders` | 销售、发货、财务、门店（本店） | `?status=&customerId=&from=&to=&q=&cursor=` → 卡片列表（金额、总数、`changed`、`repriced`，每项带 `actions`、`lockedReason`）；列表级 `actions` ⊆ `create`（销售） | 发货只能查 `to_ship`、`shipped` | 订阅 `orders` |
 | `GET /orders/:id` | 同上 | → 详情：明细（每行 `priceCents`、`listPriceCents`（下单时的目录价，和 `priceCents` 不同即「改价」）、`discontinued`（产品已停订为 `true`，门店改单时标「已停订」）；已发货的另带 `shippedQty`、`maxQty`（可申请售后数量））、变更记录、发货信息、取消原因、`version`；已发货的带售后列表；`actions` ⊆ 门店 `storeEdit`、`storeCancel`、`applyAfter`，销售 `confirm`、`editAndConfirm`、`edit`、`cancel`、`createAfter`，发货 `ship`，财务 `[]`；门店停用时 `confirm`、`editAndConfirm` 为 `enabled: false`；`cancel` 的 `reasonRequired` 待确认 `false`、待发货 `true` | 不属于你 → `NOT_FOUND` | 订阅 `order:<id>` |
 | `POST /orders` | 销售 | `{ customerId, storeId, shipDate, note, lines[{productId, qty, priceCents}] }` + 幂等键 → 新订单（`to_ship`） | 客户启用，否则 `BUSINESS_RULE`「这个客户已停用，不能再下新单」；门店属于客户且启用；产品本身启用、在该客户目录里且启用；出货日期可早于今天；`qty>0`、`priceCents>=0` | 发号 SO；日志「新建订单」；推送 `orders`、`todo:shipping` |
 | `POST /orders/:id/confirm` | 销售 | `{ version }` | 状态 `pending_confirm`；门店启用，否则 `BUSINESS_RULE`「门店已停用，启用后才能确认」 | 条件更新；日志「确认订单」；推送 `order:<id>`、`orders`、`todo:sales`、`todo:shipping` |
 | `PUT /orders/:id` | 销售 | `{ version, shipDate, note, reason, lines[] }` → 详情 | 状态 `pending_confirm`（修改并确认，P5，保存后 `to_ship`）或 `to_ship`（修改订单）；原因必填；内容没变 → `BUSINESS_RULE`「没有修改内容」；`pending_confirm` 时门店须启用；新加的行产品须启用（已有行不受产品停用影响） | 条件更新；整组替换明细；有差异写 `order_changes`；日志「修改并确认订单」/「修改订单」（前后）；推送同上 |
 | `POST /orders/:id/cancel` | 销售 | `{ version, reason? }` | 状态 `pending_confirm`（原因不用）或 `to_ship`（原因必填，缺 → `VALIDATION_FAILED fields.reason`）；弹窗打开后被确认：前端拿到 `STALE`，`latest` 里 `cancel` 的 `reasonRequired` 变成 `true`，改成要原因 | 条件更新；日志「取消订单」；推送 `order:<id>`、`orders`、`todo:*` |
-| `GET /afters` | 销售、门店（本店）、财务 | `?status=&customerId=&date=&cursor=` → 卡片（已关闭、已作废不带金额）；列表级 `actions` ⊆ 销售 `createAfter`，门店 `applyAfter` | | 订阅 `afters` |
+| `GET /afters` | 销售、门店（本店）、财务 | `?status=&customerId=&from=&to=&cursor=` → 卡片（已关闭、已作废不带金额）；列表级 `actions` ⊆ 销售 `createAfter`，门店 `applyAfter` | | 订阅 `afters` |
 | `GET /afters/:id` | 同上 | → 详情：明细（每行同时返回门店原始申请数量 `requestedQty` 和售后数量 `qty`；销售新建的 `requestedQty` 为 `null`；每行另带 `maxQty`（排除本张后的可申请数量）、`shipPriceCents`（发货单价，售后单价只能改低））、问题说明、图片签名地址、处理说明、关闭 / 作废原因；`actions` ⊆ 销售 `processAfter`、`closeAfter`、`voidAfter`、`addLine`、`removeLine`（后两个只有销售新建的售后才有），财务 `voidAfter`，门店 `[]`；`notice`：提示条文案（已处理时「发货单应收已减去售后金额」），没有为 `null` | | 订阅 `after:<id>` |
 | `POST /afters` | 销售 | `{ orderId, note, lines[{orderLineId, qty, priceCents, reason, description}] }` + 幂等键 → `processed` | 订单 `shipped`；`qty>0` 且 ≤ 可申请数量；`priceCents` ≤ 发货单价 | 行锁订单（串行化同一订单的售后）；发号 AS；写 `amount_cents`，`requested_qty` 为空；日志「新建售后」；推送 `afters`、`order:<orderId>`、`ar:<customerId>` |
 | `POST /afters/:id/process` | 销售 | `{ version, note, lines[{id, qty, priceCents}] }` | 状态 `pending`；门店提交的只能改 `qty`、`priceCents`，`requestedQty` 不覆盖，传了新增或删除行（没有 `addLine`、`removeLine`）→ `BUSINESS_RULE`，传了原因、说明、图片忽略；`qty>=0`，全 0 → `BUSINESS_RULE`「数量都是 0，整张不处理请关闭售后并写原因」；`qty` ≤ 可申请数量（排除本张）；单价只能改低 | 行锁订单 + 条件更新售后；日志「处理售后」（前后）；推送 `after:<id>`、`afters`、`todo:sales`、`ar:<customerId>` |
@@ -257,7 +259,7 @@
 
 | 接口 | 谁 | 入参 → 出参 | 校验和错误 | 锁 / 日志 / 推送 |
 |---|---|---|---|---|
-| `GET /purchase-orders` | 采购、仓库、财务 | `?status=&supplierId=&date=&cursor=` → 卡片（采购员、金额或应付、`changed`、`repriced`、`allReturned`）；列表级 `actions` ⊆ `create`（采购） | 仓库默认不列 `cancelled`，传 `status=cancelled` 才列 | 订阅 `pos` |
+| `GET /purchase-orders` | 采购、仓库、财务 | `?status=&supplierId=&from=&to=&cursor=` → 卡片（采购员、金额或应付、`changed`、`repriced`、`allReturned`）；列表级 `actions` ⊆ `create`（采购） | 仓库默认不列 `cancelled`，传 `status=cancelled` 才列 | 订阅 `pos` |
 | `GET /purchase-orders/:id` | 同上 | → 详情：明细、改单记录、改价记录、退货记录、取消原因、`amountCents`、`payableCents`、`apStatus`（`to_pay` / `paid` / `no_pay`）、`allReturned`、是否付过款；每行 `maxReturnQty`（按净实收和库存算好的可退数量，没收货为 `null`）；`notice`：收货页提示条（例如采购改过单），没有为 `null`；`actions` ⊆ 采购 `editPo`、`changeSupplier`（手工下的单才有）、`cancelPo`，仓库 `receive`、`return`、`reprice`，财务 `pay` | | 订阅 `po:<id>` |
 | `POST /purchase-orders` | 采购 | `{ supplierId, note, lines[{materialId, qty, priceCents}] }` + 幂等键 → `to_receive` | 供应商启用；花材启用；`qty>0`、`priceCents>=0`（0 = 赠送） | 发号 PO；日志「新建采购单」；推送 `pos`、`todo:warehouse`、`demand` |
 | `PUT /purchase-orders/:id` | 采购 | `{ version, supplierId, note, reason, lines[] }` | 状态 `to_receive`；原因必填；换了供应商但这张单没有 `changeSupplier`（填报生成的单）→ `BUSINESS_RULE`「填报生成的采购单不能换供应商，要换请取消后重下」；新加的花材须启用 | 条件更新（和收货互斥）；整组替换明细；写 `po_changes`（含换供应商）；日志「修改采购单」（前后）；推送 `po:<id>`、`pos`、`demand`、`supplier:<旧、新 supplierId>` |
@@ -295,13 +297,13 @@
 | `POST /purchase-orders/:id/receive` | 仓库 | `{ version, recvNote, reason?, lines[{poLineId, receivedQty, priceCents}] }` | 状态 `to_receive`：已取消 → `STALE`「采购已取消这张单」；采购改过单 → `STALE`「采购修改了这张单，已刷新成最新内容，请核对后再确认」；`receivedQty>=0`；改了单价原因必填；停用花材照常收；全 0 → `rejected` | 条件更新（和采购改单、取消互斥）；非 0 行生成批次 + `po_in` 流水；改价写 `price_changes`；日志「确认收货」/「拒收」；推送 `po:<id>`、`pos`、`todo:warehouse`、`todo:finance`、`ap:<supplierId>`、`stock`、`demand` |
 | `POST /purchase-orders/:id/returns` | 仓库 | `{ version, lines[{poLineId, qty}] }` | 状态 `received`；没付过款 → 否则 `BUSINESS_RULE`「已付款，不能再退货或改单价」；每行累计 ≤ 实收；库存够 | 行锁采购单 + 批次扣减（先扣本单批次）；更新 `returned_qty`；写 `purchase_returns`、`po_return` 流水；日志「退货」；推送同收货 |
 | `POST /purchase-orders/:id/reprice` | 仓库 | `{ version, reason, lines[{poLineId, priceCents}] }` | 状态 `received`、没付过款；原因必填；没有变化 → `BUSINESS_RULE`「没有修改内容」 | 行锁采购单（和付款互斥）；写 `price_changes`；日志「改单价」；推送 `po:<id>`、`ap:<supplierId>`、`payable:po:<id>` |
-| `GET /warehouse/docs` | 仓库 | `?kind=in|out|loss&status=&supplierId=&date=&cursor=` → 卡片 | | 订阅 `wh_docs` |
+| `GET /warehouse/docs` | 仓库 | `?kind=in|out|loss&status=&supplierId=&from=&to=&cursor=` → 卡片 | | 订阅 `wh_docs` |
 | `GET /warehouse/docs?kind=out` | 仓库 | `?kind=out&outCategoryId=&from=&to=&cursor=` → 手工出库列表（按出库分类、出库日期筛选，出库日期降序分页） | `to` 早于 `from` → `VALIDATION_FAILED` | 订阅 `wh_docs` |
 | `GET /warehouse/docs/:id` | 仓库、财务（手工入库） | → 明细、改价记录、`amountCents`、`apStatus`（手工入库：`to_pay` / `paid` / `no_pay`；出库、报损为 `null`）、是否付过款；手工出库、报损只读（出库分类、原因、明细、操作人）；`actions` ⊆ 仓库 `reprice`、`void`，财务 `pay`（都只对手工入库），手工出库、报损恒为 `[]` | | 订阅 `wh_doc:<id>` |
 | `POST /warehouse/docs` | 仓库 | `{ kind, supplierId?, outCategoryId?, reason, lines[{materialId, qty, priceCents?}] }` + 幂等键 | 入库：供应商启用、花材启用、每行有单价；出库：分类启用、库存够；报损：原因必填、库存够 | 发号 RK/CK/BS；入库生成批次 + `manual_in`；出库、报损批次扣减 + 流水；日志「手工入库 / 手工出库 / 报损」；推送 `wh_docs`、`stock`、`demand`；入库金额 > 0 另推 `todo:finance`、`ap:<supplierId>` |
 | `POST /warehouse/docs/:id/reprice` | 仓库 | `{ version, reason, lines[{lineId, priceCents}] }` | 手工入库、`stocked_in`、没付过款；原因必填 | 行锁单据；写 `price_changes`；日志「改单价」；推送 `wh_doc:<id>`、`ap:<supplierId>`、`payable:wh:<id>` |
 | `POST /warehouse/docs/:id/void` | 仓库 | `{ version, reason }` | 手工入库、`stocked_in`、没付过款；原因必填；库存够扣回 → 否则 `BUSINESS_RULE`「库存不够，不能作废」 | 行锁单据 + 批次扣减（先扣本单批次）；`in_void` 流水；日志「作废入库单」；推送同上 + `stock`、`todo:finance` |
-| `GET /warehouse/moves` | 仓库 | `?type=&materialId=&date=&cursor=` → 流水（批次显示「MM-DD 入库」） | | — |
+| `GET /warehouse/moves` | 仓库 | `?type=&materialId=&from=&to=&cursor=` → 流水（批次显示「MM-DD 入库」） | | — |
 | `GET /warehouse/stock` | 仓库 | `?q=&categoryId=` → 库存（含批次明细） | | 订阅 `stock` |
 | `GET/POST/PATCH /materials` | 仓库（采购、销售只读） | `{ version?, code, name, categoryId, unit, enabled }` | 编码不重复；新建默认 `MATERIAL_CODE_PREFIX` + 下一个序号 | 日志「新增 / 修改花材」（改单位记前后） |
 | `GET/POST/PATCH /material-categories` | 仓库 | `{ name, sort }` | 名称不重复 | 日志 |
@@ -327,7 +329,7 @@
 | `POST /finance/payments` | 财务 | `{ docType, docId, amountCents, payDate, methodName, note }` + 幂等键 | 单据应付 > 0、没有有效付款；`amountCents` 必须等于当前应付，否则 `STALE`「应付已变成 ¥…，请核对后再付」，`latest` 带新应付；付款方式启用 | 行锁采购单或手工入库单（和退货、改价、作废入库互斥）；发号 FK；日志「登记付款」；推送 `payable:*`、`ap:<supplierId>`、`todo:finance`、`po:<id>` 或 `wh_doc:<id>` |
 | `GET /finance/payments/:id` | 财务 | → 付款详情；`actions` ⊆ `voidPayment` | | — |
 | `POST /finance/payments/:id/void` | 财务 | `{ version, reason }` | 状态 `valid`；原因必填 | 行锁单据 + 条件更新；单据回到待付款，仍算「付过款」；日志「作废付款」；推送同登记付款 |
-| `GET /finance/records` | 财务 | `?kind=receipt|payment&status=&date=&cursor=` → 收付款记录 | | — |
+| `GET /finance/records` | 财务 | `?kind=receipt|payment&status=&from=&to=&cursor=` → 收付款记录 | | — |
 | `GET/POST/PATCH /finance/methods` | 财务（登记时各端只读启用的） | `{ kind, name, enabled }` | `(kind, name)` 不重复；每类至少一种启用 | 日志「新增 / 停用收付款方式」 |
 
 作废售后复用 `POST /afters/:id/void`（财务在发货单弹层 → 售后详情里调），加锁时同样先锁客户再锁售后。

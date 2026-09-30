@@ -37,8 +37,8 @@ page {
   --hz-textarea: 72px;
 
   /* 间距 */
-  --hz-gap-page: 12px; /* 卡片左右 */
-  --hz-gap-home: 20px; /* 花众首页、模块首页 */
+  --hz-gap-page: 16px; /* 列表、详情、表单页左右 */
+  --hz-gap-home: 20px; /* 铺品牌背景的页面左右：各首页、我的、模块首页、登录页 */
   --hz-gap-bar: 14px; /* 顶栏、搜索栏、底栏 */
   --hz-gap-sheet: 16px; /* 弹层内容 */
   --hz-card-pad: 16px;

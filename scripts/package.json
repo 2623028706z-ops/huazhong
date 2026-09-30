@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "gen": "node --conditions=source src/gen-all.ts",
-    "gen:check": "node --conditions=source src/gen-all.ts --check"
+    "gen:check": "node --conditions=source src/gen-all.ts --check",
+    "gen:backdrop": "node --conditions=source src/gen-backdrop.ts"
   },
   "devDependencies": {
     "@huazhong/shared": "workspace:*",

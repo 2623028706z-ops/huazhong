@@ -18,6 +18,7 @@
     "test:coverage": "vitest run --coverage",
     "gen": "pnpm --filter @huazhong/scripts gen",
     "gen:check": "pnpm --filter @huazhong/scripts gen:check",
+    "gen:backdrop": "pnpm --filter @huazhong/scripts gen:backdrop",
     "check": "pnpm format:check && pnpm typecheck && pnpm lint && pnpm knip && pnpm dup && pnpm gen:check && pnpm test:coverage"
   },
   "devDependencies": {

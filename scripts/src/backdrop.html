@@ -1,0 +1,211 @@
+<!doctype html>
+<meta charset="utf-8" />
+<pre id="out"></pre>
+<script>
+  // 花众品牌背景「窗」：浅杏墙 + 2×2 窗光 + 一枝梅影，全部程序绘制（02 章第 3 节）
+  // 设计单位 390×844，输出 2 倍；?max= 为 JPG 字节上限，从高质量往下试到不超过为止
+  const S = 2,
+    W = 390 * S,
+    H = 844 * S
+  const MAX = Number(new URLSearchParams(location.search).get('max'))
+  const rng = (seed) => () => {
+    seed = (seed + 0x6d2b79f5) | 0
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+  const layer = () => {
+    const c = document.createElement('canvas')
+    c.width = W
+    c.height = H
+    return [c, c.getContext('2d', { willReadFrequently: true })]
+  }
+  const read = (c) => c.getContext('2d').getImageData(0, 0, W, H).data
+  const TAU = Math.PI * 2
+
+  // 值噪声：随机小图放大再轻微模糊
+  function noise(r, cell) {
+    const w = Math.ceil(W / cell) + 1,
+      h = Math.ceil(H / cell) + 1
+    const s = document.createElement('canvas')
+    s.width = w
+    s.height = h
+    const sx = s.getContext('2d'),
+      d = sx.createImageData(w, h)
+    for (let i = 0; i < d.data.length; i += 4) {
+      d.data[i] = d.data[i + 1] = d.data[i + 2] = r() * 255
+      d.data[i + 3] = 255
+    }
+    sx.putImageData(d, 0, 0)
+    const [c, x] = layer()
+    x.imageSmoothingQuality = 'high'
+    if (cell > 2) x.filter = `blur(${cell * 0.45}px)`
+    x.drawImage(s, 0, 0, w * cell, h * cell)
+    return read(c)
+  }
+
+  // 梅枝剪影：白色画在透明层上，之后当作遮挡
+  function petals(x, r, cx, cy, R, n = 5) {
+    const rot = r() * TAU
+    for (let i = 0; i < n; i++) {
+      const a = rot + (i * TAU) / n
+      x.beginPath()
+      x.ellipse(
+        cx + Math.cos(a) * R * 0.55,
+        cy + Math.sin(a) * R * 0.55,
+        R * 0.52,
+        R * 0.4,
+        a,
+        0,
+        TAU,
+      )
+      x.fill()
+    }
+  }
+  function line(x, pts, w0, w1) {
+    for (let i = 1; i < pts.length; i++) {
+      x.lineWidth = w0 + ((w1 - w0) * i) / pts.length
+      x.beginPath()
+      x.moveTo(...pts[i - 1])
+      x.lineTo(...pts[i])
+      x.stroke()
+    }
+  }
+  // 折角生长，枝上开花、结苞
+  function plum(x, r, px, py, a, len, w, depth) {
+    const pts = [[px, py]]
+    let cx = px,
+      cy = py
+    const n = Math.max(3, Math.round(len / 16))
+    for (let k = 0; k < n; k++) {
+      a += (r() - 0.5) * 0.6
+      cx += (Math.cos(a) * len) / n
+      cy += (Math.sin(a) * len) / n
+      pts.push([cx, cy])
+      if (depth < 3 && k > 0 && r() < 0.42)
+        plum(
+          x,
+          r,
+          cx,
+          cy,
+          a + (r() < 0.5 ? -1 : 1) * (0.45 + r() * 0.45),
+          len * (0.32 + r() * 0.3),
+          w * 0.55,
+          depth + 1,
+        )
+      if (depth > 0 && r() < 0.3)
+        petals(x, r, cx + (r() - 0.5) * 10, cy + (r() - 0.5) * 10, 6.5 + r() * 4)
+      else if (r() < 0.3) {
+        x.beginPath()
+        x.arc(cx + (r() - 0.5) * 8, cy + (r() - 0.5) * 8, 2.4 + r() * 2, 0, TAU)
+        x.fill()
+      }
+    }
+    line(x, pts, w, w * 0.45)
+    petals(x, r, cx, cy, 7.5 + r() * 3)
+  }
+
+  // 窗光：o 为窗在墙上投影的一角，u、v 为两条边（设计单位）；base 为影子离墙最近处（越远越虚）
+  const CFG = {
+    seed: 21,
+    win: { o: [150, -40], u: [280, -36], v: [110, 700], cols: 2, rows: 2, gap: 0.03 },
+    blur: [1, 5],
+    base: [430, 720],
+    alb: [255, 250, 242],
+    amb: [0.945, 0.9, 0.855],
+    sun: [0.052, 0.085, 0.112],
+    glow: [0.01, 0.014, 0.018],
+    plant: (x, r) => plum(x, r, 430, 700, -2.5, 280, 7, 1),
+  }
+  const P = ([x, y]) => [x * S, y * S]
+  const lerp = (a, b, t) => a + (b - a) * t
+
+  function render(cfg) {
+    const r = rng(cfg.seed)
+    // 1. 窗光遮罩：几块窗格，边缘柔化，离窗越远越淡
+    const [lc, lx] = layer()
+    lx.fillStyle = '#fff'
+    lx.filter = `blur(${5 * S}px)`
+    const { o, u, v, cols, rows, gap } = cfg.win
+    const at = (s, t) => P([o[0] + u[0] * s + v[0] * t, o[1] + u[1] * s + v[1] * t])
+    const pw = (1 - gap * (cols - 1)) / cols,
+      ph = (1 - gap * (rows - 1)) / rows
+    for (let i = 0; i < cols; i++)
+      for (let j = 0; j < rows; j++) {
+        const s0 = i * (pw + gap),
+          t0 = j * (ph + gap)
+        lx.beginPath()
+        lx.moveTo(...at(s0, t0))
+        lx.lineTo(...at(s0 + pw, t0))
+        lx.lineTo(...at(s0 + pw, t0 + ph))
+        lx.lineTo(...at(s0, t0 + ph))
+        lx.fill()
+      }
+    lx.filter = 'none'
+    lx.globalCompositeOperation = 'destination-in'
+    const g = lx.createLinearGradient(...at(0, 0), ...at(0, 1))
+    g.addColorStop(0, 'rgba(255,255,255,1)')
+    g.addColorStop(1, 'rgba(255,255,255,.45)')
+    lx.fillStyle = g
+    lx.fillRect(0, 0, W, H)
+    const light = read(lc)
+
+    // 2. 花影：同一剪影做一虚一实，离墙近处实、远处虚
+    const [pc, px] = layer()
+    px.setTransform(S, 0, 0, S, 0, 0)
+    px.fillStyle = px.strokeStyle = '#fff'
+    px.lineCap = 'round'
+    px.lineJoin = 'round'
+    cfg.plant(px, r)
+    const soft = (b) => {
+      const [c, x] = layer()
+      x.filter = `blur(${b * S}px)`
+      x.drawImage(pc, 0, 0)
+      return read(c)
+    }
+    const near = soft(cfg.blur[0]),
+      far = soft(cfg.blur[1])
+
+    // 3. 纸墙质感：大块明暗 + 灰泥纹 + 细颗粒
+    const n1 = noise(r, 90 * S),
+      n2 = noise(r, 6 * S),
+      n3 = noise(r, 2)
+    const [hc, hx] = layer()
+    hx.filter = `blur(${40 * S}px)`
+    hx.drawImage(lc, 0, 0)
+    const halo = read(hc)
+
+    // 4. 合成：底色 × (环境光 + 暖阳 × 光照 × 未被遮挡)
+    const [oc, ox] = layer()
+    const img = ox.createImageData(W, H),
+      d = img.data
+    const { alb, amb, sun, glow } = cfg
+    const [bx, by] = P(cfg.base)
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const i = (y * W + x) * 4
+        const t = Math.min(1, Math.hypot(x - bx, y - by) / (360 * S))
+        const occ = lerp(near[i + 3], far[i + 3], t) / 255
+        const L = (light[i + 3] / 255) * (1 - occ * 0.9)
+        const tex =
+          1 +
+          (n1[i] / 255 - 0.5) * 0.06 +
+          (n2[i] / 255 - 0.5) * (0.012 + 0.035 * L) +
+          (n3[i] / 255 - 0.5) * 0.012
+        const hl = halo[i + 3] / 255
+        for (let k = 0; k < 3; k++)
+          d[i + k] = Math.min(255, alb[k] * tex * (amb[k] + sun[k] * L + glow[k] * hl))
+        d[i + 3] = 255
+      }
+    ox.putImageData(img, 0, 0)
+    return oc
+  }
+
+  const canvas = render(CFG)
+  let url = ''
+  for (let q = 0.9; q >= 0.5; q -= 0.05) {
+    url = canvas.toDataURL('image/jpeg', q)
+    if (((url.length - 23) * 3) / 4 <= MAX) break
+  }
+  document.getElementById('out').textContent = url
+</script>

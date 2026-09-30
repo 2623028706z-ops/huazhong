@@ -4,8 +4,8 @@
 <script src="https://cdn.jsdelivr.net/npm/lucide@0.453.0/dist/umd/lucide.min.js"></script>
 <style>
 /* 花众 · 窗：首页和「我的」同一面墙、同一套卡片；logo 用花众正式字标 */
-:root{--wall:#f6ebdf;--card:rgba(255,251,246,.86);--cardSolid:#fffbf6;--brand:#934832;--brandTint:rgba(147,72,50,.09);
-  --ink:#3b2a24;--muted:#7a5a4a;--rule:rgba(147,72,50,.14);--onBrand:#fff8f0;--r:12px;--sw:1.4}
+:root{--wall:#f6ebdf;--card:rgba(255,251,246,.86);--cardSolid:#fffbf6;--brand:#b75d45;--brandTint:rgba(183,93,69,.1);
+  --ink:#3b2a24;--muted:#7a5a4a;--rule:rgba(183,93,69,.16);--onBrand:#fff8f0;--r:12px;--sw:1.4}
 body{margin:0;padding:28px;background:#ddd6cd;font-family:-apple-system,"PingFang SC",sans-serif}
 .set{display:flex;gap:24px;align-items:flex-start}
 .col{display:flex;flex-direction:column;align-items:center;gap:10px}
@@ -30,7 +30,7 @@ body{margin:0;padding:28px;background:#ddd6cd;font-family:-apple-system,"PingFan
 .cell.wide .go{bottom:28px}
 .tab{position:absolute;left:0;right:0;bottom:0;height:84px;display:flex;background:var(--cardSolid);border-top:1px solid var(--rule)}
 .tab span{flex:1;display:flex;flex-direction:column;align-items:center;padding-top:10px;gap:4px;font-size:11px;color:var(--muted)}
-.tab .lucide{width:24px;height:24px}.tab .on{color:var(--brand)}
+.tab .lucide{width:24px;height:24px}.tab .on{color:var(--ink);font-weight:600}.tab .on .lucide{color:var(--brand)}
 .hi{position:absolute;bottom:8px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#1a1a1a}
 /* 我的：身份卡 → 入口卡 → 退出登录 */
 .me{position:absolute;left:20px;right:20px;top:208px}
@@ -61,7 +61,7 @@ body{margin:0;padding:28px;background:#ddd6cd;font-family:-apple-system,"PingFan
 </style></head><body>
 <script>
 const ic = (n, c = '') => `<i data-lucide="${n}" class="${c}"></i>`;
-const chrome = `<img class="bgimg" src="art-w.png"><div class="status"><span>9:41</span><span>${ic('signal')}${ic('wifi')}${ic('battery-full')}</span></div><div class="capsule"></div>`;
+const chrome = `<img class="bgimg" src="../../miniapp/miniprogram/assets/backdrop.jpg"><div class="status"><span>9:41</span><span>${ic('signal')}${ic('wifi')}${ic('battery-full')}</span></div><div class="capsule"></div>`;
 const head = who => `<div class="head"><img src="logo.png" alt="花众"><div class="id"><span class="who">${who}</span><time>2026.09.30 周三</time></div></div>`;
 const tabs = (items, on) => `<div class="tab">${items.map(([n, i, badge], k) => `<span class="${k === on ? 'on' : ''}">${ic(i)}${badge ? `<i class="n">${badge}</i>` : ''}${n}</span>`).join('')}</div><div class="hi"></div>`;
 const hero = (icon, name, sub, badge) => `<div class="hero">${badge ? `<span class="badge">${badge}</span>` : ''}${ic(icon)}<div><b>${name}</b><small>${sub}</small></div>${ic('chevron-right', 'go')}</div>`;
