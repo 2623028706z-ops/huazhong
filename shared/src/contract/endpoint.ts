@@ -14,8 +14,9 @@ export type Grant = ModuleKey | 'staff' | 'admin' | 'store' | 'supplier'
 export interface Endpoint {
   readonly method: HttpMethod
   readonly path: string
-  // 允许的角色；'any' = 任何已绑定、启用的账号
-  readonly grants: 'any' | readonly Grant[]
+  // 允许的角色；'any' = 任何已绑定、启用的账号；
+  // 'openid' = 只要云托管注入了 openid（可未绑定、可停用），绑定和退出登录用（05 章第 2 节）
+  readonly grants: 'any' | 'openid' | readonly Grant[]
   readonly params?: z.ZodType
   readonly query?: z.ZodType
   readonly body?: z.ZodType

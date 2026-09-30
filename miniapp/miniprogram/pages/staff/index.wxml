@@ -1,0 +1,33 @@
+<hz-navbar title="{{title}}" back />
+<view class="u-list">
+  <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+  <hz-error wx:elif="{{failure}}" message="{{failure.message}}" request-id="{{failure.requestId}}" retry bind:retry="onFailureAction" />
+  <hz-skeleton wx:if="{{skeleton}}" type="list" />
+  <hz-state wx:elif="{{loaded && rows.length === 0}}" object="{{emptyObject}}" />
+  <view wx:for="{{rows}}" wx:key="id" data-key="{{item.id}}" bindtap="onOpen">
+    <hz-card title="{{item.title}}" total="{{item.total}}" meta="{{item.meta}}" tags="{{item.tags}}" />
+  </view>
+  <text wx:if="{{done && rows.length > 0}}" class="u-list__end">{{texts.allLoaded}}</text>
+</view>
+<hz-action-bar wx:if="{{canCreate}}">
+  <hz-button text="{{texts.create}}" bind:press="onCreate" />
+</hz-action-bar>
+<hz-sheet show="{{sheet}}" title="{{editing ? texts.edit : texts.create}}" guard="{{true}}" footer bind:close="onCloseSheet">
+  <view class="hz-staff__form">
+    <hz-error wx:if="{{formError}}" message="{{formError}}" request-id="{{requestId}}" />
+    <hz-field label="{{texts.field.name}}" value="{{form.name}}" error="{{fields.name}}" bind:change="onName" />
+    <hz-field label="{{texts.field.phone}}" value="{{form.phone}}" type="number" error="{{fields.phone}}" bind:change="onPhone" />
+    <hz-switch label="{{texts.field.admin}}" value="{{form.admin}}" bind:change="onAdmin" />
+    <hz-choices wx:if="{{!form.admin}}" label="{{texts.field.modules}}" options="{{moduleOptions}}" value="{{form.modules}}" error="{{fields.modules}}" bind:change="onModules" />
+    <hz-switch wx:if="{{editing}}" label="{{texts.enabled}}" value="{{form.enabled}}" bind:change="onEnabled" />
+  </view>
+  <view slot="footer" class="hz-staff__footer">
+    <view wx:if="{{editing.actions.length > 0}}" class="hz-staff__cell">
+      <hz-button kind="secondary" text="{{texts.unbind}}" bind:press="onUnbind" />
+    </view>
+    <view class="hz-staff__cell">
+      <hz-button text="{{texts.save}}" loading="{{saving}}" bind:press="onSave" />
+    </view>
+  </view>
+</hz-sheet>
+<hz-confirm id="hz-confirm" />

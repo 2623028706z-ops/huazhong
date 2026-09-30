@@ -37,6 +37,13 @@ export const ICONS = [
   'sliders-horizontal',
   'calendar',
   'chevron-down',
+  'file-text',
+  'rotate-ccw',
+  'notebook-text',
+  'clipboard-pen',
+  'id-card',
+  'users-round',
+  'scroll-text',
 ] as const
 
 // 24 网格上的线宽：显示 21px 时约 1.5px

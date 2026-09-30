@@ -126,3 +126,30 @@
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);
 }
+
+/* 铺品牌背景的页面（各首页、我的）：左右 20px，抬头下面 32px 开始放卡片 */
+.u-home {
+  padding: 0 var(--hz-gap-home);
+}
+
+.u-home__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+/* 列表页：左右 16px，卡片间距 10px */
+.u-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-card-gap);
+  padding: 12px var(--hz-gap-page);
+}
+
+.u-list__end {
+  padding: 12px 0;
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+  text-align: center;
+}

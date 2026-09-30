@@ -26,7 +26,14 @@ export class AccessGuard implements CanActivate {
     if (!state) throw appError.internal()
     state.endpoint = endpoint
     const req = ctx.switchToHttp().getRequest<Request>()
-    const viewer = await this.identity.resolve(req.header(OPENID_HEADER))
+    const openid = req.header(OPENID_HEADER)
+    // 绑定、退出登录：只要有 openid，账号由接口自己按 openid 查（可未绑定、可停用）
+    if (endpoint.grants === 'openid') {
+      if (!openid) throw appError.unauthenticated()
+      state.openid = openid
+      return true
+    }
+    const viewer = await this.identity.resolve(openid)
     state.viewer = viewer
     if (!isGranted(viewer, endpoint.grants)) throw appError.forbidden()
     return true

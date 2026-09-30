@@ -22,12 +22,13 @@ export type Result<T> = { ok: true; data: T } | { ok: false; failure: Failure }
 type Input<E extends Endpoint> = {
   [K in keyof InputOf<E> as InputOf<E>[K] extends undefined ? never : K]: InputOf<E>[K]
 }
+// 元组不写成员名（[options: …]）：开发者工具的编译器不认，整个文件会被丢掉（eslint 已拦）
 type Options<E extends Endpoint> = E extends { idempotent: true }
-  ? [options: { idempotencyKey: string }]
+  ? [{ idempotencyKey: string }]
   : []
 type Args<E extends Endpoint> = keyof Input<E> extends never
   ? Options<E>
-  : [input: Input<E>, ...Options<E>]
+  : [Input<E>, ...Options<E>]
 
 interface RawInput {
   params?: Record<string, string>
@@ -42,6 +43,20 @@ interface RawResponse {
 }
 
 const REQUEST_ID_HEADER = 'x-request-id'
+const HEX = 16
+const UUID_TEMPLATE = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
+// UUID v4 的 variant 位：y 取 8、9、a、b
+const VARIANT_MASK = 0x3
+const VARIANT_BITS = 0x8
+
+// 新建类表单每次打开生成一个幂等键（05 章第 1.2 节）；小程序没有 crypto.randomUUID
+export function newIdempotencyKey(): string {
+  return UUID_TEMPLATE.replace(/[xy]/g, (char) => {
+    const random = Math.floor(Math.random() * HEX)
+    const value = char === 'x' ? random : (random & VARIANT_MASK) | VARIANT_BITS
+    return value.toString(HEX)
+  })
+}
 const inFlightWrites = new Map<string, Promise<Result<unknown>>>()
 
 function buildPath(endpoint: Endpoint, input: RawInput): string {

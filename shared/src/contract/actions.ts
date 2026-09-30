@@ -41,7 +41,9 @@ export const actionCodes = [
   'submitSupply',
   'inviteStore',
   'unbindStoreWechat',
+  'unbindStaffWechat',
 ] as const
+export type ActionCode = (typeof actionCodes)[number]
 
 // enabled 为 true 时 disabledReason 一定是 null
 export const actionSchema = z.discriminatedUnion('enabled', [

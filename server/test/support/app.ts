@@ -15,6 +15,8 @@ import { configureApp } from '../../src/app.ts'
 import { AppModule } from '../../src/app.module.ts'
 import { Clock } from '../../src/common/clock.ts'
 import { nestLogger } from '../../src/common/logger.ts'
+import { PhoneExchange } from '../../src/modules/accounts/phone.ts'
+import { FakePhoneExchange } from './phone.ts'
 import { TEMPLATE_DB } from '../global-setup.ts'
 
 export interface TestApp {
@@ -57,6 +59,8 @@ export async function startApp(options: StartOptions = {}): Promise<TestApp> {
     imports: [AppModule.forRoot(env), ...(options.imports ?? [])],
   })
   if (options.clock) builder = builder.overrideProvider(Clock).useValue(options.clock)
+  // 测试不连微信开放接口
+  builder = builder.overrideProvider(PhoneExchange).useValue(new FakePhoneExchange())
   const moduleRef = await builder.compile()
   const app = moduleRef.createNestApplication({ logger: nestLogger })
   configureApp(app)

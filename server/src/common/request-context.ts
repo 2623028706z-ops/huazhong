@@ -11,6 +11,8 @@ const REQUEST_ID_HEADER = 'X-Request-Id'
 interface RequestState {
   readonly requestId: string
   viewer: Viewer | null
+  // 只在 grants 为 'openid' 的接口里有值
+  openid: string | null
   endpoint: Endpoint | null
 }
 
@@ -24,7 +26,12 @@ export const requestContext = {
 
 // 每个请求一个新的请求 ID，写进响应头；请求结束记一行日志（不记 query，避免记下搜索词）
 export function requestContextMiddleware(req: Request, res: Response, next: NextFunction): void {
-  const state: RequestState = { requestId: randomUUID(), viewer: null, endpoint: null }
+  const state: RequestState = {
+    requestId: randomUUID(),
+    viewer: null,
+    openid: null,
+    endpoint: null,
+  }
   const startedAt = performance.now()
   res.setHeader(REQUEST_ID_HEADER, state.requestId)
   res.on('finish', () => {

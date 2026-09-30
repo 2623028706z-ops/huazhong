@@ -26,4 +26,11 @@ export const iconNames = [
   'sliders-horizontal',
   'calendar',
   'chevron-down',
+  'file-text',
+  'rotate-ccw',
+  'notebook-text',
+  'clipboard-pen',
+  'id-card',
+  'users-round',
+  'scroll-text',
 ] as const

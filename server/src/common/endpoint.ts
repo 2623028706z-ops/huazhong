@@ -88,6 +88,13 @@ export const Input = createParamDecorator((_data: unknown, ctx) => {
   })
 })
 
+// grants 为 'openid' 的接口：守卫只核对了 openid，没有查账号
+export const CurrentOpenid = createParamDecorator((): string => {
+  const openid = requestContext.get()?.openid
+  if (!openid) throw appError.unauthenticated()
+  return openid
+})
+
 export const CurrentViewer = createParamDecorator((): Viewer => {
   const viewer = requestContext.get()?.viewer
   if (!viewer) throw appError.unauthenticated()

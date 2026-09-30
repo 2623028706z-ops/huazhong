@@ -147,6 +147,22 @@ export default tseslint.config(
     },
   },
   {
+    // 小程序源码由开发者工具自己编译：它不认带成员名的元组（[options: …]），整个文件会被丢掉、运行时报
+    // module is not defined。shared 由 esbuild 打包，不受影响
+    files: ['miniapp/miniprogram/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        noChineseLiteral,
+        noColorLiteral,
+        {
+          selector: 'TSNamedTupleMember',
+          message: '元组不写成员名：开发者工具的编译器不认，整个文件会被丢掉。',
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.js', '**/*.config.ts'],
     ...tseslint.configs.disableTypeChecked,
   },

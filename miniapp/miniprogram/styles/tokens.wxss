@@ -31,6 +31,7 @@ page {
   --hz-font-lg: 16px; /* 入口卡名称、弹层标题 */
   --hz-font-title: 17px;
   --hz-font-amount: 18px; /* 对账格金额 */
+  --hz-font-hero: 22px; /* 门店、供应商首页主卡名称 */
 
   /* 图标（iconfont 用字号定大小） */
   --hz-icon-xs: 14px; /* 胶囊 × */
@@ -40,6 +41,7 @@ page {
   --hz-icon-nav: 22px;
   --hz-icon-tab: 24px;
   --hz-icon-entry: 26px;
+  --hz-icon-hero: 32px; /* 首页主卡图标 */
 
   /* 尺寸 */
   --hz-radius: 12px;

@@ -1,0 +1,11 @@
+{
+  "component": true,
+  "styleIsolation": "apply-shared",
+  "usingComponents": {
+    "hz-cover": "../hz-cover/index",
+    "hz-navbar": "../hz-navbar/index",
+    "hz-state": "../hz-state/index",
+    "hz-error": "../hz-error/index",
+    "hz-tabbar": "../hz-tabbar/index"
+  }
+}

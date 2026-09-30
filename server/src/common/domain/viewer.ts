@@ -12,6 +12,7 @@ export interface Viewer {
   readonly accountId: number
   readonly type: AccountType
   readonly name: string
+  readonly phone: string
   readonly modules: readonly ModuleKey[]
   readonly storeId: number | null
   readonly customerId: number | null
@@ -22,8 +23,11 @@ export interface Viewer {
 
 export interface AccountRow {
   accountId: number
+  version: number
   type: AccountType
   name: string
+  phone: string
+  openid: string | null
   enabled: boolean
   modules: ModuleKey[]
   storeId: number | null
@@ -64,10 +68,16 @@ function orgLabelOf(row: AccountRow): string | null {
 export function resolveViewer(row: AccountRow | undefined): Viewer {
   if (!row) throw appError.unauthenticated()
   assertLoginAllowed(row)
+  return viewerOf(row)
+}
+
+// 不做停用检查：退出登录（停用的账号也能退出）写日志操作人时用
+export function viewerOf(row: AccountRow): Viewer {
   return {
     accountId: row.accountId,
     type: row.type,
     name: row.name,
+    phone: row.phone,
     modules: modulesOf(row),
     storeId: row.storeId,
     customerId: row.customerId,
@@ -92,7 +102,7 @@ function grantMatches(viewer: Viewer, grant: Grant): boolean {
   }
 }
 
-// 守卫第一层：契约里的「允许角色」（05 章第 1.2 节）
+// 守卫第一层：契约里的「允许角色」（05 章第 1.2 节）；'openid' 的接口不查账号，不走这里
 export function isGranted(viewer: Viewer, grants: 'any' | readonly Grant[]): boolean {
   return grants === 'any' || grants.some((grant) => grantMatches(viewer, grant))
 }

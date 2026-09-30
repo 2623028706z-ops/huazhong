@@ -2,6 +2,9 @@
 import { shanghaiDateOf } from '@huazhong/shared'
 import { Injectable } from '@nestjs/common'
 
+// SQL 里按业务日期筛时间戳时用（00 章第 3 节）
+export const BUSINESS_TIME_ZONE = 'Asia/Shanghai'
+
 @Injectable()
 export class Clock {
   now(): Date {

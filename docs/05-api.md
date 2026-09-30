@@ -115,6 +115,7 @@
 | `submitSupply` | 提交填报 | 填报邀请 | 供应商 | 待填报、发给本家 | — | `false` | 已提交、已取消：「这次邀请已提交或已取消」 |
 | `inviteStore` | 邀请门店下单 | 门店 | 销售 | 门店启用 | 没录登录手机号：「请先在门店资料里填写登录手机号」；门店账号已绑定微信：「这家门店账号已绑定微信，请联系销售解绑」 | `null` | — |
 | `unbindStoreWechat` | 解绑微信 | 门店 | 销售、管理员 | 门店账号已绑定微信 | — | `false` | — |
+| `unbindStaffWechat` | 解绑微信 | 员工 | 管理员 | 员工已绑定微信 | — | `false` | — |
 
 `reasonRequired` 的规则只有一个来源：03 章第 5 节「原因」列。必填的为 `true`；不用原因或只在特定输入下才要（收货改了单价、少发写备注）的为 `false`，后者在提交时校验。
 
@@ -164,19 +165,22 @@
 
 | 接口 | 谁 | 入参 → 出参 | 校验和错误 | 锁 / 日志 / 推送 |
 |---|---|---|---|---|
-| `POST /auth/bind-phone` | 未绑定的 openid | `{ code }`（`getPhoneNumber` 返回的动态令牌）→ 当前账号（同 `/me`） | 后端经云托管开放接口服务换手机号；找不到启用的预录账号 → `BUSINESS_RULE`「这个手机号还没开通，请联系花众管理员」；账号、门店、供应商停用 → `ACCOUNT_DISABLED`（门店停用 message「这家门店已停用，请联系花众」，供应商同理）；这个手机号的账号已绑别的微信 → `BUSINESS_RULE`「这个账号已绑定其他微信，请联系管理员解绑」 | 行锁账号；写 `bound_at`；日志「绑定微信」 |
+| `POST /auth/bind-phone` | 任何 openid（可未绑定） | `{ code }`（`getPhoneNumber` 返回的动态令牌）→ 当前账号（同 `/me`） | 这个 openid 已经绑了账号 → 直接返回当前账号（停用照常返回 `ACCOUNT_DISABLED`）；后端经云托管开放接口服务换手机号，令牌无效或过期 → `BUSINESS_RULE`「手机号验证失败，请重试」；找不到启用的预录账号 → `BUSINESS_RULE`「这个手机号还没开通，请联系花众管理员」；账号、门店、供应商停用 → `ACCOUNT_DISABLED`（门店停用 message「这家门店已停用，请联系花众」，供应商同理）；这个手机号的账号已绑别的微信 → `BUSINESS_RULE`「这个账号已绑定其他微信，请联系管理员解绑」 | 行锁账号；写 `bound_at`；日志「绑定微信」 |
 | `GET /store-invites/:token` | 任何 openid（可未绑定） | → `{ storeLabel, status, expiresAt }`（打开邀请页时显示是哪家门店） | token 不存在 → `NOT_FOUND`；已使用、已过期 → 返回状态，前端写「邀请已失效，请联系花众销售重新发送」 | — |
 | `POST /store-invites/:token/use` | 任何 openid（可未绑定） | `{ code }`（手机号快速验证令牌）→ 当前账号（同 `/me`） | 邀请 `pending` 且没过期，否则 `BUSINESS_RULE`「邀请已失效，请联系花众销售重新发送」；门店停用 → `ACCOUNT_DISABLED`「这家门店已停用，请联系花众」；换出的手机号和门店账号登录手机号不一致 → `BUSINESS_RULE`「手机号和门店登记的不一致，请用登记的手机号验证」；门店账号已绑定微信 → `BUSINESS_RULE`「这家门店账号已绑定微信，请联系销售解绑」 | 行锁邀请 + 账号；写 `openid`、`bound_at`；邀请改 `used`、写 `bound_account_id`、`bound_at`；日志「门店接受邀请」；推送 `store_invites:<storeId>` |
-| `GET /me` | 已绑定 | → `{ id, type, name, orgLabel, storeId, supplierId, modules, landing, menus }`，取值见下表 | — | — |
-| `POST /auth/unbind` | 已绑定（自己）或管理员（指定账号） | `{ accountId? }` → `{}` | 管理员解绑别人时账号必须存在 | 清空 `openid`；日志「解绑微信」；推送 `account:<id>`（对方连接断开） |
+| `GET /me` | 已绑定 | → `{ id, type, name, phone, orgLabel, storeId, supplierId, modules, landing, menus }`，取值见下表 | — | — |
+| `POST /auth/unbind` | 任何 openid（含停用的账号） | `{}` → `{}`：解绑自己这台微信 | 这个 openid 没绑账号 → 直接返回 `{}` | 清空 `openid`、`bound_at`；日志「解绑微信」（公共）；推送 `account:<id>`（本人连接断开） |
 
-退出登录 = 解绑：「我的 → 退出登录」调 `POST /auth/unbind` 清空 openid，下次进来重新手机号验证。门店账号也可以由销售或管理员在门店资料里解绑（`POST /stores/:id/unbind-wechat`）。
+退出登录 = 解绑：「我的 → 退出登录」和停用页的「退出登录」都调 `POST /auth/unbind` 清空 openid，下次进来重新手机号验证；停用的账号也能退出，所以这个接口只看 openid，不经过停用检查。员工的微信由管理员在员工弹层里解绑（`POST /staff/:id/unbind-wechat`，第 3 节）；门店账号由销售或管理员在门店资料里解绑（`POST /stores/:id/unbind-wechat`）。
+
+绑定、解绑、新增员工、修改员工的日志 `module` 为 `NULL`（公共），`kind`「账号」，`target_type` `accounts`，`target_label` 是账号名字；绑定微信的操作人是被绑定的账号本人。
 
 `GET /me` 返回字段：
 
 | 字段 | 取值 |
 |---|---|
 | `type` | `admin`、`staff`、`store`、`supplier` |
+| `phone` | 登录手机号（「我的 → 个人资料」显示） |
 | `orgLabel` | 门店账号「客户 · 门店」，供应商账号是供应商名称，员工和管理员为 `null` |
 | `storeId`、`supplierId` | 门店、供应商账号的归属 ID，其他为 `null` |
 | `modules` | 有权限的模块码数组（`sales`、`shipping`、`purchase`、`warehouse`、`finance`）：管理员全部五个；员工取 `account_modules`；门店、供应商为 `[]` |
@@ -191,12 +195,13 @@
 |---|---|---|---|---|
 | `GET /modules/:key/todos` | 有该模块权限 | → `{ count, items[] (最多 `TODO_PREVIEW_COUNT` 条卡片) }`；销售 = 待确认订单 + 待处理售后；发货 = 待发货；采购 = 待填报邀请；仓库 = 待收货；财务 = 待付款单据 + 有预收的客户 | — | 订阅 `todo:<key>` |
 | `GET /badges` | 已绑定 | → 底栏角标：门店购物车不算（前端本地）、供应商待填报数、各模块待办数 | — | 订阅 `todo:*` |
-| `GET /inventory` | 所有员工 | `?q=&categoryId=` → 花材、分类、单位、库存（只读） | — | 订阅 `stock` |
-| `GET /logs` | 管理员看全部；员工只看自己模块 | `?module=&cursor=` → 日志列表 | 员工传别的模块 → `FORBIDDEN` | — |
-| `GET /logs/:id` | 同上 | → 含 `before`、`after` | | — |
-| `GET /staff` | 管理员 | → 员工和管理员列表（不含门店、供应商账号） | | — |
-| `POST /staff` | 管理员 | `{ name, phone, modules[], admin }` | 手机号在启用账号里重复 → `VALIDATION_FAILED fields.phone` | 日志「新增员工」 |
-| `PATCH /staff/:id` | 管理员 | `{ version, name, phone, modules[], admin, enabled }` | 不能停用或降级最后一个管理员 → `BUSINESS_RULE` | 条件更新；日志「修改员工」；推送 `account:<id>` |
+| `GET /inventory` | 所有员工 | `?q=&categoryId=&cursor=&limit=` → 列表，项 `{ id, code, name, categoryId, categoryName, unit, enabled, stockQty }`；全部花材（含库存 0、含停用），按编码升序分页；`q` 匹配名称或编码；`stockQty` = 批次 `left_qty` 合计；列表级 `actions` 为 `[]` | — | 订阅 `stock` |
+| `GET /logs` | 员工、管理员 | `?module=&from=&to=&cursor=&limit=` → 列表，项 `{ id, createdAt, module, kind, action, targetLabel, actorLabel }`（`module` 为 `null` 是公共）；按时间倒序；`from`、`to` 按上海日期筛 `created_at` | 管理员不传 `module` 看全部（含公共）；员工不传 `module` 看自己全部模块（不含公共），传了别的模块 → `FORBIDDEN` | — |
+| `GET /logs/:id` | 同上 | → 列表项字段 + `{ reason, before, after }` | 员工读不属于自己模块的（含公共）→ `NOT_FOUND` | — |
+| `GET /staff` | 管理员 | `?cursor=&limit=` → 列表，项 `{ id, version, name, phone, admin, modules, enabled, actions }`（不含门店、供应商账号），按新增先后；项 `actions` 只可能有 `unbindStaffWechat`；列表级 `actions` 含 `create` | — | — |
+| `POST /staff` | 管理员 | `{ name, phone, admin, modules[] }` → 列表项 | 名字必填「请填写名字」；手机号「请填写 11 位登录手机号」；不是管理员时至少一个模块「请至少选一个模块」；管理员的 `modules` 不存（默认全部）；手机号在启用账号里重复 → `VALIDATION_FAILED` `fields.phone`「这个手机号已经被其他账号使用」 | 日志「新增员工」（公共） |
+| `PATCH /staff/:id` | 管理员 | `{ version, name, phone, admin, modules[], enabled }` → 列表项 | 同新增；不能停用或降级最后一个启用的管理员 → `BUSINESS_RULE`「至少要保留一个启用的管理员」；内容没变 → `BUSINESS_RULE`「没有修改内容」；版本变了 → `STALE`「这个员工刚被修改，已刷新成最新内容」 | 条件更新；改了手机号或停用时同时清空 `openid`、`bound_at`，日志原因写「同时解绑微信」；日志「修改员工」（公共，记前后）；推送 `account:<id>` |
+| `POST /staff/:id/unbind-wechat` | 管理员 | `{ version }` → 列表项 | 员工已绑定微信，否则 `STALE`「这个员工还没绑定微信」 | 条件更新；清空 `openid`、`bound_at`；日志「解绑微信」（公共）；推送 `account:<id>`（对方连接断开） |
 
 ## 4. 销售
 
@@ -306,7 +311,7 @@
 | `GET /warehouse/moves` | 仓库 | `?type=&materialId=&from=&to=&cursor=` → 流水（批次显示「MM-DD 入库」） | | — |
 | `GET /warehouse/stock` | 仓库 | `?q=&categoryId=` → 库存（含批次明细） | | 订阅 `stock` |
 | `GET/POST/PATCH /materials` | 仓库（采购、销售只读） | `{ version?, code, name, categoryId, unit, enabled }` | 编码不重复；新建默认 `MATERIAL_CODE_PREFIX` + 下一个序号 | 日志「新增 / 修改花材」（改单位记前后） |
-| `GET/POST/PATCH /material-categories` | 仓库 | `{ name, sort }` | 名称不重复 | 日志 |
+| `GET/POST/PATCH /material-categories` | 仓库（`GET` 所有员工，库存查询的分类筛选用） | `GET` → 列表，项 `{ id, name, sort }`，按 `sort`、`id` 升序，不分页（`nextCursor` 恒为 `null`）；写入 `{ name, sort }` | 名称不重复 | 日志 |
 | `GET/POST/PATCH /out-categories` | 仓库 | `{ name, enabled }` | 至少一个启用 | 日志 |
 | `GET /stocktakes`、`/:id` | 仓库 | → 盘点单；`actions` 恒为 `[]` | | — |
 | `GET /stocktakes/draft` | 仓库 | `?categoryIds=` → 所选分类全部花材（含停用），每行 `{ materialId, name, unit, bookQty }`，`bookQty` 是当前账面数 | | — |

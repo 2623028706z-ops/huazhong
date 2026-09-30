@@ -1,0 +1,7 @@
+<hz-cover mode="soft" />
+<hz-navbar title="{{title}}" back="{{back}}" roles="{{roles}}" person="{{person}}" transparent />
+<view class="hz-module-home">
+  <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+  <hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+</view>
+<hz-tabbar wx:if="{{tabs.length > 0}}" tabs="{{tabs}}" current="home" />

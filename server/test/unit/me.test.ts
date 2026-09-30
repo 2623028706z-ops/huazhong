@@ -7,6 +7,7 @@ const base: Viewer = {
   accountId: 1,
   type: 'staff',
   name: 'x',
+  phone: '13700000009',
   modules: [],
   storeId: null,
   customerId: null,

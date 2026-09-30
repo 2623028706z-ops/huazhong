@@ -1,0 +1,11 @@
+.hz-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--hz-tap);
+  font-size: var(--hz-font-md);
+}
+
+.hz-switch__label {
+  color: var(--hz-ink);
+}

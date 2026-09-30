@@ -1,0 +1,26 @@
+/* 弹层区块不套框，用细线分隔（02 章第 4 节 hz-sheet） */
+.hz-logs__section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--hz-row-pad) 0;
+  font-size: var(--hz-font-note);
+}
+
+.hz-logs__section + .hz-logs__section {
+  border-top: 1px solid var(--hz-line);
+}
+
+.hz-logs__heading {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+.hz-logs__row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.hz-logs__label {
+  color: var(--hz-muted);
+}

@@ -1,0 +1,30 @@
+/* 字标高 38px；身份行 13px，日期 12px 次要色（docs/design/mock-ext.html） */
+.hz-brand {
+  padding-top: 12px;
+}
+
+.hz-brand__logo {
+  display: block;
+  height: 38px;
+}
+
+.hz-brand__identity {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 16px;
+  font-size: var(--hz-font-note);
+}
+
+.hz-brand__lead {
+  font-weight: 600;
+}
+
+.hz-brand__person,
+.hz-brand__date {
+  color: var(--hz-muted);
+}
+
+.hz-brand__date {
+  font-size: var(--hz-font-sm);
+}

@@ -1,0 +1,28 @@
+/* 胶囊高 32px，点击区域上下各扩 6px 到 44px */
+.hz-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hz-choices__item {
+  height: 32px;
+  padding: 0 14px;
+  margin: 6px 0;
+  font-size: var(--hz-font);
+  line-height: 30px;
+  color: var(--hz-muted);
+  background: var(--hz-paper);
+  border: 1px solid var(--hz-hair);
+  border-radius: var(--hz-radius-pill);
+}
+
+.hz-choices__item--on {
+  font-weight: 600;
+  color: var(--hz-ink);
+  border-color: var(--hz-brand);
+}
+
+.hz-choices__item--error {
+  border-color: var(--hz-danger);
+}

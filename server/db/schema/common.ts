@@ -3,14 +3,14 @@ import { bigint, date, index, integer, jsonb, pgTable, primaryKey, text } from '
 import { accountRef, idColumn, timestamptz } from './columns.ts'
 import { moduleKey } from './enums.ts'
 
-// 只插入，不更新、不删除；自动动作的 created_by 为空
+// 只插入，不更新、不删除；自动动作的 created_by 为空；账号类操作的 module 为空（公共，只有管理员能看）
 export const operationLogs = pgTable(
   'operation_logs',
   {
     id: idColumn(),
     createdAt: timestamptz().notNull().defaultNow(),
     createdBy: accountRef(),
-    module: moduleKey().notNull(),
+    module: moduleKey(),
     kind: text().notNull(),
     action: text().notNull(),
     targetType: text().notNull(),

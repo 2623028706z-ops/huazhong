@@ -1,5 +1,22 @@
 {
-  "pages": ["pages/dev-gallery/index"],
+  "pages": [
+    "pages/login/index",
+    "pages/home/index",
+    "pages/my/index",
+    "pages/inventory/index",
+    "pages/logs/index",
+    "pages/staff/index",
+    "pages/dev-gallery/index"
+  ],
+  "subPackages": [
+    { "root": "packages/sales", "pages": ["pages/home/index"] },
+    { "root": "packages/shipping", "pages": ["pages/home/index"] },
+    { "root": "packages/purchase", "pages": ["pages/home/index"] },
+    { "root": "packages/warehouse", "pages": ["pages/home/index"] },
+    { "root": "packages/finance", "pages": ["pages/home/index"] },
+    { "root": "packages/store", "pages": ["pages/home/index"] },
+    { "root": "packages/supplier", "pages": ["pages/home/index"] }
+  ],
   "window": {
     "navigationStyle": "custom"
   },

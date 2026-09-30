@@ -17,6 +17,7 @@ const staff = (modules: Viewer['modules']): Viewer => ({
   accountId: 2,
   type: 'staff',
   name: '李敏',
+  phone: '13700000002',
   modules,
   storeId: null,
   customerId: null,
@@ -46,8 +47,11 @@ const noScope = { storeIds: [], supplierIds: [] }
 describe('身份', () => {
   const row: AccountRow = {
     accountId: 2,
+    version: 1,
     type: 'staff',
     name: '李敏',
+    phone: '13700000002',
+    openid: null,
     enabled: true,
     modules: ['finance', 'sales'],
     storeId: null,

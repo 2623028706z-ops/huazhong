@@ -1,4 +1,5 @@
 // 枚举码的中文名和状态标签颜色：只在这里定义（02 章第 2 节、04 章第 2 节）
+import { copy } from './copy.ts'
 import type {
   accountTypes,
   afterOrigins,
@@ -110,6 +111,15 @@ export const labels = {
     typeof apStatuses
   >,
 } as const
+
+// 岗位：管理员写「管理员」，员工写模块名，多个用「、」连（03 章第 8.5 节）；身份行和员工列表共用
+export function roleLabelOf(account: {
+  admin: boolean
+  modules: readonly (typeof moduleKeys)[number][]
+}): string {
+  if (account.admin) return labels.accountType.admin
+  return account.modules.map((key) => labels.module[key]).join(copy.staff.roleSeparator)
+}
 
 // 状态标签三类颜色（02 章第 2 节）：done 绿、ended 灰、wait 琥珀
 export type StatusTone = 'done' | 'ended' | 'wait'

@@ -1,0 +1,4 @@
+<view class="hz-switch">
+  <text class="hz-switch__label">{{label}}</text>
+  <t-switch value="{{value}}" bind:change="onChange" />
+</view>

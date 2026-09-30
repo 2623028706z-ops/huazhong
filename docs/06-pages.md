@@ -43,7 +43,7 @@
 | M1 | 登录 | pages/login/index | 主包 | 所有人 | 一级 | |
 | M2 | 链接落地 | pages/link/index | 主包 | 所有人 | 一级 | |
 | M3 | 花众首页 | pages/home/index | 主包 | 管理员、多模块员工 | 一级 | |
-| M4 | 我的（员工） | pages/my/index | 主包 | 员工、管理员 | 一级 | |
+| M4 | 我的 | pages/my/index | 主包 | 所有账号（门店、供应商共用这一页，2026-10-03） | 一级 | |
 | M5 | 库存查询 | pages/inventory/index | 主包 | 没有仓库模块权限的员工 | 二级 | |
 | M6 | 操作日志 | pages/logs/index | 主包 | 员工、管理员 | 二级 | |
 | M7 | 员工与岗位 | pages/staff/index | 主包 | 管理员 | 二级 | 弹层 |
@@ -52,7 +52,7 @@
 | S1 | 订货 | packages/store/pages/shop/index | store | 门店 | 二级 | |
 | S2 | 购物车 | packages/store/pages/cart/index | store | 门店 | 一级 | |
 | S3 | 订单 | packages/store/pages/orders/index | store | 门店 | 二级 | |
-| S4 | 我的（门店） | packages/store/pages/my/index | store | 门店 | 一级 | |
+| S4 | 我的（门店） | 同 M4 | 主包 | 门店 | 一级 | |
 | S5 | 结算 | packages/store/pages/checkout/index | store | 门店 | 二级 | 是 |
 | S6 | 订单详情 | packages/store/pages/order-detail/index | store | 门店 | 二级 | |
 | S7 | 售后 | packages/store/pages/afters/index | store | 门店 | 二级 | |
@@ -61,7 +61,7 @@
 | P0 | 供应商首页 | packages/supplier/pages/home/index | supplier | 供应商 | 一级 | |
 | P1 | 填报 | packages/supplier/pages/invites/index | supplier | 供应商 | 一级 | |
 | P2 | 采购单 | packages/supplier/pages/orders/index | supplier | 供应商 | 二级 | |
-| P3 | 我的（供应商） | packages/supplier/pages/my/index | supplier | 供应商 | 一级 | |
+| P3 | 我的（供应商） | 同 M4 | 主包 | 供应商 | 一级 | |
 | P4 | 填报表单 | packages/supplier/pages/invite-fill/index | supplier | 供应商 | 二级 | 是 |
 | P5 | 对账 | packages/supplier/pages/statement/index | supplier | 供应商 | 二级 | |
 | X1 | 销售首页 | packages/sales/pages/home/index | sales | 销售、管理员 | 一级或二级 | |
@@ -118,9 +118,10 @@
 ### M1 登录
 
 - 入口：没有绑定账号时打开任何页面；退出登录后。
-- 区块：品牌背景整屏（`hz-cover` `full`，下部渐亮到墙色）→ 上部 logo → 下部隐私协议勾选（微信隐私保护指引）→「手机号快速验证登录」。
+- 区块：品牌背景整屏（`hz-cover` `full`，下部渐亮到墙色）→ 上部 logo → 下部隐私协议勾选（「我已阅读并同意《花众小程序隐私保护指引》」，点书名号部分打开微信隐私保护指引）→「手机号快速验证登录」。没勾选时点按钮的表现见 03 章第 8.5 节，提示写在按钮上方的 `hz-error`。
+- 小程序启动先进本页：已绑定就按 `landing` 直接 `reLaunch`，不显示登录区；账号停用显示 02 章第 5.3 节的停用状态（「退出登录」调解绑，之后回到登录区）。
 - 落点：按 `landing`。从分享卡片进来的，登录后回 M2 继续。
-- 报错：按 05 章 `POST /auth/bind-phone` 返回的 `message`。
+- 报错：按 05 章 `POST /auth/bind-phone` 返回的 `message`；用户在微信授权框里点了拒绝，不报错，留在本页。
 - 接口：手机号登录绑定、当前账号。
 
 ### M2 链接落地
@@ -142,21 +143,21 @@
 
 ### M5 库存查询
 
-- 搜索 + 分类筛选。行：花材、分类、库存数量和单位。只读。
+- 搜索（名称、编码）+ 分类筛选。行：花材、编码、分类、库存数量和单位；停用的标「已停用」。只读，不能点开。
 - 空状态：「暂无符合条件的库存」。
 - 接口：库存列表。订阅 `stock`。
 
 ### M6 操作日志
 
-- 筛选：模块（`GET /me` 的 `modules` 多于一项时才显示）、日期。卡片：时间、模块、操作、单号、操作人。点开弹层：原因、修改前、修改后。
+- 筛选：模块（`GET /me` 的 `modules` 多于一项时才显示）、日期。卡片：时间、模块（公共日志写「公共」）、操作、单号或对象、操作人。点开弹层：原因、修改前、修改后（按字段一行一项）。
 - 空状态：「暂无操作日志」。
 - 接口：日志列表、日志详情。
 
 ### M7 员工与岗位
 
 - 列表：名字、岗位（多个用「、」连）、启用状态。底栏「新增员工」（`create`）。
-- 弹层（短表单）：名字、登录手机号、模块多选、管理员开关、启用。
-- 报错：「请填写名字」「请填写 11 位登录手机号」「这个手机号已经被其他账号使用」「请至少选一个模块」。
+- 弹层（短表单）：名字、登录手机号、管理员开关、模块多选（管理员开关打开时隐藏）、启用（新增时不显示）。弹层底部：「解绑微信」（`unbindStaffWechat`，次，确认后解绑，弹层留着）+「保存」。
+- 报错：「请填写名字」「请填写 11 位登录手机号」「这个手机号已经被其他账号使用」「请至少选一个模块」「至少要保留一个启用的管理员」「没有修改内容」。
 - 落点：保存后关弹层，留在列表。
 - 接口：员工列表、新建员工、修改员工。
 

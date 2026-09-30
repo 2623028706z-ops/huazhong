@@ -38,6 +38,11 @@ function confirmOf(host: ConfirmHost): ConfirmComponent {
   return found
 }
 
+// 其他确认（退出登录、解绑微信）：同一个确认框，返回用户是否点了确认
+export function confirmAsk(host: ConfirmHost, options: AskOptions): Promise<boolean> {
+  return confirmOf(host).ask(options)
+}
+
 // 改过内容就问一次，返回能不能离开
 export function confirmLeave(host: ConfirmHost, changed: boolean): Promise<boolean> {
   if (!changed) return Promise.resolve(true)

@@ -1,0 +1,3 @@
+.hz-module-home {
+  padding: 12px var(--hz-gap-home);
+}

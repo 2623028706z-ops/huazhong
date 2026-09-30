@@ -8,7 +8,9 @@
     size="medium"
     block
     disabled="{{disabled}}"
+    open-type="{{openType}}"
     bind:tap="onTap"
+    bind:getphonenumber="onPhone"
   >
     <view wx:if="{{spinning}}" class="hz-button__spinner"></view>
     {{loading ? submitting : text}}

@@ -1,0 +1,11 @@
+{
+  "usingComponents": {
+    "hz-cover": "/components/hz-cover/index",
+    "hz-navbar": "/components/hz-navbar/index",
+    "hz-brand": "/components/hz-brand/index",
+    "hz-hub": "/components/hz-hub/index",
+    "hz-state": "/components/hz-state/index",
+    "hz-error": "/components/hz-error/index",
+    "hz-tabbar": "/components/hz-tabbar/index"
+  }
+}

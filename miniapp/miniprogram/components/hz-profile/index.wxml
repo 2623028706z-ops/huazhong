@@ -1,0 +1,23 @@
+<view class="u-card hz-profile__card">
+  <view class="hz-profile__avatar u-serif-amount">{{initial}}</view>
+  <view class="hz-profile__who">
+    <text class="hz-profile__name u-serif-amount">{{name}}</text>
+    <text class="hz-profile__sub">{{sub}}</text>
+  </view>
+</view>
+<view class="u-card hz-profile__menu">
+  <view wx:for="{{rows}}" wx:key="key" class="hz-profile__row" data-key="{{item.key}}" bindtap="onRow">
+    <text class="hz-icon hz-icon--{{item.icon}} hz-profile__icon"></text>
+    <text class="hz-profile__text">{{item.text}}</text>
+    <text class="hz-icon hz-icon--chevron-right hz-profile__go"></text>
+  </view>
+</view>
+<view class="hz-profile__logout">
+  <hz-button kind="secondary" text="{{texts.logout}}" bind:press="onLogout" />
+</view>
+<hz-sheet show="{{showDetails}}" title="{{texts.profile}}" bind:close="onCloseDetails">
+  <view wx:for="{{details}}" wx:key="label" class="hz-profile__detail">
+    <text class="hz-profile__label">{{item.label}}</text>
+    <text>{{item.value}}</text>
+  </view>
+</hz-sheet>

@@ -24,7 +24,10 @@ import { actorLabelOf, type Viewer } from './domain/viewer.ts'
 import { IDEMPOTENCY_HEADER } from './endpoint.ts'
 
 interface LogEntry {
-  module: ModuleKey
+  // null = 公共（账号类操作，只有管理员能看）
+  module: ModuleKey | null
+  // 操作人和请求的账号不同时给：绑定微信时请求还没有账号，操作人是被绑定的账号本人
+  actor?: Viewer
   kind: string
   action: string
   targetType: string
@@ -42,10 +45,13 @@ export interface WriteContext {
   // 事务提交后推给订阅了这些主题的连接；scope 是涉及的门店、供应商，用于服务端过滤
   notify(changes: { topic: Topic; version: number | null }[], scope?: Partial<ChangeScope>): void
   nextDocNo(prefix: DocPrefix): Promise<string>
+  // 查下来发现什么都不用改（例如已经解绑过）：这次事务不写日志也不算漏
+  unchanged(): void
 }
 
 class TxContext implements WriteContext {
   private logged = false
+  private isUnchanged = false
   private readonly changes = new Map<Topic, number | null>()
   private readonly storeIds = new Set<string>()
   private readonly supplierIds = new Set<string>()
@@ -56,16 +62,21 @@ class TxContext implements WriteContext {
     private readonly clock: Clock,
   ) {}
 
-  async log(entry: LogEntry): Promise<void> {
+  async log({ actor, ...entry }: LogEntry): Promise<void> {
+    const by = actor ?? this.viewer
     await this.tx.insert(operationLogs).values({
       ...entry,
       reason: entry.reason ?? '',
       before: entry.before ?? null,
       after: entry.after ?? null,
-      createdBy: this.viewer?.accountId ?? null,
-      actorLabel: actorLabelOf(this.viewer),
+      createdBy: by?.accountId ?? null,
+      actorLabel: actorLabelOf(by),
     })
     this.logged = true
+  }
+
+  unchanged(): void {
+    this.isUnchanged = true
   }
 
   notify(
@@ -99,7 +110,8 @@ class TxContext implements WriteContext {
 
   // 每个写事务都要写操作日志（05 章第 1.7 节）；漏了是代码错误
   async finish(): Promise<void> {
-    if (!this.logged) throw new Error('write transaction without operation log')
+    if (!this.logged && !this.isUnchanged)
+      throw new Error('write transaction without operation log')
     if (this.changes.size === 0) return
     const payload: ChangesPayload = {
       changes: [...this.changes].map(([topic, version]) => ({ topic, version })),

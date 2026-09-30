@@ -1,8 +1,44 @@
 // 写入示例数据（data.ts）。第一个管理员的 id 和 created_by 相同（04 章第 3.1 节）
 import { sql } from 'drizzle-orm'
 import type { Db, Tx } from '../client.ts'
-import { accountModules, accounts, customers, stores, suppliers } from '../schema/index.ts'
-import { seedAccounts, seedCustomers, seedStores, seedSuppliers } from './data.ts'
+import {
+  accountModules,
+  accounts,
+  customers,
+  materialCategories,
+  materials,
+  stockBatches,
+  stores,
+  suppliers,
+} from '../schema/index.ts'
+import {
+  seedAccounts,
+  seedCustomers,
+  seedMaterialCategories,
+  seedMaterials,
+  seedStores,
+  seedSuppliers,
+} from './data.ts'
+
+async function insertMaterials(tx: Tx, createdBy: number): Promise<void> {
+  const categoryIds = new Map<string, number>()
+  for (const c of seedMaterialCategories) {
+    const [row] = await tx
+      .insert(materialCategories)
+      .values({ name: c.name, sort: c.sort, createdBy })
+      .returning()
+    if (row) categoryIds.set(c.key, row.id)
+  }
+  for (const m of seedMaterials) {
+    const categoryId = categoryIds.get(m.category) ?? 0
+    const values = { code: m.code, name: m.name, categoryId, unit: m.unit, createdBy }
+    const [row] = await tx.insert(materials).values(values).returning()
+    if (!row) continue
+    await tx
+      .insert(stockBatches)
+      .values(m.batches.map((b) => ({ ...b, materialId: row.id, createdBy })))
+  }
+}
 
 type Admin = (typeof seedAccounts)[0]
 
@@ -42,6 +78,7 @@ export async function seed(db: Db): Promise<void> {
     const [admin, ...rest] = seedAccounts
     const adminId = await insertFirstAdmin(tx, admin)
     const { storeIds, supplierIds } = await insertOrg(tx, adminId)
+    await insertMaterials(tx, adminId)
     for (const a of rest) {
       const storeId = 'store' in a ? (storeIds.get(a.store) ?? null) : null
       const supplierId = 'supplier' in a ? (supplierIds.get(a.supplier) ?? null) : null

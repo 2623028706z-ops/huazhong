@@ -22,6 +22,72 @@ export const seedSuppliers = [
   { key: 'sp3', name: '滇花源' },
 ] as const
 
+// 07 章第 12.4 节：花材分类、花材、批次（阶段 2 为库存查询提前建）
+export const seedMaterialCategories = [
+  { key: 'rose', name: '玫瑰', sort: 1 },
+  { key: 'main', name: '主花', sort: 2 },
+  { key: 'filler', name: '配花', sort: 3 },
+  { key: 'leaf', name: '叶材', sort: 4 },
+] as const
+
+type CategoryKey = (typeof seedMaterialCategories)[number]['key']
+
+interface SeedMaterial {
+  key: string
+  code: string
+  name: string
+  category: CategoryKey
+  unit: string
+  // 入库日期、入库数量、剩余
+  batches: readonly { inDate: string; qty: number; leftQty: number }[]
+}
+
+export const seedMaterials = [
+  {
+    key: 'w1',
+    code: 'HC-0001',
+    name: '粉雪山玫瑰',
+    category: 'rose',
+    unit: '枝',
+    batches: [
+      { inDate: '2026-09-26', qty: 28, leftQty: 28 },
+      { inDate: '2026-09-28', qty: 200, leftQty: 200 },
+    ],
+  },
+  {
+    key: 'w2',
+    code: 'HC-0002',
+    name: '白玫瑰',
+    category: 'rose',
+    unit: '枝',
+    batches: [{ inDate: '2026-09-28', qty: 146, leftQty: 146 }],
+  },
+  {
+    key: 'w3',
+    code: 'HC-0003',
+    name: '向日葵',
+    category: 'main',
+    unit: '枝',
+    batches: [{ inDate: '2026-09-27', qty: 70, leftQty: 60 }],
+  },
+  {
+    key: 'w4',
+    code: 'HC-0004',
+    name: '洋桔梗',
+    category: 'filler',
+    unit: '枝',
+    batches: [{ inDate: '2026-09-28', qty: 95, leftQty: 95 }],
+  },
+  {
+    key: 'w5',
+    code: 'HC-0005',
+    name: '尤加利',
+    category: 'leaf',
+    unit: '枝',
+    batches: [{ inDate: '2026-09-29', qty: 120, leftQty: 86 }],
+  },
+] as const satisfies readonly SeedMaterial[]
+
 type StoreKey = (typeof seedStores)[number]['key']
 type SupplierKey = (typeof seedSuppliers)[number]['key']
 

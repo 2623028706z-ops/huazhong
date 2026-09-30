@@ -1,0 +1,67 @@
+/* 字标在上部；隐私勾选和登录按钮落在下部渐亮的墙色上（docs/design/mock-login.html） */
+.hz-login {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 70vh;
+  padding: 0 var(--hz-gap-home) 58px;
+}
+
+.hz-login__logo {
+  display: block;
+  height: 46px;
+  margin: 160px auto 0;
+}
+
+.hz-login__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hz-login__agree {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--hz-tap);
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+.hz-login__agree--shake {
+  animation: hz-shake 0.4s;
+}
+
+.hz-login__check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: var(--hz-font-sm);
+  border: 1px solid var(--hz-muted);
+  border-radius: 50%;
+}
+
+.hz-login__check--on {
+  color: var(--hz-on-brand);
+  background: var(--hz-brand);
+  border-color: var(--hz-brand);
+}
+
+.hz-login__contract {
+  color: var(--hz-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--hz-brand);
+}
+
+@keyframes hz-shake {
+  25% {
+    transform: translateX(-6px);
+  }
+
+  75% {
+    transform: translateX(6px);
+  }
+}

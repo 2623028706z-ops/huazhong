@@ -13,6 +13,7 @@
       "entry": [
         "miniprogram/app.ts",
         "miniprogram/pages/**/index.ts",
+        "miniprogram/packages/*/pages/**/index.ts",
         "miniprogram/components/*/index.ts",
         "test/**/*.test.ts"
       ],

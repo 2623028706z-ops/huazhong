@@ -117,7 +117,7 @@
 
 | 字段 | 类型与约束 | 说明 | 原型字段 |
 |---|---|---|---|
-| module | `module_key NOT NULL` | 门店端的操作记在 `sales`，供应商端的记在 `purchase`（原型如此） | `module` |
+| module | `module_key NULL` | 门店端的操作记在 `sales`，供应商端的记在 `purchase`（原型如此）；账号类操作（绑定、解绑微信，新增、修改员工）为 `NULL`，界面叫「公共」，只有管理员能看（03 章第 8.5 节） | `module` |
 | kind | `TEXT NOT NULL` | 对象类别，例如「订单」「售后」「采购到货」 | `kind` |
 | action | `TEXT NOT NULL` | 例如「确认订单」「作废售后」 | `action` |
 | target_type | `TEXT NOT NULL` | 表名，例如 `orders` | 无 |

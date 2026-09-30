@@ -1,0 +1,87 @@
+/* 身份卡、入口列表、退出登录（docs/design/mock-ext.html「门店 · 我的」） */
+.hz-profile__card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 18px var(--hz-card-pad);
+}
+
+.hz-profile__avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  font-size: var(--hz-font-amount);
+  color: var(--hz-brand);
+  background: var(--hz-tint);
+  border-radius: 50%;
+}
+
+.hz-profile__who {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.hz-profile__name {
+  font-size: var(--hz-font-amount);
+  letter-spacing: 0.1em;
+}
+
+.hz-profile__sub {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+.hz-profile__menu {
+  padding: 0 var(--hz-card-pad);
+  margin-top: 12px;
+}
+
+.hz-profile__row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  height: 54px;
+  font-size: var(--hz-font-md);
+}
+
+.hz-profile__row + .hz-profile__row {
+  border-top: 1px solid var(--hz-line);
+}
+
+.hz-profile__icon {
+  font-size: var(--hz-icon-md);
+  color: var(--hz-brand);
+}
+
+.hz-profile__text {
+  flex: 1;
+}
+
+.hz-profile__go {
+  font-size: var(--hz-icon-sm);
+  color: var(--hz-muted);
+}
+
+.hz-profile__logout {
+  margin-top: 24px;
+}
+
+.hz-profile__detail {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--hz-row-pad) 0;
+  font-size: var(--hz-font-md);
+}
+
+.hz-profile__detail + .hz-profile__detail {
+  border-top: 1px solid var(--hz-line);
+}
+
+.hz-profile__label {
+  color: var(--hz-muted);
+}

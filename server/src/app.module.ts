@@ -7,6 +7,9 @@ import { ResponseInterceptor } from './common/response.interceptor.ts'
 import type { Env } from './env.ts'
 import { JobsModule } from './jobs/jobs.module.ts'
 import { AccountsModule } from './modules/accounts/accounts.module.ts'
+import { LogsModule } from './modules/logs/logs.module.ts'
+import { StoreModule } from './modules/store/store.module.ts'
+import { WarehouseModule } from './modules/warehouse/warehouse.module.ts'
 import { RealtimeModule } from './realtime/realtime.module.ts'
 
 @Module({})
@@ -14,7 +17,15 @@ export class AppModule {
   static forRoot(env: Env): DynamicModule {
     return {
       module: AppModule,
-      imports: [CommonModule.forRoot(env), RealtimeModule, JobsModule, AccountsModule],
+      imports: [
+        CommonModule.forRoot(env),
+        RealtimeModule,
+        JobsModule,
+        AccountsModule,
+        LogsModule,
+        WarehouseModule,
+        StoreModule,
+      ],
       providers: [
         { provide: APP_GUARD, useClass: AccessGuard },
         { provide: APP_FILTER, useClass: ErrorFilter },

@@ -1,6 +1,6 @@
 <wxs src="../../core/format.wxs" module="format" />
 <view class="u-card hz-card" bindtap="onTap">
-  <view class="hz-card__row hz-card__row--head">
+  <view wx:if="{{date || status}}" class="hz-card__row hz-card__row--head">
     <text wx:if="{{date && today}}">{{format.formatCardDate(date, today)}}</text>
     <hz-status kind="{{statusKind}}" code="{{status}}" />
   </view>

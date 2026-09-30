@@ -1,0 +1,20 @@
+<hz-cover />
+<hz-navbar transparent />
+<view class="u-home">
+  <hz-brand lead="{{title}}" />
+  <view class="u-home__body">
+    <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+    <hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+    <hz-profile
+      wx:if="{{profile}}"
+      name="{{profile.name}}"
+      sub="{{profile.sub}}"
+      menus="{{profile.menus}}"
+      details="{{profile.details}}"
+      bind:select="onSelect"
+      bind:logout="onLogout"
+    />
+  </view>
+</view>
+<hz-confirm id="hz-confirm" />
+<hz-tabbar tabs="{{tabs}}" current="my" />

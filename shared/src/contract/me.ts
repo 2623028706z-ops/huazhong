@@ -15,6 +15,7 @@ export const meResponseSchema = z.object({
   id: idSchema,
   type: z.enum(accountTypes),
   name: z.string(),
+  phone: z.string(),
   orgLabel: z.string().nullable(),
   storeId: idSchema.nullable(),
   supplierId: idSchema.nullable(),
