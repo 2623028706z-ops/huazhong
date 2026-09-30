@@ -1,20 +1,23 @@
 /* 设计变量：唯一出处，取值见 02 章第 2 节。组件和 TDesign 主题都读这些变量 */
 page {
   /* 颜色 */
-  --hz-brand: #934832; /* 主按钮、导航选中、图标、链接、待付金额 */
-  --hz-ink: #2f2622; /* 正文 */
-  --hz-muted: #766a60; /* 次要文字，对比度 ≥ 4.5:1 */
-  --hz-paper: #f6f1ea; /* 顶栏、底栏、首页底色 */
-  --hz-bg: #f5f1eb; /* 页面底色、对账格 */
-  --hz-hair: #e4dacd; /* 描边、分隔线、禁用按钮底色 */
-  --hz-line: #ece4da; /* 列表行分隔线 */
-  --hz-tint: #ecdcd1; /* 头像、购物车图标底色 */
-  --hz-green: #5d7a5f; /* 完成状态、入库数量 */
-  --hz-amber: #a4692a; /* 等待状态、改价标记 */
-  --hz-danger: #a83f36; /* 表单错误、出库数量、退出登录 */
-  --hz-danger-bg: #f8e9e6;
-  --hz-notice-bg: #f7ebe0;
-  --hz-notice-ink: #8a4f2c;
+  --hz-brand: #b75d45; /* 陶土红：logo、图标、主按钮底、选中短线，不做文字色 */
+  --hz-ink: #3b2a24; /* 标题、正文、金额、选中的文字 */
+  --hz-muted: #7a5a4a; /* 次要文字、箭头 */
+  --hz-paper: #fffbf6; /* 亮格：底栏、实底卡片、选中的格子 */
+  --hz-card: #fffbf6db; /* 卡片（亮格 86%） */
+  --hz-bg: #f6ebdf; /* 浅杏墙：页面底色 */
+  --hz-hair: #ecd4c6; /* 描边、禁用按钮底色 */
+  --hz-line: #f8ebe4; /* 卡片内分隔线 */
+  --hz-tint: #f8ebe4; /* 头像底色 */
+  --hz-green: #4c6a48; /* 完成 */
+  --hz-green-bg: #e7ecdf;
+  --hz-amber: #8a5a1e; /* 等待、警告标记 */
+  --hz-amber-bg: #f6e7d2;
+  --hz-grey: #6f665f; /* 结束、无效 */
+  --hz-grey-bg: #eeeae5;
+  --hz-danger: #a3313d; /* 报错（玫瑰红） */
+  --hz-danger-bg: #f9e4e3;
 
   /* 字体 */
   --hz-serif: 'HZ Serif', 'Songti SC', serif; /* 思源宋体子集，core/font.ts 加载 */
@@ -24,7 +27,8 @@ page {
   --hz-font-title: 17px;
 
   /* 尺寸 */
-  --hz-radius: 2px;
+  --hz-radius: 12px;
+  --hz-radius-inner: 9px;
   --hz-radius-sheet: 14px;
   --hz-tap: 44px;
   --hz-nav: 44px;

@@ -1,0 +1,146 @@
+<!doctype html><meta charset="utf-8">
+<style>html,body{margin:0}canvas{display:block}</style>
+<canvas id="c"></canvas>
+<script>
+// 花众首页品牌背景：纸墙 + 窗光 + 花影，全部程序绘制。设计单位 390×844，输出 3 倍
+const S = 3, W = 390 * S, H = 844 * S;
+const V = new URLSearchParams(location.search).get('v') || 'a';
+const rng = seed => () => { seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const layer = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; return [c, c.getContext('2d', { willReadFrequently: true })]; };
+const read = c => c.getContext('2d').getImageData(0, 0, W, H).data;
+const TAU = Math.PI * 2;
+
+// 值噪声：随机小图放大再轻微模糊
+function noise(r, cell) {
+  const w = Math.ceil(W / cell) + 1, h = Math.ceil(H / cell) + 1;
+  const s = document.createElement('canvas'); s.width = w; s.height = h;
+  const sx = s.getContext('2d'), d = sx.createImageData(w, h);
+  for (let i = 0; i < d.data.length; i += 4) { d.data[i] = d.data[i + 1] = d.data[i + 2] = r() * 255; d.data[i + 3] = 255; }
+  sx.putImageData(d, 0, 0);
+  const [c, x] = layer(); x.imageSmoothingQuality = 'high';
+  if (cell > 2) x.filter = `blur(${cell * .45}px)`;
+  x.drawImage(s, 0, 0, w * cell, h * cell);
+  return read(c);
+}
+
+// —— 植物剪影（白色画在透明层上，之后当作遮挡） ——
+function petals(x, r, cx, cy, R, n = 5) {
+  const rot = r() * TAU;
+  for (let i = 0; i < n; i++) { const a = rot + i * TAU / n; x.beginPath(); x.ellipse(cx + Math.cos(a) * R * .55, cy + Math.sin(a) * R * .55, R * .52, R * .4, a, 0, TAU); x.fill(); }
+}
+function bloom(x, r, cx, cy, R) {
+  x.beginPath(); x.arc(cx, cy, R * .78, 0, TAU); x.fill();
+  const n = 9 + Math.floor(r() * 4);
+  for (let i = 0; i < n; i++) { const a = i / n * TAU + r() * .3; x.beginPath(); x.arc(cx + Math.cos(a) * R * .72, cy + Math.sin(a) * R * .72, R * (.28 + r() * .12), 0, TAU); x.fill(); }
+}
+function leaf(x, cx, cy, a, L) {
+  x.save(); x.translate(cx, cy); x.rotate(a); x.beginPath(); x.moveTo(0, 0);
+  x.quadraticCurveTo(L * .45, -L * .3, L, 0); x.quadraticCurveTo(L * .45, L * .3, 0, 0); x.fill(); x.restore();
+}
+function line(x, pts, w0, w1) {
+  for (let i = 1; i < pts.length; i++) { x.lineWidth = w0 + (w1 - w0) * i / pts.length; x.beginPath(); x.moveTo(...pts[i - 1]); x.lineTo(...pts[i]); x.stroke(); }
+}
+// 梅枝：折角生长，枝上开花、结苞
+function plum(x, r, px, py, a, len, w, depth) {
+  const pts = [[px, py]]; let cx = px, cy = py;
+  const n = Math.max(3, Math.round(len / 16));
+  for (let k = 0; k < n; k++) {
+    a += (r() - .5) * .6;
+    cx += Math.cos(a) * len / n; cy += Math.sin(a) * len / n; pts.push([cx, cy]);
+    if (depth < 3 && k > 0 && r() < .42) plum(x, r, cx, cy, a + (r() < .5 ? -1 : 1) * (.45 + r() * .45), len * (.32 + r() * .3), w * .55, depth + 1);
+    if (depth > 0 && r() < .3) petals(x, r, cx + (r() - .5) * 10, cy + (r() - .5) * 10, 6.5 + r() * 4);
+    else if (r() < .3) { x.beginPath(); x.arc(cx + (r() - .5) * 8, cy + (r() - .5) * 8, 2.4 + r() * 2, 0, TAU); x.fill(); }
+  }
+  line(x, pts, w, w * .45);
+  petals(x, r, cx, cy, 7.5 + r() * 3);
+}
+// 一束：从瓶口散开的花茎，圆花头 + 叶 + 小碎花
+function bouquet(x, r, bx, by, dir) {
+  for (let i = 0; i < 8; i++) {
+    const tx = bx + dir * (20 + r() * 190), ty = by - 300 - r() * 200;
+    const mx = (bx + tx) / 2 + (r() - .5) * 50, my = (by + ty) / 2 + 30;
+    x.lineWidth = 2.6 + r() * 1.2; x.beginPath(); x.moveTo(bx + (r() - .5) * 16, by); x.quadraticCurveTo(mx, my, tx, ty); x.stroke();
+    const t = .45 + r() * .3, lx = (1 - t) ** 2 * bx + 2 * (1 - t) * t * mx + t * t * tx, ly = (1 - t) ** 2 * by + 2 * (1 - t) * t * my + t * t * ty;
+    if (r() < .7) leaf(x, lx, ly, Math.atan2(ty - my, tx - mx) + (r() < .5 ? -.8 : .8), 42 + r() * 26);
+    if (i < 5) bloom(x, r, tx, ty, 19 + r() * 12);
+    else for (let k = 0; k < 14; k++) { const a = r() * TAU, d = r() * 26; x.beginPath(); x.arc(tx + Math.cos(a) * d * 1.4, ty + Math.sin(a) * d, 2.2 + r() * 2.2, 0, TAU); x.fill(); }
+  }
+}
+// 一枝：长茎斜入，两片叶，顶端一朵花和一个花苞
+function single(x, r) {
+  const pts = [[400, 660]]; let cx = 400, cy = 660, a = -2.02;
+  for (let k = 0; k < 42; k++) {
+    a += .011 + (r() - .5) * .02; cx += Math.cos(a) * 9; cy += Math.sin(a) * 9; pts.push([cx, cy]);
+    if (k === 13) leaf(x, cx, cy, a - .75, 74);
+    if (k === 22) leaf(x, cx, cy, a + .85, 60);
+    if (k === 28) { const b = [[cx, cy]]; let bx = cx, by = cy, ba = a - .5; for (let j = 0; j < 8; j++) { ba += .04; bx += Math.cos(ba) * 8; by += Math.sin(ba) * 8; b.push([bx, by]); } line(x, b, 1.6, 1.2); x.beginPath(); x.ellipse(bx, by - 4, 4.5, 8, ba + Math.PI / 2, 0, TAU); x.fill(); }
+  }
+  line(x, pts, 4, 2.6);
+  bloom(x, r, cx, cy, 30);
+}
+// 窗光：o 为窗在墙上投影的一角，u、v 为两条边（设计单位）；plant 画影子；base 为影子离墙最近处（越远越虚）
+const CFG = {
+  a: { seed: 11, win: { o: [128, 10], u: [300, -64], v: [96, 470], cols: 2, rows: 2, gap: .035 }, blur: [.7, 5], base: [440, 470],
+       plant: (x, r) => { plum(x, r, 440, 470, -2.45, 300, 8, 0); plum(x, r, 440, 380, -2.85, 200, 5, 1); plum(x, r, 420, 250, -2.75, 170, 4, 1); } },
+  b: { seed: 5, win: { o: [-40, 60], u: [300, 40], v: [-50, 480], cols: 2, rows: 3, gap: .03 }, blur: [.9, 6], base: [40, 700],
+       plant: (x, r) => bouquet(x, r, 40, 700, 1) },
+  // 甲 · 窗：杏色墙，右上斜窗光一直落到右下，梅枝影在右下
+  w: { seed: 21, win: { o: [150, -40], u: [280, -36], v: [110, 700], cols: 2, rows: 2, gap: .03 }, blur: [1, 5], base: [430, 720], noLift: true,
+       alb: [255, 250, 242], amb: [.945, .9, .855], sun: [.052, .085, .112], glow: [.01, .014, .018],
+       plant: (x, r) => { plum(x, r, 430, 700, -2.5, 280, 7, 1); } },
+  c: { seed: 3, win: { o: [140, -30], u: [190, -26], v: [180, 620], cols: 1, rows: 1, gap: 0 }, blur: [.7, 4.5], base: [400, 660],
+       plant: (x, r) => single(x, r) },
+};
+const P = ([x, y]) => [x * S, y * S];
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, t) => { t = Math.min(1, Math.max(0, (t - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+function render(cfg) {
+  const r = rng(cfg.seed);
+  // 1. 窗光遮罩：几块窗格，边缘柔化，离窗越远越淡
+  const [lc, lx] = layer(); lx.fillStyle = '#fff'; lx.filter = `blur(${5 * S}px)`;
+  const { o, u, v, cols, rows, gap } = cfg.win;
+  const at = (s, t) => P([o[0] + u[0] * s + v[0] * t, o[1] + u[1] * s + v[1] * t]);
+  const pw = (1 - gap * (cols - 1)) / cols, ph = (1 - gap * (rows - 1)) / rows;
+  for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
+    const s0 = i * (pw + gap), t0 = j * (ph + gap);
+    lx.beginPath(); lx.moveTo(...at(s0, t0)); lx.lineTo(...at(s0 + pw, t0)); lx.lineTo(...at(s0 + pw, t0 + ph)); lx.lineTo(...at(s0, t0 + ph)); lx.fill();
+  }
+  lx.filter = 'none'; lx.globalCompositeOperation = 'destination-in';
+  const g = lx.createLinearGradient(...at(0, 0), ...at(0, 1)); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,.45)');
+  lx.fillStyle = g; lx.fillRect(0, 0, W, H);
+  const light = read(lc);
+
+  // 2. 花影：同一剪影做一虚一实，离墙近处实、远处虚
+  const [pc, px] = layer(); px.setTransform(S, 0, 0, S, 0, 0); px.fillStyle = px.strokeStyle = '#fff'; px.lineCap = 'round'; px.lineJoin = 'round';
+  cfg.plant(px, r);
+  const soft = b => { const [c, x] = layer(); x.filter = `blur(${b * S}px)`; x.drawImage(pc, 0, 0); return read(c); };
+  const near = soft(cfg.blur[0]), far = soft(cfg.blur[1]);
+
+  // 3. 纸墙质感：大块明暗 + 灰泥纹 + 细颗粒
+  const n1 = noise(r, 90 * S), n2 = noise(r, 6 * S), n3 = noise(r, 2);
+  const [hc, hx] = layer(); hx.filter = `blur(${40 * S}px)`; hx.drawImage(lc, 0, 0); const halo = read(hc);
+
+  // 4. 合成：底色 × (环境光 + 暖阳 × 光照 × 未被遮挡)
+  const [oc, ox] = layer(); const img = ox.createImageData(W, H), d = img.data;
+  const { alb = [246, 240, 232], amb = [.85, .822, .79], sun = [.25, .19, .1], glow = [.06, .045, .02] } = cfg;
+  const [bx, by] = P(cfg.base);
+  for (let y = 0; y < H; y++) {
+    const lift = cfg.noLift ? 0 : smooth(.52, .9, y / H); // 下部提亮到纸色，入口直接落在墙上
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      const t = Math.min(1, Math.hypot(x - bx, y - by) / (360 * S));
+      const occ = lerp(near[i + 3], far[i + 3], t) / 255;
+      const L = light[i + 3] / 255 * (1 - occ * .9);
+      const tex = 1 + (n1[i] / 255 - .5) * .06 + (n2[i] / 255 - .5) * (.012 + .035 * L) + (n3[i] / 255 - .5) * .012;
+      const hl = halo[i + 3] / 255;
+      for (let k = 0; k < 3; k++) d[i + k] = Math.min(255, alb[k] * tex * (lerp(amb[k], 1, lift) + (sun[k] * L + glow[k] * hl) * (1 - lift * .7)));
+      d[i + 3] = 255;
+    }
+  }
+  const out = document.getElementById('c'); out.width = W; out.height = H; out.style.width = W + 'px';
+  out.getContext('2d').putImageData(img, 0, 0);
+  document.title = 'done';
+}
+render(CFG[V]);
+</script>

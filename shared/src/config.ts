@@ -8,7 +8,6 @@ export const STORE_INVITE_TTL_DAYS = 7
 export const STORE_INVITE_TOKEN_BYTES = 32
 export const AFTER_IMAGE_MAX_COUNT = 3
 export const IMAGE_MAX_BYTES = 3 * 1024 * 1024
-export const COVER_MAX_BYTES = 10 * 1024 * 1024
 export const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
 export const UPLOAD_TICKET_TTL_MINUTES = 10
 export const FILE_URL_TTL_MINUTES = 60

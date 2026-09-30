@@ -60,7 +60,6 @@ function supplierCanSubscribe(viewer: Viewer, { kind, key }: ParsedTopic): boole
 export function canSubscribe(viewer: Viewer, topic: Topic): boolean {
   const parsed = parseTopic(topic)
   if (parsed.kind === 'account') return parsed.key === String(viewer.accountId)
-  if (parsed.kind === 'brand') return true
   if (viewer.type === 'store') return storeCanSubscribe(viewer, parsed)
   if (viewer.type === 'supplier') return supplierCanSubscribe(viewer, parsed)
   return staffCanSubscribe(viewer, parsed)

@@ -136,8 +136,7 @@
 |---|---|---|
 | `doc_sequences` | `prefix TEXT`、`day DATE`、`last INTEGER NOT NULL` | 主键 `(prefix, day)`。发号：`INSERT … VALUES (?, ?, 1) ON CONFLICT (prefix, day) DO UPDATE SET last = doc_sequences.last + 1 RETURNING last`，和业务写入在同一事务里 |
 | `idempotency_keys` | `account_id`、`key TEXT`、`endpoint TEXT`、`response JSONB NULL`、`created_at` | 主键 `(account_id, key)`。事务一开始先插入这一行占住键（并发的同一键会等前一个事务结束），业务写完在同一事务里填 `response`；同一键重复提交直接返回上次结果，换了接口返回 `VALIDATION_FAILED`；保留 `IDEMPOTENCY_TTL_HOURS`（`shared/config`），pg-boss 每天清理 |
-| `files` | `purpose TEXT`（after_image / product_image / brand_cover）、`cos_key TEXT UNIQUE`、`thumb_key TEXT NULL`、`size_bytes INTEGER CHECK (size_bytes > 0)`、`mime TEXT`、`status file_status`、`uploaded_by` | 上传完成登记；内容安全检测结果写 `status`，业务表只能引用 `status='ok'` 的文件 |
-| `brand_settings` | `id SMALLINT PRIMARY KEY CHECK (id=1)`、`cover_file_id BIGINT NULL → files.id`、`version` | 单行表。管理员上传封面原图；为空时前端用内置默认图。裁切在前端按固定比例做 |
+| `files` | `purpose TEXT`（after_image / product_image）、`cos_key TEXT UNIQUE`、`thumb_key TEXT NULL`、`size_bytes INTEGER CHECK (size_bytes > 0)`、`mime TEXT`、`status file_status`、`uploaded_by` | 上传完成登记；内容安全检测结果写 `status`，业务表只能引用 `status='ok'` 的文件 |
 
 ## 4. 销售、门店端、发货
 
@@ -549,7 +548,7 @@ erDiagram
 
 `stock_batches.source_*`、`stock_moves.doc_*`、`operation_logs.target_*` 是多态引用（类型 + id），不建外键，由服务层保证。
 
-表数量：43 张。账号与公共 7 张（含 `doc_sequences`、`idempotency_keys`、`files`、`brand_settings` 4 张支撑表），销售 13 张（含 `store_invites`），采购 10 张，仓库 9 张，财务 4 张。
+表数量：42 张。账号与公共 6 张（含 `doc_sequences`、`idempotency_keys`、`files` 3 张支撑表），销售 13 张（含 `store_invites`），采购 10 张，仓库 9 张，财务 4 张。
 
 ## 10. 模型约束与技术表示
 

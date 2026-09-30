@@ -8,16 +8,19 @@ const swatches = [
   'ink',
   'muted',
   'paper',
+  'card',
   'bg',
   'hair',
   'line',
   'tint',
   'green',
+  'green-bg',
   'amber',
+  'amber-bg',
+  'grey',
+  'grey-bg',
   'danger',
   'danger-bg',
-  'notice-bg',
-  'notice-ink',
 ]
 
 Page({

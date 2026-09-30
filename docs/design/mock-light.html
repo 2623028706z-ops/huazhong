@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.453.0/dist/umd/lucide.min.js"></script>
+<style>
+/* 主色用 logo 红：红只上 logo、图标、按钮底、选中线；小字一律用墨色，状态用柔和的琥珀、绿、灰 */
+:root{--wall:#f6ebdf;--card:rgba(255,251,246,.86);--cardSolid:#fffbf6;--brand:#b75d45;--brandTint:rgba(183,93,69,.1);
+  --ink:#3b2a24;--muted:#7a5a4a;--rule:rgba(183,93,69,.16);--r:12px;--sw:1.4;
+  --amber:#8a5a1e;--amberBg:#f3e8db;--green:#4a6b4d;--greenBg:#eaeae2;--grey:#7a5a4a;--greyBg:#eee6e0}
+body{margin:0;padding:28px;background:#ddd6cd;font-family:-apple-system,"PingFang SC",sans-serif}
+.set{display:flex;gap:24px;align-items:flex-start}
+.col{display:flex;flex-direction:column;align-items:center;gap:10px}.col>p{margin:0;font-size:14px;color:#3a302b}
+.phone{position:relative;width:390px;height:844px;overflow:hidden;border-radius:40px;box-shadow:0 10px 30px rgba(0,0,0,.14);background:var(--wall);color:var(--ink)}
+.bgimg{position:absolute;inset:0;width:100%;height:100%}
+.lucide{stroke-width:var(--sw)}
+.status{position:absolute;top:0;left:0;right:0;height:47px;display:flex;justify-content:space-between;align-items:center;padding:0 26px 0 34px;font-size:16px;font-weight:600;color:#1f1a17}
+.status .lucide{width:17px;height:17px;stroke-width:2;margin-left:4px}
+.capsule{position:absolute;top:51px;right:10px;width:87px;height:32px;border-radius:16px;background:rgba(255,255,255,.7);border:1px solid rgba(0,0,0,.07)}
+.head{position:absolute;top:100px;left:20px;right:20px}
+.head img{display:block;height:38px;margin-left:2px}
+.id{display:flex;align-items:baseline;justify-content:space-between;margin-top:16px;font-size:13px}
+.id b{font-weight:600}.id time{color:var(--muted);font-size:12px}
+.grid{position:absolute;left:20px;right:20px;top:208px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cell{position:relative;height:112px;border-radius:var(--r);background:var(--card);padding:18px 16px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between}
+.cell .lucide{width:28px;height:28px;color:var(--brand)}
+.cell b{font-weight:600;font-size:16px;letter-spacing:.12em}
+.cell .go{position:absolute;right:14px;bottom:18px;width:16px;height:16px;color:var(--muted)}
+.cell.wide{grid-column:1/3;height:72px;flex-direction:row;align-items:center;justify-content:flex-start;gap:18px}.cell.wide .go{bottom:28px}
+.tab{position:absolute;left:0;right:0;bottom:0;height:84px;display:flex;background:var(--cardSolid);border-top:1px solid var(--rule)}
+.tab span{flex:1;display:flex;flex-direction:column;align-items:center;padding-top:10px;gap:4px;font-size:11px;color:var(--muted)}
+.tab .lucide{width:24px;height:24px}.tab .on{color:var(--ink);font-weight:600}.tab .on .lucide{color:var(--brand)}
+.hi{position:absolute;bottom:8px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#1a1a1a}
+/* 列表 */
+.nav{position:absolute;top:47px;left:0;right:0;height:44px;display:flex;align-items:center;padding-left:12px;gap:4px;font-size:17px;font-weight:600}
+.nav .lucide{width:22px;height:22px}
+.body{position:absolute;top:104px;left:20px;right:20px}
+.search{display:flex;align-items:center;gap:8px;height:40px;padding:0 14px;border-radius:var(--r);background:var(--card);font-size:14px;color:var(--muted)}
+.search .lucide{width:17px;height:17px}
+.seg{display:flex;margin-top:14px;padding:3px;border-radius:var(--r);border:1px solid var(--rule);font-size:13px;color:var(--muted)}
+.seg span{flex:1;text-align:center;height:30px;line-height:30px;border-radius:9px}
+.seg .on{background:var(--cardSolid);color:var(--ink);font-weight:600;box-shadow:inset 0 -2px 0 var(--brand)}
+.row{background:var(--card);border-radius:var(--r);padding:14px 16px;margin-top:10px}
+.row .top,.row .sub{display:flex;align-items:center}
+.row .top b{flex:1;font-weight:500;font-size:16px}
+.row .top em{font-style:normal;font-weight:600;font-size:16px;font-variant-numeric:tabular-nums}
+.row .sub{margin-top:8px;gap:10px;font-size:12px;color:var(--muted)}.row .sub time{margin-left:auto}
+.tag{font-size:11px;line-height:18px;padding:0 8px;border-radius:9px}
+.tag.wait{background:var(--amberBg);color:var(--amber)}.tag.done{background:var(--greenBg);color:var(--green)}.tag.end{background:var(--greyBg);color:var(--grey)}
+.btn{position:absolute;left:20px;right:20px;bottom:34px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:var(--r);background:var(--brand);color:#fff;font-size:16px;font-weight:600;letter-spacing:.3em}
+/* 我的 */
+.me{position:absolute;left:20px;right:20px;top:208px}
+.profile{display:flex;align-items:center;gap:14px;padding:18px 16px;border-radius:var(--r);background:var(--card)}
+.avatar{width:48px;height:48px;border-radius:50%;background:var(--brandTint);color:var(--brand);display:grid;place-items:center;font-family:"Noto Serif SC",serif;font-size:20px;font-weight:600}
+.profile b{display:block;font-family:"Noto Serif SC",serif;font-weight:600;font-size:18px;letter-spacing:.1em}
+.profile small{display:block;margin-top:4px;font-size:12px;color:var(--muted)}
+.menu{margin-top:12px;border-radius:var(--r);background:var(--card);padding:0 16px}
+.menu div{display:flex;align-items:center;gap:12px;height:54px;font-size:15px}.menu div+div{border-top:1px solid var(--rule)}
+.menu .lucide{width:20px;height:20px;color:var(--brand)}.menu .go{margin-left:auto;width:16px;height:16px;color:var(--muted)}
+.out{margin-top:24px;height:46px;display:flex;align-items:center;justify-content:center;border-radius:var(--r);border:1px solid var(--rule);font-size:15px;letter-spacing:.2em}
+</style></head><body>
+<script>
+const ic = (n, c = '') => `<i data-lucide="${n}" class="${c}"></i>`;
+const bar = `<div class="status"><span>9:41</span><span>${ic('signal')}${ic('wifi')}${ic('battery-full')}</span></div><div class="capsule"></div>`;
+const head = `<div class="head"><img src="logo.png" alt="花众"><div class="id"><span><b>管理员</b> · 周总</span><time>2026.09.30 周三</time></div></div>`;
+const tabs = on => `<div class="tab"><span class="${on ? '' : 'on'}">${ic('house')}首页</span><span class="${on ? 'on' : ''}">${ic('user')}我的</span></div><div class="hi"></div>`;
+const MODS = [['销售', 'file-text'], ['采购', 'flower-2'], ['仓库', 'package'], ['财务', 'notebook-text'], ['发货', 'truck']];
+const home = `<div class="phone"><img class="bgimg" src="art-w.png">${bar}${head}
+  <div class="grid">${MODS.map(([n, i], k) => `<div class="cell${k === 4 ? ' wide' : ''}">${ic(i)}<b>${n}</b>${ic('chevron-right', 'go')}</div>`).join('')}</div>${tabs(0)}</div>`;
+const ORDERS = [['静安花艺工作室', 'XS-0930-012', '3,860.00', '待发货', 'wait'], ['南京西路 · 繁花', 'XS-0930-011', '1,240.00', '待确认', 'wait'], ['云间花事', 'XS-0929-038', '6,512.50', '已发货', 'done'], ['梧桐里花坊', 'XS-0929-036', '980.00', '待发货', 'wait'], ['花与器 FLORA', 'XS-0929-031', '2,305.00', '已取消', 'end'], ['兰亭婚礼策划', 'XS-0929-027', '12,800.00', '已发货', 'done']];
+const TIMES = ['09-30 10:24', '09-30 09:52', '09-29 18:10', '09-29 16:47', '09-29 14:03', '09-29 11:30'];
+const list = `<div class="phone">${bar}<div class="nav">${ic('chevron-left')}销售单</div>
+  <div class="body"><div class="search">${ic('search')}搜索客户、单号</div>
+  <div class="seg"><span class="on">全部 12</span><span>待确认 3</span><span>待发货 4</span><span>已发货 5</span></div>
+  ${ORDERS.map(([n, no, amt, st, c], k) => `<div class="row"><div class="top"><b>${n}</b><em>¥${amt}</em></div><div class="sub"><span>${no}</span><span class="tag ${c}">${st}</span><time>${TIMES[k]}</time></div></div>`).join('')}</div>
+  <div class="btn">新建销售单</div><div class="hi"></div></div>`;
+const me = `<div class="phone"><img class="bgimg" src="art-w.png">${bar}${head}
+  <div class="me"><div class="profile"><div class="avatar">周</div><div><b>周总</b><small>管理员 · 138****0001</small></div></div>
+  <div class="menu"><div>${ic('scroll-text')}操作日志${ic('chevron-right', 'go')}</div><div>${ic('users')}员工与岗位${ic('chevron-right', 'go')}</div></div>
+  <div class="menu"><div>${ic('id-card')}个人资料${ic('chevron-right', 'go')}</div></div><div class="out">退出登录</div></div>${tabs(1)}</div>`;
+const col = (h, t) => `<div class="col">${h}<p>${t}</p></div>`;
+document.body.innerHTML = `<div class="set">${col(home, '首页')}${col(list, '列表')}${col(me, '我的')}</div>`;
+lucide.createIcons();
+</script>
+</body></html>

@@ -78,7 +78,6 @@
 | `registerReceipt` | 登记收款 | `GET /finance/customers/:id`（客户对账），只在这一处 | 财务 |
 | `createAfter` | 新建售后 | `GET /afters`（客户售后） | 销售 |
 | `applyAfter` | 申请售后 | `GET /afters`（门店售后） | 门店 |
-| `updateCover` | 更换封面 | `GET /brand` | 管理员 |
 
 单据级操作码总表（出现条件对应 03 章第 5 节；「—」表示不适用）：
 
@@ -131,7 +130,6 @@
 | `STORE_INVITE_TOKEN_BYTES` | 32 | 门店邀请随机 token 长度 |
 | `AFTER_IMAGE_MAX_COUNT` | 3 | 每行售后图片张数上限 |
 | `IMAGE_MAX_BYTES` | 3MB | 售后图片、产品图单张上限 |
-| `COVER_MAX_BYTES` | 10MB | 品牌封面原图上限 |
 | `IMAGE_MIME_TYPES` | jpg、png、webp | 允许上传的图片格式 |
 | `UPLOAD_TICKET_TTL_MINUTES` | 10 | COS 上传签名有效期 |
 | `FILE_URL_TTL_MINUTES` | 60 | 图片临时读取地址有效期 |
@@ -180,8 +178,8 @@
 | `orgLabel` | 门店账号「客户 · 门店」，供应商账号是供应商名称，员工和管理员为 `null` |
 | `storeId`、`supplierId` | 门店、供应商账号的归属 ID，其他为 `null` |
 | `modules` | 有权限的模块码数组（`sales`、`shipping`、`purchase`、`warehouse`、`finance`）：管理员全部五个；员工取 `account_modules`；门店、供应商为 `[]` |
-| `landing` | `store_shop`（门店 → 订货 S1）；`supplier_invites`（供应商 → 填报 P1）；`module:<key>`（只有一个模块的员工 → 该模块首页）；`home`（管理员和多模块员工 → 花众首页 M3） |
-| `menus` | 「我的」里的入口码数组，前端按顺序显示：员工 `inventory`（没有仓库模块权限时才有）、`logs`；管理员 `logs`、`staff`、`brand`；门店 `storeAfters`、`storeStatement`；供应商 `supplierStatement` |
+| `landing` | `store_home`（门店 → 门店首页 S0）；`supplier_home`（供应商 → 供应商首页 P0）；`module:<key>`（只有一个模块的员工 → 该模块首页）；`home`（管理员和多模块员工 → 花众首页 M3） |
+| `menus` | 「我的」里的入口码数组，前端按顺序显示：员工 `inventory`（没有仓库模块权限时才有）、`logs`；管理员 `logs`、`staff`；门店、供应商为 `[]`（售后、对账从各自首页进，入口固定） |
 
 操作日志页可选的模块就是 `modules`（管理员五个模块，员工是自己的模块），多于一项时前端才显示模块筛选；原来单列的 `filters.modules` 和 `modules` 完全相同，按 00 章第 7 节去掉。
 
@@ -197,8 +195,6 @@
 | `GET /staff` | 管理员 | → 员工和管理员列表（不含门店、供应商账号） | | — |
 | `POST /staff` | 管理员 | `{ name, phone, modules[], admin }` | 手机号在启用账号里重复 → `VALIDATION_FAILED fields.phone` | 日志「新增员工」 |
 | `PATCH /staff/:id` | 管理员 | `{ version, name, phone, modules[], admin, enabled }` | 不能停用或降级最后一个管理员 → `BUSINESS_RULE` | 条件更新；日志「修改员工」；推送 `account:<id>` |
-| `GET /brand` | 已绑定 | → `{ coverUrl?, thumbUrl? }`（空则前端用内置图） | | — |
-| `PUT /brand/cover` | 管理员 | `{ version, fileId }` | 文件 `purpose=brand_cover` 且 `status=ok` | 条件更新；日志「更换品牌封面」；推送 `brand` |
 
 ## 4. 销售
 
@@ -224,7 +220,7 @@
 | 接口 | 谁 | 入参 → 出参 | 校验和错误 | 锁 / 日志 / 推送 |
 |---|---|---|---|---|
 | `GET /customers`、`GET /customers/:id` | 销售、财务 | → 客户和门店；门店项 `actions` ⊆ `inviteStore`、`unbindStoreWechat` | | — |
-| `POST /customers`、`PATCH /customers/:id` | 销售 | `{ name, enabled }` | 名称不重复；停用规则见 03 章第 5 节 | 日志「新增 / 修改客户」 |
+| `POST /customers`、`PATCH /customers/:id` | 销售 | `{ name, enabled }` | 名称不重复；停用规则见 03 章第 5 节 | 日志「新增 / 修改客户」；启用状态变了推送 `catalog:<customerId>`（门店首页刷新） |
 | `POST /stores`、`PATCH /stores/:id` | 销售 | `{ version?, customerId, name, contact, phone, address, enabled, loginPhone? }` | `loginPhone` 11 位，启用账号里不重复；填了就开通或更新门店账号，清空就停用门店账号（见第 14 节第 1 条） | 同一事务写 `accounts`；日志「新增 / 修改门店」；停用时推送 `account:<storeAccountId>` |
 | `POST /stores/:id/invites` | 销售 | `{}` + 幂等键 → `{ id, path, title, imageUrl, expiresAt }` 小程序卡片参数，`path` 带随机 token | 门店启用，且已有启用的门店账号（登录手机号已录入），否则 `BUSINESS_RULE`「请先在门店资料里填写登录手机号」 | 同一门店旧的待使用邀请改成 `voided`，再写 `store_invites`（有效期 `STORE_INVITE_TTL_DAYS`，库里只存 token 的哈希）；日志「生成门店邀请」；推送 `store_invites:<storeId>` |
 | `GET /stores/:id/invites` | 销售 | → 这家门店的邀请列表（状态含已作废、过期时间、绑定时间；已过期的按 `expires_at` 现算） | | 订阅 `store_invites:<storeId>` |
@@ -240,6 +236,7 @@
 
 | 接口 | 谁 | 入参 → 出参 | 校验和错误 | 锁 / 日志 / 推送 |
 |---|---|---|---|---|
+| `GET /store/home` | 门店 | → `{ orderableCount, lockedReason }`：`orderableCount` 是本客户启用的目录项数（产品本身也须启用），和订货目录的可订款数同一口径；`lockedReason` 客户停用时为「这个客户已停用，不能再下新单，请联系花众」，否则 `null` | — | 订阅 `catalog:<customerId>` |
 | `GET /store/catalog` | 门店 | `?categoryId=&q=` → 本客户启用的目录项（产品本身也须启用）（产品、分类、单位、目录价 `listPriceCents`、图片缩略图）、可订款数 | 门店停用 → `ACCOUNT_DISABLED`（守卫统一拦）；客户停用 → `BUSINESS_RULE`「这个客户已停用，不能再下新单，请联系花众」，门店账号照常登录（03 章第 5 节） | 订阅 `catalog:<customerId>` |
 | `POST /store/orders` | 门店 | `{ shipDate, note, lines[{productId, qty}] }` + 幂等键 → 订单（`pending_confirm`） | 客户停用 → `BUSINESS_RULE`「这个客户已停用，不能再下新单，请联系花众」；出货日期 ≥ 今天；产品本身启用、在目录里且启用；单价取目录价（门店不能传单价） | 发号 SO；日志「门店下单」；推送 `orders`、`todo:sales` |
 | `PUT /store/orders/:id` | 门店 | `{ version, shipDate, note, lines[] }` → 订单 | 状态 `pending_confirm`，已取消 → `STALE`「订单已被取消，不能再修改」，已确认 → `STALE`「销售已确认，不能再修改，请联系销售」；出货日期 ≥ 今天；原单里已停订的产品还在 → `BUSINESS_RULE`「白绿清新花束已停订，请先删掉再提交」；内容没变 → 不写变更记录，直接返回 | 条件更新；整组替换明细；有差异写 `order_changes`（原因空）；日志「门店改单」；推送 `order:<id>`、`orders`、`todo:sales` |
@@ -339,7 +336,7 @@
 
 | 接口 | 谁 | 入参 → 出参 | 校验和错误 | 锁 / 日志 / 推送 |
 |---|---|---|---|---|
-| `POST /files/upload-ticket` | 门店、销售（售后图片）；销售（产品图）；管理员（封面） | `{ purpose, mime, sizeBytes }` → `{ fileId, cosKey, uploadUrl, headers, expiresAt }` | `after_image`、`product_image` ≤ `IMAGE_MAX_BYTES`，`brand_cover` ≤ `COVER_MAX_BYTES`；格式限 `IMAGE_MIME_TYPES`；签名有效 `UPLOAD_TICKET_TTL_MINUTES`，限定这一个 `cosKey` | 写 `files(status=pending)` |
+| `POST /files/upload-ticket` | 门店、销售（售后图片）；销售（产品图） | `{ purpose, mime, sizeBytes }` → `{ fileId, cosKey, uploadUrl, headers, expiresAt }` | `after_image`、`product_image` ≤ `IMAGE_MAX_BYTES`；格式限 `IMAGE_MIME_TYPES`；签名有效 `UPLOAD_TICKET_TTL_MINUTES`，限定这一个 `cosKey` | 写 `files(status=pending)` |
 | `POST /files/:id/complete` | 上传人 | `{}` → `{ status, url?, thumbUrl? }` | COS 里没有这个对象 → `BUSINESS_RULE`「图片没有上传成功，请重试」 | 调微信内容安全检测（预留，接口未启用时直接 `ok`）；`rejected` → `BUSINESS_RULE`「图片未通过审核，请换一张」；pg-boss 生成缩略图 |
 | `GET /files/:id/url` | 能看到所属单据的人 | → 临时读取签名地址（有效 `FILE_URL_TTL_MINUTES`） | | — |
 
@@ -379,7 +376,6 @@
 | `todo:<module>` | 模块首页待办、底栏角标 | 有该模块权限的员工 |
 | `account:<id>` | 账号被停用、解绑、改了模块 | 本人 |
 | `store_invites:<storeId>` | 门店邀请生成、使用 | 销售 |
-| `brand` | 品牌封面更换 | 所有已登录 |
 
 ### 12.3 推送消息
 
@@ -426,6 +422,6 @@
 第 1、3 条描述正文现行规则，按规格书实现；第 2、4 条中的数值默认值是技术参数，可按项目需要调整。新业务决定仍需确认。
 
 1. 门店账号的登录手机号录入位置：原型没有，本文放在销售「门店资料」里填（和供应商端账号对称）；绑定微信走邀请下单链接（已确认）。
-2. `COVER_MAX_BYTES`、`IMAGE_MAX_BYTES` 的初始值是本文默认值（见 1.6）。门店邀请有效期 `STORE_INVITE_TTL_DAYS`、填报链接不设有效期，已确认。
+2. `IMAGE_MAX_BYTES` 的初始值是本文默认值（见 1.6）。门店邀请有效期 `STORE_INVITE_TTL_DAYS`、填报链接不设有效期，已确认。
 3. 发货实发能否大于订货数量：原型不能多发（多发走补建订单），本文 `shippedQty ≤ qty`。
 4. 第 1.6 节 `RECONNECT_DELAYS_SECONDS` 的初始值是阶段 0 时由我默认的，可以改。

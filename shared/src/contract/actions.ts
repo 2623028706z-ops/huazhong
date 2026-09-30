@@ -11,7 +11,6 @@ export const actionCodes = [
   'registerReceipt',
   'createAfter',
   'applyAfter',
-  'updateCover',
   // 单据级
   'storeEdit',
   'storeCancel',

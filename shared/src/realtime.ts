@@ -43,7 +43,6 @@ export type Topic =
   | 'todo:*'
   | `account:${Id}`
   | `store_invites:${Id}`
-  | 'brand'
 
 const topicPattern = new RegExp(
   '^(?:' +
@@ -52,7 +51,7 @@ const topicPattern = new RegExp(
       'payable:(?:po|wh):[1-9][0-9]*',
       '(?:ar|ap):(?:[1-9][0-9]*|\\*)',
       `todo:(?:${moduleKeys.join('|')}|\\*)`,
-      'orders|afters|pos|invites|wh_docs|stock|demand|brand',
+      'orders|afters|pos|invites|wh_docs|stock|demand',
     ].join('|') +
     ')$',
 )

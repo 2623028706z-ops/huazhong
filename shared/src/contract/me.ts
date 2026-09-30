@@ -4,18 +4,10 @@ import { accountTypes, moduleKeys } from '../enums.ts'
 import { idSchema } from '../rules.ts'
 import type { Endpoint } from './endpoint.ts'
 
-export const menuCodes = [
-  'inventory',
-  'logs',
-  'staff',
-  'brand',
-  'storeAfters',
-  'storeStatement',
-  'supplierStatement',
-] as const
+export const menuCodes = ['inventory', 'logs', 'staff'] as const
 
 export const landingSchema = z.union([
-  z.enum(['store_shop', 'supplier_invites', 'home']),
+  z.enum(['store_home', 'supplier_home', 'home']),
   z.templateLiteral(['module:', z.enum(moduleKeys)]),
 ])
 

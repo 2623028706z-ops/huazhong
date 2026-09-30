@@ -125,10 +125,9 @@ describe('实时推送权限', () => {
     expect(canSubscribe(staff(['finance']), 'supplier:21')).toBe(false)
   })
 
-  test('只有本人能订阅 account 主题；品牌所有账号都能订阅', () => {
+  test('只有本人能订阅 account 主题', () => {
     expect(canSubscribe(store, 'account:8')).toBe(true)
     expect(canSubscribe(store, 'account:1')).toBe(false)
-    expect(canSubscribe(supplier, 'brand')).toBe(true)
   })
 
   test('门店只能订阅本客户的对账和目录，推送只收本店的', () => {
