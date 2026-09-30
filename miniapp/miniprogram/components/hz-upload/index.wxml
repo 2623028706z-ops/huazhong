@@ -1,0 +1,16 @@
+<view class="hz-upload">
+  <t-upload
+    files="{{files}}"
+    max="{{max}}"
+    size-limit="{{sizeLimit}}"
+    media-type="{{['image']}}"
+    grid-config="{{gridConfig}}"
+    add-content="slot"
+    bind:add="onAdd"
+    bind:remove="onRemove"
+  >
+    <view slot="add-content" class="hz-upload__add">
+      <text class="hz-icon hz-icon--plus"></text>
+    </view>
+  </t-upload>
+</view>

@@ -1,0 +1,6 @@
+<view class="u-card hz-notice">
+  <text class="hz-notice__text">{{text}}</text>
+  <view wx:if="{{closable}}" class="hz-notice__close u-tap" catchtap="onClose">
+    <text class="hz-icon hz-icon--x"></text>
+  </view>
+</view>

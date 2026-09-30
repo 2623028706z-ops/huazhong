@@ -1,0 +1,5 @@
+<view class="hz-cover">
+  <image class="hz-cover__image" src="/assets/backdrop.jpg" mode="aspectFill" />
+  <view wx:if="{{mode === 'soft'}}" class="hz-cover__soft"></view>
+  <view wx:if="{{mode === 'login'}}" class="hz-cover__fade"></view>
+</view>

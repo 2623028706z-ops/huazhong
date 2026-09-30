@@ -1,0 +1,46 @@
+/* 外框默认 24px 高，改成点击区域的 44px，数字和加减号才在同一水平线 */
+.hz-stepper .hz-stepper__root {
+  display: flex;
+  align-items: center;
+  height: var(--hz-tap);
+}
+
+/* 圆 30px 画在 44px 的点击区域中间：背景只铺到内容盒（padding 7px） */
+.hz-stepper .hz-stepper__minus,
+.hz-stepper .hz-stepper__plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--hz-tap);
+  height: var(--hz-tap);
+  padding: 7px;
+  font-size: var(--hz-icon-sm);
+  border-radius: 50%;
+}
+
+.hz-stepper .hz-stepper__minus {
+  color: var(--hz-ink);
+  background: radial-gradient(
+    circle,
+    transparent 14px,
+    var(--hz-hair) 14px,
+    var(--hz-hair) 15px,
+    transparent 15px
+  );
+}
+
+.hz-stepper .hz-stepper__plus {
+  color: var(--hz-on-brand);
+  background: var(--hz-brand);
+  background-clip: content-box;
+}
+
+.hz-stepper .hz-stepper__input {
+  width: 40px;
+  min-width: 30px;
+  height: var(--hz-tap);
+  margin: 0;
+  font-size: var(--hz-font-md);
+  font-weight: 600;
+  color: var(--hz-ink);
+}

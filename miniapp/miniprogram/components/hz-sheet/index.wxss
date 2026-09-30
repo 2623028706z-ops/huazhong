@@ -1,0 +1,48 @@
+/* TDesign 弹层只改主题变量 */
+.hz-sheet {
+  --td-popup-bg-color: var(--hz-paper);
+  --td-popup-border-radius: var(--hz-radius-sheet);
+}
+
+.hz-sheet__panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 75vh;
+}
+
+.hz-sheet__header {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+}
+
+.hz-sheet__corner {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: var(--hz-icon-md);
+  color: var(--hz-ink);
+}
+
+.hz-sheet__title {
+  font-size: var(--hz-font-lg);
+  letter-spacing: 0.08em;
+}
+
+.hz-sheet__body {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
+.hz-sheet__footer {
+  display: grid;
+  flex: none;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: 8px;
+  padding: 9px var(--hz-gap-bar);
+  border-top: 1px solid var(--hz-line);
+}

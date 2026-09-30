@@ -1,13 +1,44 @@
 import { describe, expect, it } from 'vitest'
 import {
+  addDays,
   formatCardDate,
+  formatCount,
   formatMoney,
   formatNavDate,
   formatQty,
   formatTime,
   maskPhone,
+  monthStartOf,
   shanghaiDateOf,
 } from '../src/format.ts'
+
+describe('业务日期加减', () => {
+  it('近 7 天从今天往前 6 天', () => {
+    expect(addDays('2026-09-30', -6)).toBe('2026-09-24')
+  })
+  it('跨月、跨年', () => {
+    expect(addDays('2026-03-01', -1)).toBe('2026-02-28')
+    expect(addDays('2026-12-31', 1)).toBe('2027-01-01')
+  })
+  it('闰年 3 月 1 日往前一天是 2 月 29 日', () => {
+    expect(addDays('2028-03-01', -1)).toBe('2028-02-29')
+  })
+  it('本月从 1 号算', () => {
+    expect(monthStartOf('2026-09-30')).toBe('2026-09-01')
+  })
+})
+
+describe('状态标签数量', () => {
+  it('0 照写', () => {
+    expect(formatCount(0)).toBe('0')
+  })
+  it('刚好 99 照写', () => {
+    expect(formatCount(99)).toBe('99')
+  })
+  it('超过 99 写 99+', () => {
+    expect(formatCount(100)).toBe('99+')
+  })
+})
 
 describe('金额按分显示成元', () => {
   it('0 分显示 ¥0.00', () => {

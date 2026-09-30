@@ -1,0 +1,1 @@
+<text class="u-pill hz-tag {{warn ? 'hz-tag--warn' : ''}}">{{text}}</text>

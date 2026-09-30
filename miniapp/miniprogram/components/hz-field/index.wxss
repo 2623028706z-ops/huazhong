@@ -1,0 +1,25 @@
+/* 外框由 u-field__box 画，TDesign 输入框只改主题变量，底色透明、不留内边距 */
+.hz-field__box {
+  --td-input-bg-color: transparent;
+  --td-input-vertical-padding: 0;
+  --td-input-default-text-color: var(--hz-ink);
+  --td-input-placeholder-text-color: var(--hz-muted);
+  --td-textarea-background-color: transparent;
+  --td-textarea-padding: 0;
+  --td-textarea-text-color: var(--hz-ink);
+  --td-textarea-placeholder-color: var(--hz-muted);
+  --td-font-body-large: var(--hz-font) / 1.5 var(--td-font-family);
+  --td-spacer-2: 0;
+}
+
+.hz-field__box--area {
+  align-items: flex-start;
+  height: var(--hz-textarea);
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.hz-field__control {
+  flex: 1;
+  height: 100%;
+}

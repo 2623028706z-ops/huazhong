@@ -1,0 +1,4 @@
+<view class="hz-add-button" bindtap="onTap">
+  <text class="hz-icon hz-icon--plus hz-add-button__icon"></text>
+  <text>{{text}}</text>
+</view>

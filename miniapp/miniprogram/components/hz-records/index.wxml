@@ -1,0 +1,14 @@
+<wxs src="../../core/format.wxs" module="format" />
+<view class="u-caption">{{title}}</view>
+<view class="u-card hz-records">
+  <view wx:for="{{rows}}" wx:key="id" class="hz-records__row">
+    <view class="hz-records__who">
+      <text>{{format.formatTime(item.at)}}</text>
+      <text>{{item.actor}}</text>
+    </view>
+    <view class="hz-records__what">
+      <text wx:for="{{item.changes}}" wx:for-item="change" wx:key="*this">{{change}}</text>
+      <text wx:if="{{item.reasonText}}" class="hz-records__reason">{{item.reasonText}}</text>
+    </view>
+  </view>
+</view>

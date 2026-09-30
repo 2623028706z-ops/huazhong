@@ -1,0 +1,15 @@
+/* TDesign 骨架屏只改主题变量：--hz-line 圆角灰条 */
+.hz-skeleton {
+  --td-skeleton-bg-color: var(--hz-line);
+  --td-skeleton-text-height: 12px;
+  --td-skeleton-text-border-radius: var(--hz-radius-pill);
+  --td-skeleton-row-spacing: 8px;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-card-gap);
+}
+
+.hz-skeleton__card {
+  padding: var(--hz-card-pad);
+}

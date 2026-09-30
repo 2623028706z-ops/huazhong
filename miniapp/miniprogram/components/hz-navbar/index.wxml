@@ -1,0 +1,19 @@
+<wxs src="../../core/format.wxs" module="format" />
+<view
+  class="hz-navbar {{transparent ? 'hz-navbar--transparent' : ''}}"
+  style="padding-top: {{statusBar}}px"
+>
+  <view class="hz-navbar__bar" style="padding: 0 {{capsuleGap}}px">
+    <view wx:if="{{back}}" class="hz-navbar__back u-tap" bindtap="onBack">
+      <text class="hz-icon hz-icon--chevron-left"></text>
+    </view>
+    <text class="hz-navbar__title u-serif u-ellipsis">{{title}}</text>
+  </view>
+  <view wx:if="{{offline}}" class="hz-navbar__offline">
+    <hz-notice text="{{offlineText}}" />
+  </view>
+</view>
+<view wx:if="{{person}}" class="hz-navbar__identity">
+  <text><text wx:if="{{roles}}" class="hz-navbar__roles">{{roles}} · </text>{{person}}</text>
+  <text wx:if="{{today}}" class="hz-navbar__date">{{format.formatNavDate(today)}}</text>
+</view>

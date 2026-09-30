@@ -1,0 +1,1 @@
+<text wx:if="{{text}}" class="u-pill hz-status hz-status--{{tone}}">{{text}}</text>

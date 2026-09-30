@@ -1,0 +1,18 @@
+<view class="hz-sheet">
+  <t-popup visible="{{show}}" placement="bottom" bind:visible-change="onVisibleChange">
+    <view class="hz-sheet__panel">
+      <view class="hz-sheet__header">
+        <view class="hz-sheet__corner u-tap" bindtap="onCorner">
+          <text class="hz-icon hz-icon--{{back ? 'chevron-left' : 'x'}}"></text>
+        </view>
+        <text class="hz-sheet__title u-serif">{{title}}</text>
+      </view>
+      <scroll-view class="hz-sheet__body" scroll-y>
+        <slot />
+      </scroll-view>
+      <view wx:if="{{footer}}" class="hz-sheet__footer">
+        <slot name="footer" />
+      </view>
+    </view>
+  </t-popup>
+</view>

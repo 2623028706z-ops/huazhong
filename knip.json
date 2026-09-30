@@ -10,7 +10,12 @@
       "project": ["src/**/*.ts", "db/**/*.ts", "test/**/*.ts"]
     },
     "miniapp": {
-      "entry": ["miniprogram/app.ts", "miniprogram/pages/**/index.ts", "test/**/*.test.ts"],
+      "entry": [
+        "miniprogram/app.ts",
+        "miniprogram/pages/**/index.ts",
+        "miniprogram/components/*/index.ts",
+        "test/**/*.test.ts"
+      ],
       "project": ["miniprogram/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"]
     },
     "scripts": {

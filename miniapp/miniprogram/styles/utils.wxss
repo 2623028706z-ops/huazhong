@@ -48,3 +48,81 @@
   font-family: var(--hz-serif);
   font-weight: 600;
 }
+
+/* 卡片底（hz-card、入口卡、明细、提示条共用） */
+.u-card {
+  background: var(--hz-card);
+  border-radius: var(--hz-radius);
+}
+
+/* 11px 胶囊：hz-status、hz-tag 共用尺寸 */
+.u-pill {
+  display: inline-block;
+  height: 20px;
+  padding: 0 8px;
+  font-size: var(--hz-font-xs);
+  line-height: 20px;
+  white-space: nowrap;
+  border-radius: var(--hz-radius-pill);
+}
+
+/* 表单字段外框：hz-field、hz-picker 共用（02 章第 4 节） */
+.u-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-line-gap);
+}
+
+.u-field__label {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+.u-field__box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--hz-input);
+  padding: 0 var(--hz-row-pad);
+  color: var(--hz-ink);
+  background: var(--hz-paper);
+  border-radius: var(--hz-radius);
+  box-shadow: inset 0 0 0 1px var(--hz-hair);
+}
+
+.u-field__box--focus {
+  box-shadow: inset 0 0 0 1.5px var(--hz-brand);
+}
+
+.u-field__box--error {
+  background: var(--hz-danger-bg);
+  box-shadow: inset 0 0 0 1px var(--hz-danger);
+}
+
+.u-field__box--placeholder {
+  color: var(--hz-muted);
+}
+
+.u-field__icon {
+  font-size: var(--hz-icon);
+  color: var(--hz-muted);
+}
+
+.u-field__error {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-danger);
+}
+
+/* 弹层里的区块：不套框，用细线分隔（hz-sheet） */
+.u-sheet-section {
+  padding: var(--hz-row-pad) var(--hz-gap-sheet);
+  font-size: var(--hz-font-note);
+  border-top: 1px solid var(--hz-line);
+}
+
+/* 小标题：弹层里的「下单日期」、组件总览的分组说明 */
+.u-caption {
+  margin-bottom: 8px;
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}

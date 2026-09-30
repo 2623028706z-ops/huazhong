@@ -162,3 +162,13 @@ export const statusTones = {
   apStatus: { to_pay: 'wait', paid: 'done', no_pay: 'ended' } satisfies Tones<typeof apStatuses>,
 } as const
 export type StatusKind = keyof typeof statusTones
+
+// 状态码 → 中文名和颜色（hz-status、筛选栏状态标签共用）；种类或状态码不对返回 null
+export function statusOf(kind: string, code: string): { text: string; tone: StatusTone } | null {
+  if (!Object.prototype.hasOwnProperty.call(statusTones, kind)) return null
+  const tones: Record<string, StatusTone> = statusTones[kind as StatusKind]
+  const names: Record<string, string> = labels[kind as StatusKind]
+  const tone = tones[code]
+  const text = names[code]
+  return tone && text ? { text, tone } : null
+}

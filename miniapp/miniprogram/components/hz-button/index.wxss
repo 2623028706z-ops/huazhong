@@ -1,0 +1,76 @@
+/* TDesign 按钮只改主题变量（02 章第 2 节） */
+.hz-button {
+  --td-button-medium-height: var(--hz-tap);
+  --td-button-border-radius: var(--hz-radius);
+  --td-button-medium-font: 600 var(--hz-font-md) / 1 var(--td-font-family);
+  --td-button-medium-padding-horizontal: var(--hz-row-pad);
+  --td-button-primary-bg-color: var(--hz-brand);
+  --td-button-primary-border-color: var(--hz-brand);
+  --td-button-primary-color: var(--hz-on-brand);
+  --td-button-primary-active-bg-color: var(--hz-brand);
+  --td-button-primary-active-border-color: var(--hz-brand);
+  --td-button-primary-disabled-bg: var(--hz-hair);
+  --td-button-primary-disabled-border-color: var(--hz-hair);
+  --td-button-primary-disabled-color: var(--hz-muted);
+  --td-button-default-outline-color: var(--hz-ink);
+  --td-button-default-outline-border-color: var(--hz-hair);
+  --td-button-default-outline-active-bg-color: var(--hz-paper);
+  --td-button-default-outline-active-border-color: var(--hz-hair);
+  --td-button-default-outline-disabled-color: var(--hz-muted);
+  --td-button-default-disabled-bg: var(--hz-hair);
+  --td-button-default-disabled-border-color: var(--hz-hair);
+  --td-button-default-disabled-color: var(--hz-muted);
+  --td-bg-color-container: transparent;
+}
+
+.hz-button--secondary {
+  --td-button-medium-font: 400 var(--hz-font-md) / 1 var(--td-font-family);
+}
+
+.hz-button__inner {
+  letter-spacing: 0.16em;
+}
+
+/* 微信原生 button:not([size=mini]) 默认 184px 宽，优先级高过 TDesign 的 --block，这里拉满 */
+.hz-button .hz-button__inner {
+  width: 100%;
+}
+
+.hz-button--busy {
+  opacity: 0.72;
+}
+
+.hz-button__spinner {
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  border: 2px solid currentcolor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: hz-spin 0.8s linear infinite;
+}
+
+@keyframes hz-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.hz-button__reason {
+  margin-top: 4px;
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+  text-align: center;
+}
+
+/* 文字按钮：墨色加粗 + 陶土红下划线 */
+.hz-button__text {
+  display: inline-flex;
+  padding: 0 var(--hz-line-gap);
+  font-size: var(--hz-font);
+  font-weight: 600;
+  color: var(--hz-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--hz-brand);
+  text-underline-offset: 4px;
+}

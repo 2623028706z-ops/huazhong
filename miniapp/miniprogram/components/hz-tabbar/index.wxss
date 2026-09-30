@@ -1,0 +1,59 @@
+/* 高 62px + 底部安全区，亮格底、顶部细线；选中项图标陶土红、文字墨色加粗 */
+.hz-tabbar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  background: var(--hz-paper);
+  border-top: 1px solid var(--hz-hair);
+}
+
+.hz-tabbar__spacer {
+  height: calc(var(--hz-tabbar) + env(safe-area-inset-bottom));
+}
+
+.hz-tabbar__item {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+  justify-content: center;
+  height: var(--hz-tabbar);
+  font-size: var(--hz-font-xs);
+  color: var(--hz-muted);
+}
+
+.hz-tabbar__icon {
+  font-size: var(--hz-icon-tab);
+}
+
+.hz-tabbar__item--on {
+  font-weight: 600;
+  color: var(--hz-ink);
+}
+
+.hz-tabbar__item--on .hz-tabbar__icon {
+  color: var(--hz-brand);
+}
+
+/* 16px 陶土红圆形白字 */
+.hz-tabbar__badge {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  margin-left: 6px;
+  font-size: var(--hz-font-badge);
+  font-weight: 400;
+  line-height: 16px;
+  color: var(--hz-on-brand);
+  text-align: center;
+  background: var(--hz-brand);
+  border-radius: var(--hz-radius-pill);
+}

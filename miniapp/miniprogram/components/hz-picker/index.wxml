@@ -1,0 +1,27 @@
+<view class="u-field">
+  <text wx:if="{{label}}" class="u-field__label">{{label}}</text>
+  <picker
+    wx:if="{{mode === 'date'}}"
+    mode="date"
+    value="{{value}}"
+    start="{{start}}"
+    end="{{end}}"
+    bindchange="onPick"
+  >
+    <view
+      class="u-field__box {{shown ? '' : 'u-field__box--placeholder'}} {{error ? 'u-field__box--error' : ''}}"
+    >
+      <text>{{shown || hint}}</text>
+      <text class="hz-icon hz-icon--calendar u-field__icon"></text>
+    </view>
+  </picker>
+  <picker wx:else range="{{options}}" range-key="name" value="{{index}}" bindchange="onPick">
+    <view
+      class="u-field__box {{shown ? '' : 'u-field__box--placeholder'}} {{error ? 'u-field__box--error' : ''}}"
+    >
+      <text class="u-ellipsis">{{shown || hint}}</text>
+      <text class="hz-icon hz-icon--chevron-down u-field__icon"></text>
+    </view>
+  </picker>
+  <text wx:if="{{error}}" class="u-field__error">{{error}}</text>
+</view>

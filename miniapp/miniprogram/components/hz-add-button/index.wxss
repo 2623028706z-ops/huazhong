@@ -1,0 +1,16 @@
+.hz-add-button {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  height: var(--hz-tap);
+  font-size: var(--hz-font);
+  letter-spacing: 0.1em;
+  border: 1px dashed var(--hz-hair);
+  border-radius: var(--hz-radius);
+}
+
+.hz-add-button__icon {
+  font-size: var(--hz-icon);
+  color: var(--hz-brand);
+}

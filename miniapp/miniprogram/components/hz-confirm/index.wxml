@@ -1,0 +1,12 @@
+<view class="hz-confirm">
+  <t-popup visible="{{show}}" placement="center" bind:visible-change="onVisibleChange">
+    <view class="hz-confirm__box">
+      <text class="hz-confirm__title u-serif">{{title}}</text>
+      <text class="hz-confirm__body">{{body}}</text>
+      <view class="hz-confirm__actions">
+        <hz-button kind="secondary" text="{{cancel}}" bind:press="onCancel" />
+        <hz-button text="{{confirm}}" bind:press="onConfirm" />
+      </view>
+    </view>
+  </t-popup>
+</view>

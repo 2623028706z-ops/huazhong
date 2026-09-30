@@ -1,34 +1,266 @@
 <wxs src="../../core/format.wxs" module="format" />
-<view class="hz-gallery" style="padding-top: {{top}}px">
-  <view class="hz-gallery__title u-serif">{{title}}</view>
-
+<hz-cover wx:if="{{cover}}" mode="{{cover}}" />
+<hz-navbar
+  title="{{title}}"
+  back
+  guard="{{note !== ''}}"
+  roles="{{identity.roles}}"
+  person="{{identity.person}}"
+  transparent="{{cover !== ''}}"
+/>
+<view class="hz-gallery">
   <view class="hz-gallery__section">
-    <view wx:for="{{swatches}}" wx:key="*this" class="hz-gallery__swatch">
-      <view class="hz-gallery__chip" style="background: var(--hz-{{item}})"></view>
-      <text class="hz-gallery__caption">{{item}}</text>
+    <view class="u-caption">顶栏 + 身份行：填了备注再点返回会问「放弃修改吗？」；断网时顶栏下出提示</view>
+    <view class="u-caption">品牌背景 hz-cover</view>
+    <view class="hz-gallery__row">
+      <hz-button
+        wx:for="{{coverModes}}"
+        wx:key="key"
+        kind="text"
+        text="{{item.text}}"
+        data-index="{{index}}"
+        bind:press="onCover"
+      />
     </view>
   </view>
 
-  <view class="hz-gallery__section hz-gallery__section--column">
+  <view class="hz-gallery__section">
+    <view class="u-caption">底栏 hz-tabbar：选中项、角标（超过 99 写 99+）</view>
+    <view class="hz-gallery__frame">
+      <hz-tabbar tabs="{{storeTabs}}" current="home" />
+    </view>
+    <view class="hz-gallery__frame">
+      <hz-tabbar tabs="{{supplierTabs}}" current="supply" />
+    </view>
+  </view>
+
+  <view class="hz-gallery__section">
+    <view class="u-caption">入口卡 hz-entry-grid：单数时最后一张占整行；不能用的变淡</view>
+    <hz-entry-grid entries="{{entries}}" />
+  </view>
+
+  <view class="hz-gallery__section">
+    <view class="u-caption">列表卡片 hz-card</view>
+    <hz-card
+      wx:for="{{cards}}"
+      wx:key="id"
+      date="{{item.date}}"
+      status-kind="orderStatus"
+      status="{{item.status}}"
+      title="{{item.title}}"
+      total="{{item.total}}"
+      meta="{{item.meta}}"
+      amount="{{item.amount}}"
+      tags="{{item.tags}}"
+    />
+  </view>
+
+  <view class="hz-gallery__section">
+    <view class="u-caption">状态标签 hz-status、标记 hz-tag</view>
+    <view class="u-card hz-gallery__card">
+      <view wx:for="{{statusRows}}" wx:for-item="row" wx:key="*this" class="hz-gallery__row">
+        <hz-status wx:for="{{row}}" wx:key="*this" kind="{{item[0]}}" code="{{item[1]}}" />
+      </view>
+      <view class="hz-gallery__row">
+        <hz-tag wx:for="{{tags}}" wx:key="text" text="{{item.text}}" warn="{{item.warn}}" />
+      </view>
+    </view>
+  </view>
+
+  <view class="hz-gallery__section">
+    <view class="u-caption">按钮 hz-button：主、次、禁用（下面写原因）、提交中（点「确认订单」）、文字</view>
+    <view class="u-card hz-gallery__card">
+      <view class="hz-gallery__pair">
+        <hz-button kind="secondary" text="{{texts.cancelOrder}}" />
+        <hz-button text="{{texts.confirmOrder}}" loading="{{submitting}}" bind:press="onSubmit" />
+      </view>
+      <hz-button text="{{texts.confirmOrder}}" disabled reason="{{texts.storeDisabled}}" />
+      <view class="hz-gallery__row hz-gallery__row--center">
+        <hz-button kind="text" text="{{texts.viewAll}}" />
+        <hz-button kind="text" text="{{texts.longToast}}" bind:press="onLongToast" />
+      </view>
+    </view>
+  </view>
+
+  <view class="hz-gallery__section">
+    <view class="u-caption">表单字段 hz-field：正常、出错、多行（填了备注就算改过内容）</view>
+    <view class="u-card hz-gallery__card">
+      <hz-field label="{{texts.customer}}" value="{{texts.customerValue}}" />
+      <hz-field label="{{texts.qty}}" value="0" type="number" error="{{texts.qtyError}}" />
+      <hz-field
+        label="{{texts.note}}"
+        value="{{note}}"
+        type="textarea"
+        placeholder="{{texts.optional}}"
+        bind:change="onNote"
+      />
+    </view>
+  </view>
+  <view class="hz-gallery__section">
+    <view class="u-caption">选择器 hz-picker（微信原生）、搜索 hz-search</view>
+    <view class="u-card hz-gallery__card">
+      <hz-picker
+        label="{{texts.store}}"
+        options="{{stores}}"
+        value="{{store}}"
+        placeholder="{{texts.storeHolder}}"
+        bind:change="onStore"
+      />
+      <view class="hz-gallery__pair">
+        <hz-picker label="{{texts.dateFrom}}" mode="date" value="{{shipDate}}" bind:change="onShipDate" />
+        <hz-picker label="{{texts.dateTo}}" mode="date" value="{{today}}" />
+      </view>
+      <hz-search placeholder="{{texts.searchHolder}}" />
+    </view>
+  </view>
+
+  <view class="hz-gallery__section">
+    <view class="u-caption">筛选栏 hz-filter-bar：搜索 + 状态 + 日期 + 客户</view>
+    <hz-filter-bar
+      status-kind="orderStatus"
+      statuses="{{orderStatuses}}"
+      counts="{{countsA}}"
+      search-placeholder="{{texts.searchHolder}}"
+      date-label="{{texts.orderDate}}"
+      dimensions="{{[customers]}}"
+      value="{{filterA}}"
+      data-name="filterA"
+      bind:change="onFilter"
+    />
+    <view class="u-caption">没有搜索框（门店订单），超过 99 写 99+</view>
+    <hz-filter-bar
+      status-kind="orderStatus"
+      statuses="{{orderStatuses}}"
+      counts="{{countsB}}"
+      date-label="{{texts.orderDate}}"
+      value="{{filterB}}"
+      data-name="filterB"
+      bind:change="onFilter"
+    />
+    <view class="u-caption">没有搜索框也没有状态（出入库记录）</view>
+    <hz-filter-bar
+      date-label="{{texts.moveDate}}"
+      dimensions="{{[categories]}}"
+      value="{{filterC}}"
+      data-name="filterC"
+      bind:change="onFilter"
+    />
+  </view>
+
+  <view class="hz-gallery__section">
+    <view class="u-caption">明细行 hz-line-item：表单（数量、单价都能改）、门店订货（单价是文字）、只读</view>
+    <hz-line-item
+      lines="{{lines}}"
+      mode="price"
+      removable
+      min="{{1}}"
+      bind:qty="onQty"
+      bind:price="onPrice"
+      bind:remove="onRemoveLine"
+    />
+    <hz-add-button text="{{texts.addProduct}}" bind:press="onAddLine" />
+    <hz-line-item lines="{{lines}}" mode="qty" min="{{1}}" bind:qty="onQty" />
+    <hz-line-item lines="{{viewLines}}" />
+  </view>
+  <view class="hz-gallery__section">
+    <view class="u-caption">底部操作区 hz-action-bar：次按钮在左、主按钮在右</view>
+    <view class="hz-gallery__frame">
+      <hz-action-bar>
+        <hz-button kind="secondary" text="{{texts.cancelOrder}}" />
+        <hz-button kind="secondary" text="{{texts.edit}}" />
+        <hz-button text="{{texts.confirmOrder}}" />
+      </hz-action-bar>
+    </view>
+    <view class="hz-gallery__frame">
+      <hz-action-bar>
+        <hz-button text="{{texts.newSale}}" />
+      </hz-action-bar>
+    </view>
+  </view>
+
+  <view class="hz-gallery__section">
+    <view class="u-caption">半屏弹层 hz-sheet、确认框 hz-confirm</view>
+    <view class="hz-gallery__pair">
+      <hz-button kind="secondary" text="{{texts.openSheet}}" bind:press="onOpenSheet" />
+      <hz-button kind="secondary" text="{{texts.askConfirm}}" bind:press="onAsk" />
+    </view>
+  </view>
+
+  <view class="hz-gallery__section">
+    <view class="u-caption">提示条 hz-notice、报错 hz-error、实时提示 hz-realtime-bar</view>
+    <hz-notice text="{{notices.locked}}" />
+    <hz-notice text="{{notices.disabled}}" />
+    <hz-button kind="text" text="{{texts.showError}}" bind:press="onToggleError" />
+    <hz-error message="{{error}}" />
+    <hz-error wx:if="{{error}}" message="{{texts.retryMessage}}" retry />
+    <hz-error wx:if="{{error}}" message="{{error}}" request-id="7f3a-92c1" />
+    <hz-realtime-bar text="{{notices.realtime}}" />
+  </view>
+
+  <view class="hz-gallery__section">
+    <hz-records type="orderChange" items="{{records}}" />
+  </view>
+
+  <view class="hz-gallery__section">
+    <view class="u-caption">对账格 hz-statement：待付用琥珀底</view>
+    <hz-statement cells="{{statement}}" />
+  </view>
+
+  <view class="hz-gallery__section">
+    <view class="u-caption">图片上传 hz-upload</view>
+    <view class="u-card hz-gallery__card">
+      <hz-upload files="{{files}}" bind:add="onAddFiles" bind:remove="onRemoveFile" />
+    </view>
+  </view>
+
+  <view class="hz-gallery__section">
+    <view class="u-caption">整页状态 hz-state：空、断网、无权限、账号停用、链接失效</view>
+    <hz-state kind="empty" object="{{texts.emptyObject}}" />
+    <hz-state kind="network" />
+    <hz-state kind="forbidden" />
+    <hz-state kind="accountDisabled" />
+    <hz-state kind="linkInvalid" detail="已取消" />
+  </view>
+
+  <view class="hz-gallery__section">
+    <view class="u-caption">骨架屏 hz-skeleton：列表、详情、表单</view>
+    <hz-skeleton type="list" />
+    <hz-skeleton type="detail" />
+    <hz-skeleton type="form" />
+  </view>
+
+  <view class="hz-gallery__section">
+    <view class="u-caption">设计变量、衬线字、格式化、图标</view>
     <view class="hz-gallery__row">
-      <text wx:for="{{modules}}" wx:key="*this" class="u-serif">{{item}}</text>
+      <view wx:for="{{swatches}}" wx:key="*this" class="hz-gallery__swatch">
+        <view class="hz-gallery__chip" style="background: var(--hz-{{item}})"></view>
+        <text class="u-caption">{{item}}</text>
+      </view>
     </view>
     <view class="hz-gallery__row">
+      <text wx:for="{{modules}}" wx:key="*this" class="u-serif">{{item}}</text>
       <text class="u-serif-amount">{{format.formatMoney(123450)}}</text>
       <text class="u-serif-amount">{{format.formatMoney(-13600)}}</text>
     </view>
-  </view>
-
-  <view class="hz-gallery__section">
-    <view wx:for="{{icons}}" wx:key="*this" class="hz-gallery__icon u-tap">
-      <text class="hz-icon hz-icon--{{item}}"></text>
+    <view class="hz-gallery__row">
+      <text>{{format.formatNavDate(today)}}</text>
+      <text>{{format.formatTime('2026-09-30T00:10:00.000Z')}}</text>
+      <text>{{format.maskPhone('13800138001')}}</text>
+    </view>
+    <view class="hz-gallery__row">
+      <view wx:for="{{icons}}" wx:key="*this" class="hz-gallery__icon u-tap">
+        <text class="hz-icon hz-icon--{{item}}"></text>
+      </view>
     </view>
   </view>
-
-  <view class="hz-gallery__section hz-gallery__section--column">
-    <text>{{format.formatNavDate(today)}}</text>
-    <text>{{format.formatCardDate('2026-09-28', today)}}</text>
-    <text>{{format.formatTime('2026-09-30T00:10:00.000Z')}}</text>
-    <text>{{format.maskPhone('13800138001')}}</text>
-  </view>
 </view>
+
+<hz-sheet show="{{sheet}}" title="{{texts.sheetTitle}}" footer bind:close="onCloseSheet">
+  <view wx:for="{{sheetRows}}" wx:key="label" class="u-sheet-section hz-gallery__kv">
+    <text>{{item.label}}</text>
+    <text>{{item.value}}</text>
+  </view>
+  <hz-button slot="footer" kind="secondary" text="{{texts.closeAfter}}" bind:press="onCloseSheet" />
+  <hz-button slot="footer" text="{{texts.handleAfter}}" bind:press="onCloseSheet" />
+</hz-sheet>
+<hz-confirm id="hz-confirm" />

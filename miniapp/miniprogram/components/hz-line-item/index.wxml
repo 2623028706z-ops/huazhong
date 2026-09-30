@@ -1,0 +1,45 @@
+<wxs src="../../core/format.wxs" module="format" />
+<!-- 第一行：名称 + 标记，金额在最右（只读和表单共用） -->
+<template name="head">
+  <view class="hz-line-item__head">
+    <text class="hz-line-item__name">{{name}}</text>
+    <hz-tag wx:for="{{tags}}" wx:for-item="tag" wx:key="text" text="{{tag.text}}" warn="{{tag.warn}}" />
+    <text class="hz-line-item__amount u-serif-amount">{{format.formatMoney(amountCents)}}</text>
+  </view>
+</template>
+<view wx:if="{{mode === 'view'}}" class="u-card hz-line-item__list">
+  <view wx:for="{{lines}}" wx:key="key" class="hz-line-item__row">
+    <template is="head" data="{{...item}}" />
+    <text class="hz-line-item__sub">{{format.formatQty(item.qty, item.unit)}} × {{format.formatMoney(item.priceCents)}}</text>
+  </view>
+</view>
+<view wx:else class="hz-line-item__cards">
+  <view wx:for="{{lines}}" wx:key="key" class="u-card hz-line-item__card">
+    <template is="head" data="{{...item}}" />
+    <view class="hz-line-item__body">
+      <hz-stepper value="{{item.qty}}" min="{{min}}" data-index="{{index}}" bind:change="onQty" />
+      <block wx:if="{{mode === 'price'}}">
+        <text class="hz-line-item__times">×</text>
+        <view class="hz-line-item__price">
+          <input
+            class="hz-line-item__price-input"
+            type="digit"
+            value="{{item.priceText}}"
+            data-index="{{index}}"
+            bindinput="onPrice"
+          />
+          <text class="hz-line-item__yuan">{{yuan}}</text>
+        </view>
+      </block>
+      <text wx:else class="hz-line-item__times">× {{format.formatMoney(item.priceCents)}}</text>
+      <view
+        wx:if="{{removable}}"
+        class="hz-line-item__trash u-tap"
+        data-index="{{index}}"
+        bindtap="onRemove"
+      >
+        <text class="hz-icon hz-icon--trash-2"></text>
+      </view>
+    </view>
+  </view>
+</view>

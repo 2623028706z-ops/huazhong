@@ -1,0 +1,3 @@
+<view wx:if="{{text && !closed}}" bindtap="onTap">
+  <hz-notice text="{{text}}" closable bind:close="onClose" />
+</view>

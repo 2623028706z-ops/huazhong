@@ -1,49 +1,65 @@
-/* 只写布局；颜色、字号、字体都来自 tokens */
+/* 只写布局：间距、排列；外观都在组件里 */
 .hz-gallery {
-  padding-right: var(--hz-gap-page);
-  padding-left: var(--hz-gap-page);
-}
-
-.hz-gallery__title {
-  padding: var(--hz-row-pad) 0;
-  font-size: var(--hz-font-title);
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: var(--hz-row-pad) var(--hz-gap-page) 40px;
 }
 
 .hz-gallery__section {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--hz-card-gap);
-  padding: var(--hz-card-pad) 0;
 }
 
-.hz-gallery__section--column {
+.hz-gallery__card {
+  display: flex;
   flex-direction: column;
+  gap: var(--hz-card-gap);
+  padding: var(--hz-card-pad);
 }
 
 .hz-gallery__row {
   display: flex;
-  gap: var(--hz-card-gap);
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.hz-gallery__row--center {
+  justify-content: center;
+}
+
+.hz-gallery__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* 固定定位的底栏、操作区放进框里：transform 让 fixed 相对这个框 */
+.hz-gallery__frame {
+  position: relative;
+  overflow: hidden;
+  transform: translateZ(0);
+}
+
+.hz-gallery__kv {
+  display: flex;
+  justify-content: space-between;
 }
 
 .hz-gallery__swatch {
   display: flex;
   flex-direction: column;
+  gap: 4px;
   align-items: center;
-  gap: var(--hz-line-gap);
 }
 
 .hz-gallery__chip {
   width: var(--hz-tap);
   height: var(--hz-tap);
-  border-radius: var(--hz-radius);
-}
-
-.hz-gallery__caption {
-  font-size: var(--hz-font-xs);
-  color: var(--hz-muted);
 }
 
 .hz-gallery__icon {
-  font-size: var(--hz-font-title);
-  color: var(--hz-brand);
+  font-size: var(--hz-icon-md);
 }

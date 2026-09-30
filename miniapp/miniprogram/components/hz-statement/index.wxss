@@ -1,0 +1,27 @@
+.hz-statement {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: var(--hz-card-pad);
+}
+
+.hz-statement__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--hz-row-pad);
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+  background: var(--hz-paper);
+  border-radius: var(--hz-radius-inner);
+}
+
+.hz-statement__amount {
+  font-size: var(--hz-font-amount);
+  color: var(--hz-ink);
+}
+
+.hz-statement__cell--due {
+  color: var(--hz-amber);
+  background: var(--hz-amber-bg);
+}

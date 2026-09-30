@@ -1,0 +1,15 @@
+<wxs src="../../core/format.wxs" module="format" />
+<view class="hz-tabbar__spacer"></view>
+<view class="hz-tabbar u-safe-bottom">
+  <view
+    wx:for="{{tabs}}"
+    wx:key="key"
+    class="hz-tabbar__item {{item.key === current ? 'hz-tabbar__item--on' : ''}}"
+    data-index="{{index}}"
+    bindtap="onTap"
+  >
+    <text class="hz-icon hz-icon--{{item.icon}} hz-tabbar__icon"></text>
+    <text wx:if="{{item.badge > 0}}" class="hz-tabbar__badge">{{format.formatCount(item.badge)}}</text>
+    <text>{{item.text}}</text>
+  </view>
+</view>

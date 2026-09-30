@@ -1,0 +1,15 @@
+/* 柔色胶囊：浅底 + 同色系深字，不描边（02 章第 2 节） */
+.hz-status--done {
+  color: var(--hz-green);
+  background: var(--hz-green-bg);
+}
+
+.hz-status--wait {
+  color: var(--hz-amber);
+  background: var(--hz-amber-bg);
+}
+
+.hz-status--ended {
+  color: var(--hz-grey);
+  background: var(--hz-grey-bg);
+}

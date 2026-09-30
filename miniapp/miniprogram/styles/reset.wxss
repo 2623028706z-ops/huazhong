@@ -5,6 +5,9 @@ page {
   color: var(--hz-ink);
   background: var(--hz-bg);
   -webkit-font-smoothing: antialiased;
+
+  /* 页面自成一层：hz-cover 的 z-index: -1 落在页面底色之上、内容之下 */
+  isolation: isolate;
 }
 
 view,

@@ -1,0 +1,9 @@
+<view wx:if="{{message}}" class="hz-error">
+  <view class="hz-error__main">
+    <text>{{message}}</text>
+    <text wx:if="{{requestText}}" class="hz-error__request">{{requestText}}</text>
+  </view>
+  <view wx:if="{{retry}}" class="hz-error__retry">
+    <hz-button kind="text" text="{{retryText}}" bind:press="onRetry" />
+  </view>
+</view>

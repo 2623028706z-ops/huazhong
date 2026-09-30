@@ -1,0 +1,25 @@
+/* TDesign 搜索框只改主题变量 */
+.hz-search {
+  --td-search-height: var(--hz-tap);
+  --td-search-bg-color: var(--hz-card);
+  --td-search-square-radius: var(--hz-radius);
+  --td-search-text-color: var(--hz-ink);
+  --td-search-placeholder-color: var(--hz-muted);
+  --td-search-icon-color: var(--hz-muted);
+  --td-search-clear-icon-color: var(--hz-muted);
+  --td-search-font: var(--hz-font) / 1.5 var(--td-font-family);
+  --td-search-padding: 0;
+
+  flex: 1;
+  min-width: 0;
+}
+
+.hz-search--paper {
+  --td-search-bg-color: var(--hz-bg);
+}
+
+.hz-search__icon {
+  margin-right: 8px;
+  font-size: var(--hz-icon);
+  color: var(--hz-muted);
+}

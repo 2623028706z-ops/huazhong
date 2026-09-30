@@ -1,0 +1,28 @@
+<view class="u-field">
+  <text wx:if="{{label}}" class="u-field__label">{{label}}</text>
+  <view
+    class="u-field__box hz-field__box {{type === 'textarea' ? 'hz-field__box--area' : ''}} {{focused ? 'u-field__box--focus' : ''}} {{error ? 'u-field__box--error' : ''}}"
+  >
+    <t-textarea
+      wx:if="{{type === 'textarea'}}"
+      t-class="hz-field__control"
+      value="{{value}}"
+      placeholder="{{placeholder}}"
+      bind:focus="onFocus"
+      bind:blur="onBlur"
+      bind:change="onChange"
+    />
+    <t-input
+      wx:else
+      t-class="hz-field__control"
+      value="{{value}}"
+      type="{{type}}"
+      placeholder="{{placeholder}}"
+      borderless
+      bind:focus="onFocus"
+      bind:blur="onBlur"
+      bind:change="onChange"
+    />
+  </view>
+  <text wx:if="{{error}}" class="u-field__error">{{error}}</text>
+</view>

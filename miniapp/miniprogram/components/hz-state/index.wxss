@@ -1,0 +1,30 @@
+.hz-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 26px var(--hz-card-pad);
+  text-align: center;
+}
+
+.hz-state__rule {
+  width: 28px;
+  height: 1px;
+  margin-bottom: 14px;
+  background: var(--hz-brand);
+}
+
+.hz-state__text {
+  font-size: var(--hz-font-md);
+  letter-spacing: 0.14em;
+}
+
+.hz-state__detail {
+  margin-top: 6px;
+  font-size: var(--hz-font-note);
+  color: var(--hz-muted);
+}
+
+.hz-state__action {
+  width: 120px;
+  margin-top: 14px;
+}

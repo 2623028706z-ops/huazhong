@@ -1,0 +1,2 @@
+<view class="hz-action-bar__spacer"></view>
+<view class="hz-action-bar"><slot /></view>

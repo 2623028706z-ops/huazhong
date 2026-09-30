@@ -1,0 +1,123 @@
+<view class="hz-filter-bar">
+  <view wx:if="{{searchPlaceholder}}" class="hz-filter-bar__search">
+    <view class="hz-filter-bar__search-box">
+      <hz-search value="{{value.keyword}}" placeholder="{{searchPlaceholder}}" bind:search="onSearch" />
+    </view>
+    <view wx:if="{{hasFilter}}" class="u-card hz-filter-bar__button" bindtap="onOpen">
+      <text class="hz-icon hz-icon--sliders-horizontal"></text>
+      <view wx:if="{{dot}}" class="hz-filter-bar__dot"></view>
+    </view>
+  </view>
+
+  <view wx:if="{{tabs.length > 1}}" class="hz-filter-bar__tabs">
+    <scroll-view class="hz-filter-bar__scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="hz-filter-bar__track">
+        <view
+          wx:for="{{tabs}}"
+          wx:key="code"
+          class="hz-filter-bar__tab {{item.code === value.status ? 'hz-filter-bar__tab--on' : ''}}"
+          data-index="{{index}}"
+          bindtap="onTab"
+        >
+          <text>{{item.text}}</text>
+          <text wx:if="{{item.count > 0}}" class="hz-filter-bar__count">{{format.formatCount(item.count)}}</text>
+        </view>
+      </view>
+    </scroll-view>
+    <view
+      wx:if="{{!searchPlaceholder && hasFilter}}"
+      class="hz-filter-bar__button hz-filter-bar__button--bare"
+      bindtap="onOpen"
+    >
+      <text class="hz-icon hz-icon--sliders-horizontal"></text>
+      <view wx:if="{{dot}}" class="hz-filter-bar__dot"></view>
+    </view>
+  </view>
+
+  <view
+    wx:if="{{chips.length > 0 || (!searchPlaceholder && tabs.length <= 1 && hasFilter)}}"
+    class="hz-filter-bar__chips"
+  >
+    <view class="hz-filter-bar__chip-list">
+      <view wx:for="{{chips}}" wx:key="key" class="hz-filter-bar__chip">
+        <text>{{item.text}}</text>
+        <view class="hz-filter-bar__chip-x u-tap" data-key="{{item.key}}" bindtap="onRemoveChip">
+          <text class="hz-icon hz-icon--x"></text>
+        </view>
+      </view>
+      <hz-button wx:if="{{chips.length > 0}}" kind="text" text="{{clearText}}" bind:press="onClear" />
+    </view>
+    <view
+      wx:if="{{!searchPlaceholder && tabs.length <= 1 && hasFilter}}"
+      class="u-card hz-filter-bar__button"
+      bindtap="onOpen"
+    >
+      <text class="hz-icon hz-icon--sliders-horizontal"></text>
+      <view wx:if="{{dot}}" class="hz-filter-bar__dot"></view>
+    </view>
+  </view>
+</view>
+
+<hz-sheet
+  show="{{show}}"
+  title="{{view === 'pick' ? pickTitle : title}}"
+  back="{{view === 'pick'}}"
+  bind:close="onClose"
+  bind:back="onBack"
+>
+  <block wx:if="{{view === 'main'}}">
+    <view wx:if="{{dateLabel}}" class="u-sheet-section">
+      <view class="u-caption">{{dateLabel}}</view>
+      <view class="hz-filter-bar__segments">
+        <view
+          wx:for="{{segments}}"
+          wx:key="key"
+          class="hz-filter-bar__segment {{item.key === active ? 'hz-filter-bar__segment--on' : ''}}"
+          data-key="{{item.key}}"
+          bindtap="onPreset"
+        >
+          {{item.text}}
+        </view>
+      </view>
+      <view wx:if="{{active === 'custom'}}" class="hz-filter-bar__range">
+        <view class="hz-filter-bar__range-item">
+          <hz-picker label="{{fromLabel}}" mode="date" value="{{draftFrom}}" end="{{draftTo}}" bind:change="onDraftFrom" />
+        </view>
+        <view class="hz-filter-bar__range-item">
+          <hz-picker label="{{toLabel}}" mode="date" value="{{draftTo}}" start="{{draftFrom}}" bind:change="onDraftTo" />
+        </view>
+      </view>
+    </view>
+    <view
+      wx:for="{{rows}}"
+      wx:key="key"
+      class="u-sheet-section hz-filter-bar__row"
+      data-key="{{item.key}}"
+      bindtap="onDimension"
+    >
+      <text>{{item.label}}</text>
+      <view class="hz-filter-bar__row-value">
+        <text>{{item.text}}</text>
+        <text class="hz-icon hz-icon--chevron-right"></text>
+      </view>
+    </view>
+  </block>
+  <block wx:else>
+    <view class="u-sheet-section">
+      <hz-search paper placeholder="{{pickSearch}}" bind:search="onPickSearch" />
+    </view>
+    <view class="u-sheet-section">
+      <view
+        wx:for="{{options}}"
+        wx:key="id"
+        class="hz-filter-bar__option {{item.picked ? 'hz-filter-bar__option--on' : ''}}"
+        data-key="{{item.id}}"
+        bindtap="onPick"
+      >
+        <text>{{item.name}}</text>
+        <text wx:if="{{item.picked}}" class="hz-icon hz-icon--check hz-filter-bar__check"></text>
+      </view>
+    </view>
+  </block>
+</hz-sheet>
+<wxs src="../../core/format.wxs" module="format" />

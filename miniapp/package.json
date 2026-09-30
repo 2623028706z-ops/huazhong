@@ -9,5 +9,8 @@
     "@huazhong/shared": "workspace:*",
     "esbuild": "0.28.2",
     "miniprogram-api-typings": "5.2.3"
+  },
+  "dependencies": {
+    "tdesign-miniprogram": "1.17.0"
   }
 }

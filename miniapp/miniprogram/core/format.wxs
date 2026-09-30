@@ -6,6 +6,7 @@ var WEEK_PREFIX = '周';
 var WEEKDAY_NAMES = '日一二三四五六';
 var YUAN = '¥';
 var MINUS = '−';
+var COUNT_MAX = 99;
 function pad2(value) {
     return value < 10 ? '0' + value : '' + value;
 }
@@ -76,6 +77,15 @@ function formatNavDate(date) {
     var dotted = date.slice(0, 4) + '.' + date.slice(5, 7) + '.' + date.slice(8, 10);
     return dotted + ' ' + WEEK_PREFIX + WEEKDAY_NAMES.charAt(weekday);
 }
+function addDays(date, days) {
+    return civilFromDays(daysOfDate(date) + days);
+}
+function monthStartOf(date) {
+    return date.slice(0, 8) + '01';
+}
+function formatCount(count) {
+    return count > COUNT_MAX ? COUNT_MAX + '+' : '' + count;
+}
 function maskPhone(phone) {
     return phone.length === 11 ? phone.slice(0, 3) + '****' + phone.slice(7) : phone;
 }
@@ -87,5 +97,8 @@ module.exports = {
   formatCardDate: formatCardDate,
   formatTime: formatTime,
   formatNavDate: formatNavDate,
+  addDays: addDays,
+  monthStartOf: monthStartOf,
+  formatCount: formatCount,
   maskPhone: maskPhone,
 };

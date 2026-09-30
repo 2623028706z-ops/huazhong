@@ -1,0 +1,11 @@
+<wxs src="../../core/format.wxs" module="format" />
+<view class="u-card hz-statement">
+  <view
+    wx:for="{{cells}}"
+    wx:key="label"
+    class="hz-statement__cell {{item.due ? 'hz-statement__cell--due' : ''}}"
+  >
+    <text>{{item.label}}</text>
+    <text class="hz-statement__amount u-serif-amount">{{format.formatMoney(item.amountCents)}}</text>
+  </view>
+</view>

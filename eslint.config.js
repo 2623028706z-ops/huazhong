@@ -171,6 +171,8 @@ export default tseslint.config(
       'shared/src/errors.ts',
       'shared/src/format.ts',
       'server/db/seed/**/*.ts',
+      // 组件总览的示例数据（只在开发环境出现），同种子数据
+      'miniapp/miniprogram/pages/dev-gallery/samples.ts',
     ],
     rules: {
       '@typescript-eslint/no-magic-numbers': 'off',

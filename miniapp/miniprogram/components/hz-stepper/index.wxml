@@ -1,0 +1,14 @@
+<view class="hz-stepper">
+  <t-stepper
+    value="{{value}}"
+    min="{{min}}"
+    max="{{max}}"
+    integer
+    theme="normal"
+    t-class="hz-stepper__root"
+    t-class-minus="hz-stepper__minus"
+    t-class-plus="hz-stepper__plus"
+    t-class-input="hz-stepper__input"
+    bind:change="onChange"
+  />
+</view>

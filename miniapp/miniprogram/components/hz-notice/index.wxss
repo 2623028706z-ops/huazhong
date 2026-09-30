@@ -1,0 +1,20 @@
+/* 卡片底、墨色字、左侧 2px 陶土线、12px */
+.hz-notice {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 14px;
+  font-size: var(--hz-font-sm);
+  color: var(--hz-ink);
+  box-shadow: inset 2px 0 0 var(--hz-brand);
+}
+
+.hz-notice__text {
+  flex: 1;
+}
+
+.hz-notice__close {
+  margin: -10px -14px -10px 0;
+  font-size: var(--hz-icon-xs);
+  color: var(--hz-muted);
+}

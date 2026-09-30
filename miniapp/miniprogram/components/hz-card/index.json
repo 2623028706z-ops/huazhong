@@ -1,0 +1,8 @@
+{
+  "component": true,
+  "styleIsolation": "apply-shared",
+  "usingComponents": {
+    "hz-status": "../hz-status/index",
+    "hz-tag": "../hz-tag/index"
+  }
+}

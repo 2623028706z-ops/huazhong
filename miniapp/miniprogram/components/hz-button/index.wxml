@@ -1,0 +1,17 @@
+<view class="hz-button hz-button--{{kind}} {{loading ? 'hz-button--busy' : ''}}">
+  <view wx:if="{{kind === 'text'}}" class="hz-button__text u-tap" bindtap="onTap">{{text}}</view>
+  <t-button
+    wx:else
+    t-class="hz-button__inner"
+    theme="{{kind === 'primary' ? 'primary' : 'default'}}"
+    variant="{{kind === 'primary' ? 'base' : 'outline'}}"
+    size="medium"
+    block
+    disabled="{{disabled}}"
+    bind:tap="onTap"
+  >
+    <view wx:if="{{spinning}}" class="hz-button__spinner"></view>
+    {{loading ? submitting : text}}
+  </t-button>
+  <view wx:if="{{disabled && reason}}" class="hz-button__reason">{{reason}}</view>
+</view>

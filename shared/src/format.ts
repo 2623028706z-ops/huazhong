@@ -10,6 +10,7 @@ const WEEK_PREFIX = '周'
 const WEEKDAY_NAMES = '日一二三四五六'
 const YUAN = '¥'
 const MINUS = '−'
+const COUNT_MAX = 99
 
 function pad2(value: number): string {
   return value < 10 ? '0' + value : '' + value
@@ -108,6 +109,21 @@ export function formatNavDate(date: string): string {
   const weekday = (((daysOfDate(date) + 4) % 7) + 7) % 7
   const dotted = date.slice(0, 4) + '.' + date.slice(5, 7) + '.' + date.slice(8, 10)
   return dotted + ' ' + WEEK_PREFIX + WEEKDAY_NAMES.charAt(weekday)
+}
+
+// 业务日期往后（负数往前）挪几天：近 7 天 = addDays(today, -6) 到 today
+export function addDays(date: string, days: number): string {
+  return civilFromDays(daysOfDate(date) + days)
+}
+
+// 这个月 1 号
+export function monthStartOf(date: string): string {
+  return date.slice(0, 8) + '01'
+}
+
+// 筛选栏状态标签后的数量：超过 99 写 99+
+export function formatCount(count: number): string {
+  return count > COUNT_MAX ? COUNT_MAX + '+' : '' + count
 }
 
 // 手机号：列表里中间四位打码

@@ -1,0 +1,32 @@
+.hz-records {
+  padding: 0 var(--hz-card-pad);
+}
+
+.hz-records__row {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  gap: 10px;
+  padding: var(--hz-row-pad) 0;
+  font-size: var(--hz-font-note);
+}
+
+.hz-records__row + .hz-records__row {
+  border-top: 1px solid var(--hz-line);
+}
+
+.hz-records__who {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+.hz-records__what {
+  display: flex;
+  flex-direction: column;
+}
+
+.hz-records__reason {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}

@@ -70,7 +70,7 @@ huazhong/
 ### 3.1 小程序
 
 - TypeScript 严格模式，开发者工具内置编译 TS（`project.config.json` 开 `useCompilerPlugins: ["typescript"]`）。样式直接写 WXSS，不经过预编译。
-- `shared` 包由 esbuild 连同它依赖的 Zod 打成一个 CommonJS 文件，放进 `miniprogram_npm/@huazhong/shared`（pnpm 的软链接目录开发者工具「构建 npm」认不全，自己打包还能去掉用不到的代码）；TDesign 仍走开发者工具的「构建 npm」。
+- `shared` 包由 esbuild 连同它依赖的 Zod 打成一个 CommonJS 文件，放进 `miniprogram_npm/@huazhong/shared`（pnpm 的软链接目录开发者工具「构建 npm」认不全，自己打包还能去掉用不到的代码）；TDesign 也由同一个准备脚本把它的 `miniprogram_dist` 连同自带依赖复制进 `miniprogram_npm/tdesign-miniprogram`，不用开发者工具的「构建 npm」（它会重建整个目录，冲掉 shared 的打包）。
 - 分包：主包放登录、花众首页、我的、公共组件和 `core`；每个业务端一个分包，按角色预下载（`preloadRule`）。主包体积目标见 00 章第 9 节。
 - 顶栏、底栏全部自定义。顶栏用 `navigationStyle: custom`，右侧按 `wx.getMenuButtonBoundingClientRect()` 给胶囊留位。底栏不用微信的 tabBar 配置（它要求标签页都在主包，而门店端、供应商端的标签页在分包里），改成每个标签页放 `hz-tabbar` 组件，切换标签用 `wx.reLaunch`，一级页面没有返回历史。
 - 页面放弃修改：页面内返回、弹层关闭走花众确认框；右滑返回和安卓返回键用 `wx.enableAlertBeforeUnload`。
@@ -162,7 +162,7 @@ huazhong/
 | Node.js | |
 | pnpm | |
 | 微信基础库最低版本 | |
-| TDesign 小程序版 | |
+| TDesign 小程序版 | 1.17.0 |
 | NestJS | |
 | Drizzle ORM、Drizzle Kit | |
 | pg-boss | |

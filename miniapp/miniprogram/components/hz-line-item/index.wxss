@@ -1,0 +1,88 @@
+/* 只读：一张卡片，行间细线 */
+.hz-line-item__list {
+  padding: 0 var(--hz-card-pad);
+}
+
+.hz-line-item__row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--hz-row-pad) 0;
+}
+
+.hz-line-item__row + .hz-line-item__row {
+  border-top: 1px solid var(--hz-line);
+}
+
+.hz-line-item__head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: var(--hz-font-md);
+}
+
+.hz-line-item__name {
+  min-width: 0;
+}
+
+.hz-line-item__amount {
+  flex: none;
+  margin-left: auto;
+}
+
+.hz-line-item__sub {
+  font-size: var(--hz-font-note);
+  color: var(--hz-muted);
+}
+
+/* 表单：一行一张卡片 */
+.hz-line-item__cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-card-gap);
+}
+
+.hz-line-item__card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--hz-row-pad) var(--hz-card-pad) 4px;
+}
+
+.hz-line-item__body {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.hz-line-item__times {
+  color: var(--hz-muted);
+}
+
+.hz-line-item__price {
+  display: flex;
+  align-items: center;
+  width: 96px;
+  height: 36px;
+  padding: 0 10px;
+  background: var(--hz-paper);
+  border-radius: var(--hz-radius-inner);
+  box-shadow: inset 0 0 0 1px var(--hz-hair);
+}
+
+.hz-line-item__price-input {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--hz-font-md);
+}
+
+.hz-line-item__yuan {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+.hz-line-item__trash {
+  margin: 0 -12px 0 auto;
+  font-size: var(--hz-icon);
+  color: var(--hz-muted);
+}

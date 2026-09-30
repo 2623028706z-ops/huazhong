@@ -18,18 +18,34 @@ page {
   --hz-grey-bg: #eeeae5;
   --hz-danger: #a3313d; /* 报错（玫瑰红） */
   --hz-danger-bg: #f9e4e3;
+  --hz-on-brand: #fff; /* 陶土红底上的字和图标 */
 
   /* 字体 */
   --hz-serif: 'HZ Serif', 'Songti SC', serif; /* 思源宋体子集，core/font.ts 加载 */
   --hz-font: 14px;
-  --hz-font-sm: 12px;
+  --hz-font-badge: 10px; /* 底栏角标 */
   --hz-font-xs: 11px;
+  --hz-font-sm: 12px;
+  --hz-font-note: 13px; /* 只读明细第二行、记录、弹层区块、身份行 */
+  --hz-font-md: 15px; /* 按钮、卡片对象、明细名称、金额、步进器数字 */
+  --hz-font-lg: 16px; /* 入口卡名称、弹层标题 */
   --hz-font-title: 17px;
+  --hz-font-amount: 18px; /* 对账格金额 */
+
+  /* 图标（iconfont 用字号定大小） */
+  --hz-icon-xs: 14px; /* 胶囊 × */
+  --hz-icon-sm: 16px; /* 入口卡箭头 */
+  --hz-icon: 18px;
+  --hz-icon-md: 20px; /* 弹层左上 */
+  --hz-icon-nav: 22px;
+  --hz-icon-tab: 24px;
+  --hz-icon-entry: 26px;
 
   /* 尺寸 */
   --hz-radius: 12px;
   --hz-radius-inner: 9px;
   --hz-radius-sheet: 14px;
+  --hz-radius-pill: 999px; /* 状态标签、标记、胶囊、角标 */
   --hz-tap: 44px;
   --hz-nav: 44px;
   --hz-tabbar: 62px;
@@ -49,4 +65,9 @@ page {
   /* TDesign 主题：只改变量，不覆盖内部样式。变量名已按 1.17.0 核对 */
   --td-brand-color: var(--hz-brand);
   --td-radius-default: var(--hz-radius);
+
+  /* 正文系统字体：TDesign 的 font 简写要用 */
+  --td-font-family: -apple-system, 'PingFang SC', sans-serif;
+  --td-text-color-primary: var(--hz-ink);
+  --td-text-color-placeholder: var(--hz-muted);
 }

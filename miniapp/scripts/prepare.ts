@@ -1,12 +1,14 @@
 // 开发前准备：生成 miniprogram/config/env.ts（云托管环境，来自环境变量），
 // 把 @huazhong/shared 连同 Zod 打成一个 CommonJS 文件放进 miniprogram_npm（01 章第 3.1 节）。
-import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
 import { sharedBundleOptions, sharedBundleOutfile } from './shared-bundle.ts'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+const require = createRequire(import.meta.url)
 const envKeys = [
   'HZ_CLOUD_ENV_DEV',
   'HZ_CLOUD_ENV_PROD',
@@ -60,5 +62,18 @@ async function bundleShared(): Promise<void> {
   console.log(`@huazhong/shared bundled: ${(statSync(outfile).size / BYTES_PER_KB).toFixed(1)} KB`)
 }
 
+// TDesign 连同它自带的 miniprogram_npm（dayjs 等）原样复制；pnpm 的软链接要解开，开发者工具认不了
+function copyTdesign(): void {
+  const source = join(
+    dirname(require.resolve('tdesign-miniprogram/package.json')),
+    'miniprogram_dist',
+  )
+  const target = join(root, 'miniprogram/miniprogram_npm/tdesign-miniprogram')
+  rmSync(target, { recursive: true, force: true })
+  cpSync(source, target, { recursive: true, dereference: true })
+  console.log('tdesign-miniprogram copied')
+}
+
 writeEnvConfig()
 await bundleShared()
+copyTdesign()

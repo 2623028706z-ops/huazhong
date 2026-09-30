@@ -34,6 +34,9 @@ export const ICONS = [
   'store',
   'image',
   'check',
+  'sliders-horizontal',
+  'calendar',
+  'chevron-down',
 ] as const
 
 // 24 网格上的线宽：显示 21px 时约 1.5px

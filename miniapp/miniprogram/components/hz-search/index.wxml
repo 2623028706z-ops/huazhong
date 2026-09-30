@@ -1,0 +1,12 @@
+<view class="hz-search {{paper ? 'hz-search--paper' : ''}}">
+  <t-search
+    value="{{value}}"
+    placeholder="{{placeholder}}"
+    shape="square"
+    left-icon=""
+    bind:change="onChange"
+    bind:clear="onClear"
+  >
+    <text slot="left-icon" class="hz-icon hz-icon--search hz-search__icon"></text>
+  </t-search>
+</view>

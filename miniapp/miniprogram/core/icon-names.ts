@@ -23,4 +23,7 @@ export const iconNames = [
   'store',
   'image',
   'check',
+  'sliders-horizontal',
+  'calendar',
+  'chevron-down',
 ] as const

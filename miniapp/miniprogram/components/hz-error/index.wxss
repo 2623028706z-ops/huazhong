@@ -1,0 +1,28 @@
+.hz-error {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 14px;
+  font-size: var(--hz-font);
+  color: var(--hz-danger);
+  background: var(--hz-danger-bg);
+  border-radius: var(--hz-radius);
+  box-shadow: inset 2px 0 0 var(--hz-danger);
+}
+
+.hz-error__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.hz-error__request {
+  margin-top: 2px;
+  font-size: var(--hz-font-xs);
+  opacity: 0.8;
+}
+
+/* 文字按钮的 44px 点击区域不撑高提示条 */
+.hz-error__retry {
+  margin: -10px -8px;
+}

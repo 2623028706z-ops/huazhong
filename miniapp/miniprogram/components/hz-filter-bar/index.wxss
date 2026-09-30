@@ -1,0 +1,202 @@
+.hz-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hz-filter-bar__search {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* 搜索框的宿主节点在 flex 行里会按内容收缩，套一层拉满 */
+.hz-filter-bar__search-box {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 筛选按钮 44×44、卡片底；在标签行里时透明底、44×40 */
+.hz-filter-bar__button {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--hz-tap);
+  height: var(--hz-tap);
+  font-size: var(--hz-icon);
+  color: var(--hz-ink);
+}
+
+.hz-filter-bar__button--bare {
+  height: 40px;
+}
+
+.hz-filter-bar__dot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 6px;
+  height: 6px;
+  background: var(--hz-brand);
+  border-radius: 50%;
+}
+
+/* 状态标签行：没有外框，两端不留内边距；下面一条细线 */
+.hz-filter-bar__tabs {
+  display: flex;
+  align-items: stretch;
+  height: 40px;
+  border-bottom: 1px solid var(--hz-hair);
+}
+
+.hz-filter-bar__scroll {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  white-space: nowrap;
+}
+
+.hz-filter-bar__track {
+  display: inline-flex;
+  gap: 12px;
+  height: 40px;
+}
+
+.hz-filter-bar__tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  font-size: var(--hz-font);
+  color: var(--hz-muted);
+  white-space: nowrap;
+}
+
+.hz-filter-bar__tab--on {
+  font-weight: 600;
+  color: var(--hz-ink);
+}
+
+.hz-filter-bar__tab--on::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  content: '';
+  background: var(--hz-brand);
+}
+
+.hz-filter-bar__count {
+  margin-left: 3px;
+  font-size: var(--hz-font-sm);
+}
+
+/* 条件胶囊：高 28px、亮格底、细线，× 的点击区域 44px */
+.hz-filter-bar__chips {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.hz-filter-bar__chip-list {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.hz-filter-bar__chip {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding-left: 10px;
+  font-size: var(--hz-font-sm);
+  color: var(--hz-ink);
+  background: var(--hz-paper);
+  border-radius: var(--hz-radius-pill);
+  box-shadow: inset 0 0 0 1px var(--hz-hair);
+}
+
+.hz-filter-bar__chip-x {
+  margin: -8px -8px -8px -12px;
+  font-size: var(--hz-icon-xs);
+  color: var(--hz-muted);
+}
+
+/* 弹层：日期窗格分段 */
+.hz-filter-bar__segments {
+  display: flex;
+  padding: 3px;
+  font-size: var(--hz-font-note);
+  color: var(--hz-muted);
+  border-radius: var(--hz-radius);
+  box-shadow: inset 0 0 0 1px var(--hz-hair);
+}
+
+.hz-filter-bar__segment {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 6px;
+  white-space: nowrap;
+  border-radius: var(--hz-radius-inner);
+}
+
+.hz-filter-bar__segment--on {
+  font-weight: 600;
+  color: var(--hz-ink);
+  background: var(--hz-paper);
+  box-shadow: inset 0 -2px 0 var(--hz-brand);
+}
+
+.hz-filter-bar__range {
+  display: flex;
+  gap: 8px;
+  margin-top: var(--hz-row-pad);
+}
+
+.hz-filter-bar__range-item {
+  flex: 1;
+  min-width: 0;
+}
+
+.hz-filter-bar__row,
+.hz-filter-bar__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--hz-tap);
+  font-size: var(--hz-font);
+}
+
+.hz-filter-bar__row {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.hz-filter-bar__row-value {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  color: var(--hz-muted);
+}
+
+.hz-filter-bar__option + .hz-filter-bar__option {
+  border-top: 1px solid var(--hz-line);
+}
+
+.hz-filter-bar__option--on {
+  font-weight: 600;
+}
+
+.hz-filter-bar__check {
+  font-size: var(--hz-icon);
+  color: var(--hz-brand);
+}

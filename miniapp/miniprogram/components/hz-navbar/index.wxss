@@ -1,0 +1,52 @@
+.hz-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--hz-bg);
+}
+
+.hz-navbar--transparent {
+  background: transparent;
+}
+
+.hz-navbar__bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--hz-nav);
+}
+
+.hz-navbar__back {
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-size: var(--hz-icon-nav);
+  color: var(--hz-ink);
+}
+
+.hz-navbar__title {
+  font-size: var(--hz-font-title);
+  letter-spacing: 0.1em;
+}
+
+.hz-navbar__offline {
+  padding: 0 var(--hz-gap-page) var(--hz-line-gap);
+}
+
+.hz-navbar__identity {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 var(--hz-gap-home);
+  font-size: var(--hz-font-note);
+}
+
+.hz-navbar__roles {
+  font-weight: 600;
+}
+
+.hz-navbar__date {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}

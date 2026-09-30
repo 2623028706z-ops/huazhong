@@ -1,0 +1,5 @@
+<view class="hz-skeleton">
+  <view wx:for="{{cards}}" wx:key="id" class="u-card hz-skeleton__card">
+    <t-skeleton row-col="{{item.rows}}" loading />
+  </view>
+</view>

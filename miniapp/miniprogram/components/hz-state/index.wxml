@@ -1,0 +1,8 @@
+<view class="u-card hz-state">
+  <view class="hz-state__rule"></view>
+  <text class="hz-state__text u-serif">{{text}}</text>
+  <text wx:if="{{detail}}" class="hz-state__detail">{{detail}}</text>
+  <view wx:if="{{action}}" class="hz-state__action">
+    <hz-button kind="secondary" text="{{actionText}}" bind:press="onAction" />
+  </view>
+</view>
