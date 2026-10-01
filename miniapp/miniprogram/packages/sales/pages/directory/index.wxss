@@ -1,0 +1,26 @@
+/* 右侧 scroll-view 要有确定高度才会自己滚：整页撑满一屏竖排，分栏占剩下的高度（底栏占位在分栏下面） */
+page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.u-split {
+  flex: 1;
+  min-height: 0;
+}
+
+/* scroll-view 本身的底内边距会挤掉可视区；留白放进滚动内容的最后一组 */
+.u-split__main {
+  padding-bottom: 0;
+}
+
+.u-split__main .u-section:last-child {
+  padding-bottom: 12px;
+}
+
+/* 客户多了左栏自己滚 */
+.u-split__side {
+  overflow-y: auto;
+}
