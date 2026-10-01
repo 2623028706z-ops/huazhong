@@ -12,5 +12,6 @@ import { StaffService } from './staff.service.ts'
     // 接口测试换成假的实现（test/support/app.ts）
     { provide: PhoneExchange, useClass: WechatPhoneExchange },
   ],
+  exports: [AccountsService],
 })
 export class AccountsModule {}

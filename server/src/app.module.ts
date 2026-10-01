@@ -7,8 +7,11 @@ import { ResponseInterceptor } from './common/response.interceptor.ts'
 import type { Env } from './env.ts'
 import { JobsModule } from './jobs/jobs.module.ts'
 import { AccountsModule } from './modules/accounts/accounts.module.ts'
+import { FilesModule } from './modules/files/files.module.ts'
+import { FinanceModule } from './modules/finance/finance.module.ts'
 import { LogsModule } from './modules/logs/logs.module.ts'
-import { StoreModule } from './modules/store/store.module.ts'
+import { SalesModule } from './modules/sales/sales.module.ts'
+import { TodosModule } from './modules/todos/todos.module.ts'
 import { WarehouseModule } from './modules/warehouse/warehouse.module.ts'
 import { RealtimeModule } from './realtime/realtime.module.ts'
 
@@ -24,7 +27,10 @@ export class AppModule {
         AccountsModule,
         LogsModule,
         WarehouseModule,
-        StoreModule,
+        FilesModule,
+        SalesModule,
+        FinanceModule,
+        TodosModule,
       ],
       providers: [
         { provide: APP_GUARD, useClass: AccessGuard },

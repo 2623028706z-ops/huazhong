@@ -111,12 +111,23 @@ describe('库存查询', () => {
 })
 
 describe('门店首页', () => {
-  test('客户停用时有提示，启用后没有', async () => {
+  test('G28 客户停用时有提示，启用后没有', async () => {
     const openid = await t.bind('s1')
-    expect((await get(openid, '/store/home')).body.data).toEqual({ lockedReason: null })
+    const [c1] = await t.db.select().from(customers).where(eq(customers.name, '晨曦花艺'))
+    const customerId = String(c1?.id)
+    // 晨曦花艺目录：粉玫瑰、白绿清新、白绿桌花可订，向日葵停订；customerId 给门店订阅 catalog、ar
+    expect((await get(openid, '/store/home')).body.data).toEqual({
+      customerId,
+      orderableCount: 3,
+      lockedReason: null,
+    })
     await t.db.update(customers).set({ enabled: false }).where(eq(customers.name, '晨曦花艺'))
     expect((await get(openid, '/store/home')).body.data).toEqual({
+      customerId,
+      orderableCount: 3,
       lockedReason: '这个客户已停用，不能再下新单，请联系花众',
     })
+    await t.db.update(customers).set({ enabled: true }).where(eq(customers.name, '晨曦花艺'))
+    expect((await get(openid, '/store/home')).body.data).toMatchObject({ lockedReason: null })
   })
 })

@@ -1,0 +1,42 @@
+import { Module } from '@nestjs/common'
+import { AccountsModule } from '../accounts/accounts.module.ts'
+import { FilesModule } from '../files/files.module.ts'
+import { AfterReads } from './after-query.ts'
+import { AfterWrites } from './after-writes.ts'
+import { AftersController } from './afters.controller.ts'
+import { CatalogService } from './catalog.ts'
+import { CategoryService } from './categories.ts'
+import { CustomerService } from './customers.ts'
+import { CustomersController, ProductsController } from './masters.controller.ts'
+import { OrderReads } from './order-query.ts'
+import { OrdersController } from './orders.controller.ts'
+import { ProductService } from './products.ts'
+import { SalesOrderWrites } from './sales-orders.ts'
+import { SalesService } from './sales.service.ts'
+import { StoreHomeService } from './store-home.ts'
+import { StoreInviteService } from './store-invites.ts'
+import { StoreOrderWrites } from './store-orders.ts'
+import { StoreWrites } from './stores.ts'
+
+// 销售、发货、门店端：订单、售后、客户门店、产品、订货目录、门店邀请
+@Module({
+  imports: [AccountsModule, FilesModule],
+  controllers: [OrdersController, AftersController, CustomersController, ProductsController],
+  providers: [
+    OrderReads,
+    SalesOrderWrites,
+    StoreOrderWrites,
+    AfterReads,
+    AfterWrites,
+    CustomerService,
+    StoreWrites,
+    StoreInviteService,
+    ProductService,
+    CategoryService,
+    CatalogService,
+    StoreHomeService,
+    SalesService,
+  ],
+  exports: [SalesService],
+})
+export class SalesModule {}

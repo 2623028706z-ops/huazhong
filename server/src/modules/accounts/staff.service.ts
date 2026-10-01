@@ -19,7 +19,14 @@ import type { Viewer } from '../../common/domain/viewer.ts'
 import { accountColumns, findAccountRow } from '../../common/identity.ts'
 import { afterCursor } from '../../common/page.ts'
 import { WriteService, type WriteContext } from '../../common/write.service.ts'
-import { accountLog, clearBinding, versionPlusOne } from './binding.ts'
+import {
+  assertPhoneFree,
+  clearBinding,
+  ENABLED_PHONE_INDEX,
+  versionPlusOne,
+} from '../../common/account-writes.ts'
+import { guardUnique } from '../../common/unique.ts'
+import { accountLog } from './binding.ts'
 import {
   isSameState,
   losesAdmin,
@@ -33,19 +40,8 @@ import {
 } from './domain/staff.ts'
 
 const STAFF_TYPES = ['admin', 'staff'] as const
-const UNIQUE_VIOLATION = '23505'
-const ENABLED_PHONE_INDEX = 'accounts_enabled_phone'
-
 // 并发新增同一个手机号时，部分唯一索引兜底（04 章第 3.1 节）
-function isPhoneTaken(error: unknown): boolean {
-  for (let e: unknown = error; e instanceof Error; e = e.cause) {
-    const pgError = e as Error & { code?: string; constraint?: string }
-    if (pgError.code === UNIQUE_VIOLATION && pgError.constraint === ENABLED_PHONE_INDEX) return true
-  }
-  return false
-}
-
-const phoneTaken = () => appError.validation({ phone: copy.staff.phoneTaken })
+const PHONE_FIELDS = { [ENABLED_PHONE_INDEX]: { phone: copy.staff.phoneTaken } }
 
 @Injectable()
 export class StaffService {
@@ -78,36 +74,41 @@ export class StaffService {
   }
 
   create(viewer: Viewer, input: StaffCreate, idempotencyKey: string): Promise<StaffItem> {
-    return this.guardPhone(() =>
-      this.writes.run(
-        viewer,
-        async (ctx) => {
-          await this.assertPhoneFree(ctx.tx, input.phone, null)
-          const [row] = await ctx.tx
-            .insert(accounts)
-            .values({
-              type: input.admin ? 'admin' : 'staff',
-              name: input.name,
-              phone: input.phone,
-              createdBy: viewer.accountId,
+    return guardUnique(
+      () =>
+        this.writes.run(
+          viewer,
+          async (ctx) => {
+            await assertPhoneFree(ctx.tx, input.phone, null, 'phone')
+            const [row] = await ctx.tx
+              .insert(accounts)
+              .values({
+                type: input.admin ? 'admin' : 'staff',
+                name: input.name,
+                phone: input.phone,
+                createdBy: viewer.accountId,
+              })
+              .returning({ id: accounts.id })
+            if (!row) throw appError.internal()
+            await saveModules(ctx.tx, row.id, input)
+            const saved = await this.lock(ctx.tx, row.id)
+            await ctx.log({
+              ...accountLog(saved, copy.log.createStaff),
+              after: staffView(stateOf(saved)),
             })
-            .returning({ id: accounts.id })
-          if (!row) throw appError.internal()
-          await saveModules(ctx.tx, row.id, input)
-          const saved = await this.lock(ctx.tx, row.id)
-          await ctx.log({
-            ...accountLog(saved, copy.log.createStaff),
-            after: staffView(stateOf(saved)),
-          })
-          return toStaffItem(saved)
-        },
-        { endpoint: contract.createStaff, key: idempotencyKey },
-      ),
+            return toStaffItem(saved)
+          },
+          { endpoint: contract.createStaff, key: idempotencyKey },
+        ),
+      PHONE_FIELDS,
     )
   }
 
   update(viewer: Viewer, id: number, input: StaffUpdate): Promise<StaffItem> {
-    return this.guardPhone(() => this.writes.run(viewer, (ctx) => this.updateInTx(ctx, id, input)))
+    return guardUnique(
+      () => this.writes.run(viewer, (ctx) => this.updateInTx(ctx, id, input)),
+      PHONE_FIELDS,
+    )
   }
 
   private async updateInTx(ctx: WriteContext, id: number, input: StaffUpdate): Promise<StaffItem> {
@@ -159,7 +160,7 @@ export class StaffService {
       if (others.length === 0) throw appError.businessRule(copy.staff.lastAdmin)
     }
     const phoneMatters = next.enabled && (before.phone !== next.phone || !before.enabled)
-    if (phoneMatters) await this.assertPhoneFree(tx, next.phone, row.accountId)
+    if (phoneMatters) await assertPhoneFree(tx, next.phone, row.accountId, 'phone')
   }
 
   // 管理员解绑员工的微信：对方下次打开要重新手机号验证
@@ -185,30 +186,6 @@ export class StaffService {
     )
     if (!row) throw appError.notFound()
     return row
-  }
-
-  private async assertPhoneFree(tx: Tx, phone: string, exceptId: number | null): Promise<void> {
-    const [taken] = await tx
-      .select({ id: accounts.id })
-      .from(accounts)
-      .where(
-        and(
-          eq(accounts.phone, phone),
-          eq(accounts.enabled, true),
-          exceptId === null ? undefined : ne(accounts.id, exceptId),
-        ),
-      )
-      .limit(1)
-    if (taken) throw phoneTaken()
-  }
-
-  private async guardPhone<T>(work: () => Promise<T>): Promise<T> {
-    try {
-      return await work()
-    } catch (error) {
-      if (isPhoneTaken(error)) throw phoneTaken()
-      throw error
-    }
   }
 }
 

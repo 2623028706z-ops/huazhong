@@ -8,12 +8,53 @@ export const seedCustomers = [
   { key: 'c3', name: '一间花房' },
 ] as const
 
+// 07 章第 12.2 节：联系人、电话、地址（地址照原型）
 export const seedStores = [
-  { key: 's1', customer: 'c1', name: '滨江店', enabled: true },
-  { key: 's2', customer: 'c1', name: '城西店', enabled: true },
-  { key: 's3', customer: 'c1', name: '城东店', enabled: false },
-  { key: 's4', customer: 'c2', name: '文新店', enabled: true },
-  { key: 's5', customer: 'c3', name: '湖滨店', enabled: true },
+  {
+    key: 's1',
+    customer: 'c1',
+    name: '滨江店',
+    contact: '陈女士',
+    phone: '13800138001',
+    address: '杭州市滨江区江南大道128号',
+    enabled: true,
+  },
+  {
+    key: 's2',
+    customer: 'c1',
+    name: '城西店',
+    contact: '王先生',
+    phone: '13800138002',
+    address: '杭州市西湖区文一西路86号',
+    enabled: true,
+  },
+  {
+    key: 's3',
+    customer: 'c1',
+    name: '城东店',
+    contact: '刘女士',
+    phone: '13800138003',
+    address: '杭州市上城区新塘路56号',
+    enabled: false,
+  },
+  {
+    key: 's4',
+    customer: 'c2',
+    name: '文新店',
+    contact: '林女士',
+    phone: '13800138004',
+    address: '杭州市西湖区文二路88号',
+    enabled: true,
+  },
+  {
+    key: 's5',
+    customer: 'c3',
+    name: '湖滨店',
+    contact: '何先生',
+    phone: '13800138005',
+    address: '杭州市上城区延安路16号',
+    enabled: true,
+  },
 ] as const
 
 export const seedSuppliers = [

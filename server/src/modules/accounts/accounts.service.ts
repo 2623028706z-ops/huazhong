@@ -8,7 +8,8 @@ import { DB } from '../../common/db.ts'
 import { resolveViewer, viewerOf, type Viewer } from '../../common/domain/viewer.ts'
 import { findAccountRow } from '../../common/identity.ts'
 import { WriteService, type WriteContext } from '../../common/write.service.ts'
-import { accountLog, clearBinding, versionPlusOne } from './binding.ts'
+import { clearBinding, versionPlusOne } from '../../common/account-writes.ts'
+import { accountLog } from './binding.ts'
 import { landingOf, menusOf } from './domain/me.ts'
 import { PhoneExchange } from './phone.ts'
 
@@ -35,6 +36,11 @@ export class AccountsService {
       landing: landingOf(viewer),
       menus: menusOf(viewer),
     }
+  }
+
+  // 手机号快速验证的令牌换手机号：门店邀请（sales 模块）也用
+  exchangePhone(code: string): Promise<string> {
+    return this.phones.exchange(code)
   }
 
   // 已绑定就直接返回当前账号（停用照常报 ACCOUNT_DISABLED）；否则换手机号、对上启用的预录账号后绑定

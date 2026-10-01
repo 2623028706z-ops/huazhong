@@ -6,6 +6,7 @@ import { ENV, type Env } from '../env.ts'
 import { Clock } from './clock.ts'
 import { DB, POOL, PoolLifecycle } from './db.ts'
 import { IdentityService } from './identity.ts'
+import { FileStorage, MemoryFileStorage } from './storage.ts'
 import { WriteService } from './write.service.ts'
 
 @Global()
@@ -22,8 +23,10 @@ export class CommonModule {
         Clock,
         IdentityService,
         WriteService,
+        // COS 在阶段 6 接入，之前开发和接口测试都用内存实现
+        { provide: FileStorage, useClass: MemoryFileStorage },
       ],
-      exports: [ENV, DB, Clock, IdentityService, WriteService],
+      exports: [ENV, DB, Clock, IdentityService, WriteService, FileStorage],
     }
   }
 }
