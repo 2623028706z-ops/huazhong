@@ -43,6 +43,13 @@ export function confirmAsk(host: ConfirmHost, options: AskOptions): Promise<bool
   return confirmOf(host).ask(options)
 }
 
+// 顶栏返回：花众确认框已经问过，确认放弃后先关掉系统确认框再返回，不然微信会再问一次
+export async function leavePage(host: ConfirmHost, changed: boolean): Promise<void> {
+  if (!(await confirmLeave(host, changed))) return
+  syncUnloadAlert(false)
+  void wx.navigateBack()
+}
+
 // 改过内容就问一次，返回能不能离开
 export function confirmLeave(host: ConfirmHost, changed: boolean): Promise<boolean> {
   if (!changed) return Promise.resolve(true)

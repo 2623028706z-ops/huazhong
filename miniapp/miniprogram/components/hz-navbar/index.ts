@@ -2,7 +2,7 @@
 // 一级页面不传 back；花众首页、模块首页传 person，下面一行放身份（左）和日期（右）。
 // 断网时顶栏下出一条提示（02 章第 5.2 节）。guard 为 true 时点返回先问「放弃修改吗？」
 import { copy, shanghaiDateOf } from '@huazhong/shared'
-import { confirmLeave } from '../../core/guard'
+import { leavePage } from '../../core/guard'
 import { navLayout } from '../../core/layout'
 import { subscribeNetwork } from '../../core/network'
 
@@ -35,9 +35,7 @@ Component({
   },
   methods: {
     onBack() {
-      void confirmLeave(this.selectOwnerComponent(), this.data.guard).then((canLeave) => {
-        if (canLeave) void wx.navigateBack()
-      })
+      void leavePage(this.selectOwnerComponent(), this.data.guard)
     },
   },
 })
