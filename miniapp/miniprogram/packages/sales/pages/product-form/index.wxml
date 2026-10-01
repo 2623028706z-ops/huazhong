@@ -6,12 +6,24 @@
   <hz-error wx:if="{{formError}}" message="{{formError}}" />
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
   <block wx:else>
-    <hz-field label="{{texts.name}}" value="{{form.name}}" error="{{fields.name}}" bind:change="onName" />
-    <hz-picker label="{{texts.category}}" options="{{categoryOptions}}" value="{{form.categoryId}}" error="{{fields.categoryId}}" bind:change="onCategory" />
-    <hz-field label="{{texts.unit}}" value="{{form.unit}}" error="{{fields.unit}}" bind:change="onUnit" />
-    <text class="u-field__label">{{texts.image}}</text>
-    <hz-upload files="{{images}}" max="{{1}}" bind:add="onAddImage" bind:remove="onRemoveImage" />
-    <hz-switch label="{{texts.enabled}}" value="{{form.enabled}}" bind:change="onEnabled" />
+    <view class="u-section">
+      <text class="u-section__title">{{texts.basic}}</text>
+      <view class="u-card u-form-card">
+        <hz-field label="{{texts.name}}" value="{{form.name}}" error="{{fields.name}}" bind:change="onName" />
+        <hz-picker label="{{texts.category}}" options="{{categoryOptions}}" value="{{form.categoryId}}" error="{{fields.categoryId}}" bind:change="onCategory" />
+        <hz-field label="{{texts.unit}}" value="{{form.unit}}" error="{{fields.unit}}" bind:change="onUnit" />
+      </view>
+    </view>
+    <view class="u-section">
+      <text class="u-section__title">{{texts.display}}</text>
+      <view class="u-card u-form-card">
+        <view>
+          <text class="u-field__label">{{texts.image}}</text>
+          <hz-upload files="{{images}}" max="{{1}}" bind:add="onAddImage" bind:remove="onRemoveImage" />
+        </view>
+        <hz-switch label="{{texts.enabled}}" value="{{form.enabled}}" bind:change="onEnabled" />
+      </view>
+    </view>
     <template is="bom-rows" data="{{heading: texts.bom, error: fields.bom, bom: form.bom, add: texts.add}}" />
   </block>
 </view>

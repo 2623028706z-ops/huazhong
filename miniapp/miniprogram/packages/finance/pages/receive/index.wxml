@@ -5,14 +5,20 @@
   <hz-error wx:if="{{formError}}" message="{{formError}}" />
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
   <block wx:else>
-    <hz-picker label="{{texts.customer}}" options="{{customerOptions}}" value="{{customerId}}" error="{{fields.customerId}}" bind:change="onCustomer" />
-    <block wx:if="{{!isAllocate}}">
-      <hz-picker label="{{texts.date}}" mode="date" value="{{form.receiptDate}}" end="{{today}}" error="{{fields.receiptDate}}" bind:change="onDate" />
-      <hz-field label="{{texts.amount}}" type="digit" value="{{form.amountText}}" error="{{fields.amountCents}}" bind:change="onAmount" />
-      <hz-picker label="{{texts.method}}" options="{{methodOptions}}" value="{{form.methodName}}" error="{{fields.methodName}}" bind:change="onMethod" />
-      <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{form.note}}" bind:change="onNote" />
-    </block>
-    <block wx:if="{{customerId}}">
+    <!-- 核销预收只选客户，不写组标题 -->
+    <view class="u-section">
+      <text wx:if="{{!isAllocate}}" class="u-section__title">{{texts.receipt}}</text>
+      <view class="u-card u-form-card">
+        <hz-picker label="{{texts.customer}}" options="{{customerOptions}}" value="{{customerId}}" error="{{fields.customerId}}" bind:change="onCustomer" />
+        <block wx:if="{{!isAllocate}}">
+          <hz-picker label="{{texts.date}}" mode="date" value="{{form.receiptDate}}" end="{{today}}" error="{{fields.receiptDate}}" bind:change="onDate" />
+          <hz-field label="{{texts.amount}}" type="digit" value="{{form.amountText}}" error="{{fields.amountCents}}" bind:change="onAmount" />
+          <hz-picker label="{{texts.method}}" options="{{methodOptions}}" value="{{form.methodName}}" error="{{fields.methodName}}" bind:change="onMethod" />
+          <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{form.note}}" bind:change="onNote" />
+        </block>
+      </view>
+    </view>
+    <view wx:if="{{customerId}}" class="u-section">
       <text class="u-section__title">{{texts.allocDetail}}</text>
       <text wx:if="{{allocRows.length === 0}}" class="u-info__meta">{{texts.empty}}</text>
       <view wx:for="{{allocRows}}" wx:key="orderId" class="u-card u-form-card">
@@ -26,7 +32,7 @@
         </view>
       </view>
       <hz-notice text="{{summary}}" />
-    </block>
+    </view>
   </block>
 </view>
 <hz-action-bar>

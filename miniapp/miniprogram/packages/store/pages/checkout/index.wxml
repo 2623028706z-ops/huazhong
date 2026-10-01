@@ -8,7 +8,9 @@
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
   <block wx:else>
     <template is="info" data="{{rows: info}}" />
-    <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{note}}" bind:change="onNote" />
+    <view class="u-card u-form-card">
+      <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{note}}" bind:change="onNote" />
+    </view>
     <view class="u-section">
       <text class="u-section__title">{{texts.lines}}</text>
       <hz-line-item lines="{{rows}}" mode="qty" removable bind:qty="onQty" bind:remove="onRemove" />

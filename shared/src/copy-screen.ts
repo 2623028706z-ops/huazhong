@@ -169,6 +169,11 @@ export const screen = {
     close: '关闭信息',
     void: '作废信息',
     allocs: '核销明细',
+    // 整页表单的组标题（2026-10-05 确认：组标题 + 卡片）
+    basic: '基本信息',
+    display: '展示',
+    orderInfo: '订单信息',
+    receipt: '收款信息',
   },
   tag: {
     changed: '改单',

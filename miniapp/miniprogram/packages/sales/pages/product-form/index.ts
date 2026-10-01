@@ -43,6 +43,8 @@ Page({
       unit: copy.field.unit,
       image: copy.screen.label.productImage,
       enabled: copy.screen.label.enabled,
+      basic: copy.screen.section.basic,
+      display: copy.screen.section.display,
       bom: copy.screen.section.bom,
       add: copy.screen.action.addMaterial,
       save: copy.action.saveProduct,

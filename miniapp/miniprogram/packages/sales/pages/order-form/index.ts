@@ -73,6 +73,7 @@ Page({
     saving: false,
     texts: {
       lines: copy.screen.section.lines,
+      orderInfo: copy.screen.section.orderInfo,
       customer: copy.screen.label.customer,
       store: copy.screen.label.store,
       shipDate: copy.field.shipDate,

@@ -49,6 +49,7 @@ Page({
     summary: '',
     saving: false,
     texts: {
+      receipt: copy.screen.section.receipt,
       customer: copy.screen.label.customer,
       date: copy.field.receiptDate,
       amount: copy.screen.label.receiptAmount,
