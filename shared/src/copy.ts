@@ -381,6 +381,7 @@ export const copy = {
     clear: '清除',
     // 按钮写动作 + 对象（02 章第 8 节，2026-10-05 确认）
     saveCategory: '保存分类',
+    saveMethod: '保存方式',
     saveCustomer: '保存客户',
     saveStore: '保存门店',
     saveProduct: '保存产品',
