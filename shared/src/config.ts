@@ -7,6 +7,10 @@ export const DEMAND_DEFAULT_DAYS = 7
 export const STORE_INVITE_TTL_DAYS = 7
 export const STORE_INVITE_TOKEN_BYTES = 32
 export const AFTER_IMAGE_MAX_COUNT = 3
+// 门店售后申请期限：实际发货那天再加几天（阶段 3 确认）
+export const AFTER_APPLY_DAYS = 7
+// 销售确认订单、新建订单时出货日期默认今天往后几天（默认明天）
+export const SHIP_DATE_DEFAULT_OFFSET_DAYS = 1
 export const IMAGE_MAX_BYTES = 3 * 1024 * 1024
 export const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
 export const UPLOAD_TICKET_TTL_MINUTES = 10

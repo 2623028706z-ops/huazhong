@@ -173,6 +173,14 @@ export const statusTones = {
 } as const
 export type StatusKind = keyof typeof statusTones
 
+// 某种状态里的等待类状态码：列表 counts 只数这些（05 章第 1.3 节）
+export function waitCodesOf<K extends StatusKind>(kind: K): (keyof (typeof statusTones)[K])[] {
+  const tones: Record<string, StatusTone> = statusTones[kind]
+  return Object.keys(tones).filter(
+    (code) => tones[code] === 'wait',
+  ) as (keyof (typeof statusTones)[K])[]
+}
+
 // 状态码 → 中文名和颜色（hz-status、筛选栏状态标签共用）；种类或状态码不对返回 null
 export function statusOf(kind: string, code: string): { text: string; tone: StatusTone } | null {
   if (!Object.prototype.hasOwnProperty.call(statusTones, kind)) return null

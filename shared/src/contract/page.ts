@@ -18,6 +18,40 @@ export function pageSchema<T extends z.ZodType>(item: T) {
   })
 }
 
+// 带状态筛选的列表：顶层多 counts，只含等待类状态（05 章第 1.3 节）
+export function countedPageSchema<T extends z.ZodType, S extends readonly [string, ...string[]]>(
+  item: T,
+  statuses: S,
+) {
+  return pageSchema(item).extend({
+    counts: z.partialRecord(z.enum(statuses), z.number().int().nonnegative()),
+  })
+}
+
+// 明细里同一种产品、花材只能出现一次（04 章第 10 节）：重复的那一行标红。
+// path 是 [明细字段, 行里的字段]，例如 ['lines', 'productId'] → lines.1.productId
+interface DistinctRule<T> {
+  items: readonly T[]
+  keyOf: (item: T) => string
+  message: string
+  path: readonly [string, string]
+}
+
+export function checkDistinct<T>(ctx: z.RefinementCtx, rule: DistinctRule<T>): void {
+  const seen = new Set<string>()
+  rule.items.forEach((item, index) => {
+    const key = rule.keyOf(item)
+    if (seen.has(key)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: rule.message,
+        path: [rule.path[0], index, rule.path[1]],
+      })
+    }
+    seen.add(key)
+  })
+}
+
 // 单据路径参数 /:id
 export const idParamsSchema = z.object({ id: idSchema })
 

@@ -39,6 +39,16 @@ const moduleOf = (file) => {
   const match = /server\/src\/modules\/([^/]+)\//.exec(file)
   return match ? match[1] : null
 }
+// 别的模块只能引用对方的 <name>.service.ts；Nest 的模块装配文件（本模块和 app.module.ts）
+// 可以 import 对方的 <name>.module.ts（只是装配，不读内部实现）
+function isAllowedImport(importer, importerModule, target, targetModule) {
+  const base = path.basename(target)
+  const wiresModule = base === `${targetModule}.module.ts`
+  if (!importerModule) return importer.endsWith('server/src/app.module.ts') && wiresModule
+  if (base === `${targetModule}.service.ts`) return true
+  return importer.endsWith(`${importerModule}.module.ts`) && wiresModule
+}
+
 const boundaries = {
   rules: {
     'module-boundaries': {
@@ -54,12 +64,7 @@ const boundaries = {
             if (!targetModule) return
             const importerModule = moduleOf(importer)
             if (importerModule === targetModule) return
-            const base = path.basename(target)
-            const isAppModule = importer.endsWith('server/src/app.module.ts')
-            const allowed = importerModule
-              ? base === `${targetModule}.service.ts`
-              : isAppModule && base === `${targetModule}.module.ts`
-            if (!allowed) {
+            if (!isAllowedImport(importer, importerModule, target, targetModule)) {
               context.report({
                 node,
                 message: `不能直接引用 ${targetModule} 模块的内部文件，只能调用它的 ${targetModule}.service.ts。`,
@@ -183,6 +188,7 @@ export default tseslint.config(
     files: [
       'shared/src/config.ts',
       'shared/src/copy.ts',
+      'shared/src/copy-screen.ts',
       'shared/src/labels.ts',
       'shared/src/errors.ts',
       'shared/src/format.ts',

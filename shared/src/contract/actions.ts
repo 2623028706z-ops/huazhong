@@ -4,6 +4,8 @@ import * as z from 'zod'
 export const actionCodes = [
   // 列表级
   'create',
+  'createCustomer',
+  'manageCategories',
   'inviteSupplier',
   'createPo',
   'stockIn',
@@ -22,8 +24,6 @@ export const actionCodes = [
   'processAfter',
   'closeAfter',
   'voidAfter',
-  'addLine',
-  'removeLine',
   'allocate',
   'voidReceipt',
   'editPo',

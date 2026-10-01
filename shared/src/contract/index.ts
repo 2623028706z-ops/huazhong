@@ -1,16 +1,69 @@
 // 接口契约：按开发阶段增长（08 章），每个接口在这里登记一次。
 // 后端每个路由都必须对应这里的一项，这里的每一项后端都必须实现（server/test/contract.test.ts）。
+import {
+  closeAfter,
+  createAfter,
+  createStoreAfter,
+  getAfter,
+  listAfters,
+  processAfter,
+  voidAfter,
+} from './afters.ts'
 import { bindPhone, unbind } from './auth.ts'
+import { getCatalog, saveCatalog } from './catalog.ts'
+import {
+  createCustomer,
+  createStore,
+  createStoreInvite,
+  listCustomers,
+  listStoreInvites,
+  unbindStoreWechat,
+  updateCustomer,
+  updateStore,
+} from './customers.ts'
+import { completeUpload, requestUploadTicket } from './files.ts'
+import { getArCustomer, getArOrder, listArCustomers, listUnpaidOrders } from './finance.ts'
 import { listInventory, listMaterialCategories } from './inventory.ts'
 import { getLog, listLogs } from './logs.ts'
 import { me } from './me.ts'
+import { createMethod, listMethods, updateMethod } from './methods.ts'
+import { cancelOrder, confirmOrder, createOrder, shipOrder, updateOrder } from './order-writes.ts'
+import { getOrder, listOrders, listShippingOrders } from './orders.ts'
+import {
+  createProduct,
+  createProductCategory,
+  deleteProductCategory,
+  listProductCategories,
+  listProducts,
+  orderProductCategories,
+  updateProduct,
+  updateProductCategory,
+} from './products.ts'
+import {
+  allocatePrepaid,
+  createReceipt,
+  getReceipt,
+  listFinanceRecords,
+  voidReceipt,
+} from './receipts.ts'
 import { createStaff, listStaff, unbindStaffWechat, updateStaff } from './staff.ts'
-import { storeHome } from './store.ts'
+import { getStoreInvite, useStoreInvite } from './store-invites.ts'
+import {
+  cancelStoreOrder,
+  createStoreOrder,
+  storeCatalog,
+  storeHome,
+  storeStatement,
+  updateStoreOrder,
+} from './store.ts'
+import { moduleTodos } from './todos.ts'
 
 export const contract = {
   me,
   bindPhone,
   unbind,
+  getStoreInvite,
+  useStoreInvite,
   listStaff,
   createStaff,
   updateStaff,
@@ -19,7 +72,66 @@ export const contract = {
   getLog,
   listInventory,
   listMaterialCategories,
+  moduleTodos,
+  // 销售：主数据
+  listCustomers,
+  createCustomer,
+  updateCustomer,
+  createStore,
+  updateStore,
+  unbindStoreWechat,
+  createStoreInvite,
+  listStoreInvites,
+  listProductCategories,
+  createProductCategory,
+  updateProductCategory,
+  orderProductCategories,
+  deleteProductCategory,
+  listProducts,
+  createProduct,
+  updateProduct,
+  getCatalog,
+  saveCatalog,
+  // 订单、发货
+  listOrders,
+  listShippingOrders,
+  getOrder,
+  createOrder,
+  confirmOrder,
+  updateOrder,
+  cancelOrder,
+  shipOrder,
+  // 售后
+  listAfters,
+  getAfter,
+  createAfter,
+  processAfter,
+  closeAfter,
+  voidAfter,
+  createStoreAfter,
+  // 门店端
   storeHome,
+  storeCatalog,
+  createStoreOrder,
+  updateStoreOrder,
+  cancelStoreOrder,
+  storeStatement,
+  // 财务收款
+  listArCustomers,
+  getArCustomer,
+  listUnpaidOrders,
+  getArOrder,
+  createReceipt,
+  allocatePrepaid,
+  getReceipt,
+  voidReceipt,
+  listFinanceRecords,
+  listMethods,
+  createMethod,
+  updateMethod,
+  // 图片上传
+  requestUploadTicket,
+  completeUpload,
 } as const
 export type Contract = typeof contract
 export type EndpointName = keyof Contract

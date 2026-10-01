@@ -28,7 +28,16 @@ function uniqueChars(text: string): string {
 
 // 标题字：模块名 + 页面标题 + 衬线显示的整页状态和确认框、首页主卡 + 全部文案里出现的标点
 function titleCharset(): string {
-  const serifCopy = [copy.title, copy.state, copy.confirm, copy.error, copy.network, copy.hub]
+  const serifCopy = [
+    copy.title,
+    copy.screen.title,
+    copy.screen.empty,
+    copy.state,
+    copy.confirm,
+    copy.error,
+    copy.network,
+    copy.hub,
+  ]
   const titles = [...stringsOf(labels.module), ...serifCopy.flatMap(stringsOf)].join('')
   const punctuation = stringsOf(copy)
     .join('')

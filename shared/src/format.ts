@@ -89,6 +89,20 @@ export function formatQty(qty: number, unit: string): string {
   return qty + ' ' + unit
 }
 
+// 和 copy.separator 同一个写法（本文件会转成 WXS，不能 import）
+const UNIT_SEPARATOR = ' · '
+
+// 卡片第 2 行的总数：后端按单位合计好（顺序照明细里第一次出现），例如「32 束 · 4 盆」
+export function formatUnitTotals(totals: { unit: string; qty: number }[]): string {
+  let text = ''
+  for (let i = 0; i < totals.length; i += 1) {
+    const total = totals[i]
+    if (total === undefined) continue
+    text = text + (i > 0 ? UNIT_SEPARATOR : '') + formatQty(total.qty, total.unit)
+  }
+  return text
+}
+
 // 卡片、列表里的日期：今年的写 月-日，不是今年的写全
 export function formatCardDate(date: string, today: string): string {
   return date.slice(0, 4) === today.slice(0, 4) ? date.slice(5) : date

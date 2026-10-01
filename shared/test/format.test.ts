@@ -9,6 +9,7 @@ import {
   formatNavDate,
   formatQty,
   formatTime,
+  formatUnitTotals,
   maskPhone,
   monthStartOf,
   shanghaiDateOf,
@@ -81,6 +82,15 @@ describe('金额按分显示成元', () => {
 describe('数量带单位', () => {
   it('15 束', () => {
     expect(formatQty(15, '束')).toBe('15 束')
+  })
+  it('卡片总数按单位分开写', () => {
+    expect(
+      formatUnitTotals([
+        { unit: '束', qty: 32 },
+        { unit: '盆', qty: 4 },
+      ]),
+    ).toBe('32 束 · 4 盆')
+    expect(formatUnitTotals([])).toBe('')
   })
 })
 
