@@ -41,7 +41,8 @@ describe('分页列表', () => {
     expect(views.at(-1)).toMatchObject({ skeleton: true, loaded: false })
     pending.resolve(ok([1, 2], null))
     await loading
-    expect(views.at(-1)).toEqual({ items: [1, 2], loaded: true, skeleton: false, done: true })
+    // 只有一页：不显示「已显示全部」
+    expect(views.at(-1)).toEqual({ items: [1, 2], loaded: true, skeleton: false, done: false })
   })
 
   it('触底接着上一页的游标查，拼在后面', async () => {

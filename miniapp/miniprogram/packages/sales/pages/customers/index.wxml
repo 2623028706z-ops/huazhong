@@ -4,7 +4,7 @@
   <view class="u-list">
     <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
   </view>
-  <hz-skeleton wx:if="{{!loaded}}" type="list" />
+  <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="list" /></block>
   <hz-state wx:elif="{{side.length === 0}}" object="{{texts.empty}}" />
   <view wx:else class="u-split">
     <view class="u-split__side">

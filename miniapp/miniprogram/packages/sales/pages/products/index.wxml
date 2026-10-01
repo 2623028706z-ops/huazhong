@@ -2,7 +2,7 @@
 <view class="u-list">
   <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
   <hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
-  <hz-skeleton wx:if="{{!loaded}}" type="list" />
+  <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="list" /></block>
   <hz-state wx:elif="{{groups.length === 0}}" object="{{texts.empty}}" />
   <block wx:for="{{groups}}" wx:key="id" wx:for-item="group">
     <text class="u-list__group">{{group.name}}</text>

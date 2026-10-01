@@ -7,7 +7,7 @@
     <hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" />
     <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
   </view>
-  <hz-skeleton wx:if="{{!loaded}}" type="list" />
+  <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="list" /></block>
   <hz-state wx:elif="{{side.length === 0}}" object="{{texts.noCustomers}}" />
   <view wx:else class="u-split">
     <view class="u-split__side">
@@ -54,13 +54,13 @@
     </view>
     <hz-error wx:if="{{formError}}" message="{{formError}}" />
     <view class="u-section">
-      <text class="u-section__title">{{texts.customerItem}}</text>
+      <text class="u-sheet-section__title">{{texts.customerItem}}</text>
       <hz-field label="{{texts.code}}" placeholder="{{texts.optional}}" value="{{form.customerCode}}" error="{{fields.customerCode}}" bind:change="onCode" />
       <hz-picker label="{{texts.category}}" options="{{categoryOptions}}" value="{{form.categoryId}}" error="{{fields.categoryId}}" bind:change="onCategory" />
       <hz-field label="{{priceLabel}}" type="digit" value="{{form.priceText}}" error="{{fields.priceCents}}" bind:change="onPrice" />
       <hz-switch label="{{texts.enabled}}" value="{{form.enabled}}" bind:change="onEnabled" />
     </view>
-    <template is="bom-rows" data="{{heading: texts.sharedBom, note: texts.sharedNote, error: bomError, bom: form.bom, add: texts.addMaterial}}" />
+    <template is="bom-rows" data="{{sheet: true, heading: texts.sharedBom, note: texts.sharedNote, error: bomError, bom: form.bom, add: texts.addMaterial}}" />
   </view>
   <block wx:if="{{layer === 'material'}}">
     <view wx:if="{{materialPicks.length === 0}}" class="u-sheet-section">{{texts.noMaterial}}</view>

@@ -2,7 +2,7 @@
 <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
 <view wx:else class="u-list">
   <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
-  <hz-skeleton wx:if="{{!loaded}}" type="form" />
+  <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
   <view wx:for="{{sections}}" wx:key="kind" wx:for-item="section" class="u-section">
     <text class="u-section__title">{{section.title}}</text>
     <view class="u-card u-form-card">

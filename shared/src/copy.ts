@@ -318,7 +318,7 @@ export const copy = {
   },
   // 列表的对象名：空状态「暂无 + 对象」、搜索框、筛选项
   object: {
-    inventory: '符合条件的库存',
+    inventory: '库存',
     logs: '操作日志',
     staff: '员工',
     material: '花材',

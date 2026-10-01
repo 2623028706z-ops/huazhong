@@ -3,7 +3,7 @@
 <view wx:else class="u-list">
   <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
   <hz-error wx:if="{{formError}}" message="{{formError}}" />
-  <hz-skeleton wx:if="{{!loaded}}" type="form" />
+  <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
   <block wx:else>
     <hz-picker label="{{texts.customer}}" options="{{customerOptions}}" value="{{customerId}}" error="{{fields.customerId}}" bind:change="onCustomer" />
     <block wx:if="{{!isAllocate}}">
@@ -18,7 +18,7 @@
       <view wx:for="{{allocRows}}" wx:key="orderId" class="u-card u-form-card">
         <view class="u-info__head">
           <text class="u-info__title">{{item.name}}</text>
-          <text style="font-weight: 600;">{{item.sub}}</text>
+          <text class="u-serif-amount u-amount">{{item.sub}}</text>
         </view>
         <view class="u-info__head">
           <hz-field label="{{texts.allocThis}}" type="digit" value="{{item.text}}" data-index="{{index}}" bind:change="onAlloc" />

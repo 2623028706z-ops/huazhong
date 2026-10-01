@@ -75,7 +75,7 @@
       <view wx:for="{{allocs}}" wx:key="id" class="u-info__line">
         <view class="u-info__head">
           <text>{{item.name}}</text>
-          <text class="u-serif-amount" style="font-weight: 600;">{{item.amount}}</text>
+          <text class="u-serif-amount u-amount">{{item.amount}}</text>
         </view>
         <text class="u-info__meta">{{item.sub}}</text>
       </view>

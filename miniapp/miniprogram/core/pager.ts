@@ -13,7 +13,7 @@ export interface PagerView<T> {
   // 第一页回来过（空状态只在这之后显示）
   loaded: boolean
   skeleton: boolean
-  // 没有下一页了
+  // 翻过页且没有下一页了：显示「已显示全部」，只有一页时不显示（02 章第 5.1 节）
   done: boolean
 }
 
@@ -23,6 +23,7 @@ export class Pager<T> {
   private items: T[] = []
   private cursor: string | null = null
   private loaded = false
+  private pages = 0
   private skeleton = false
   private busy = false
   private run = 0
@@ -63,6 +64,7 @@ export class Pager<T> {
     this.skeleton = false
     if (result.ok) {
       this.items = cursor === undefined ? result.data.items : [...this.items, ...result.data.items]
+      this.pages = cursor === undefined ? 1 : this.pages + 1
       this.cursor = result.data.nextCursor
       this.loaded = true
     }
@@ -75,7 +77,7 @@ export class Pager<T> {
       items: this.items,
       loaded: this.loaded,
       skeleton: this.skeleton,
-      done: this.loaded && this.cursor === null,
+      done: this.loaded && this.cursor === null && this.pages > 1,
     })
   }
 }

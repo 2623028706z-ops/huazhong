@@ -16,7 +16,7 @@
       <hz-side-list items="{{categories}}" value="{{categoryId}}" bind:change="onCategory" />
     </view>
     <scroll-view class="hz-shop__main" scroll-y>
-      <hz-skeleton wx:if="{{!loaded}}" type="list" />
+      <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="list" /></block>
       <hz-state wx:elif="{{products.length === 0}}" object="{{emptyObject}}" />
       <view wx:for="{{products}}" wx:key="id" class="u-card hz-shop__product">
         <image wx:if="{{item.thumbUrl}}" class="u-thumbs__item" src="{{item.thumbUrl}}" mode="aspectFill" lazy-load />

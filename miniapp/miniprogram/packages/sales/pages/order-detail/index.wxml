@@ -4,7 +4,7 @@
 <view wx:else class="u-list">
   <hz-realtime-bar text="{{realtime}}" />
   <hz-error wx:if="{{failure}}" message="{{failure.message}}" request-id="{{failure.requestId}}" retry bind:retry="onFailureAction" />
-  <hz-skeleton wx:if="{{!loaded}}" type="detail" />
+  <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="detail" /></block>
   <template wx:elif="{{view}}" is="order-body" data="{{...view}}" />
 </view>
 <template is="buttons" data="{{buttons, busy}}" />

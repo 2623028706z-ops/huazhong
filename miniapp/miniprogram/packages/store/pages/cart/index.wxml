@@ -5,7 +5,7 @@
   <block wx:else>
     <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
     <hz-notice wx:if="{{notice}}" text="{{notice}}" />
-    <hz-skeleton wx:if="{{!loaded}}" type="list" />
+    <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="list" /></block>
     <hz-state wx:elif="{{rows.length === 0}}" object="{{emptyObject}}" />
     <block wx:else>
       <hz-line-item lines="{{rows}}" mode="qty" removable bind:qty="onQty" bind:remove="onRemove" />

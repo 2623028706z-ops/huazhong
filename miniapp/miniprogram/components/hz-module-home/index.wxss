@@ -16,3 +16,8 @@
   align-items: center;
   justify-content: space-between;
 }
+
+/* 抬头和「查看全部」同一行，不要 u-section__title 的负下边距 */
+.hz-module-home__head .u-section__title {
+  margin-bottom: 0;
+}

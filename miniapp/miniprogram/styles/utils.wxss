@@ -49,6 +49,14 @@
   font-weight: 600;
 }
 
+/* 信息行里的金额：15px 墨色加粗，不靠继承字号（02 章第 6 节第 4 条） */
+.u-amount {
+  flex: none;
+  font-size: var(--hz-font-md);
+  font-weight: 600;
+  color: var(--hz-ink);
+}
+
 /* 卡片底（hz-card、入口卡、明细、提示条共用） */
 .u-card {
   background: var(--hz-card);
@@ -321,8 +329,11 @@
 
 /* 提醒说明（配方所有客户共用）：琥珀字，不用最弱的灰 */
 .u-note-warn {
+  padding: 8px 12px;
   font-size: var(--hz-font-sm);
   color: var(--hz-amber);
+  background: var(--hz-amber-bg);
+  border-radius: var(--hz-radius-inner);
 }
 
 /* 长名称最多两行，不把价格挤走 */

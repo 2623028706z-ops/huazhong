@@ -44,5 +44,6 @@
   flex: none;
   margin-left: auto;
   font-size: var(--hz-font-md);
+  font-weight: 600;
   color: var(--hz-ink);
 }

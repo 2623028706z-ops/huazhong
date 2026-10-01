@@ -1,13 +1,9 @@
 <view class="u-field">
   <text wx:if="{{label}}" class="u-field__label">{{label}}</text>
   <view class="hz-choices">
-    <view
-      wx:for="{{items}}"
-      wx:key="id"
-      class="hz-choices__item {{item.on ? 'hz-choices__item--on' : ''}} {{error ? 'hz-choices__item--error' : ''}}"
-      data-key="{{item.id}}"
-      bindtap="onTap"
-    >{{item.name}}</view>
+    <view wx:for="{{items}}" wx:key="id" class="hz-choices__tap" data-key="{{item.id}}" bindtap="onTap">
+      <view class="hz-choices__item {{item.on ? 'hz-choices__item--on' : ''}} {{error ? 'hz-choices__item--error' : ''}}">{{item.name}}</view>
+    </view>
   </view>
   <text wx:if="{{error}}" class="u-field__error">{{error}}</text>
 </view>

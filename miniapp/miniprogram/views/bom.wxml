@@ -2,7 +2,7 @@
      一种花材一行：名称、用量、单位、垃圾桶；下面「添加花材」。发 onBomQty / onRemoveBom（data-index）、onAddBom -->
 <template name="bom-rows">
   <view class="u-section">
-    <text class="u-section__title">{{heading}}</text>
+    <text class="{{sheet ? 'u-sheet-section__title' : 'u-section__title'}}">{{heading}}</text>
     <text wx:if="{{note}}" class="u-note-warn">{{note}}</text>
     <text wx:if="{{error}}" class="u-field__error">{{error}}</text>
     <view wx:if="{{bom.length > 0}}" class="u-card u-rows">

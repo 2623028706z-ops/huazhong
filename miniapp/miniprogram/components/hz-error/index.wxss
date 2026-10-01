@@ -19,7 +19,6 @@
 .hz-error__request {
   margin-top: 2px;
   font-size: var(--hz-font-xs);
-  opacity: 0.8;
 }
 
 /* 文字按钮的 44px 点击区域不撑高提示条 */

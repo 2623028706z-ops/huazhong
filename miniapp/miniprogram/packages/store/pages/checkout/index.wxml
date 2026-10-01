@@ -5,7 +5,7 @@
   <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
   <hz-error wx:if="{{formError}}" message="{{formError}}" />
   <hz-notice wx:if="{{notice}}" text="{{notice}}" />
-  <hz-skeleton wx:if="{{!loaded}}" type="form" />
+  <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
   <block wx:else>
     <template is="info" data="{{rows: info}}" />
     <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{note}}" bind:change="onNote" />

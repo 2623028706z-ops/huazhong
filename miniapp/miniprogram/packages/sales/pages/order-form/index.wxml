@@ -6,7 +6,7 @@
   <hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" />
   <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
   <hz-error wx:if="{{formError}}" message="{{formError}}" />
-  <hz-skeleton wx:if="{{!loaded}}" type="form" />
+  <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
   <block wx:else>
     <block wx:if="{{mode === 'create'}}">
       <hz-picker label="{{texts.customer}}" options="{{customerOptions}}" value="{{form.customerId}}" error="{{fields.customerId}}" bind:change="onCustomer" />

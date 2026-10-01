@@ -29,6 +29,7 @@
 .hz-line-item__amount {
   flex: none;
   margin-left: auto;
+  font-size: var(--hz-font-md);
 }
 
 .hz-line-item__sub {

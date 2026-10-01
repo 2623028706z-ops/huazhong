@@ -5,7 +5,7 @@
   <hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" />
   <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
   <hz-error wx:if="{{formError}}" message="{{formError}}" />
-  <hz-skeleton wx:if="{{!loaded}}" type="detail" />
+  <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="detail" /></block>
   <block wx:elif="{{isForm}}">
     <template is="info" data="{{...info}}" />
     <view class="u-section">
