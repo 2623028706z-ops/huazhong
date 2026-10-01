@@ -65,7 +65,7 @@ Page({
     texts: {
       create: copy.title.staffCreate,
       edit: copy.title.staffEdit,
-      save: copy.action.save,
+      save: copy.action.saveStaff,
       unbind: copy.log.unbind,
       field: copy.field,
       enabled: copy.statusValue.enabled,

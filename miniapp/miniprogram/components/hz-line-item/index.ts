@@ -7,7 +7,7 @@ import type { DetailEvent, IndexEvent } from '../../core/events'
 interface Line {
   key: string
   name: string
-  // 改价、少发、已停订：接在名称后面
+  // 改价、少发、已停用：接在名称后面
   tags: { text: string; warn: boolean }[]
   amountCents: number
   qty: number

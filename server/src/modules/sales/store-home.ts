@@ -53,7 +53,7 @@ export class StoreHomeService {
     }
   }
 
-  // 全部可订产品一次给全（购物车要核对停订）；分类、搜索在页面里筛
+  // 全部可订产品一次给全（购物车要核对停用）；分类、搜索在页面里筛
   async catalog(viewer: Viewer): Promise<StoreCatalog> {
     const customerId = customerIdOf(viewer)
     if (!(await this.customerEnabled(customerId))) {

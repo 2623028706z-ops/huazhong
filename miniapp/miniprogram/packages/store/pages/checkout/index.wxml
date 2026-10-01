@@ -1,6 +1,6 @@
 <import src="/views/detail.wxml" />
 <hz-navbar title="{{title}}" back guard="{{note !== initialNote}}" />
-<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
 <view wx:else class="u-list">
   <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
   <hz-error wx:if="{{formError}}" message="{{formError}}" />

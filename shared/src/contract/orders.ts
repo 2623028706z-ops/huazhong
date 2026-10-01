@@ -60,7 +60,7 @@ export const orderLineSchema = z.object({
   listPriceCents: centsSchema,
   // 单价和下单时的目录价不同
   repriced: z.boolean(),
-  // 目录里停订或产品本身停用
+  // 目录里停用或产品本身停用
   discontinued: z.boolean(),
   // 已发货才有
   shippedQty: z.number().int().nonnegative().nullable(),

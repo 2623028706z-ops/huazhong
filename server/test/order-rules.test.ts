@@ -1,4 +1,4 @@
-// 订单的前置条件：停订 / 停用产品、目录调价同步、门店或客户停用、定出货日期（07 章 A17、A24、A29–A34、J22）
+// 订单的前置条件：停用 / 停用产品、目录调价同步、门店或客户停用、定出货日期（07 章 A17、A24、A29–A34、J22）
 import type { Catalog, OrderDetail } from '@huazhong/shared'
 import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
@@ -22,7 +22,7 @@ const detail = async (key: 'u2' | 's1' | 'u7', id: string) =>
 
 const actionOf = (o: OrderDetail, code: string) => o.actions.find((a) => a.code === code)
 
-// 销售在目录里改一项（停订或改价）
+// 销售在目录里改一项（停用或改价）
 async function setCatalog(productName: string, change: { priceCents?: number; enabled?: boolean }) {
   const sales = await s.as('u2')
   const catalog = dataOf<Catalog>(await sales.get(`/catalog/${c1}`))
@@ -43,8 +43,8 @@ const salesLines = (o: OrderDetail, keep: (name: string) => boolean = () => true
     .filter((l) => keep(l.name))
     .map((l) => ({ productId: l.productId, qty: l.qty, priceCents: l.priceCents }))
 
-describe('停订、停用产品', () => {
-  test('A17 门店改单遇停订：提交报停订，删掉后提交成功、变更记录含删除', async () => {
+describe('停用产品', () => {
+  test('A17 门店改单遇停用：提交报停用，删掉后提交成功、变更记录含删除', async () => {
     dataOf(await setCatalog('白绿清新花束', { enabled: false }))
     const store = await s.as('s1')
     const opened = await detail('s1', o018)
@@ -57,7 +57,7 @@ describe('停订、停用产品', () => {
     })
     expect(blocked.body.error).toMatchObject({
       code: 'BUSINESS_RULE',
-      message: '白绿清新花束已停订，请先删掉再提交',
+      message: '白绿清新花束已停用，请先删掉再提交',
     })
     expect((await detail('s1', o018)).lines).toHaveLength(2)
     const kept = all.filter((_l, i) => opened.lines[i]?.name !== '白绿清新花束')
@@ -72,13 +72,13 @@ describe('停订、停用产品', () => {
     expect(saved.changes[0]?.items).toContain('删除 白绿清新花束')
   })
 
-  test('A32 待确认单有停订产品：确认禁用、修改并确认可点；不删保存报错，删掉后待发货', async () => {
+  test('A32 待确认单有停用产品：确认禁用、修改并确认可点；不删保存报错，删掉后待发货', async () => {
     dataOf(await setCatalog('白绿清新花束', { enabled: false }))
     const sales = await s.as('u2')
     const opened = await detail('u2', o018)
     expect(actionOf(opened, 'confirm')).toMatchObject({
       enabled: false,
-      disabledReason: '白绿清新花束已停订，请修改并确认或取消订单',
+      disabledReason: '白绿清新花束已停用，请修改并确认或取消订单',
     })
     expect(actionOf(opened, 'editAndConfirm')?.enabled).toBe(true)
     const confirm = await sales.post(`/orders/${o018}/confirm`, {
@@ -87,16 +87,16 @@ describe('停订、停用产品', () => {
     })
     expect(confirm.body.error).toMatchObject({
       code: 'BUSINESS_RULE',
-      message: '白绿清新花束已停订，请修改并确认或取消订单',
+      message: '白绿清新花束已停用，请修改并确认或取消订单',
     })
     const edit = {
       version: opened.version,
       shipDate: TOMORROW,
       note: opened.note ?? '',
-      reason: '白绿清新停订',
+      reason: '白绿清新停用',
     }
     const blocked = await sales.put(`/orders/${o018}`, { ...edit, lines: salesLines(opened) })
-    expect(blocked.body.error?.message).toBe('白绿清新花束已停订，请先删掉再保存')
+    expect(blocked.body.error?.message).toBe('白绿清新花束已停用，请先删掉再保存')
     const saved = dataOf<OrderDetail>(
       await sales.put(`/orders/${o018}`, {
         ...edit,
@@ -134,7 +134,7 @@ describe('停订、停用产品', () => {
       note: '',
       lines: [{ productId: p2, qty: 1, priceCents: 7800 }],
     })
-    expect(create.body.error?.message).toBe('白绿清新花束已停订，请先删掉再保存')
+    expect(create.body.error?.message).toBe('白绿清新花束已停用，请先删掉再保存')
     const o016 = await idBy(s.t, 'orders.no', 'SO-260929-016')
     const opened = await detail('u2', o016)
     const edit = { version: opened.version, shipDate: TODAY, note: '', reason: '门店减量' }
@@ -142,7 +142,7 @@ describe('停订、停用产品', () => {
       ...edit,
       lines: [{ productId: p2, qty: 18, priceCents: 7800 }],
     })
-    expect(blocked.body.error?.message).toBe('白绿清新花束已停订，请先删掉再保存')
+    expect(blocked.body.error?.message).toBe('白绿清新花束已停用，请先删掉再保存')
     const ship = await detail('u7', o016)
     const shipped = await (
       await s.as('u7')

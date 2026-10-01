@@ -47,7 +47,7 @@ export class StoreOrderWrites {
     return orderDetailOf(ctx.tx, viewer, id, this.clock.today())
   }
 
-  // 所有行按当前目录价（单价、目录价快照）；停订、停用的产品拦住
+  // 所有行按当前目录价（单价、目录价快照）；停用的产品拦住
   private async linesOf(
     ctx: WriteContext,
     customerId: number,

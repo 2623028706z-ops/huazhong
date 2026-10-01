@@ -1,9 +1,10 @@
 <hz-cover mode="soft" />
 <hz-navbar title="{{title}}" back="{{back}}" roles="{{roles}}" person="{{person}}" transparent />
 <view class="hz-module-home">
-  <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+  <!-- 待办出系统错误时入口照常可用，留在页面里提示，不整页（2026-10-05） -->
+  <hz-state wx:if="{{failure.kind === 'page' && failure.state !== 'internal'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
   <block wx:else>
-    <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+    <hz-error wx:if="{{failure}}" message="{{failure.message}}" request-id="{{failure.requestId}}" retry bind:retry="onFailureAction" />
     <hz-entry-grid wx:if="{{entries.length > 0}}" entries="{{entries}}" compact bind:select="onEntry" />
     <view wx:if="{{hasTodos}}" class="hz-module-home__todos">
       <view class="hz-module-home__head">

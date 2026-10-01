@@ -1,7 +1,7 @@
 <import src="/views/pick.wxml" />
 <import src="/views/bom.wxml" />
 <hz-navbar title="{{title}}" back guard="{{changed}}" />
-<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
 <view wx:else class="u-list">
   <hz-error wx:if="{{formError}}" message="{{formError}}" />
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>

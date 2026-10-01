@@ -34,11 +34,11 @@ export interface LineRow {
   shippedQty: number | null
   // 这一行待处理、已处理售后的合计
   claimedQty: number
-  // 目录里停订或产品本身停用
+  // 目录里停用或产品本身停用
   discontinued: boolean
 }
 
-// 待确认、待发货才标「已停订」；已发货的照常显示
+// 待确认、待发货才标「已停用」；已发货的照常显示
 export function isOpenOrder(status: OrderStatus): boolean {
   return status === 'pending_confirm' || status === 'to_ship'
 }

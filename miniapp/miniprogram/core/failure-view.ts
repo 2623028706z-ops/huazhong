@@ -8,11 +8,12 @@ export type Phase = 'load' | 'refresh' | 'submit'
 export type FailureView =
   // 回登录页，走手机号快速验证
   | { kind: 'login' }
-  // 整页 hz-state
+  // 整页 hz-state；首次加载遇 INTERNAL 也是整页，另显示请求编号
   | {
       kind: 'page'
-      state: 'accountDisabled' | 'forbidden' | 'notFound' | 'network'
+      state: 'accountDisabled' | 'forbidden' | 'notFound' | 'network' | 'internal'
       message: string
+      requestId?: string | null
     }
   // 页面或弹层里的 hz-error；INTERNAL 另显示请求编号
   | { kind: 'inline'; message: string; requestId: string | null }
@@ -42,5 +43,11 @@ function networkView(phase: Phase): FailureView {
 }
 
 export function viewOf(failure: Failure, phase: Phase): FailureView {
-  return failure.kind === 'network' ? networkView(phase) : serverViews[failure.code](failure)
+  if (failure.kind === 'network') return networkView(phase)
+  // 首次加载就系统出错：下面没有内容可看，用整页状态 + 重试（2026-10-05 确认）
+  if (failure.code === 'INTERNAL' && phase === 'load') {
+    const { message, requestId } = failure
+    return { kind: 'page', state: 'internal', message, requestId }
+  }
+  return serverViews[failure.code](failure)
 }

@@ -1,5 +1,5 @@
 <hz-navbar title="{{title}}" back />
-<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
 <block wx:else>
   <view class="u-list">
     <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
@@ -35,7 +35,7 @@
     <hz-field label="{{texts.name}}" value="{{customerForm.name}}" error="{{fields.name}}" bind:change="onCustomerName" />
     <hz-switch label="{{texts.enabled}}" value="{{customerForm.enabled}}" bind:change="onCustomerEnabled" />
   </view>
-  <hz-button slot="footer" text="{{texts.save}}" loading="{{saving}}" bind:press="onSaveCustomer" />
+  <hz-button slot="footer" text="{{texts.saveCustomer}}" loading="{{saving}}" bind:press="onSaveCustomer" />
 </hz-sheet>
 <hz-sheet show="{{storeSheet}}" title="{{editingStore ? texts.storeTitle : texts.newStoreTitle}}" guard footer bind:close="onCloseSheet">
   <view class="u-sheet-form">
@@ -69,6 +69,6 @@
       <hz-button wx:else kind="secondary" text="{{texts.generate}}" disabled="{{!invite.enabled}}" reason="{{invite.reason}}" loading="{{saving}}" bind:press="onGenerateInvite" />
     </view>
   </view>
-  <hz-button slot="footer" text="{{texts.save}}" loading="{{saving}}" bind:press="onSaveStore" />
+  <hz-button slot="footer" text="{{texts.saveStore}}" loading="{{saving}}" bind:press="onSaveStore" />
 </hz-sheet>
 <hz-confirm id="hz-confirm" />

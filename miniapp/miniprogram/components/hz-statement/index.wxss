@@ -17,7 +17,8 @@
 }
 
 .hz-statement__amount {
-  font-size: var(--hz-font-amount);
+  font-size: var(--hz-font-md);
+  font-weight: 600;
   color: var(--hz-ink);
 }
 

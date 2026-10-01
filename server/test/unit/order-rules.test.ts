@@ -31,7 +31,7 @@ const entry = (productId: number, change: Partial<CatalogEntry> = {}): CatalogEn
   ...change,
 })
 
-const stopped = (names: string) => `${names}已停订`
+const stopped = (names: string) => `${names}已停用`
 
 describe('orderableEntries', () => {
   test('按传入顺序返回可订的目录项', () => {
@@ -51,7 +51,7 @@ describe('orderableEntries', () => {
     expect(error.message).toContain('产品1')
   })
 
-  test('目录停订和产品停用都算停订，名字一起报', () => {
+  test('目录停用和产品停用都算停用，名字一起报', () => {
     const entries = [entry(1, { catalogEnabled: false }), entry(2, { productEnabled: false })]
     const error = errorOf(() => orderableEntries([1, 2], entries, stopped))
     expect(error.code).toBe('BUSINESS_RULE')

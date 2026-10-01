@@ -60,7 +60,7 @@ describe('门店购物车', () => {
     expect(loadCart('7')).toEqual([])
   })
 
-  it('按目录核对：停订的去掉并返回名称，在目录里的刷新名称和价格', () => {
+  it('按目录核对：停用的去掉并返回名称，在目录里的刷新名称和价格', () => {
     const lines = withQty(withQty([], rose, 2), lily, 1)
     const repriced = { ...rose, listPriceCents: 7000 }
     const pruned = pruneCart(lines, [repriced])

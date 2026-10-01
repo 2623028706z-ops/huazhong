@@ -1,4 +1,4 @@
-// S2 购物车（06 章 S2）：购物车行（改数量、删除）→「清空」→ 结算条。打开时去掉停订、停用的产品，提示同 S1。
+// S2 购物车（06 章 S2）：购物车行（改数量、删除）→「清空」→ 结算条。打开时去掉停用的产品，提示同 S1。
 // 客户停用：顶部写 lockedReason，「去结算」禁用；购物车照常能改、能清空
 import { copy, type Me } from '@huazhong/shared'
 import { countOf, withQty, type CartLine } from '../../../../core/cart'

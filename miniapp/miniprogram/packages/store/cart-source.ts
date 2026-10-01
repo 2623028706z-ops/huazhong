@@ -10,7 +10,7 @@ interface EditDraft {
   orderDate: string
   note: string
   lines: CartLine[]
-  // 原订单里已停订或停用的产品：不去掉，到结算页标「已停订」
+  // 原订单里已停用的产品：不去掉，到结算页标「已停用」
   discontinued: string[]
 }
 
@@ -63,7 +63,7 @@ export function cartSourceOf(isEdit: boolean, accountId: string): CartSource {
   }
 }
 
-// 打开时核对目录（S1、S2、S5）：普通购物车去掉停订、停用的并提示一次；改单模式不去掉。
+// 打开时核对目录（S1、S2、S5）：普通购物车去掉停用的并提示一次；改单模式不去掉。
 // 拿不到目录（客户停用）时照快照显示
 export function syncWithCatalog(
   source: CartSource,
@@ -73,7 +73,7 @@ export function syncWithCatalog(
   const lines = source.load()
   if (!catalog) return lines
   const pruned = pruneCart(lines, catalog)
-  // 改单模式：在目录里的按当前目录价预览（后端按当前目录价重算），停订的留着
+  // 改单模式：在目录里的按当前目录价预览（后端按当前目录价重算），停用的留着
   if (isEdit) {
     const kept = new Map(pruned.lines.map((line) => [line.productId, line]))
     return lines.map((line) => kept.get(line.productId) ?? line)
@@ -88,7 +88,7 @@ export function syncWithCatalog(
   return pruned.lines
 }
 
-// 购物车、结算的明细：改单模式里原订单停订的行标「已停订」
+// 购物车、结算的明细：改单模式里原订单停用的行标「已停用」
 export function cartLinesOf(lines: readonly CartLine[], isEdit: boolean) {
   const discontinued = isEdit ? (draft?.discontinued ?? []) : []
   return lines.map((line) => ({

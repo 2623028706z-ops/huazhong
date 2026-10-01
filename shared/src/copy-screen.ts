@@ -174,7 +174,7 @@ export const screen = {
     changed: '改单',
     repriced: '改价',
     short: '少发',
-    discontinued: '已停订',
+    discontinued: '已停用',
     offset: '售后抵扣',
   },
   // 空状态「暂无 + 对象」

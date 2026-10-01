@@ -19,10 +19,9 @@ interface Tag {
 }
 
 function rowOf(item: CatalogItem) {
-  // 02 章 hz-tag：「已停订」是警告，「已停用」普通
-  const tags: Tag[] = []
-  if (!item.enabled) tags.push({ text: copy.screen.tag.discontinued, warn: true })
-  if (!item.productEnabled) tags.push({ text: copy.tag.disabled, warn: false })
+  // 目录停用、产品停用都标「已停用」，两者都有只标一个，警告样式（2026-10-05 确认）
+  const tags: Tag[] =
+    item.enabled && item.productEnabled ? [] : [{ text: copy.screen.tag.discontinued, warn: true }]
   // 行上只放名称、订货价，第二行标记 + 编码（都没有就不出第二行）；配方只在弹层里看
   return {
     productId: item.productId,

@@ -1,6 +1,6 @@
 <wxs src="../../../../core/format.wxs" module="format" />
 <hz-navbar title="{{title}}" back />
-<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
 <block wx:else>
   <view class="hz-shop__top">
     <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />

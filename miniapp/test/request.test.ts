@@ -208,6 +208,15 @@ describe('失败转成界面状态', () => {
       message: '后端的句子',
       requestId: 'r-9',
     })
+    expect(viewOf(server('INTERNAL'), 'refresh')).toMatchObject({ kind: 'inline' })
+  })
+  it('首次加载就系统出错：整页状态 + 请求编号', () => {
+    expect(viewOf(server('INTERNAL'), 'load')).toEqual({
+      kind: 'page',
+      state: 'internal',
+      message: '后端的句子',
+      requestId: 'r-9',
+    })
   })
   it('断网：首次加载整页状态，刷新和提交在页面里提示', () => {
     const network = { kind: 'network' } as const

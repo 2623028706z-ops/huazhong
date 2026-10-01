@@ -7,7 +7,7 @@ export interface OrderFacts {
   status: OrderStatus
   storeEnabled: boolean
   customerEnabled: boolean
-  // 单里已停订或停用的产品名
+  // 单里已停用的产品名
   discontinued: readonly string[]
   shipDate: string | null
   // 实际发货那天（上海日期）；没发货为 null

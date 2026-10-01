@@ -1,4 +1,4 @@
-<view class="hz-button hz-button--{{kind}} {{loading ? 'hz-button--busy' : ''}}">
+<view class="hz-button hz-button--{{kind}}">
   <view wx:if="{{kind === 'text'}}" class="hz-button__text u-tap" bindtap="onTap">{{text}}</view>
   <t-button
     wx:else

@@ -115,7 +115,7 @@ describe('门店首页', () => {
     const openid = await t.bind('s1')
     const [c1] = await t.db.select().from(customers).where(eq(customers.name, '晨曦花艺'))
     const customerId = String(c1?.id)
-    // 晨曦花艺目录：粉玫瑰、白绿清新、白绿桌花可订，向日葵停订；customerId 给门店订阅 catalog、ar
+    // 晨曦花艺目录：粉玫瑰、白绿清新、白绿桌花可订，向日葵停用；customerId 给门店订阅 catalog、ar
     expect((await get(openid, '/store/home')).body.data).toEqual({
       customerId,
       orderableCount: 3,

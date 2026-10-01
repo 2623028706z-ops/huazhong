@@ -49,7 +49,7 @@ Page({
       note: copy.screen.label.processNote,
       optional: copy.placeholder.optional,
       add: copy.screen.action.addProduct,
-      save: copy.action.save,
+      save: copy.action.saveAfter,
       pickTitle: copy.screen.title.pickProduct,
       noPick: copy.state.empty(copy.screen.empty.addableProducts),
     },

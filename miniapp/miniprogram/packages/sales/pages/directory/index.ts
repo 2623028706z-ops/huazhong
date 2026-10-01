@@ -82,7 +82,7 @@ Page({
       categories: copy.screen.title.categories,
       add: copy.screen.action.addProduct,
       needCategory: copy.screen.needCategory,
-      save: copy.action.save,
+      save: copy.action.saveCatalogItem,
       pickTitle: copy.screen.title.pickProduct,
       noPick: copy.state.empty(copy.screen.empty.addableProducts),
       empty: copy.state.empty(copy.screen.empty.directory),
@@ -243,7 +243,7 @@ Page({
         title: copy.catalog.sharedBomTitle,
         body: copy.catalog.sharedBomBody,
         cancel: copy.confirm.cancel,
-        confirm: copy.action.save,
+        confirm: copy.action.confirmSave,
       })
       if (!confirmed) return
     }

@@ -46,7 +46,7 @@ export const storeCatalogItemSchema = z.object({
 })
 export type StoreCatalogItem = z.infer<typeof storeCatalogItemSchema>
 
-// 全部可订产品一次给全（购物车要核对停订）；分类、搜索在页面里筛
+// 全部可订产品一次给全（购物车要核对停用）；分类、搜索在页面里筛
 export const storeCatalogSchema = z.object({
   categories: z.array(z.object({ id: idSchema, name: z.string() })),
   items: z.array(storeCatalogItemSchema),

@@ -146,7 +146,7 @@ export class CatalogService {
     return catalogOf(this.db, customerId)
   }
 
-  // 新加或修改一个目录项；停用的产品不能新加进目录（已在目录里的可以改成停订）
+  // 新加或修改一个目录项；停用的产品不能新加进目录（已在目录里的可以改成停用）
   saveItem(
     viewer: Viewer,
     customerId: number,

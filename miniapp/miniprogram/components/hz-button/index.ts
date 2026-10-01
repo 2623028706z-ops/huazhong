@@ -1,5 +1,5 @@
 // 按钮（02 章第 4 节、第 5.1 节）：主、次、文字三种；禁用时下方写 disabledReason；
-// 提交中文字换成「提交中」、按钮变淡，超过 SUBMIT_SPINNER_DELAY_MS 再加转圈。
+// 提交中文字换成「提交中」（不变淡，保证白字对比度），超过 SUBMIT_SPINNER_DELAY_MS 再加转圈。
 // open-type 为手机号快速验证时，用户同意后发 phone（detail 是动态令牌），拒绝时 detail 为空
 import { SUBMIT_SPINNER_DELAY_MS, copy } from '@huazhong/shared'
 

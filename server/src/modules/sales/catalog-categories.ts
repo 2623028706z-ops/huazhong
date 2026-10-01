@@ -1,5 +1,5 @@
 // 订货分类（05 章第 4 节）：每个客户一套，门店订货页按它分组。新增、改名、排序、删除，规则照产品分类：
-// 同一客户内不重名，分类下有目录项（含停订的）不能删（2026-10-03 确认）。都返回整份目录
+// 同一客户内不重名，分类下有目录项（含停用的）不能删（2026-10-03 确认）。都返回整份目录
 import { appError, contract, copy, type Catalog } from '@huazhong/shared'
 import { Injectable } from '@nestjs/common'
 import { and, eq, ne, sql } from 'drizzle-orm'

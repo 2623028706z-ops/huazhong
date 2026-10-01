@@ -211,7 +211,7 @@ export class SalesOrderWrites {
     })
   }
 
-  // 原有行保持原来的目录价快照；已停订、停用的要先删掉；新加的行按目录校验
+  // 原有行保持原来的目录价快照；已停用的要先删掉；新加的行按目录校验
   private async nextLines(
     ctx: WriteContext,
     before: OrderDetail,

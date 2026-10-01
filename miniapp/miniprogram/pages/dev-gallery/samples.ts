@@ -133,7 +133,7 @@ const tags = [
   { text: '售后抵扣', warn: false },
   { text: '改价', warn: true },
   { text: '少发', warn: true },
-  { text: '已停订', warn: true },
+  { text: '已停用', warn: true },
 ]
 
 const texts = {

@@ -22,7 +22,7 @@ function isOrderable(entry: CatalogEntry): entry is OrderableEntry {
 }
 
 // 按传入顺序返回可订的目录项；不存在 → NOT_FOUND，不在目录里 → 「不在可订产品里」，
-// 在目录里但停订或产品停用 → discontinued(产品名)（销售「请先删掉再保存」，门店「再提交」）
+// 在目录里但停用或产品停用 → discontinued(产品名)（销售「请先删掉再保存」，门店「再提交」）
 export function orderableEntries(
   ids: readonly number[],
   entries: readonly CatalogEntry[],

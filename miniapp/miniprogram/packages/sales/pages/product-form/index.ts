@@ -45,7 +45,7 @@ Page({
       enabled: copy.screen.label.enabled,
       bom: copy.screen.section.bom,
       add: copy.screen.action.addMaterial,
-      save: copy.action.save,
+      save: copy.action.saveProduct,
       pickTitle: copy.screen.title.pickMaterial,
       noPick: copy.state.empty(copy.screen.empty.addableMaterials),
     },

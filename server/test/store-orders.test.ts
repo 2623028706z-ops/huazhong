@@ -49,7 +49,7 @@ describe('门店下单和取消', () => {
     expect(cancelled).toMatchObject({ status: 'cancelled', cancelReason: null, actions: [] })
   })
 
-  test('改单删光（只剩停订产品全删掉）→ 「请先选择产品」', async () => {
+  test('改单删光（只剩停用产品全删掉）→ 「请先选择产品」', async () => {
     const o018 = await idBy(s.t, 'orders.no', 'SO-260929-018')
     const opened = await storeDetail(o018)
     const res = await (

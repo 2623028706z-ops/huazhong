@@ -55,7 +55,7 @@ export const productBomLines = pgTable(
   ],
 )
 
-// 订货分类：每个客户一套，门店订货页按它分组；分类下有目录项（含停订的）时不能删（2026-10-03 确认）
+// 订货分类：每个客户一套，门店订货页按它分组；分类下有目录项（含停用的）时不能删（2026-10-03 确认）
 export const catalogCategories = pgTable(
   'catalog_categories',
   {
@@ -69,7 +69,7 @@ export const catalogCategories = pgTable(
   (t) => [unique('catalog_categories_name_unique').on(t.customerId, t.name)],
 )
 
-// 订货目录：每个客户一份价目；enabled=false 即停订。分类必选；客户产品编码选填（'' 为没填），
+// 订货目录：每个客户一份价目；enabled=false 即停用。分类必选；客户产品编码选填（'' 为没填），
 // 同一客户内不重复
 export const catalogItems = pgTable(
   'catalog_items',

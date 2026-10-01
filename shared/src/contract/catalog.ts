@@ -19,7 +19,7 @@ export const catalogCategorySchema = z.object({
   id: idSchema,
   name: z.string(),
   sort: z.number().int(),
-  // 含停订的目录项；大于 0 时不能删除
+  // 含停用的目录项；大于 0 时不能删除
   itemCount: z.number().int().nonnegative(),
 })
 export type CatalogCategory = z.infer<typeof catalogCategorySchema>
@@ -34,7 +34,7 @@ export const catalogItemSchema = z.object({
   customerCode: z.string(),
   // 产品本身停用
   productEnabled: z.boolean(),
-  // 目录里停订为 false
+  // 目录里停用为 false
   enabled: z.boolean(),
   listPriceCents: centsSchema,
   version: versionSchema,

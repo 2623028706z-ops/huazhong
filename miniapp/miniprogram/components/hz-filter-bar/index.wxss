@@ -50,7 +50,7 @@
   display: flex;
   align-items: stretch;
   height: 40px;
-  border-bottom: 1px solid var(--hz-hair);
+  border-bottom: 1px solid var(--hz-rule);
 }
 
 .hz-filter-bar__scroll {

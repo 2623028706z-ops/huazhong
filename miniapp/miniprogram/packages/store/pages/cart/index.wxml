@@ -1,7 +1,7 @@
 <wxs src="../../../../core/format.wxs" module="format" />
 <hz-navbar title="{{title}}" />
 <view class="u-list">
-  <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+  <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
   <block wx:else>
     <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
     <hz-notice wx:if="{{notice}}" text="{{notice}}" />

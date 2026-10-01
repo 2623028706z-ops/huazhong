@@ -26,7 +26,7 @@ Component({
     texts: {
       name: copy.screen.label.name,
       up: copy.screen.action.moveUp,
-      save: copy.action.save,
+      save: copy.action.saveCategory,
       add: copy.screen.action.addCategory,
       empty: copy.state.empty(copy.screen.empty.categories),
     },
