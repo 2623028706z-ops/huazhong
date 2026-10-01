@@ -10,7 +10,14 @@ import {
   voidAfter,
 } from './afters.ts'
 import { bindPhone, unbind } from './auth.ts'
-import { getCatalog, saveCatalog } from './catalog.ts'
+import {
+  createCatalogCategory,
+  deleteCatalogCategory,
+  getCatalog,
+  orderCatalogCategories,
+  saveCatalogItem,
+  updateCatalogCategory,
+} from './catalog.ts'
 import {
   createCustomer,
   createStore,
@@ -91,7 +98,11 @@ export const contract = {
   createProduct,
   updateProduct,
   getCatalog,
-  saveCatalog,
+  saveCatalogItem,
+  createCatalogCategory,
+  updateCatalogCategory,
+  orderCatalogCategories,
+  deleteCatalogCategory,
   // 订单、发货
   listOrders,
   listShippingOrders,

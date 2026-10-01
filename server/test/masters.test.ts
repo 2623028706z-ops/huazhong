@@ -61,7 +61,7 @@ describe('客户、门店、产品资料', () => {
     expect(dataOf<Me>(await (await s.as('s1')).get('/me')).name).toBe('陈店长')
 
     const [rose] = await s.t.db.select().from(materials).where(eq(materials.name, '粉雪山玫瑰'))
-    const categoryId = await idOfCategory('日常花束')
+    const categoryId = await idOfCategory('花束')
     const product = {
       name: '粉玫瑰日常花束',
       categoryId,
@@ -92,7 +92,7 @@ describe('客户、门店、产品资料', () => {
     const festival = dataOf<{ id: string; sort: number }>(
       await sales.post('/product-categories', { name: '节日花束' }),
     )
-    expect(festival.sort).toBe(4)
+    expect(festival.sort).toBe(3)
     dataOf(await sales.del(`/product-categories/${festival.id}`))
     const logs = await s.t.db
       .select({ action: operationLogs.action })
@@ -113,9 +113,9 @@ describe('客户、门店、产品资料', () => {
       (await sales.put('/product-categories/order', { ids: ids.slice(1) })).body.error?.code,
     ).toBe('STALE')
     const moved = dataOf<{ items: { name: string }[] }>(
-      await sales.put('/product-categories/order', { ids: [ids[0], ids[2], ids[1]] }),
+      await sales.put('/product-categories/order', { ids: [ids[1], ids[0]] }),
     )
-    expect(moved.items.map((c) => c.name)).toEqual(['日常花束', '桌面花艺', '礼赠花束'])
+    expect(moved.items.map((c) => c.name)).toEqual(['花束', '单品'])
   })
 
   test('A28 停用的客户不能下新单，门店订货页被拦', async () => {

@@ -42,6 +42,7 @@ Page({
     picks: [] as { id: string; name: string; sub: string }[],
     saving: false,
     texts: {
+      lines: copy.screen.section.afterLines,
       price: copy.screen.label.price,
       reason: copy.screen.label.afterReason,
       description: copy.screen.label.afterDescription,

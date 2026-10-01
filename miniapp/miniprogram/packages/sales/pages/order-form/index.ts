@@ -72,6 +72,7 @@ Page({
     picks: [] as ReturnType<typeof addableOf>,
     saving: false,
     texts: {
+      lines: copy.screen.section.lines,
       customer: copy.screen.label.customer,
       store: copy.screen.label.store,
       shipDate: copy.field.shipDate,

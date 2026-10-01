@@ -15,9 +15,12 @@
     <template wx:else is="info" data="{{rows: customerRows}}" />
     <hz-picker label="{{texts.shipDate}}" mode="date" value="{{form.shipDate}}" error="{{fields.shipDate}}" bind:change="onShipDate" />
     <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{form.note}}" bind:change="onNote" />
-    <hz-line-item lines="{{lineViews}}" mode="price" removable min="{{1}}" bind:qty="onQty" bind:price="onPrice" bind:remove="onRemove" />
-    <hz-add-button text="{{texts.add}}" bind:press="onOpenPick" />
-    <template is="info" data="{{rows: amountRows}}" />
+    <view class="u-section">
+      <text class="u-section__title">{{texts.lines}}</text>
+      <hz-line-item lines="{{lineViews}}" mode="price" removable min="{{1}}" bind:qty="onQty" bind:price="onPrice" bind:remove="onRemove" />
+      <hz-add-button text="{{texts.add}}" bind:press="onOpenPick" />
+      <template is="info-card" data="{{rows: amountRows}}" />
+    </view>
     <hz-field wx:if="{{mode !== 'create'}}" label="{{texts.reason}}" type="textarea" value="{{form.reason}}" error="{{fields.reason}}" bind:change="onReason" />
   </block>
 </view>

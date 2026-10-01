@@ -51,6 +51,7 @@ Page({
     amountRows: [] as { label: string; value: string }[],
     saving: false,
     texts: {
+      lines: copy.screen.section.lines,
       note: copy.field.note,
       optional: copy.placeholder.optional,
       submit: copy.screen.action.submitOrder,

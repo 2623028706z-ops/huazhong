@@ -7,8 +7,7 @@
     "hz-tag": "/components/hz-tag/index",
     "hz-action-bar": "/components/hz-action-bar/index",
     "hz-button": "/components/hz-button/index",
-    "hz-sheet": "/components/hz-sheet/index",
-    "hz-field": "/components/hz-field/index",
+    "hz-category-sheet": "/components/hz-category-sheet/index",
     "hz-confirm": "/components/hz-confirm/index"
   }
 }

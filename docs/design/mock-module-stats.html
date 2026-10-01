@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>模块首页统计</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.453.0/dist/umd/lucide.min.js"></script>
+<style>
+/* 模块首页加统计数（2026-10-03 草稿，待确认）。外壳、背景、身份行、入口窗格、待办卡片同 mock-art.html；颜色取 02 章设计变量 */
+:root{--brand:#b75d45;--ink:#3b2a24;--muted:#7a5a4a;--paper:#fffbf6;--card:#fffbf6db;--bg:#f6ebdf;--hair:#ecd4c6;--amber:#8a5a1e;--amberBg:#f6e7d2;
+  --rule:rgba(59,42,36,.2);--r:12px;--serif:"Noto Serif SC","Songti SC",serif}
+*{box-sizing:border-box}
+body{margin:0;padding:28px;background:#ddd6cd;color:#3a302b;font-family:-apple-system,"PingFang SC",sans-serif}
+h1{margin:0;font-family:var(--serif);font-weight:500;font-size:24px}.lead{max-width:1160px;margin:8px 0 0;font-size:13px;line-height:1.8}
+h2{margin:40px 0 6px;font-family:var(--serif);font-weight:500;font-size:19px;letter-spacing:.06em}.how{max-width:1160px;margin:0 0 18px;font-size:13px;line-height:1.8}
+ul{max-width:1160px;margin:6px 0 0;padding-left:20px;font-size:13px;line-height:1.9}.ask{max-width:1160px;margin-top:40px;padding:12px 16px;border-radius:8px;background:#efe7de}.ask h3{margin:0;font-family:var(--serif);font-weight:500;font-size:16px}
+.set{display:flex;flex-wrap:wrap;gap:28px 24px;align-items:flex-start}.col{display:flex;flex-direction:column;gap:10px;width:390px}
+.cap{margin:0;font-size:12px;line-height:1.75;color:#5a4a42}.cap b{color:#3a302b;font-size:13px}.cap em{font-style:normal;padding:0 6px;margin-left:6px;border-radius:4px;background:#efe7de;font-size:11px}
+.phone{position:relative;width:390px;height:844px;overflow:hidden;border-radius:40px;box-shadow:0 10px 30px rgba(0,0,0,.14);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+.bgimg{position:absolute;inset:0;width:100%;height:100%}.soft{position:absolute;inset:0;background:rgba(246,235,223,.6)}
+.lucide{stroke-width:1.4;flex:none}
+.status{position:absolute;top:0;left:0;right:0;height:47px;display:flex;justify-content:space-between;align-items:center;padding:0 26px 0 34px;font-size:16px;font-weight:600;color:#1f1a17}
+.status .lucide{width:17px;height:17px;stroke-width:2;margin-left:4px}
+.capsule{position:absolute;top:51px;right:10px;width:87px;height:32px;border-radius:16px;background:rgba(255,255,255,.7);border:1px solid rgba(0,0,0,.07)}
+.hi{position:absolute;bottom:8px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#1a1a1a}
+.nav{position:absolute;top:47px;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:500;font-size:17px;letter-spacing:.1em}
+.nav .lucide{position:absolute;left:11px;width:22px;height:22px}
+.mbody{position:absolute;top:95px;left:20px;right:20px;display:flex;flex-direction:column;gap:16px}
+.id{display:flex;align-items:baseline;justify-content:space-between;font-size:13px}.id b{font-weight:600}.id span span{color:var(--muted)}.id time{font-size:12px;color:var(--muted)}
+.todo{display:flex;flex-direction:column;gap:10px}.todo header{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px}.todo h3{margin:0;font-family:var(--serif);font-weight:500;font-size:16px;letter-spacing:.12em}
+.txt{font-size:13px;font-weight:600;text-decoration:underline;text-decoration-color:var(--brand);text-underline-offset:4px}
+.lc{background:var(--card);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.lc div{display:flex;align-items:center;gap:8px}.lc .r1{justify-content:space-between;font-size:12px;color:var(--muted)}.lc .r2 b{flex:1;font-weight:500;font-size:15px}.lc .r2 span,.lc .r3{font-size:12px;color:var(--muted)}
+.lc .r3 span{flex:1}.lc .r3 strong{font-size:15px;font-weight:600;color:var(--ink)}
+.st{font-size:11px;line-height:20px;padding:0 8px;border-radius:10px;background:var(--amberBg);color:var(--amber)}
+/* hz-entry-grid compact：一整块细线窗格，格子不铺底色 */
+.grid{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
+.grid span{position:relative;display:flex;flex-direction:column;justify-content:space-between;height:78px;padding:14px;border-top:1px solid var(--rule)}
+.grid span:nth-child(-n+2){border-top:0}.grid span:nth-child(even){border-left:1px solid var(--rule)}
+.grid .lucide{width:22px;height:22px;color:var(--brand)}.grid b{font-family:var(--serif);font-weight:500;font-size:15px;letter-spacing:.14em}
+.grid .go{position:absolute;right:14px;bottom:18px;width:16px;height:16px;color:var(--muted)}
+.grid span.wide{grid-column:1/3;height:56px;flex-direction:row;align-items:center;justify-content:flex-start;gap:16px}.grid span.wide .go{bottom:19px}
+/* 统计数：标签 12px 次要色在上，数字衬线墨色加粗在下；单位 12px 次要色。只读，不能点 */
+.srow{display:grid}.srow+.srow{border-top:1px solid var(--rule)}
+.cell{display:flex;flex-direction:column;gap:2px;min-width:0;padding:12px 14px}.cell+.cell{border-left:1px solid var(--rule)}
+.cell small{font-size:12px;color:var(--muted);white-space:nowrap}.cell strong{font-family:var(--serif);font-weight:600;font-size:18px;line-height:1.4;white-space:nowrap}
+.cell strong i{margin-left:3px;font-family:-apple-system,"PingFang SC",sans-serif;font-style:normal;font-weight:400;font-size:12px;color:var(--muted)}
+/* 甲：单独一块窗格，在身份行和入口之间 */
+.stats{border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
+/* 乙：和入口拼成同一块窗格，统计占最上面一排，数字放大到 22px */
+.pane{border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}.pane .grid{border:0;border-top:1px solid var(--rule);border-radius:0}
+.pane .cell{padding:14px}.pane .cell strong{font-size:22px}
+</style></head><body>
+<h1>模块首页 · 数据统计</h1>
+<p class="lead">草稿，待确认。每个模块首页加 2–3 个数，只读、不能点，进页面和收到待办推送时跟着刷新。数字只用 04 章现有的表能算出来的；日期都按 Asia/Shanghai，「本月」= 本月 1 号到今天。日期、人名、金额是示例（示例日期 2026.10.03 周六）。采购、仓库是阶段 4、5 才有的页面，按 06 章写好的入口画。</p>
+<div id="app"></div>
+<div class="ask"><h3>要你定</h3><ul>
+<li>选甲还是乙。</li>
+<li>销售员能不能看「本月销售额」，仓库员能不能看「本月采购额」（现在按模块权限，进得了模块就看得到）。</li>
+<li>「本月销售额」按发货金额算、不减售后；要不要改成减掉已处理售后的应收。</li>
+<li>数字要不要能点（例如点「待确认」进待确认订单）。草稿先按只读画。</li>
+</ul></div>
+<script>
+const ic = (n, c = '') => `<i data-lucide="${n}"${c ? ` class="${c}"` : ''}></i>`;
+const bar = `<div class="status"><span>9:41</span><span>${ic('signal')}${ic('wifi')}${ic('battery-full')}</span></div><div class="capsule"></div>`;
+const phone = (inner) => `<div class="phone"><img class="bgimg" src="../../miniapp/miniprogram/assets/backdrop.jpg" alt=""><div class="soft"></div>${bar}${inner}<div class="hi"></div></div>`;
+const idLine = `<div class="id"><span><b>管理员</b><span> · 周总</span></span><time>2026.10.03 周六</time></div>`;
+const grid = (list) => `<div class="grid">${list.map(([t, i], k) => `<span class="${k === list.length - 1 && list.length % 2 ? 'wide' : ''}">${ic(i)}<b>${t}</b>${ic('chevron-right', 'go')}</span>`).join('')}</div>`;
+const stats = (rows) => rows.map(([cols, cells]) => `<div class="srow" style="grid-template-columns:${cols}">${cells.map(([l, v, u]) => `<div class="cell"><small>${l}</small><strong>${v}${u ? `<i>${u}</i>` : ''}</strong></div>`).join('')}</div>`).join('');
+// 待办卡片：[日期, 状态, 对象, 总数, 第三行, 金额]；预收待核销的客户没有日期和状态
+const card = ([d, st, who, total, meta, amt]) => `<div class="lc">${d ? `<div class="r1"><span>${d}</span><span class="st">${st}</span></div>` : ''}<div class="r2"><b>${who}</b><span>${total}</span></div>${meta || amt ? `<div class="r3"><span>${meta}</span>${amt ? `<strong>${amt}</strong>` : ''}</div>` : ''}</div>`;
+const todo = (link, cards) => `<div class="todo"><header><h3>待办</h3><span class="txt">${link}</span></header>${cards.map(card).join('')}</div>`;
+// [模块, 入口, 统计（每行：列宽, 格子[标签, 数, 单位]）, 待办, 说明（每个数怎么算）, 阶段]
+const MODS = [
+  ['销售', [['销售订单', 'file-text'], ['客户门店', 'store'], ['产品管理', 'flower-2'], ['订货目录', 'notebook-text'], ['客户售后', 'rotate-ccw']],
+    [['1fr 1fr 2fr', [['今日新单', '6', '单'], ['待确认', '3', '单'], ['本月销售额', '¥18,640.00']]]],
+    todo('查看全部', [['10-03', '待确认', '晨曦花艺 · 滨江店', '玫瑰 20 束 · 桔梗 10 扎', 'SO-261003-012 · 待销售安排', '¥1,560.00'], ['10-02', '待处理', '云间花事 · 西湖店', '售后 2 种', 'SH-261002-004 · 花材损坏', '¥128.00']]),
+    '今日新单 = 下单日期是今天的订单（不算已取消）；待确认 = 状态待确认的订单，不限日期；本月销售额 = 出货日期在本月、已发货订单的发货金额合计，不减售后。'],
+  ['发货', [],
+    [['1fr 1fr', [['今日待发', '4', '单'], ['今日已发', '9', '单']]]],
+    todo('查看全部', [['10-03', '待发货', '晨曦花艺 · 滨江店', '共 30 束', 'SO-261002-031 · 出货 10-03', '¥2,340.00'], ['10-03', '待发货', '云间花事 · 西湖店', '共 18 束', 'SO-261002-027 · 出货 10-03', '¥1,416.00'], ['10-02', '待发货', '拾光花店', '共 12 束', 'SO-261001-019 · 出货 10-02', '¥936.00']]),
+    '今日待发 = 出货日期不晚于今天的待发货订单（含过期没发的，和待办同一口径）；今日已发 = 确认发货时间是今天的订单。发货首页没有入口，统计下面直接是待办。'],
+  ['采购', [['采购需求', 'clipboard-list'], ['采购单', 'file-text'], ['供应商填报', 'clipboard-pen'], ['供应商', 'handshake']],
+    [['1fr 1fr', [['待收货', '5', '张'], ['本月采购额', '¥9,860.00']]]],
+    todo('查看全部', [['10-03', '待填报', '春禾花材', '共 4 种花材', '张采购'], ['10-02', '待填报', '云南花田直供', '共 6 种花材', '张采购']]),
+    '待收货 = 状态待收货的采购单；本月采购额 = 下单日期在本月、待收货和已收货采购单的采购金额（Σ 采购数量 × 单价），已取消、已拒收不算。', '阶段 4'],
+  ['仓库', [['待收', 'package-check'], ['手工入库', 'arrow-down-to-line'], ['手工出库', 'arrow-up-from-line'], ['报损', 'package-x'], ['盘点', 'list-checks'], ['库存', 'boxes'], ['花材', 'flower']],
+    [['1fr 1fr 1fr', [['待收货', '5', '张'], ['今日入库', '3', '笔'], ['零库存', '2', '种']]]],
+    todo('查看全部', [['10-03', '待收货', '春禾花材', '共 4 种花材', 'PO-261003-004 · 张采购'], ['10-03', '待收货', '云南花田直供', '共 6 种花材', 'PO-261003-002 · 张采购']]),
+    '待收货 = 状态待收货的采购单；今日入库 = 今天确认收货的采购单 + 入库日期是今天、没作废的手工入库单（按单数，不按批次）；零库存 = 启用的花材里库存是 0 的种数。', '阶段 4、5'],
+  ['财务', [['客户对账', 'notebook-text'], ['供应商对账', 'notebook-tabs'], ['收付款记录', 'scroll-text'], ['收付款方式', 'wallet']],
+    [['1fr', [['客户未收', '¥36,820.50']]], ['1fr 1fr', [['本月收款', '¥12,300.00'], ['预收余额', '¥2,450.00']]]],
+    todo('查看全部', [[null, null, '云间花事', '预收 ¥1,200.00'], [null, null, '晨曦花艺', '预收 ¥850.00']]),
+    '客户未收 = 全部已发货订单的未收合计（应收 − 已收，不限日期，同客户对账）；本月收款 = 收款日期在本月、有效收款的金额合计（作废的不算）；预收余额 = 全部客户预收合计。', '供应商对账阶段 4'],
+];
+const VARIANTS = [
+  ['甲', '单独一块窗格', '统计自成一块细线窗格，放在身份行和入口之间，和入口隔 16px。数字 18px 衬线墨色加粗、标签 12px 次要色在上；两个个数格合起来和金额格一样宽，竖线和下面入口的中线对齐。入口窗格、待办不动，只是整体往下挪约 70px。',
+    (s, e) => `<div class="stats">${s}</div>${e.length ? grid(e) : ''}`],
+  ['乙', '和入口拼成一块', '统计做成入口窗格的第一排，和入口共用外框，中间一条细线，读起来是「先看数、再点入口」一整块。数字放大到 22px，比入口名称更突出；没有入口的发货首页只剩统计这一排，和甲差别只在字号。',
+    (s, e) => `<div class="pane">${s}${e.length ? grid(e) : ''}</div>`],
+];
+document.getElementById('app').innerHTML = VARIANTS.map(([v, name, how, wrap]) => `<h2>${v} · ${name}</h2><p class="how">${how}</p><div class="set">${MODS.map(([m, ent, st, td, rule, stage]) =>
+  `<div class="col" data-shot="${v === '甲' ? 'a' : 'b'}"><div class="phone-wrap">${phone(`<div class="nav">${ic('chevron-left')}${m}</div><div class="mbody">${idLine}${wrap(stats(st), ent)}${td}</div>`)}</div><p class="cap"><b>${m}首页</b>${stage ? `<em>${stage}</em>` : ''}<br>${rule}</p></div>`).join('')}</div>`).join('');
+lucide.createIcons();
+</script>
+</body></html>

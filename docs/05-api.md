@@ -239,8 +239,11 @@
 | `GET /product-categories`、`POST /product-categories`、`PATCH /product-categories/:id` | 销售 | 新增、改名 `{ name }`；列表按 `sort, id` 升序，每项带 `productCount`（含停用产品） | 名称必填「请填写分类名称」、不重复「已有同名分类」 | 新增排在最后；日志「新增分类」「修改分类」 |
 | `PUT /product-categories/order` | 销售 | `{ ids[] }`（全部分类的新顺序）→ 列表 | `ids` 必须正好是现有全部分类，否则 `STALE`「分类刚被修改，已刷新」 | 按顺序重写 `sort`；日志「调整分类顺序」（前后） |
 | `DELETE /product-categories/:id` | 销售 | → `{}` | 分类下还有产品（含停用的）→ `BUSINESS_RULE`「分类中仍有产品，请先移动产品」 | 行锁分类；日志「删除分类」 |
-| `GET /catalog/:customerId` | 销售 | → 目录项（产品、目录价 `listPriceCents`、停订）；销售新建订单时产品和默认单价从这里取 | | — |
-| `PUT /catalog/:customerId` | 销售 | `{ items[{productId, priceCents, enabled, version?}] }` | 停用的产品不能新加进目录（已在目录里的可以改成停订）；`priceCents>=0` | 逐项条件更新；改了价的产品，同一事务按 `id` 升序行锁这个客户的待确认订单，把这种产品的 `price_cents`、`list_price_cents` 改成新目录价、订单 `version` +1，不写 `order_changes`；日志「修改订货目录」（前后，另写「同步待确认订单 SO-…、SO-…」）；推送 `catalog:<customerId>`，同步了订单时加 `order:<id>`、`orders` |
+| `GET /catalog/:customerId` | 销售 | → `{ customerId, customerName, categories[{id, name, sort, itemCount}], items[] }`；目录项带 `categoryId`、`categoryName`、`customerCode`、`listPriceCents`、`enabled`（停订为 false）、`productEnabled`、`version`、`productVersion`、配方明细 `bom`（和产品列表同一结构），按订货分类、产品排（2026-10-03 确认）；销售新建订单时产品和默认单价从这里取 | | — |
+| `PUT /catalog/:customerId/items/:productId` | 销售 | `{ version?, categoryId, customerCode, priceCents, enabled, product?{version, bom[{materialId, qty}]} }` → 整份目录；新加进目录的不带 `version`；配方改了才带 `product`（2026-10-03 确认） | 分类必选且须是这个客户的 →「请选择订货分类」；`customerCode` 同客户重复 → `fields.customerCode`「这个客户下已有相同的产品编码」；停用的产品不能新加进目录；目录项或产品版本过期 → `STALE`（带最新目录，整体不改）；什么都没变 → `BUSINESS_RULE` | 行锁这个客户的目录项（和门店下单、改单的共享锁互斥）；带 `product` 时同一事务行锁产品、换配方、产品 `version` +1、日志「修改产品」；改了价的同一事务按 `id` 升序行锁这个客户含这种产品的待确认订单，把 `price_cents`、`list_price_cents` 改成新目录价、订单 `version` +1，不写 `order_changes`；日志「修改订货目录」（订货分类、客户产品编码、订货价、状态的前后，另写「同步待确认订单 SO-…」）；推送 `catalog:<customerId>`（产品资料、配方改了再推目录里有这个产品的每个客户），同步了订单时加 `order:<id>`、`orders` |
+| `POST /catalog/:customerId/categories`、`PATCH /catalog/:customerId/categories/:id` | 销售 | 新增（+ 幂等键）、改名 `{ name }` → 整份目录 | 同客户重名 → `fields.name`「已有同名分类」；分类不是这个客户的 → `NOT_FOUND` | 行锁客户；新增排最后；日志「新增分类」「修改分类」（订货目录）；推送 `catalog:<customerId>` |
+| `PUT /catalog/:customerId/category-order` | 销售 | `{ ids[] }`（这个客户全部订货分类的新顺序）→ 整份目录 | `ids` 必须正好是这个客户现有全部分类，否则 `STALE` | 按顺序重写 `sort`；日志「调整分类顺序」 |
+| `DELETE /catalog/:customerId/categories/:id` | 销售 | → 整份目录 | 分类下还有目录项（含停订的）→ `BUSINESS_RULE`「分类中仍有目录产品，请先换分类」 | 日志「删除分类」 |
 
 ## 5. 门店端
 
@@ -249,7 +252,7 @@
 | 接口 | 谁 | 入参 → 出参 | 校验和错误 | 锁 / 日志 / 推送 |
 |---|---|---|---|---|
 | `GET /store/home` | 门店 | → `{ customerId, orderableCount, lockedReason }`：`customerId` 是本店所属客户，前端订阅 `catalog:<customerId>`、`ar:<customerId>` 用；`orderableCount` 是本客户启用的目录项数（产品本身也须启用），和订货目录的可订款数同一口径；`lockedReason` 客户停用时为「这个客户已停用，不能再下新单，请联系花众」，否则 `null` | — | 订阅 `catalog:<customerId>` |
-| `GET /store/catalog` | 门店 | 不带参数 → `{ categories, items }`：本客户启用的目录项全部一次给全（产品本身也须启用）（产品、分类、单位、目录价 `listPriceCents`、图片缩略图）；分类切换和跨分类搜索在页面里筛，购物车用同一份数据核对停订 | 门店停用 → `ACCOUNT_DISABLED`（守卫统一拦）；客户停用 → `BUSINESS_RULE`「这个客户已停用，不能再下新单，请联系花众」，门店账号照常登录（03 章第 5 节） | 订阅 `catalog:<customerId>` |
+| `GET /store/catalog` | 门店 | 不带参数 → `{ categories, items }`：本客户启用的目录项全部一次给全（产品本身也须启用）（产品、订货分类、单位、客户产品编码 `customerCode`、目录价 `listPriceCents`、图片缩略图；`categories` 是这个客户的订货分类，只含有可订产品的）；分类切换和跨分类搜索在页面里筛，购物车用同一份数据核对停订 | 门店停用 → `ACCOUNT_DISABLED`（守卫统一拦）；客户停用 → `BUSINESS_RULE`「这个客户已停用，不能再下新单，请联系花众」，门店账号照常登录（03 章第 5 节） | 订阅 `catalog:<customerId>` |
 | `POST /store/orders` | 门店 | `{ note, lines[{productId, qty}] }` + 幂等键 → 订单（`pending_confirm`，`shipDate` 为 `null`） | 客户停用 → `BUSINESS_RULE`「这个客户已停用，不能再下新单，请联系花众」；门店不传出货日期（由销售确认时定）；产品本身启用、在目录里且启用；单价取目录价（门店不能传单价） | 发号 SO；日志「门店下单」；推送 `orders`、`todo:sales` |
 | `PUT /store/orders/:id` | 门店 | `{ version, note, lines[] }` → 订单 | 状态 `pending_confirm`，已取消 → `STALE`「订单已被取消，不能再修改」，已确认 → `STALE`「销售已确认，门店不能再修改，请联系销售」；客户停用 → `BUSINESS_RULE`「这个客户已停用，不能再修改订单，请联系花众」；原单里已停订或停用的产品还在 → `BUSINESS_RULE`「白绿清新花束已停订，请先删掉再提交」；所有行按当前目录价重算（单价、目录价快照）；内容没变 → 不写变更记录，直接返回 | 条件更新；整组替换明细；有差异写 `order_changes`（原因空）；日志「门店改单」；推送 `order:<id>`、`orders`、`todo:sales` |
 | `POST /store/orders/:id/cancel` | 门店 | `{ version }` | 状态 `pending_confirm`（不用原因）；已确认 → `STALE`「销售已确认，请联系销售取消」 | 条件更新；日志「门店取消订单」；推送同上 |

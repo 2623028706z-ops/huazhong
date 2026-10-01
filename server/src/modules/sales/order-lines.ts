@@ -26,6 +26,7 @@ export async function catalogEntriesOf(
       productId: products.id,
       name: products.name,
       unit: products.unit,
+      customerCode: sql<string>`coalesce(${catalogItems.customerCode}, '')`,
       productEnabled: products.enabled,
       catalogEnabled: catalogItems.enabled,
       listPriceCents: catalogItems.priceCents,
@@ -50,6 +51,8 @@ export async function lockCatalogShare(tx: Tx, customerId: number): Promise<void
 
 export interface NewLine extends LineState {
   listPriceCents: number
+  // 下单时的客户产品编码快照
+  customerCode: string
 }
 
 // 整组替换明细（改单）；新建时 orderId 下还没有行
@@ -65,6 +68,7 @@ export async function replaceLines(
       productId: line.productId,
       name: line.name,
       unit: line.unit,
+      customerCode: line.customerCode,
       qty: line.qty,
       priceCents: line.priceCents,
       listPriceCents: line.listPriceCents,

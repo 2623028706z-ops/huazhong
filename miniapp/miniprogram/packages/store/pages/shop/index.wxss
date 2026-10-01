@@ -1,5 +1,15 @@
 /* 订货：顶部信息 + 搜索，下面左侧分类、右侧产品（只写布局） */
+
+/* 整页撑满一屏竖排，分栏占剩下的高度 */
+page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
 .hz-shop__top {
+  flex: none;
   display: flex;
   flex-direction: column;
   gap: var(--hz-line-gap);
@@ -13,8 +23,9 @@
 }
 
 .hz-shop__body {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  height: calc(100vh - 260px);
   margin-top: var(--hz-gap-controls);
 }
 
@@ -44,8 +55,20 @@
   min-width: 0;
 }
 
+.hz-shop__title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .hz-shop__name {
   font-size: var(--hz-font-md);
+}
+
+/* 客户产品编码（选填，2026-10-03 确认） */
+.hz-shop__code {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
 }
 
 .hz-shop__buy {

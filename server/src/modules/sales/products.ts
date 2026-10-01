@@ -26,6 +26,7 @@ import { found } from '../../common/scope.ts'
 import { guardUnique } from '../../common/unique.ts'
 import { WriteService, type WriteContext } from '../../common/write.service.ts'
 import { FilesService } from '../files/files.service.ts'
+import { bomLinesOf } from './bom.ts'
 import type { Executor } from './order-rows.ts'
 
 const NAME_FIELDS = { products_name_unique: { name: copy.catalog.productNameTaken } }
@@ -94,22 +95,7 @@ export class ProductService {
       .where(where)
       .orderBy(asc(productCategories.sort), asc(productCategories.id), asc(products.id))
     const ids = rows.map((row) => row.id)
-    const bom =
-      ids.length === 0
-        ? []
-        : await executor
-            .select({
-              productId: productBomLines.productId,
-              materialId: productBomLines.materialId,
-              materialName: materials.name,
-              unit: materials.unit,
-              qty: productBomLines.qty,
-              materialEnabled: materials.enabled,
-            })
-            .from(productBomLines)
-            .innerJoin(materials, eq(materials.id, productBomLines.materialId))
-            .where(inArray(productBomLines.productId, ids))
-            .orderBy(asc(productBomLines.id))
+    const bom = await bomLinesOf(executor, ids)
     const imageIds = rows.flatMap((row) => (row.imageFileId === null ? [] : [row.imageFileId]))
     const urls = await this.files.urlsOf(executor, imageIds)
     return rows.map((row) => ({
@@ -118,12 +104,7 @@ export class ProductService {
       categoryId: String(row.categoryId),
       imageFileId: row.imageFileId === null ? null : String(row.imageFileId),
       imageUrl: row.imageFileId === null ? null : (urls.get(row.imageFileId)?.url ?? null),
-      bom: bom
-        .filter((line) => line.productId === row.id)
-        .map(({ productId: _productId, ...line }) => ({
-          ...line,
-          materialId: String(line.materialId),
-        })),
+      bom: bom.get(row.id) ?? [],
     }))
   }
 
@@ -231,6 +212,28 @@ export class ProductService {
     )
   }
 
+  // 订货目录弹层改配方：在目录的同一事务里只换配方，其余照旧；配方没变返回 false。
+  // 产品先行锁再核对版本（stale 由目录给出最新目录）
+  async replaceBomIn(
+    ctx: WriteContext,
+    id: number,
+    input: { version: number; bom: ProductInput['bom'] },
+    stale: () => Promise<never>,
+  ): Promise<boolean> {
+    const [locked] = await ctx.tx
+      .select({ version: products.version })
+      .from(products)
+      .where(eq(products.id, id))
+      .for('update')
+    if (found(locked).version !== input.version) return stale()
+    const before = await this.item(ctx.tx, id)
+    const next = { ...before, bom: input.bom }
+    if (sameInput(before, next)) return false
+    if (!ctx.viewer) throw appError.internal()
+    await this.updateInTx(ctx, ctx.viewer, id, next)
+    return true
+  }
+
   update(viewer: Viewer, id: number, input: ProductUpdate): Promise<ProductItem> {
     return guardUnique(
       () => this.writes.run(viewer, (ctx) => this.updateInTx(ctx, viewer, id, input)),
@@ -273,16 +276,14 @@ export class ProductService {
       before: productView(before),
       after: productView(item),
     })
-    // 停用、启用产品：目录里有它的客户，门店订货页要刷新
-    if (before.enabled !== item.enabled) {
-      const owners = await ctx.tx
-        .select({ customerId: catalogItems.customerId })
-        .from(catalogItems)
-        .where(eq(catalogItems.productId, id))
-      ctx.notify(
-        owners.map((owner) => ({ topic: `catalog:${owner.customerId}` as const, version: null })),
-      )
-    }
+    // 名称、单位、配方、启用都在目录里显示：目录里有它的客户都要刷新
+    const owners = await ctx.tx
+      .select({ customerId: catalogItems.customerId })
+      .from(catalogItems)
+      .where(eq(catalogItems.productId, id))
+    ctx.notify(
+      owners.map((owner) => ({ topic: `catalog:${owner.customerId}` as const, version: null })),
+    )
     return item
   }
 }

@@ -13,12 +13,12 @@
       <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{form.note}}" bind:change="onNote" />
     </block>
     <block wx:if="{{customerId}}">
-      <text class="u-caption">{{texts.allocDetail}}</text>
+      <text class="u-section__title">{{texts.allocDetail}}</text>
       <text wx:if="{{allocRows.length === 0}}" class="u-info__meta">{{texts.empty}}</text>
       <view wx:for="{{allocRows}}" wx:key="orderId" class="u-card u-form-card">
         <view class="u-info__head">
           <text class="u-info__title">{{item.name}}</text>
-          <text class="u-info__meta">{{item.sub}}</text>
+          <text style="font-weight: 600;">{{item.sub}}</text>
         </view>
         <view class="u-info__head">
           <hz-field label="{{texts.allocThis}}" type="digit" value="{{item.text}}" data-index="{{index}}" bind:change="onAlloc" />

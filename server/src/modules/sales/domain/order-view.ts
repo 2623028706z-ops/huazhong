@@ -27,6 +27,7 @@ export interface LineRow {
   productId: number
   name: string
   unit: string
+  customerCode: string
   qty: number
   priceCents: number
   listPriceCents: number
@@ -49,6 +50,7 @@ export function toOrderLine(line: LineRow, open: boolean): OrderLine {
     productId: String(line.productId),
     name: line.name,
     unit: line.unit,
+    customerCode: line.customerCode,
     qty: line.qty,
     priceCents: line.priceCents,
     listPriceCents: line.listPriceCents,

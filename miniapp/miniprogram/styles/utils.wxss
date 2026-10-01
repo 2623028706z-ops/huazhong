@@ -252,6 +252,140 @@
   text-align: center;
 }
 
+/* 详情、表单里的一组：小标题 + 卡片（产品明细、发货信息、变更记录），和上一组多隔 6px；
+   组里卡片之间照常 10px，小标题和下面的卡片只隔 6px */
+.u-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-card-gap);
+  margin-top: var(--hz-line-gap);
+}
+
+.u-section__title {
+  margin-bottom: calc(var(--hz-line-gap) - var(--hz-card-gap));
+  padding: 0 2px;
+  font-size: var(--hz-font-note);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* 一张卡里多行、行间细线（订货目录、配方）：比一行一张卡紧凑 */
+.u-rows {
+  padding: 0 var(--hz-card-pad);
+}
+
+.u-rows__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--hz-line-gap) 0;
+}
+
+.u-rows__item + .u-rows__item {
+  border-top: 1px solid var(--hz-line);
+}
+
+/* 订货目录第一行（同 hz-card 第 2 行）：名称（主信息，最多两行）、订货价靠右顶齐 */
+.u-rows__head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding-top: 4px;
+}
+
+.u-rows__title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--hz-font-md);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.u-rows__price {
+  flex: none;
+  font-size: var(--hz-font-md);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--hz-ink);
+}
+
+/* 订货目录第二行（同 hz-card 第 3 行）：标记在左，接客户产品编码，次要色 */
+.u-rows__foot {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding-bottom: 2px;
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+/* 提醒说明（配方所有客户共用）：琥珀字，不用最弱的灰 */
+.u-note-warn {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-amber);
+}
+
+/* 长名称最多两行，不把价格挤走 */
+.u-clamp-2 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* 一行里左边名称、右边控件 */
+.u-rows__line {
+  display: flex;
+  gap: var(--hz-line-gap);
+  align-items: center;
+  min-height: var(--hz-tap);
+}
+
+.u-rows__name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--hz-font-md);
+}
+
+/* 配方一行：名称 → 用量 → 单位 → 垃圾桶 */
+.u-rows__unit {
+  flex: none;
+  min-width: 2em;
+  font-size: var(--hz-font-note);
+  color: var(--hz-muted);
+}
+
+.u-rows__trash {
+  flex: none;
+  margin-right: -12px;
+  font-size: var(--hz-icon);
+  color: var(--hz-muted);
+}
+
+/* 金额输入小框（明细单价、订货价）：36px 高，后面跟单位 */
+.u-price-box {
+  display: flex;
+  align-items: center;
+  width: 96px;
+  height: 36px;
+  padding: 0 10px;
+  background: var(--hz-paper);
+  border-radius: var(--hz-radius-inner);
+  box-shadow: inset 0 0 0 1px var(--hz-hair);
+}
+
+.u-price-box__input {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--hz-font-md);
+}
+
+.u-price-box__unit {
+  flex: none;
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
 /* 详情页的信息卡（views/detail.wxml）：单号 + 状态，下面「标签　值」一行一项 */
 .u-info {
   display: flex;
@@ -333,7 +467,8 @@
 /* 左侧列表 + 右侧内容（客户门店、订货目录） */
 .u-split {
   display: flex;
-  min-height: calc(100vh - 160px);
+  flex: 1;
+  min-height: 0;
 }
 
 .u-split__side {
@@ -347,7 +482,7 @@
   flex-direction: column;
   gap: var(--hz-card-gap);
   min-width: 0;
-  padding: 0 var(--hz-gap-page) 12px var(--hz-line-gap);
+  padding: 0 var(--hz-gap-page) 0 var(--hz-line-gap);
 }
 
 /* 带图的一行（产品管理）：左图右字 */

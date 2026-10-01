@@ -42,8 +42,9 @@ function viewOf(after: AfterDetail) {
       status: after.status,
       rows: afterInfoOf(after),
     },
+    linesHeading: copy.screen.section.afterLines,
     lines: afterLinesOf(after),
-    reasonRows: afterReasonsOf(after),
+    reason: afterReasonsOf(after),
     notice: after.notice ?? after.lockedReason ?? '',
   }
 }

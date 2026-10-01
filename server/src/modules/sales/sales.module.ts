@@ -4,10 +4,11 @@ import { FilesModule } from '../files/files.module.ts'
 import { AfterReads } from './after-query.ts'
 import { AfterWrites } from './after-writes.ts'
 import { AftersController } from './afters.controller.ts'
+import { CatalogCategoryService } from './catalog-categories.ts'
 import { CatalogService } from './catalog.ts'
 import { CategoryService } from './categories.ts'
 import { CustomerService } from './customers.ts'
-import { CustomersController, ProductsController } from './masters.controller.ts'
+import { CatalogController, CustomersController, ProductsController } from './masters.controller.ts'
 import { OrderReads } from './order-query.ts'
 import { OrdersController } from './orders.controller.ts'
 import { ProductService } from './products.ts'
@@ -21,7 +22,13 @@ import { StoreWrites } from './stores.ts'
 // 销售、发货、门店端：订单、售后、客户门店、产品、订货目录、门店邀请
 @Module({
   imports: [AccountsModule, FilesModule],
-  controllers: [OrdersController, AftersController, CustomersController, ProductsController],
+  controllers: [
+    OrdersController,
+    AftersController,
+    CustomersController,
+    ProductsController,
+    CatalogController,
+  ],
   providers: [
     OrderReads,
     SalesOrderWrites,
@@ -34,6 +41,7 @@ import { StoreWrites } from './stores.ts'
     ProductService,
     CategoryService,
     CatalogService,
+    CatalogCategoryService,
     StoreHomeService,
     SalesService,
   ],

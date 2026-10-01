@@ -3,10 +3,10 @@
 import type { AfterReason, OrderOrigin, OrderStatus } from '@huazhong/shared'
 import type { SeedAccountKey } from './data.ts'
 
+// 产品内部分类（2026-10-03 确认：单品、花束起步）
 export const seedProductCategories = [
-  { key: 'daily', name: '日常花束', sort: 1 },
-  { key: 'gift', name: '礼赠花束', sort: 2 },
-  { key: 'table', name: '桌面花艺', sort: 3 },
+  { key: 'single', name: '单品', sort: 1 },
+  { key: 'bouquet', name: '花束', sort: 2 },
 ] as const
 
 type ProductCategoryKey = (typeof seedProductCategories)[number]['key']
@@ -24,7 +24,7 @@ export const seedProducts = [
   {
     key: 'p1',
     name: '粉玫瑰日常花束',
-    category: 'daily',
+    category: 'bouquet',
     unit: '束',
     bom: [
       { material: 'w1', qty: 10 },
@@ -34,39 +34,90 @@ export const seedProducts = [
   {
     key: 'p2',
     name: '白绿清新花束',
-    category: 'daily',
+    category: 'bouquet',
     unit: '束',
     bom: [{ material: 'w2', qty: 8 }],
   },
   {
     key: 'p3',
     name: '向日葵混合花束',
-    category: 'gift',
+    category: 'bouquet',
     unit: '束',
     bom: [{ material: 'w3', qty: 5 }],
   },
-  { key: 'p4', name: '白绿桌花', category: 'table', unit: '盆', bom: [{ material: 'w4', qty: 6 }] },
+  {
+    key: 'p4',
+    name: '白绿桌花',
+    category: 'single',
+    unit: '盆',
+    bom: [{ material: 'w4', qty: 6 }],
+  },
 ] as const satisfies readonly SeedProduct[]
 
 type ProductKey = (typeof seedProducts)[number]['key']
 type CustomerKey = 'c1' | 'c2' | 'c3'
 type StoreKey = 's1' | 's2' | 's3' | 's4' | 's5'
 
-// 价格按分
+// 每个客户的订货分类（门店订货页按它分组）
+export const seedCatalogCategories: readonly {
+  key: string
+  customer: CustomerKey
+  name: string
+  sort: number
+}[] = [
+  { key: 'c1-daily', customer: 'c1', name: '日常花束', sort: 1 },
+  { key: 'c1-gift', customer: 'c1', name: '礼赠花束', sort: 2 },
+  { key: 'c1-table', customer: 'c1', name: '桌面花艺', sort: 3 },
+  { key: 'c2-daily', customer: 'c2', name: '日常花束', sort: 1 },
+  { key: 'c3-gift', customer: 'c3', name: '礼赠花束', sort: 1 },
+  { key: 'c3-table', customer: 'c3', name: '桌面花艺', sort: 2 },
+]
+
+// 价格按分；code 是客户产品编码（选填）
 export const seedCatalog: readonly {
   customer: CustomerKey
   product: ProductKey
+  category: string
+  code: string
   price: number
   enabled: boolean
 }[] = [
-  { customer: 'c1', product: 'p1', price: 6800, enabled: true },
-  { customer: 'c1', product: 'p2', price: 7800, enabled: true },
-  { customer: 'c1', product: 'p3', price: 8800, enabled: false },
-  { customer: 'c1', product: 'p4', price: 12800, enabled: true },
-  { customer: 'c2', product: 'p2', price: 7800, enabled: true },
-  { customer: 'c2', product: 'p1', price: 7000, enabled: true },
-  { customer: 'c3', product: 'p3', price: 8800, enabled: true },
-  { customer: 'c3', product: 'p4', price: 12800, enabled: true },
+  {
+    customer: 'c1',
+    product: 'p1',
+    category: 'c1-daily',
+    code: 'CX-101',
+    price: 6800,
+    enabled: true,
+  },
+  {
+    customer: 'c1',
+    product: 'p2',
+    category: 'c1-daily',
+    code: 'CX-102',
+    price: 7800,
+    enabled: true,
+  },
+  { customer: 'c1', product: 'p3', category: 'c1-gift', code: '', price: 8800, enabled: false },
+  {
+    customer: 'c1',
+    product: 'p4',
+    category: 'c1-table',
+    code: 'CX-301',
+    price: 12800,
+    enabled: true,
+  },
+  { customer: 'c2', product: 'p2', category: 'c2-daily', code: '', price: 7800, enabled: true },
+  { customer: 'c2', product: 'p1', category: 'c2-daily', code: '', price: 7000, enabled: true },
+  { customer: 'c3', product: 'p3', category: 'c3-gift', code: 'Y-01', price: 8800, enabled: true },
+  {
+    customer: 'c3',
+    product: 'p4',
+    category: 'c3-table',
+    code: 'Y-02',
+    price: 12800,
+    enabled: true,
+  },
 ]
 
 export interface SeedOrderLine {

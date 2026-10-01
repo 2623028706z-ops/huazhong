@@ -32,9 +32,15 @@
   letter-spacing: 0.08em;
 }
 
+/* 内容长了在这里滚动：高度上限 = 75vh 减去标题（48px），有底部按钮再减按钮区（44 + 18 + 1px 细线） */
 .hz-sheet__body {
   flex: 0 1 auto;
   min-height: 0;
+  max-height: calc(75vh - 48px);
+}
+
+.hz-sheet__body--footer {
+  max-height: calc(75vh - 48px - var(--hz-tap) - 19px - env(safe-area-inset-bottom));
 }
 
 .hz-sheet__footer {
@@ -44,5 +50,6 @@
   grid-auto-flow: column;
   gap: 8px;
   padding: 9px var(--hz-gap-bar);
+  padding-bottom: calc(9px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--hz-line);
 }

@@ -8,9 +8,12 @@
   <hz-skeleton wx:if="{{!loaded}}" type="detail" />
   <block wx:elif="{{isForm}}">
     <template is="info" data="{{...info}}" />
-    <hz-line-item wx:if="{{canShip}}" lines="{{lineViews}}" mode="qty" min="{{0}}" bind:qty="onQty" />
-    <hz-line-item wx:else lines="{{lineViews}}" />
-    <template is="info" data="{{rows: amountRows}}" />
+    <view class="u-section">
+      <text class="u-section__title">{{texts.lines}}</text>
+      <hz-line-item wx:if="{{canShip}}" lines="{{lineViews}}" mode="qty" min="{{0}}" bind:qty="onQty" />
+      <hz-line-item wx:else lines="{{lineViews}}" />
+      <template is="info-card" data="{{rows: amountRows}}" />
+    </view>
     <hz-field wx:if="{{canShip}}" label="{{texts.shipNote}}" type="textarea" placeholder="{{texts.optional}}" value="{{shipNote}}" bind:change="onNote" />
     <hz-records wx:if="{{view.changes.length > 0}}" type="orderChange" items="{{view.changes}}" />
   </block>

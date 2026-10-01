@@ -24,6 +24,7 @@ const entry = (productId: number, change: Partial<CatalogEntry> = {}): CatalogEn
   productId,
   name: `产品${productId}`,
   unit: '束',
+  customerCode: '',
   productEnabled: true,
   catalogEnabled: true,
   listPriceCents: 6800,

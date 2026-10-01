@@ -28,6 +28,7 @@ Page({
     saving: false,
     uploading: false,
     texts: {
+      lines: copy.screen.section.afterLines,
       reason: copy.screen.label.afterReason,
       description: copy.screen.label.afterDescription,
       images: copy.screen.label.afterImages,

@@ -6,7 +6,14 @@ import type { AskOptions } from '../../core/guard'
 const resolvers = new WeakMap<object, (confirmed: boolean) => void>()
 
 Component({
-  data: { show: false, title: '', body: '', cancel: '', confirm: '' },
+  data: {
+    overlay: { zIndex: 12000 },
+    show: false,
+    title: '',
+    body: '',
+    cancel: '',
+    confirm: '',
+  },
   methods: {
     ask(options: AskOptions): Promise<boolean> {
       // 上一次还没回答就又问：上一次按取消算

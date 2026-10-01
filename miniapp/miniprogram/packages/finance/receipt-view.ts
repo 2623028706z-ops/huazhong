@@ -44,6 +44,7 @@ export function receiptViewOf(receipt: ReceiptDetail) {
         ],
       ]),
     },
+    allocsHeading: copy.screen.section.allocs,
     allocs: allocRowsOf(receipt.allocations, 'order'),
     notice: receipt.notice ?? '',
     canVoid: action?.enabled === true,

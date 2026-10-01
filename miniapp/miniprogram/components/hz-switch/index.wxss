@@ -1,5 +1,6 @@
 .hz-switch {
   display: flex;
+  gap: var(--hz-row-pad);
   align-items: center;
   justify-content: space-between;
   min-height: var(--hz-tap);

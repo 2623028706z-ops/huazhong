@@ -1,5 +1,6 @@
 <view class="hz-confirm">
-  <t-popup visible="{{show}}" placement="center" bind:visible-change="onVisibleChange">
+  <!-- 确认框常在半屏弹层上面问（放弃修改、配方共用）：层级高过 hz-sheet（TDesign 默认 11500 / 遮罩 11000） -->
+  <t-popup visible="{{show}}" placement="center" z-index="{{12500}}" overlay-props="{{overlay}}" bind:visible-change="onVisibleChange">
     <view class="hz-confirm__box">
       <text class="hz-confirm__title u-serif">{{title}}</text>
       <text class="hz-confirm__body">{{body}}</text>

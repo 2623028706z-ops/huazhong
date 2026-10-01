@@ -1,0 +1,5 @@
+.u-product__name-row {
+  display: flex;
+  gap: var(--hz-line-gap);
+  align-items: flex-start;
+}

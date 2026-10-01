@@ -1,7 +1,7 @@
 <!-- 详情页的公共区块（06 章第 1.1 节）：页面 <import src="/views/detail.wxml" /> 后用 template 引用。
      数据都由 views/*.ts 换好成文字，这里不做格式化 -->
-<!-- 信息卡：单号 + 状态，下面「标签　值」一行一项 -->
-<template name="info">
+<!-- 信息卡：单号 + 状态，下面「标签　值」一行一项；传了 heading 就是一组（小标题 + 卡片） -->
+<template name="info-card">
   <view class="u-card u-info">
     <view wx:if="{{title}}" class="u-info__head">
       <text class="u-info__title">{{title}}</text>
@@ -13,28 +13,38 @@
     </view>
   </view>
 </template>
+<template name="info">
+  <view wx:if="{{heading}}" class="u-section">
+    <text class="u-section__title">{{heading}}</text>
+    <template is="info-card" data="{{title, status, statusKind, rows}}" />
+  </view>
+  <template wx:else is="info-card" data="{{title, status, statusKind, rows}}" />
+</template>
 <!-- 售后产品：数量和原因、问题说明、图片直接展开 -->
 <template name="after-lines">
-  <view class="u-card u-info">
-    <view wx:for="{{lines}}" wx:for-item="line" wx:key="key" class="u-info__line">
-      <view class="u-info__head">
-        <text class="u-info__title">{{line.name}}</text>
-        <text wx:if="{{line.amountText}}" class="u-serif-amount">{{line.amountText}}</text>
-      </view>
-      <text class="u-info__meta">{{line.meta}}</text>
-      <text wx:if="{{line.description}}">{{line.description}}</text>
-      <view wx:if="{{line.images.length > 0}}" class="u-thumbs">
-        <image
-          wx:for="{{line.images}}"
-          wx:for-item="image"
-          wx:key="url"
-          class="u-thumbs__item"
-          src="{{image.thumbUrl}}"
-          mode="aspectFill"
-          data-url="{{image.url}}"
-          data-urls="{{line.urls}}"
-          bindtap="onPreview"
-        />
+  <view class="u-section">
+    <text class="u-section__title">{{heading}}</text>
+    <view class="u-card u-info">
+      <view wx:for="{{lines}}" wx:for-item="line" wx:key="key" class="u-info__line">
+        <view class="u-info__head">
+          <text class="u-info__title">{{line.name}}</text>
+          <text wx:if="{{line.amountText}}" class="u-serif-amount">{{line.amountText}}</text>
+        </view>
+        <text class="u-info__meta">{{line.meta}}</text>
+        <text wx:if="{{line.description}}">{{line.description}}</text>
+        <view wx:if="{{line.images.length > 0}}" class="u-thumbs">
+          <image
+            wx:for="{{line.images}}"
+            wx:for-item="image"
+            wx:key="url"
+            class="u-thumbs__item"
+            src="{{image.thumbUrl}}"
+            mode="aspectFill"
+            data-url="{{image.url}}"
+            data-urls="{{line.urls}}"
+            bindtap="onPreview"
+          />
+        </view>
       </view>
     </view>
   </view>
@@ -59,27 +69,36 @@
 <template name="receipt">
   <hz-notice wx:if="{{notice}}" text="{{notice}}" />
   <template is="info" data="{{...info}}" />
-  <view wx:for="{{allocs}}" wx:key="id" class="u-pick-row">
-    <view class="u-sheet-head">
-      <text>{{item.name}}</text>
-      <text class="u-pick-row__sub">{{item.sub}}</text>
+  <view wx:if="{{allocs.length > 0}}" class="u-section">
+    <text class="u-section__title">{{allocsHeading}}</text>
+    <view class="u-card u-info">
+      <view wx:for="{{allocs}}" wx:key="id" class="u-info__line">
+        <view class="u-info__head">
+          <text>{{item.name}}</text>
+          <text class="u-serif-amount" style="font-weight: 600;">{{item.amount}}</text>
+        </view>
+        <text class="u-info__meta">{{item.sub}}</text>
+      </view>
     </view>
-    <text class="u-serif-amount">{{item.amount}}</text>
   </view>
 </template>
-<!-- 订单只读内容（S6、X3、H3 只读）：数据是 views/order.ts 的 orderViewOf -->
+<!-- 订单只读内容（S6、X3、H3 只读）：数据是 views/order.ts 的 orderViewOf。
+     信息卡 → 产品明细（明细 + 金额）→ 发货信息 → 变更记录 → 取消信息 -->
 <template name="order-body">
   <hz-notice wx:if="{{notice}}" text="{{notice}}" />
   <template is="info" data="{{...info}}" />
-  <hz-line-item lines="{{lines}}" />
-  <template is="info" data="{{rows: amountRows}}" />
-  <template wx:if="{{shipRows.length > 0}}" is="info" data="{{rows: shipRows}}" />
+  <view class="u-section">
+    <text class="u-section__title">{{linesHeading}}</text>
+    <hz-line-item lines="{{lines}}" />
+    <template is="info-card" data="{{rows: amountRows}}" />
+  </view>
+  <template wx:if="{{ship.rows.length > 0}}" is="info" data="{{...ship}}" />
   <hz-records wx:if="{{changes.length > 0}}" type="orderChange" items="{{changes}}" />
-  <template wx:if="{{reasonRows.length > 0}}" is="info" data="{{rows: reasonRows}}" />
+  <template wx:if="{{reason.rows.length > 0}}" is="info" data="{{...reason}}" />
 </template>
-<!-- 售后只读内容（S7 弹层、X6、F3 弹层） -->
+<!-- 售后只读内容（S7 弹层、X6、F3 弹层）：信息卡 → 售后明细 → 关闭或作废信息 -->
 <template name="after-body">
   <template is="info" data="{{...info}}" />
-  <template is="after-lines" data="{{lines: lines}}" />
-  <template wx:if="{{reasonRows.length > 0}}" is="info" data="{{rows: reasonRows}}" />
+  <template is="after-lines" data="{{lines, heading: linesHeading}}" />
+  <template wx:if="{{reason.rows.length > 0}}" is="info" data="{{...reason}}" />
 </template>

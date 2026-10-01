@@ -7,7 +7,7 @@
         </view>
         <text class="hz-sheet__title u-serif">{{title}}</text>
       </view>
-      <scroll-view class="hz-sheet__body" scroll-y>
+      <scroll-view class="hz-sheet__body {{footer ? 'hz-sheet__body--footer' : ''}}" scroll-y>
         <slot />
       </scroll-view>
       <view wx:if="{{footer}}" class="hz-sheet__footer">

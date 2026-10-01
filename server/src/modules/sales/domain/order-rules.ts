@@ -7,6 +7,7 @@ export interface CatalogEntry {
   productId: number
   name: string
   unit: string
+  customerCode: string
   productEnabled: boolean
   catalogEnabled: boolean | null
   listPriceCents: number | null

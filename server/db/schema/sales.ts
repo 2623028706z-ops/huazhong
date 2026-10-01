@@ -82,6 +82,8 @@ export const orderLines = pgTable(
       .references(() => products.id, { onDelete: 'restrict' }),
     name: text().notNull(),
     unit: text().notNull(),
+    // 下单时的客户产品编码快照（2026-10-03 确认），没填为 ''
+    customerCode: text().notNull().default(''),
     qty: integer().notNull(),
     priceCents: integer().notNull(),
     listPriceCents: integer().notNull(),

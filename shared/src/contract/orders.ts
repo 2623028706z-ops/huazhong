@@ -53,6 +53,8 @@ export const orderLineSchema = z.object({
   productId: idSchema,
   name: z.string(),
   unit: z.string(),
+  // 下单时的客户产品编码（和名称、单位一样快照），没填为 ''
+  customerCode: z.string(),
   qty: z.number().int().positive(),
   priceCents: centsSchema,
   listPriceCents: centsSchema,

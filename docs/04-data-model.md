@@ -146,10 +146,11 @@
 |---|---|---|---|
 | `customers` | `name TEXT NOT NULL UNIQUE`、`enabled`、有版本 | 客户（往来单位），对账按客户。在客户门店页新建、改名、启用 / 停用；停用规则见 03 章第 5 节 | `customers[]`（原型没有 enabled，新加） |
 | `stores` | `customer_id → customers.id NOT NULL`、`name TEXT NOT NULL`、`contact`、`phone`、`address` 都是 `TEXT NOT NULL DEFAULT ''`、`enabled`、有版本 | 唯一 `(customer_id, name)`。填了登录手机号（有启用的门店账号）时 `contact` 不能为空，门店账号的 `accounts.name` 跟着 `contact` 改（服务层，同一事务）。停用规则见 03 章第 2、5 节 | `stores[]` |
-| `product_categories` | `name TEXT NOT NULL UNIQUE`、`sort INTEGER NOT NULL DEFAULT 0` | 产品分类（门店订货左侧分类）。按 `sort, id` 排；没有产品（含停用的产品）时可以删除（03 章第 5 节） | `cats[]` |
+| `product_categories` | `name TEXT NOT NULL UNIQUE`、`sort INTEGER NOT NULL DEFAULT 0` | 产品内部分类（单品、花束…），只在产品管理里用（2026-10-03 确认）。按 `sort, id` 排；没有产品（含停用的产品）时可以删除（03 章第 5 节） | `cats[]` |
 | `products` | `name TEXT NOT NULL UNIQUE`、`category_id → product_categories.id`、`unit TEXT NOT NULL`、`image_file_id → files.id NULL`、`enabled`、有版本 | 成品。停用规则见 03 章第 5 节；原型没有产品级启用，新加 | `products[]` |
 | `product_bom_lines` | `product_id → products.id`、`material_id → materials.id`、`qty INTEGER NOT NULL CHECK (qty > 0)` | 配方，唯一 `(product_id, material_id)`；每个产品至少一行（服务层）。直接关联花材，原型的「配方对不上花材资料」在新版不会出现 | `bom[]` |
-| `catalog_items` | `customer_id → customers.id`、`product_id → products.id`、`price_cents INTEGER NOT NULL CHECK (price_cents >= 0)`、`enabled`、有版本 | 订货目录：每个客户一份价目。唯一 `(customer_id, product_id)`。`enabled=false` 即停订。改 `price_cents` 时同一事务更新这个客户待确认订单里这种产品的 `order_lines.price_cents`、`list_price_cents`（03 章第 8.1 节） | `directory[客户][]` |
+| `catalog_categories` | `customer_id → customers.id`、`name TEXT NOT NULL`、`sort INTEGER NOT NULL DEFAULT 0` | 订货分类：每个客户一套，门店订货页按它分组（2026-10-03 确认）。唯一 `(customer_id, name)`；按 `sort, id` 排；有目录项（含停订的）时不能删 | — |
+| `catalog_items` | `customer_id → customers.id`、`product_id → products.id`、`category_id → catalog_categories.id NOT NULL`、`customer_code TEXT NOT NULL DEFAULT ''`、`price_cents INTEGER NOT NULL CHECK (price_cents >= 0)`、`enabled`、有版本 | 订货目录：每个客户一份价目。唯一 `(customer_id, product_id)`；`customer_code` 是客户产品编码（`''` 为没填），部分唯一索引 `(customer_id, customer_code) WHERE customer_code <> ''`；`category_id` 须是同一客户的分类（服务层校验），索引 `(category_id)`。`enabled=false` 即停订。改 `price_cents` 时同一事务更新这个客户待确认订单里这种产品的 `order_lines.price_cents`、`list_price_cents`（03 章第 8.1 节） | `directory[客户][]` |
 
 ### 4.2 `orders` 订单（有版本）
 
@@ -180,6 +181,7 @@
 | order_id | `→ orders.id NOT NULL ON DELETE CASCADE` | 改单时整组替换 | |
 | product_id | `→ products.id NOT NULL` | 唯一 `(order_id, product_id)` | `product` |
 | name / unit | `TEXT NOT NULL` | 快照 | `name`、`unit` |
+| customer_code | `TEXT NOT NULL DEFAULT ''` | 下单时的客户产品编码快照（2026-10-03 确认）；没填为 `''`，之后改目录编码不变 | — |
 | qty | `INTEGER NOT NULL CHECK (qty > 0)` | 订货数量 | `qty` |
 | price_cents | `INTEGER NOT NULL CHECK (price_cents >= 0)` | 下单单价，销售可改（改过的标「改价」）；待确认订单始终等于目录价，随目录调价同步 | `price` |
 | list_price_cents | `INTEGER NOT NULL CHECK (list_price_cents >= 0)` | 下单时的目录价快照；待确认订单随目录调价同步 | `listPrice` |
@@ -506,6 +508,8 @@
 erDiagram
   customers ||--o{ stores : has
   customers ||--o{ catalog_items : prices
+  customers ||--o{ catalog_categories : owns
+  catalog_categories ||--o{ catalog_items : groups
   products ||--o{ catalog_items : listed
   product_categories ||--o{ products : groups
   products ||--o{ product_bom_lines : bom

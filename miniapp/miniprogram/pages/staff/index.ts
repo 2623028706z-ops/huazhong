@@ -32,7 +32,7 @@ function rowOf(item: StaffItem) {
     title: item.name,
     total: roleLabelOf(item),
     meta: maskPhone(item.phone),
-    tags: item.enabled ? [] : [{ text: copy.statusValue.disabled, warn: false }],
+    tags: item.enabled ? [] : [{ text: copy.tag.disabled, warn: false }],
   }
 }
 

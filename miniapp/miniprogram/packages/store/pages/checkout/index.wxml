@@ -9,8 +9,11 @@
   <block wx:else>
     <template is="info" data="{{rows: info}}" />
     <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{note}}" bind:change="onNote" />
-    <hz-line-item lines="{{rows}}" mode="qty" removable bind:qty="onQty" bind:remove="onRemove" />
-    <template is="info" data="{{rows: amountRows}}" />
+    <view class="u-section">
+      <text class="u-section__title">{{texts.lines}}</text>
+      <hz-line-item lines="{{rows}}" mode="qty" removable bind:qty="onQty" bind:remove="onRemove" />
+      <template is="info-card" data="{{rows: amountRows}}" />
+    </view>
   </block>
 </view>
 <hz-action-bar>

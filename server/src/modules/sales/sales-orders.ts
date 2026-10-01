@@ -234,7 +234,13 @@ export class SalesOrderWrites {
       const productId = Number(line.productId)
       const old = existing.get(productId)
       const source = old
-        ? { productId, name: old.name, unit: old.unit, listPriceCents: old.listPriceCents }
+        ? {
+            productId,
+            name: old.name,
+            unit: old.unit,
+            customerCode: old.customerCode,
+            listPriceCents: old.listPriceCents,
+          }
         : added.find((entry) => entry.productId === productId)
       if (!source) throw appError.internal()
       return { ...source, qty: line.qty, priceCents: line.priceCents }

@@ -7,25 +7,28 @@
   <hz-skeleton wx:if="{{!loaded}}" type="form" />
   <block wx:else>
     <template is="info" data="{{rows: info}}" />
-    <view wx:for="{{lines}}" wx:key="orderLineId" class="u-card u-form-card">
-      <view class="u-info__head">
-        <text class="u-info__title">{{item.name}}</text>
-        <view class="u-tap" data-index="{{index}}" bindtap="onRemoveLine">
-          <text class="hz-icon hz-icon--trash-2"></text>
+    <view class="u-section">
+      <text class="u-section__title">{{texts.lines}}</text>
+      <view wx:for="{{lines}}" wx:key="orderLineId" class="u-card u-form-card">
+        <view class="u-info__head">
+          <text class="u-info__title">{{item.name}}</text>
+          <view class="u-tap" data-index="{{index}}" bindtap="onRemoveLine">
+            <text class="hz-icon hz-icon--trash-2"></text>
+          </view>
         </view>
+        <view class="u-info__head">
+          <text class="u-info__meta">{{item.maxText}}</text>
+          <hz-stepper value="{{item.qty}}" min="{{1}}" max="{{item.maxQty}}" data-index="{{index}}" bind:change="onQty" />
+        </view>
+        <text wx:if="{{lineErrors[index].qty}}" class="u-field__error">{{lineErrors[index].qty}}</text>
+        <hz-picker label="{{texts.reason}}" options="{{reasonOptions}}" value="{{item.reason}}" error="{{lineErrors[index].reason}}" data-index="{{index}}" bind:change="onReason" />
+        <hz-field label="{{texts.description}}" type="textarea" value="{{item.description}}" error="{{lineErrors[index].description}}" data-index="{{index}}" bind:change="onDescription" />
+        <text class="u-field__label">{{texts.images}}</text>
+        <hz-upload files="{{item.images}}" data-index="{{index}}" bind:add="onAddImages" bind:remove="onRemoveImage" />
+        <text wx:if="{{lineErrors[index].images}}" class="u-field__error">{{lineErrors[index].images}}</text>
       </view>
-      <view class="u-info__head">
-        <text class="u-info__meta">{{item.maxText}}</text>
-        <hz-stepper value="{{item.qty}}" min="{{1}}" max="{{item.maxQty}}" data-index="{{index}}" bind:change="onQty" />
-      </view>
-      <text wx:if="{{lineErrors[index].qty}}" class="u-field__error">{{lineErrors[index].qty}}</text>
-      <hz-picker label="{{texts.reason}}" options="{{reasonOptions}}" value="{{item.reason}}" error="{{lineErrors[index].reason}}" data-index="{{index}}" bind:change="onReason" />
-      <hz-field label="{{texts.description}}" type="textarea" value="{{item.description}}" error="{{lineErrors[index].description}}" data-index="{{index}}" bind:change="onDescription" />
-      <text class="u-field__label">{{texts.images}}</text>
-      <hz-upload files="{{item.images}}" data-index="{{index}}" bind:add="onAddImages" bind:remove="onRemoveImage" />
-      <text wx:if="{{lineErrors[index].images}}" class="u-field__error">{{lineErrors[index].images}}</text>
+      <hz-add-button text="{{texts.add}}" bind:press="onOpenPick" />
     </view>
-    <hz-add-button text="{{texts.add}}" bind:press="onOpenPick" />
   </block>
 </view>
 <hz-action-bar>

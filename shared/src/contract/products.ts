@@ -91,18 +91,22 @@ export const productItemSchema = z.object({
 })
 export type ProductItem = z.infer<typeof productItemSchema>
 
+// 配方明细的输入：至少一种花材（产品表单、订货目录弹层共用）
+export const bomInputSchema = z
+  .array(z.object({ materialId: idSchema, qty: positiveIntSchema(copy.catalog.bomQtyInvalid) }))
+  .min(1, { error: copy.catalog.bomRequired })
+
 const productFieldsShape = {
   name: requiredTextSchema(copy.catalog.productNameRequired),
   categoryId: requiredIdSchema(copy.catalog.categoryRequired),
   unit: requiredTextSchema(copy.catalog.unitRequired),
   imageFileId: idSchema.nullable(),
   enabled: z.boolean(),
-  bom: z
-    .array(z.object({ materialId: idSchema, qty: positiveIntSchema(copy.catalog.bomQtyInvalid) }))
-    .min(1, { error: copy.catalog.bomRequired }),
+  bom: bomInputSchema,
 }
 
-function checkBom(value: { bom: { materialId: string }[] }, ctx: z.RefinementCtx) {
+// 同一种花材只能出现一次；产品表单和订货目录弹层共用
+export function checkBom(value: { bom: { materialId: string }[] }, ctx: z.RefinementCtx) {
   checkDistinct(ctx, {
     items: value.bom,
     keyOf: (line) => line.materialId,

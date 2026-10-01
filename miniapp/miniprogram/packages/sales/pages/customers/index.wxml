@@ -28,6 +28,9 @@
 </hz-action-bar>
 <hz-sheet show="{{customerSheet}}" title="{{editingCustomer ? texts.customerTitle : texts.newCustomerTitle}}" guard footer bind:close="onCloseSheet">
   <view class="u-sheet-form">
+    <view wx:if="{{editingCustomer}}" class="u-sheet-head">
+      <text class="u-sheet-head__title">{{customerForm.name}}</text>
+    </view>
     <hz-error wx:if="{{formError}}" message="{{formError}}" />
     <hz-field label="{{texts.name}}" value="{{customerForm.name}}" error="{{fields.name}}" bind:change="onCustomerName" />
     <hz-switch label="{{texts.enabled}}" value="{{customerForm.enabled}}" bind:change="onCustomerEnabled" />
@@ -36,6 +39,10 @@
 </hz-sheet>
 <hz-sheet show="{{storeSheet}}" title="{{editingStore ? texts.storeTitle : texts.newStoreTitle}}" guard footer bind:close="onCloseSheet">
   <view class="u-sheet-form">
+    <view wx:if="{{editingStore}}" class="u-sheet-head">
+      <text class="u-sheet-head__title">{{storeForm.name}}</text>
+      <text class="u-sheet-head__meta">{{customerName}}</text>
+    </view>
     <hz-error wx:if="{{formError}}" message="{{formError}}" />
     <hz-picker wx:if="{{!editingStore}}" label="{{texts.customer}}" options="{{customerOptions}}" value="{{storeForm.customerId}}" error="{{fields.customerId}}" data-field="customerId" bind:change="patchStore" />
     <hz-field label="{{texts.name}}" value="{{storeForm.name}}" error="{{fields.name}}" data-field="name" bind:change="patchStore" />

@@ -75,10 +75,12 @@ describe('订单', () => {
     const rose = catalog.items.find((i) => i.name === '粉玫瑰日常花束')
     const opened = await detail('s1', id)
     const [reprice, edit] = await Promise.all([
-      sales.put(`/catalog/${c1}`, {
-        items: [
-          { productId: rose?.productId, priceCents: 7000, enabled: true, version: rose?.version },
-        ],
+      sales.put(`/catalog/${c1}/items/${rose?.productId}`, {
+        version: rose?.version,
+        categoryId: rose?.categoryId,
+        customerCode: rose?.customerCode,
+        priceCents: 7000,
+        enabled: true,
       }),
       (await s.as('s1')).put(`/store/orders/${id}`, storeEdit(opened, 22)),
     ])

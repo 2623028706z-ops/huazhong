@@ -126,6 +126,8 @@ export const copy = {
     unit: '单位',
     bom: '配方',
     listPrice: '订货价',
+    catalogCategory: '订货分类',
+    customerCode: '客户产品编码',
     amount: '金额',
     method: '收款方式',
     receiptDate: '收款日期',
@@ -255,6 +257,12 @@ export const copy = {
     categoryStale: '分类刚被修改，已刷新',
     productDisabledForCatalog: (name: string) => `${name}已停用，不能加进订货目录`,
     catalogStale: '订货目录刚被修改，已刷新成最新内容',
+    catalogCategoryRequired: '请选择订货分类',
+    customerCodeTaken: '这个客户下已有相同的产品编码',
+    catalogCategoryNotEmpty: '分类中仍有目录产品，请先换分类',
+    // 目录弹层里改了配方，保存前确认（配方是产品本身的，所有客户共用）
+    sharedBomTitle: '配方所有客户共用',
+    sharedBomBody: '改后所有客户的这个产品都会变。',
   },
   // 财务收款部分（03 章第 4、8.4 节，05 章第 10 节）
   finance: {

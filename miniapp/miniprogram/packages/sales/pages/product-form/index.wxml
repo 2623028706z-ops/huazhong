@@ -1,4 +1,5 @@
 <import src="/views/pick.wxml" />
+<import src="/views/bom.wxml" />
 <hz-navbar title="{{title}}" back guard="{{changed}}" />
 <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
 <view wx:else class="u-list">
@@ -11,21 +12,7 @@
     <text class="u-field__label">{{texts.image}}</text>
     <hz-upload files="{{images}}" max="{{1}}" bind:add="onAddImage" bind:remove="onRemoveImage" />
     <hz-switch label="{{texts.enabled}}" value="{{form.enabled}}" bind:change="onEnabled" />
-    <text class="u-caption">{{texts.bom}}</text>
-    <text wx:if="{{fields.bom}}" class="u-field__error">{{fields.bom}}</text>
-    <view wx:for="{{form.bom}}" wx:key="materialId" class="u-card u-form-card">
-      <view class="u-info__head">
-        <text class="u-info__title">{{item.name}}</text>
-        <view class="u-tap" data-index="{{index}}" bindtap="onRemoveBom">
-          <text class="hz-icon hz-icon--trash-2"></text>
-        </view>
-      </view>
-      <view class="u-info__head">
-        <text class="u-info__meta">{{item.unit}}</text>
-        <hz-stepper value="{{item.qty}}" min="{{1}}" data-index="{{index}}" bind:change="onBomQty" />
-      </view>
-    </view>
-    <hz-add-button text="{{texts.add}}" bind:press="onOpenPick" />
+    <template is="bom-rows" data="{{heading: texts.bom, error: fields.bom, bom: form.bom, add: texts.add}}" />
   </block>
 </view>
 <hz-action-bar>

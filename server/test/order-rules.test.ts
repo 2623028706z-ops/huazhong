@@ -29,16 +29,13 @@ async function setCatalog(productName: string, change: { priceCents?: number; en
   const item = catalog.items.find((i) => i.name === productName)
   if (!item) throw new Error(`no catalog item ${productName}`)
   const body = {
-    items: [
-      {
-        productId: item.productId,
-        priceCents: change.priceCents ?? item.listPriceCents,
-        enabled: change.enabled ?? item.enabled,
-        version: item.version,
-      },
-    ],
+    version: item.version,
+    categoryId: item.categoryId,
+    customerCode: item.customerCode,
+    priceCents: change.priceCents ?? item.listPriceCents,
+    enabled: change.enabled ?? item.enabled,
   }
-  return sales.put(`/catalog/${c1}`, body)
+  return sales.put(`/catalog/${c1}/items/${item.productId}`, body)
 }
 
 const salesLines = (o: OrderDetail, keep: (name: string) => boolean = () => true) =>
@@ -118,8 +115,12 @@ describe('停订、停用产品', () => {
       .where(eq(products.id, Number(p2)))
     const sales = await s.as('u2')
     const c3 = await idBy(s.t, 'customers.name', '一间花房')
-    const addToC3 = await sales.put(`/catalog/${c3}`, {
-      items: [{ productId: p2, priceCents: 7800, enabled: true }],
+    const c3Catalog = dataOf<Catalog>(await sales.get(`/catalog/${c3}`))
+    const addToC3 = await sales.put(`/catalog/${c3}/items/${p2}`, {
+      categoryId: c3Catalog.categories[0]?.id,
+      customerCode: '',
+      priceCents: 7800,
+      enabled: true,
     })
     expect(addToC3.body.error).toMatchObject({
       code: 'BUSINESS_RULE',

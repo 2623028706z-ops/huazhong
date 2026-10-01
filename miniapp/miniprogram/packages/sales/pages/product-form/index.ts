@@ -8,7 +8,14 @@ import { firstFailure, newIdempotencyKey, request, type Result } from '../../../
 import { failureOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
 import { uploadImage, type LocalImage } from '../../../../core/upload'
-import { checkCreate, checkUpdate, loadMaterials, productFormOf, type ProductForm } from './form'
+import {
+  addMaterial,
+  loadMaterials,
+  materialPicksOf,
+  removeBomLine,
+  setBomQty,
+} from '../../../../views/bom'
+import { checkCreate, checkUpdate, productFormOf, type ProductForm } from './form'
 
 const DEFAULT_TITLE: string = copy.screen.title.createProduct
 
@@ -36,7 +43,7 @@ Page({
       unit: copy.field.unit,
       image: copy.screen.label.productImage,
       enabled: copy.screen.label.enabled,
-      bom: copy.field.bom,
+      bom: copy.screen.section.bom,
       add: copy.screen.action.addMaterial,
       save: copy.action.save,
       pickTitle: copy.screen.title.pickMaterial,
@@ -118,35 +125,22 @@ Page({
   },
   onBomQty(event: IndexDetail<number>) {
     const { index } = event.currentTarget.dataset
-    const bom = this.data.form.bom.map((line, i) =>
-      i === index ? { ...line, qty: event.detail } : line,
-    )
-    this.update({ bom }, 'bom')
+    this.update({ bom: setBomQty(this.data.form.bom, index, event.detail) }, 'bom')
   },
   onRemoveBom(event: DetailEvent<unknown, { index: number }>) {
     const { index } = event.currentTarget.dataset
-    this.update({ bom: this.data.form.bom.filter((_, i) => i !== index) }, 'bom')
+    this.update({ bom: removeBomLine(this.data.form.bom, index) }, 'bom')
   },
-  onOpenPick() {
-    const added = new Set(this.data.form.bom.map((line) => line.materialId))
-    const picks = this.materials
-      .filter((item) => !added.has(item.id))
-      .map((item) => ({
-        id: item.id,
-        name: item.name,
-        sub: [item.code, item.unit].join(copy.separator),
-      }))
-    this.setData({ pickSheet: true, picks })
+  onAddBom() {
+    this.setData({ pickSheet: true, picks: materialPicksOf(this.materials, this.data.form.bom) })
   },
   onClosePick() {
     this.setData({ pickSheet: false })
   },
   onPick(event: KeyEvent) {
-    const item = this.materials.find((m) => m.id === event.currentTarget.dataset.key)
     this.setData({ pickSheet: false })
-    if (!item) return
-    const line = { materialId: item.id, name: item.name, unit: item.unit, qty: 1 }
-    this.update({ bom: [...this.data.form.bom, line] }, 'bom')
+    const bom = addMaterial(this.materials, this.data.form.bom, event.currentTarget.dataset.key)
+    this.update({ bom }, 'bom')
   },
   showFields(fields: Record<string, string>, message: string) {
     this.setData({ fields, formError: message, saving: false })

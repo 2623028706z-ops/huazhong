@@ -89,6 +89,7 @@ Page({
     shipNote: '',
     saving: false,
     texts: {
+      lines: copy.screen.section.lines,
       shipNote: copy.screen.label.shipNote,
       optional: copy.placeholder.optional,
       ship: copy.screen.action.ship,

@@ -1,0 +1,24 @@
+<!-- 管理分类弹层：列表（点名称改名、上移、删除）+ 底部「新增分类」；新增和改名切到同一个名称表单 -->
+<hz-sheet show="{{show}}" title="{{editing ? editTitle : title}}" back="{{editing}}" footer bind:close="onClose" bind:back="onBack">
+  <view class="u-sheet-form">
+    <view wx:if="{{editing && editingId}}" class="u-sheet-head">
+      <text class="u-sheet-head__title">{{oldName}}</text>
+    </view>
+    <hz-error wx:if="{{error}}" message="{{error}}" />
+    <hz-field wx:if="{{editing}}" label="{{texts.name}}" value="{{nameText}}" bind:change="onNameText" />
+    <block wx:else>
+      <text wx:if="{{categories.length === 0}}" class="u-info__meta">{{texts.empty}}</text>
+      <view wx:for="{{categories}}" wx:key="id" class="u-sheet-form__row">
+        <text class="u-rows__name" data-key="{{item.id}}" bindtap="onRename">{{item.name}}</text>
+        <view class="u-sheet-form__value">
+          <hz-button wx:if="{{index > 0}}" kind="text" text="{{texts.up}}" data-index="{{index}}" bind:press="onUp" />
+          <view class="u-tap" data-key="{{item.id}}" bindtap="onRemove">
+            <text class="hz-icon hz-icon--trash-2"></text>
+          </view>
+        </view>
+      </view>
+    </block>
+  </view>
+  <hz-button wx:if="{{editing}}" slot="footer" text="{{texts.save}}" loading="{{loading}}" bind:press="onSave" />
+  <hz-button wx:else slot="footer" text="{{texts.add}}" bind:press="onNew" />
+</hz-sheet>

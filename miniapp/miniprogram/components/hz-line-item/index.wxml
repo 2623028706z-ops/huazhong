@@ -10,7 +10,10 @@
 <view wx:if="{{mode === 'view'}}" class="u-card hz-line-item__list">
   <view wx:for="{{lines}}" wx:key="key" class="hz-line-item__row">
     <template is="head" data="{{...item}}" />
-    <text class="hz-line-item__sub">{{format.formatQty(item.qty, item.unit)}} × {{format.formatMoney(item.priceCents)}}</text>
+    <view class="hz-line-item__sub">
+      <text wx:if="{{item.code}}">{{item.code}}</text>
+      <text>{{format.formatQty(item.qty, item.unit)}} × {{format.formatMoney(item.priceCents)}}</text>
+    </view>
   </view>
 </view>
 <view wx:else class="hz-line-item__cards">
@@ -20,15 +23,15 @@
       <hz-stepper value="{{item.qty}}" min="{{min}}" data-index="{{index}}" bind:change="onQty" />
       <block wx:if="{{mode === 'price'}}">
         <text class="hz-line-item__times">×</text>
-        <view class="hz-line-item__price">
+        <view class="u-price-box">
           <input
-            class="hz-line-item__price-input"
+            class="u-price-box__input"
             type="digit"
             value="{{item.priceText}}"
             data-index="{{index}}"
             bindinput="onPrice"
           />
-          <text class="hz-line-item__yuan">{{yuan}}</text>
+          <text class="u-price-box__unit">{{yuan}}</text>
         </view>
       </block>
       <text wx:else class="hz-line-item__times">× {{format.formatMoney(item.priceCents)}}</text>

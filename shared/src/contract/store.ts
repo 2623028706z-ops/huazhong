@@ -37,7 +37,10 @@ export const storeCatalogItemSchema = z.object({
   productId: idSchema,
   name: z.string(),
   unit: z.string(),
+  // 订货分类（这个客户的目录分类）
   categoryId: idSchema,
+  // 客户产品编码，没填为 ''
+  customerCode: z.string(),
   listPriceCents: centsSchema,
   thumbUrl: z.string().nullable(),
 })

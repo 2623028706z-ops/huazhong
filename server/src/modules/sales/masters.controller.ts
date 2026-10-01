@@ -20,6 +20,7 @@ import {
   Route,
   type ParsedInput,
 } from '../../common/endpoint.ts'
+import { CatalogCategoryService } from './catalog-categories.ts'
 import { CatalogService } from './catalog.ts'
 import { CategoryService } from './categories.ts'
 import { CustomerService } from './customers.ts'
@@ -120,8 +121,6 @@ export class ProductsController {
   constructor(
     private readonly products: ProductService,
     private readonly categories: CategoryService,
-    private readonly catalogs: CatalogService,
-    private readonly storeHome: StoreHomeService,
   ) {}
 
   @Route(contract.listProductCategories)
@@ -184,18 +183,64 @@ export class ProductsController {
   ): Promise<ProductItem> {
     return this.products.update(viewer, Number(input.params.id), input.body)
   }
+}
+
+// 订货目录、订货分类（X11）和门店订货页
+@Controller()
+export class CatalogController {
+  constructor(
+    private readonly catalogs: CatalogService,
+    private readonly catalogCategories: CatalogCategoryService,
+    private readonly storeHome: StoreHomeService,
+  ) {}
 
   @Route(contract.getCatalog)
   getCatalog(@Input() input: In<'getCatalog'>): Promise<Catalog> {
     return this.catalogs.get(Number(input.params.customerId))
   }
 
-  @Route(contract.saveCatalog)
-  saveCatalog(
+  @Route(contract.saveCatalogItem)
+  saveCatalogItem(
     @CurrentViewer() viewer: Viewer,
-    @Input() input: In<'saveCatalog'>,
+    @Input() input: In<'saveCatalogItem'>,
   ): Promise<Catalog> {
-    return this.catalogs.save(viewer, Number(input.params.customerId), input.body)
+    const { customerId, productId } = input.params
+    return this.catalogs.saveItem(viewer, Number(customerId), Number(productId), input.body)
+  }
+
+  @Route(contract.createCatalogCategory)
+  createCatalogCategory(
+    @CurrentViewer() viewer: Viewer,
+    @Input() input: In<'createCatalogCategory'>,
+  ): Promise<Catalog> {
+    const customerId = Number(input.params.customerId)
+    return this.catalogCategories.create(viewer, customerId, input.body.name, input.idempotencyKey)
+  }
+
+  @Route(contract.updateCatalogCategory)
+  renameCatalogCategory(
+    @CurrentViewer() viewer: Viewer,
+    @Input() input: In<'updateCatalogCategory'>,
+  ): Promise<Catalog> {
+    const { customerId, id } = input.params
+    return this.catalogCategories.rename(viewer, Number(customerId), Number(id), input.body.name)
+  }
+
+  @Route(contract.orderCatalogCategories)
+  orderCatalogCategories(
+    @CurrentViewer() viewer: Viewer,
+    @Input() input: In<'orderCatalogCategories'>,
+  ): Promise<Catalog> {
+    return this.catalogCategories.reorder(viewer, Number(input.params.customerId), input.body.ids)
+  }
+
+  @Route(contract.deleteCatalogCategory)
+  deleteCatalogCategory(
+    @CurrentViewer() viewer: Viewer,
+    @Input() input: In<'deleteCatalogCategory'>,
+  ): Promise<Catalog> {
+    const { customerId, id } = input.params
+    return this.catalogCategories.remove(viewer, Number(customerId), Number(id))
   }
 
   @Route(contract.storeHome)

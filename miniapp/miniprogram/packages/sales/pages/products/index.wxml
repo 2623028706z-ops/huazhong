@@ -11,8 +11,10 @@
       <view wx:else class="u-thumbs__item"></view>
       <view class="u-product__info">
         <view class="u-info__head">
-          <text class="u-info__title">{{item.name}}</text>
-          <hz-tag wx:if="{{item.disabled}}" text="{{texts.disabled}}" />
+          <view class="u-product__name-row">
+            <text class="u-info__title">{{item.name}}</text>
+            <hz-tag wx:if="{{item.disabled}}" text="{{texts.disabled}}" />
+          </view>
         </view>
         <text class="u-info__meta">{{item.meta}}</text>
       </view>
@@ -23,28 +25,15 @@
   <hz-button wx:if="{{canManage}}" kind="secondary" text="{{texts.manage}}" bind:press="onManage" />
   <hz-button wx:if="{{canCreate}}" text="{{texts.create}}" bind:press="onCreate" />
 </hz-action-bar>
-<hz-sheet show="{{sheet}}" title="{{texts.categories}}" back="{{renaming !== null}}" bind:close="onCloseSheet" bind:back="onBackSheet">
-  <view class="u-sheet-form">
-    <hz-error wx:if="{{sheetError}}" message="{{sheetError}}" />
-    <block wx:if="{{renaming}}">
-      <hz-field label="{{texts.name}}" value="{{nameText}}" bind:change="onNameText" />
-      <hz-button text="{{texts.save}}" loading="{{saving}}" bind:press="onSaveName" />
-    </block>
-    <block wx:else>
-      <view wx:for="{{categories}}" wx:key="id" class="u-sheet-form__row">
-        <text data-key="{{item.id}}" bindtap="onRename">{{item.name}}</text>
-        <view class="u-sheet-form__value">
-          <hz-button wx:if="{{index > 0}}" kind="text" text="{{texts.up}}" data-index="{{index}}" bind:press="onUp" />
-          <view class="u-tap" data-key="{{item.id}}" bindtap="onDelete">
-            <text class="hz-icon hz-icon--trash-2"></text>
-          </view>
-        </view>
-      </view>
-      <view class="u-sheet-form__group">
-        <hz-field label="{{texts.add}}" value="{{newName}}" bind:change="onNewName" />
-        <hz-button kind="secondary" text="{{texts.add}}" loading="{{saving}}" bind:press="onAdd" />
-      </view>
-    </block>
-  </view>
-</hz-sheet>
+<hz-category-sheet
+  show="{{sheet}}"
+  title="{{texts.categories}}"
+  categories="{{categories}}"
+  error="{{sheetError}}"
+  loading="{{saving}}"
+  bind:close="onCloseSheet"
+  bind:save="onSaveName"
+  bind:up="onUp"
+  bind:remove="onDelete"
+/>
 <hz-confirm id="hz-confirm" />

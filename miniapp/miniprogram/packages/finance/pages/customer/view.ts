@@ -49,8 +49,9 @@ export function afterSheetOf(after: AfterDetail) {
       status: after.status,
       rows: afterInfoOf(after),
     },
+    linesHeading: copy.screen.section.afterLines,
     lines: afterLinesOf(after),
-    reasonRows: afterReasonsOf(after),
+    reason: afterReasonsOf(after),
     canVoid: action?.enabled === true,
     voidRequired: action?.reasonRequired === true,
   }

@@ -36,6 +36,7 @@ function productRowsOf(
   return items.map((item) => ({
     id: item.productId,
     name: item.name,
+    code: item.customerCode,
     priceText: formatMoney(item.listPriceCents),
     thumbUrl: item.thumbUrl ?? '',
     qty: qtyOf(lines, item.productId),

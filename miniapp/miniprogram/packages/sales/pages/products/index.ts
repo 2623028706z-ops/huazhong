@@ -1,5 +1,6 @@
 // X9 产品管理（06 章 X9）：按分类列产品（图、名、单位、配方花材数；停用的标「已停用」）。
-// 底栏「管理分类」（manageCategories，次）、「新建产品」（create）。管理分类弹层：改名、上移、删除、新增
+// 底栏「管理分类」（manageCategories，次）、「新建产品」（create）。分类是产品内部分类（单品、花束…），
+// 门店订货页的分类在订货目录里管（2026-10-03 确认）。管理分类弹层见 hz-category-sheet
 import { contract, copy, type ProductCategory, type ProductItem } from '@huazhong/shared'
 import { hasAction } from '../../../../core/actions'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
@@ -38,19 +39,12 @@ Page({
     canCreate: false,
     canManage: false,
     sheet: false,
-    renaming: null as ProductCategory | null,
-    nameText: '',
-    newName: '',
     sheetError: '',
     saving: false,
     texts: {
       manage: copy.screen.action.manageCategories,
       create: copy.screen.action.createProduct,
       categories: copy.screen.title.categories,
-      name: copy.screen.label.name,
-      add: copy.screen.action.addCategory,
-      up: copy.screen.action.moveUp,
-      save: copy.action.save,
       disabled: copy.tag.disabled,
       empty: copy.screen.empty.products,
     },
@@ -87,23 +81,10 @@ Page({
   },
   onManage() {
     this.idempotencyKey = newIdempotencyKey()
-    this.setData({ sheet: true, renaming: null, newName: '', sheetError: '' })
+    this.setData({ sheet: true, sheetError: '' })
   },
   onCloseSheet() {
     this.setData({ sheet: false })
-  },
-  onBackSheet() {
-    this.setData({ renaming: null, sheetError: '' })
-  },
-  onRename(event: KeyEvent) {
-    const category = this.data.categories.find((c) => c.id === event.currentTarget.dataset.key)
-    if (category) this.setData({ renaming: category, nameText: category.name, sheetError: '' })
-  },
-  onNameText(event: DetailEvent<string>) {
-    this.setData({ nameText: event.detail, sheetError: '' })
-  },
-  onNewName(event: DetailEvent<string>) {
-    this.setData({ newName: event.detail, sheetError: '' })
   },
   // 分类写操作的结果：成功刷新列表，失败写在弹层里
   async settle(result: Result<unknown>): Promise<boolean> {
@@ -120,30 +101,22 @@ Page({
     }
     return false
   },
-  async onSaveName(): Promise<void> {
-    const category = this.data.renaming
-    if (!category) return
+  // 保存名称：id 为空是新增（带幂等键，成功后换一个新的）
+  async onSaveName(event: DetailEvent<{ id: string; name: string }>): Promise<void> {
+    const { id, name } = event.detail
     this.setData({ saving: true })
-    const input = { params: { id: category.id }, body: { name: this.data.nameText } }
-    if (await this.settle(await request(contract.updateProductCategory, input)))
-      this.setData({ renaming: null })
-  },
-  async onAdd(): Promise<void> {
-    this.setData({ saving: true })
-    const options = { idempotencyKey: this.idempotencyKey }
-    const result = await request(
-      contract.createProductCategory,
-      { body: { name: this.data.newName } },
-      options,
-    )
-    if (await this.settle(result)) {
-      this.idempotencyKey = newIdempotencyKey()
-      this.setData({ newName: '' })
-    }
+    const result = id
+      ? await request(contract.updateProductCategory, { params: { id }, body: { name } })
+      : await request(
+          contract.createProductCategory,
+          { body: { name } },
+          { idempotencyKey: this.idempotencyKey },
+        )
+    if ((await this.settle(result)) && !id) this.idempotencyKey = newIdempotencyKey()
   },
   // 上移：和上一个交换后整组提交
-  async onUp(event: DetailEvent<unknown, { index: number }>): Promise<void> {
-    const { index } = event.currentTarget.dataset
+  async onUp(event: DetailEvent<number>): Promise<void> {
+    const index = event.detail
     const ids = this.data.categories.map((category) => category.id)
     const previous = ids[index - 1]
     const current = ids[index]
@@ -152,7 +125,7 @@ Page({
     ids[index] = previous
     await this.settle(await request(contract.orderProductCategories, { body: { ids } }))
   },
-  async onDelete(event: KeyEvent): Promise<void> {
+  async onDelete(event: DetailEvent<string>): Promise<void> {
     const confirmed = await confirmAsk(this, {
       title: copy.screen.confirm.deleteCategory,
       body: '',
@@ -160,8 +133,9 @@ Page({
       confirm: copy.screen.action.delete,
     })
     if (!confirmed) return
-    const params = { id: event.currentTarget.dataset.key }
-    await this.settle(await request(contract.deleteProductCategory, { params }))
+    await this.settle(
+      await request(contract.deleteProductCategory, { params: { id: event.detail } }),
+    )
   },
   onFailureAction() {
     void this.load()

@@ -5,6 +5,7 @@ import {
   afterLines,
   afters,
   allocations,
+  catalogCategories,
   catalogItems,
   docSequences,
   orderLines,
@@ -19,6 +20,7 @@ import {
   seedAfters,
   seedCashier,
   seedCatalog,
+  seedCatalogCategories,
   seedMethodNames,
   seedOrders,
   seedProductCategories,
@@ -84,20 +86,41 @@ async function insertProducts(tx: Tx, ids: SeedIds): Promise<Map<string, number>
     }))
     await tx.insert(productBomLines).values(bom)
   }
+  await insertCatalog(tx, ids, productIds)
+  return productIds
+}
+
+// 每个客户的订货分类和目录项
+async function insertCatalog(tx: Tx, ids: SeedIds, productIds: Map<string, number>) {
+  const createdBy = ids.admin
+  const catalogCategoryIds = new Map<string, number>()
+  for (const c of seedCatalogCategories) {
+    const [row] = await tx
+      .insert(catalogCategories)
+      .values({
+        customerId: idOf(ids.customers, c.customer),
+        name: c.name,
+        sort: c.sort,
+        createdBy,
+      })
+      .returning()
+    if (row) catalogCategoryIds.set(c.key, row.id)
+  }
   const catalog = seedCatalog.map((c) => ({
     customerId: idOf(ids.customers, c.customer),
     productId: idOf(productIds, c.product),
+    categoryId: idOf(catalogCategoryIds, c.category),
+    customerCode: c.code,
     priceCents: c.price,
     enabled: c.enabled,
     createdBy,
   }))
   await tx.insert(catalogItems).values(catalog)
-  return productIds
 }
 
 async function insertOrderLines(
   tx: Tx,
-  order: { id: number; createdBy: number },
+  order: { id: number; createdBy: number; customer: string },
   seedLines: readonly SeedOrderLine[],
   productIds: Map<string, number>,
 ): Promise<Map<string, LineRef>> {
@@ -112,6 +135,10 @@ async function insertOrderLines(
         productId: idOf(productIds, line.product),
         name: product.name,
         unit: product.unit,
+        // 下单时的客户产品编码快照
+        customerCode:
+          seedCatalog.find((c) => c.customer === order.customer && c.product === line.product)
+            ?.code ?? '',
         qty: line.qty,
         priceCents: line.price,
         listPriceCents: line.listPrice,
@@ -161,7 +188,8 @@ async function insertOrders(tx: Tx, ids: SeedIds, productIds: Map<string, number
       })
       .returning()
     if (!row) continue
-    const lines = await insertOrderLines(tx, row, o.lines, productIds)
+    const order = { id: row.id, createdBy: row.createdBy, customer: o.customer }
+    const lines = await insertOrderLines(tx, order, o.lines, productIds)
     refs.set(o.no, { id: row.id, customerId, storeId, lines })
   }
   return refs

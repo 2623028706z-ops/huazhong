@@ -13,17 +13,21 @@
     <hz-error wx:if="{{sheetError}}" message="{{sheetError}}" />
     <block wx:if="{{layer === 'order' && orderSheet}}">
       <template is="info" data="{{title: orderSheet.title, rows: orderSheet.rows}}" />
-      <text wx:if="{{orderSheet.afters.length > 0}}" class="u-caption">{{texts.after}}</text>
-      <view wx:for="{{orderSheet.afters}}" wx:key="id" data-key="{{item.id}}" bindtap="onOpenAfter">
-        <hz-card date="{{item.date}}" status-kind="afterStatus" status="{{item.status}}" title="{{item.title}}" total="{{item.total}}" meta="{{item.meta}}" amount="{{item.amount}}" amount-text="{{item.amountText}}" />
-      </view>
-      <text wx:if="{{orderSheet.allocs.length > 0}}" class="u-caption">{{texts.allocations}}</text>
-      <view wx:for="{{orderSheet.allocs}}" wx:key="id" class="u-pick-row" data-key="{{item.key}}" bindtap="onOpenReceipt">
-        <view class="u-sheet-head">
-          <text>{{item.name}}</text>
-          <text class="u-pick-row__sub">{{item.sub}}</text>
+      <view wx:if="{{orderSheet.afters.length > 0}}" class="u-section">
+        <text class="u-section__title">{{texts.after}}</text>
+        <view wx:for="{{orderSheet.afters}}" wx:key="id" data-key="{{item.id}}" bindtap="onOpenAfter">
+          <hz-card date="{{item.date}}" status-kind="afterStatus" status="{{item.status}}" title="{{item.title}}" total="{{item.total}}" meta="{{item.meta}}" amount="{{item.amount}}" amount-text="{{item.amountText}}" />
         </view>
-        <text class="u-serif-amount">{{item.amount}}</text>
+      </view>
+      <view wx:if="{{orderSheet.allocs.length > 0}}" class="u-section">
+        <text class="u-section__title">{{texts.allocations}}</text>
+        <view class="u-card u-rows">
+          <view wx:for="{{orderSheet.allocs}}" wx:key="id" class="u-rows__item" data-key="{{item.key}}" bindtap="onOpenReceipt">
+            <text>{{item.name}}</text>
+            <text class="u-info__meta">{{item.sub}}</text>
+            <text class="u-serif-amount" style="margin-left: auto; font-weight: 600;">{{item.amount}}</text>
+          </view>
+        </view>
       </view>
     </block>
     <block wx:if="{{layer === 'after' && afterSheet}}">

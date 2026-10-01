@@ -71,6 +71,7 @@ function orderLinesOf(order: OrderDetail) {
   return order.lines.map((line) => ({
     key: line.id,
     name: line.name,
+    code: line.customerCode,
     tags: lineTagsOf(line, shipped),
     amountCents: line.amountCents,
     qty: line.shippedQty ?? line.qty,
@@ -124,7 +125,7 @@ function cancelInfoOf(order: OrderDetail): InfoRow[] {
   ])
 }
 
-// 详情页（S6、X3、H3 只读）：信息卡 → 明细 → 金额 → 发货信息 → 变更记录 → 原因行。
+// 详情页（S6、X3、H3 只读）：信息卡 → 产品明细（明细 + 金额）→ 发货信息 → 变更记录 → 取消信息。
 // 员工多写来源、客户门店
 export function orderViewOf(order: OrderDetail, forStore: boolean) {
   const staffRows: [string, string | null][] = forStore
@@ -145,11 +146,12 @@ export function orderViewOf(order: OrderDetail, forStore: boolean) {
         [copy.field.note, order.note],
       ]),
     },
+    linesHeading: copy.screen.section.lines,
     lines: orderLinesOf(order),
     amountRows: [amountRowOf(order)],
-    shipRows: shipInfoOf(order),
+    ship: { heading: copy.screen.section.ship, rows: shipInfoOf(order) },
     changes: changesOf(order.changes),
-    reasonRows: cancelInfoOf(order),
+    reason: { heading: copy.screen.section.cancel, rows: cancelInfoOf(order) },
     notice: order.lockedReason ?? '',
   }
 }

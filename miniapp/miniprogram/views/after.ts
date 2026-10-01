@@ -73,13 +73,17 @@ export function afterInfoOf(after: AfterDetail) {
   ])
 }
 
-// 原因行：关闭原因、作废原因和作废时间
+// 关闭信息（关闭原因）或作废信息（作废原因和作废时间）
 export function afterReasonsOf(after: AfterDetail) {
-  return rowsOf([
-    [copy.screen.label.closeReason, after.closeReason],
-    [copy.screen.label.voidReason, after.voidReason],
-    [copy.screen.label.voidedAt, after.voidedAt === null ? null : formatTime(after.voidedAt)],
-  ])
+  const heading = after.voidReason === null ? copy.screen.section.close : copy.screen.section.void
+  return {
+    heading,
+    rows: rowsOf([
+      [copy.screen.label.closeReason, after.closeReason],
+      [copy.screen.label.voidReason, after.voidReason],
+      [copy.screen.label.voidedAt, after.voidedAt === null ? null : formatTime(after.voidedAt)],
+    ]),
+  }
 }
 
 type PreviewEvent = WechatMiniprogram.TouchEvent<

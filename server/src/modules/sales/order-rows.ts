@@ -140,6 +140,7 @@ export async function loadLineRows(
       productId: orderLines.productId,
       name: orderLines.name,
       unit: orderLines.unit,
+      customerCode: orderLines.customerCode,
       qty: orderLines.qty,
       priceCents: orderLines.priceCents,
       listPriceCents: orderLines.listPriceCents,

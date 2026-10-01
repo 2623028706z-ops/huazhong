@@ -17,7 +17,8 @@
 .hz-line-item__head {
   display: flex;
   gap: 8px;
-  align-items: center;
+  align-items: flex-start;
+  line-height: 1.5;
   font-size: var(--hz-font-md);
 }
 
@@ -31,6 +32,8 @@
 }
 
 .hz-line-item__sub {
+  display: flex;
+  gap: 10px;
   font-size: var(--hz-font-note);
   color: var(--hz-muted);
 }
@@ -56,28 +59,6 @@
 }
 
 .hz-line-item__times {
-  color: var(--hz-muted);
-}
-
-.hz-line-item__price {
-  display: flex;
-  align-items: center;
-  width: 96px;
-  height: 36px;
-  padding: 0 10px;
-  background: var(--hz-paper);
-  border-radius: var(--hz-radius-inner);
-  box-shadow: inset 0 0 0 1px var(--hz-hair);
-}
-
-.hz-line-item__price-input {
-  flex: 1;
-  min-width: 0;
-  font-size: var(--hz-font-md);
-}
-
-.hz-line-item__yuan {
-  font-size: var(--hz-font-sm);
   color: var(--hz-muted);
 }
 

@@ -58,7 +58,7 @@ export function allocRowsOf(lines: readonly AllocLine[]) {
   return lines.map((line) => ({
     orderId: line.orderId,
     name: line.orderNo,
-    sub: copy.screen.arUnpaid(formatMoney(line.unpaidCents)),
+    sub: formatMoney(line.unpaidCents),
     text: line.text,
   }))
 }
