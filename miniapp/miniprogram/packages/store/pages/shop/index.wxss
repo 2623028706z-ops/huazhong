@@ -61,20 +61,10 @@ page {
   gap: 2px;
 }
 
-.hz-shop__name {
-  font-size: var(--hz-font-md);
-}
-
-/* 客户产品编码（选填，2026-10-03 确认） */
-.hz-shop__code {
-  font-size: var(--hz-font-sm);
-  color: var(--hz-muted);
-}
-
+/* 价格「¥68.00/束」在上面单独一行，步进器靠右（窄栏里放一行会挤出卡片） */
 .hz-shop__buy {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
 }
 
 .hz-shop__bar {

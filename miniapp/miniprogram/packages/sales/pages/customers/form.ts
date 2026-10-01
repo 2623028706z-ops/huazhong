@@ -3,6 +3,7 @@
 import {
   contract,
   copy,
+  maskPhone,
   storeCreateSchema,
   storeUpdateSchema,
   type CustomerItem,
@@ -86,7 +87,8 @@ export function storeRowsOf(customer: CustomerItem | undefined) {
     id: store.id,
     title: store.name,
     total: store.contact,
-    meta: store.phone,
+    // 列表里手机号中间四位打码，弹层里完整（02 章第 7 节）
+    meta: maskPhone(store.phone),
     tags: store.enabled ? [] : [{ text: copy.tag.disabled, warn: false }],
   }))
 }

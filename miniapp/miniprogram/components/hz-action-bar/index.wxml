@@ -1,2 +1,2 @@
-<view class="hz-action-bar__spacer"></view>
-<view class="hz-action-bar"><slot /></view>
+<view class="hz-action-bar__spacer {{tabbar ? 'hz-action-bar__spacer--tabbar' : ''}}"></view>
+<view class="hz-action-bar {{tabbar ? 'hz-action-bar--tabbar' : ''}}"><slot /></view>

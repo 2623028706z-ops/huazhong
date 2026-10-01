@@ -37,7 +37,8 @@ function productRowsOf(
     id: item.productId,
     name: item.name,
     code: item.customerCode,
-    priceText: formatMoney(item.listPriceCents),
+    // 带图目录卡统一「¥68.00/束」（02 章第 6 节第 6 条）
+    priceText: copy.screen.pricePer(formatMoney(item.listPriceCents), item.unit),
     thumbUrl: item.thumbUrl ?? '',
     qty: qtyOf(lines, item.productId),
   }))

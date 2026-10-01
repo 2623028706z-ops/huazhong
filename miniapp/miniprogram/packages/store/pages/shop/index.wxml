@@ -23,11 +23,11 @@
         <view wx:else class="u-thumbs__item"></view>
         <view class="hz-shop__info">
           <view class="hz-shop__title">
-            <text class="hz-shop__name">{{item.name}}</text>
-            <text wx:if="{{item.code}}" class="hz-shop__code">{{item.code}}</text>
+            <text class="u-info__title">{{item.name}}</text>
+            <text wx:if="{{item.code}}" class="u-info__meta">{{item.code}}</text>
+            <text class="u-serif-amount u-ellipsis">{{item.priceText}}</text>
           </view>
           <view class="hz-shop__buy">
-            <text class="u-serif-amount">{{item.priceText}}</text>
             <hz-stepper value="{{item.qty}}" min="{{0}}" data-key="{{item.id}}" bind:change="onQty" />
           </view>
         </view>

@@ -7,6 +7,7 @@
     "hz-skeleton": "/components/hz-skeleton/index",
     "hz-line-item": "/components/hz-line-item/index",
     "hz-button": "/components/hz-button/index",
-    "hz-tabbar": "/components/hz-tabbar/index"
+    "hz-tabbar": "/components/hz-tabbar/index",
+    "hz-action-bar": "/components/hz-action-bar/index"
   }
 }

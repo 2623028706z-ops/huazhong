@@ -19,3 +19,13 @@
 .hz-action-bar__spacer {
   height: calc(var(--hz-tap) + 18px + env(safe-area-inset-bottom));
 }
+
+/* 底栏页：贴在底栏上面 */
+.hz-action-bar--tabbar {
+  bottom: calc(var(--hz-tabbar) + env(safe-area-inset-bottom));
+  padding-bottom: 9px;
+}
+
+.hz-action-bar__spacer--tabbar {
+  height: calc(var(--hz-tap) + 18px);
+}

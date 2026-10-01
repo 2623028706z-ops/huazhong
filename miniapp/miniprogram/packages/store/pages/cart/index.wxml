@@ -12,14 +12,15 @@
       <view class="hz-cart__clear">
         <hz-button kind="text" text="{{texts.clear}}" bind:press="onClear" />
       </view>
-      <view class="u-card hz-cart__settle">
-        <view class="hz-cart__sum">
-          <text class="u-serif-amount">{{format.formatMoney(total)}}</text>
-          <text class="u-info__meta">{{countText}}</text>
-        </view>
-        <hz-button text="{{texts.checkout}}" disabled="{{count === 0 || notice !== ''}}" reason="{{notice}}" bind:press="onCheckout" />
-      </view>
     </block>
   </block>
 </view>
+<!-- 结算条固定在底栏上面（02 章 hz-action-bar tabbar），空购物车、整页状态时不出 -->
+<hz-action-bar wx:if="{{loaded && rows.length > 0 && failure.kind !== 'page'}}" tabbar>
+  <view class="hz-cart__sum">
+    <text class="u-serif-amount">{{format.formatMoney(total)}}</text>
+    <text class="u-info__meta">{{countText}}</text>
+  </view>
+  <hz-button text="{{texts.checkout}}" disabled="{{count === 0 || notice !== ''}}" bind:press="onCheckout" />
+</hz-action-bar>
 <hz-tabbar tabs="{{tabs}}" current="cart" />
