@@ -30,14 +30,13 @@ Page({
     otherText: '',
     storeLabel: '',
     agreed: false,
+    remind: 0,
     openType: '',
     busy: false,
     error: '',
     texts: {
       invite: copy.invite.storeTitle,
       button: copy.auth.loginButton,
-      prefix: copy.auth.privacyPrefix,
-      contract: copy.auth.privacyContract,
       goMy: copy.invite.goMy,
     },
   },
@@ -80,12 +79,10 @@ Page({
     const agreed = !this.data.agreed
     this.setData({ agreed, openType: agreed ? PHONE_OPEN_TYPE : '', error: '' })
   },
-  onOpenContract() {
-    wx.openPrivacyContract({})
-  },
   // 没勾选：按钮没有 open-type，点了只提示
   onPress() {
-    if (!this.data.agreed) this.setData({ error: copy.auth.privacyRequired })
+    if (this.data.agreed) return
+    this.setData({ error: copy.auth.privacyRequired, remind: this.data.remind + 1 })
   },
   // 授权框里点了拒绝：detail 为空，留在本页不报错
   async onPhone(event: DetailEvent<string>): Promise<void> {

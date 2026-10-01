@@ -4,6 +4,7 @@
     "hz-navbar": "/components/hz-navbar/index",
     "hz-button": "/components/hz-button/index",
     "hz-error": "/components/hz-error/index",
-    "hz-state": "/components/hz-state/index"
+    "hz-state": "/components/hz-state/index",
+    "hz-privacy": "/components/hz-privacy/index"
   }
 }

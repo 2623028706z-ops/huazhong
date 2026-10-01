@@ -1,4 +1,4 @@
-// 组件总览（02 章第 4 节、第 8 节）：每个 hz-* 组件的各种状态摆在一页，和 docs/design/gallery.html 对照。
+// 组件总览（02 章第 4 节、第 9 节）：每个 hz-* 组件的各种状态摆在一页，和 docs/design/gallery.html 对照。
 // 只在开发环境出现，正式版不打包
 import { copy, labels, shanghaiDateOf } from '@huazhong/shared'
 import type { DetailEvent, IndexEvent } from '../../core/events'

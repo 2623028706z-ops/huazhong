@@ -135,7 +135,7 @@ huazhong/
 - ESLint + Prettier（TS）、Stylelint（WXSS 按 CSS 规则检查，禁止写死颜色值，必须用变量）。
 - 提交前检查：lint、类型检查、`shared` 单元测试。
 - CI：以上全部 + 后端接口测试（连测试库）。
-- 验收：`07-acceptance.md` 的用例，接口类由后端测试覆盖，前端类由 miniprogram-automator 覆盖，视觉类按 02 章第 8 节人工对照。
+- 验收：`07-acceptance.md` 的用例，接口类由后端测试覆盖，前端类由 miniprogram-automator 覆盖，视觉类按 02 章第 9 节人工对照。
 
 ## 7. 已确认的决定（2026-09-30）
 

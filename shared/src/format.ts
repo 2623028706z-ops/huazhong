@@ -1,4 +1,4 @@
-// 显示格式（02 章第 6 节）。前端、后端、WXS 共用这一份：
+// 显示格式（02 章第 7 节）。前端、后端、WXS 共用这一份：
 // scripts/gen-wxs 把本文件原样转成 miniapp/miniprogram/core/format.wxs，
 // 所以只能用 WXS 支持的写法（ESLint 检查）：不用 Date、正则、模板字符串、解构、默认参数，只导出函数。
 // 业务日期、时间都按 Asia/Shanghai（UTC+8，没有夏令时）换算，只用整数运算。

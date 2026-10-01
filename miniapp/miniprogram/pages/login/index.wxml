@@ -6,10 +6,7 @@
     <hz-state kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
   </view>
   <view wx:elif="{{phase === 'login'}}" class="hz-login__panel">
-    <view class="hz-login__agree {{shaking ? 'hz-login__agree--shake' : ''}}" bindtap="onToggleAgree">
-      <text class="hz-login__check {{agreed ? 'hz-login__check--on' : ''}} hz-icon {{agreed ? 'hz-icon--check' : ''}}"></text>
-      <text>{{texts.prefix}}<text class="hz-login__contract" catchtap="onOpenContract">{{texts.contract}}</text></text>
-    </view>
+    <hz-privacy agreed="{{agreed}}" remind="{{remind}}" bind:toggle="onToggleAgree" />
     <hz-error wx:if="{{error}}" message="{{error}}" request-id="{{requestId}}" />
     <hz-button text="{{texts.button}}" open-type="{{openType}}" loading="{{busy}}" bind:press="onPress" bind:phone="onPhone" />
   </view>

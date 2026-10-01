@@ -5,6 +5,7 @@
     "hz-brand": "/components/hz-brand/index",
     "hz-state": "/components/hz-state/index",
     "hz-error": "/components/hz-error/index",
-    "hz-button": "/components/hz-button/index"
+    "hz-button": "/components/hz-button/index",
+    "hz-privacy": "/components/hz-privacy/index"
   }
 }

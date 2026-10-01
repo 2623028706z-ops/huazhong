@@ -1,4 +1,4 @@
-// shared/src/format.ts → miniapp/miniprogram/core/format.wxs（02 章第 6 节：全站一份格式化）
+// shared/src/format.ts → miniapp/miniprogram/core/format.wxs（02 章第 7 节：全站一份格式化）
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import ts from 'typescript'

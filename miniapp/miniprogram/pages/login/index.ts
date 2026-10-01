@@ -8,7 +8,6 @@ import { request, type Failure } from '../../core/request'
 import { landingUrl, loadMe, logout } from '../../core/session'
 import type { Me } from '@huazhong/shared'
 
-const SHAKE_MS = 400
 // 同意隐私保护指引和手机号快速验证在一次点击里完成（基础库 2.32.3 起）
 const PHONE_OPEN_TYPE = 'getPhoneNumber|agreePrivacyAuthorization'
 
@@ -21,7 +20,8 @@ Page({
   data: {
     phase: 'checking',
     agreed: false,
-    shaking: false,
+    // 没勾选就点登录时加 1，隐私勾选那一行抖一下
+    remind: 0,
     busy: false,
     error: '',
     requestId: '',
@@ -29,8 +29,6 @@ Page({
     openType: '',
     texts: {
       button: copy.auth.loginButton,
-      prefix: copy.auth.privacyPrefix,
-      contract: copy.auth.privacyContract,
     },
   },
   onLoad() {
@@ -55,16 +53,10 @@ Page({
     const agreed = !this.data.agreed
     this.setData({ agreed, openType: agreed ? PHONE_OPEN_TYPE : '', error: '' })
   },
-  onOpenContract() {
-    wx.openPrivacyContract({})
-  },
   // 没勾选：按钮没有 open-type，点了只走这里
   onPress() {
     if (this.data.agreed) return
-    this.setData({ error: copy.auth.privacyRequired, shaking: true })
-    setTimeout(() => {
-      this.setData({ shaking: false })
-    }, SHAKE_MS)
+    this.setData({ error: copy.auth.privacyRequired, remind: this.data.remind + 1 })
   },
   // 用户在授权框里点了拒绝：detail 为空，留在本页不报错
   async onPhone(event: DetailEvent<string>) {

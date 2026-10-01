@@ -1,0 +1,4 @@
+<view class="hz-privacy {{shaking ? 'hz-privacy--shake' : ''}}" bindtap="onToggle">
+  <text class="hz-privacy__check {{agreed ? 'hz-privacy__check--on' : ''}} hz-icon {{agreed ? 'hz-icon--check' : ''}}"></text>
+  <text>{{texts.prefix}}<text class="hz-privacy__contract" catchtap="onOpenContract">{{texts.contract}}</text></text>
+</view>
