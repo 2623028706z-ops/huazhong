@@ -19,6 +19,19 @@ const responseSchema = z.object({
   phone_info: z.object({ purePhoneNumber: z.string(), countryCode: z.string() }).optional(),
 })
 
+// 排查用：返回里有哪些字段、错误码和说明；phone_info 只记有没有
+function describeFailure(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== 'object') return { type: typeof raw }
+  const body = raw as Record<string, unknown>
+  // 微信接口返回 errcode / errmsg；云托管开放接口代理自己出错时返回 error_type / error_code / error_message
+  return {
+    keys: Object.keys(body),
+    errcode: body['errcode'] ?? body['error_code'] ?? null,
+    errmsg: body['errmsg'] ?? body['error_message'] ?? null,
+    errorType: body['error_type'] ?? null,
+  }
+}
+
 @Injectable()
 export class WechatPhoneExchange extends PhoneExchange {
   async exchange(code: string): Promise<string> {
@@ -36,9 +49,14 @@ export class WechatPhoneExchange extends PhoneExchange {
     }
     // 外部服务的返回在边界校验一次（00 章第 11.4 节）
     const parsed = responseSchema.safeParse(raw)
-    if (!parsed.success) throw appError.internal()
+    if (!parsed.success) {
+      // 只记错误码和说明，不记手机号
+      logger.error('phone exchange unexpected response', describeFailure(raw))
+      throw appError.internal()
+    }
     const info = parsed.data.phone_info
     if (parsed.data.errcode !== 0 || !info || info.countryCode !== MAINLAND_COUNTRY_CODE) {
+      logger.error('phone exchange rejected', describeFailure(raw))
       throw appError.businessRule(copy.auth.phoneCodeInvalid)
     }
     return info.purePhoneNumber
