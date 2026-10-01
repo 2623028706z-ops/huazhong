@@ -7,7 +7,7 @@
   <template is="cards" data="{{rows, statusKind, done, allLoaded}}" />
 </view>
 <hz-sheet show="{{sheet}}" title="{{texts.receipt}}" bind:close="onCloseSheet">
-  <view class="u-sheet-form">
+  <view class="u-sheet-form u-sheet-plain">
     <hz-error wx:if="{{sheetError}}" message="{{sheetError}}" />
     <block wx:if="{{receiptSheet}}">
       <template is="receipt" data="{{...receiptSheet}}" />

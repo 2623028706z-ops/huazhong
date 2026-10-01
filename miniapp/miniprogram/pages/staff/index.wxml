@@ -14,6 +14,10 @@
 </hz-action-bar>
 <hz-sheet show="{{sheet}}" title="{{editing ? texts.edit : texts.create}}" guard="{{true}}" footer bind:close="onCloseSheet">
   <view class="u-sheet-form">
+    <!-- 弹层抬头先写这是哪一位（02 章第 1 节），用保存前的名字，不跟着输入变 -->
+    <view wx:if="{{editing}}" class="u-sheet-head">
+      <text class="u-sheet-head__title">{{editing.name}}</text>
+    </view>
     <hz-error wx:if="{{formError}}" message="{{formError}}" request-id="{{requestId}}" />
     <hz-field label="{{texts.field.name}}" value="{{form.name}}" error="{{fields.name}}" bind:change="onName" />
     <hz-field label="{{texts.field.phone}}" value="{{form.phone}}" type="number" error="{{fields.phone}}" bind:change="onPhone" />

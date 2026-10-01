@@ -12,7 +12,7 @@
 </hz-action-bar>
 <template is="pick-sheet" data="{{show: pickSheet, title: texts.pickTitle, picks, empty: texts.noPick, error: pickError}}" />
 <hz-sheet show="{{detailSheet}}" title="{{texts.detailTitle}}" bind:close="onCloseDetail">
-  <view class="u-sheet-form">
+  <view class="u-sheet-form u-sheet-plain">
     <hz-error wx:if="{{detailError}}" message="{{detailError}}" />
     <template wx:if="{{detail}}" is="after-body" data="{{...detail}}" />
   </view>

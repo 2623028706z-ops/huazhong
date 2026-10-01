@@ -36,7 +36,8 @@
         </block>
       </view>
       <hz-add-button wx:if="{{!isProcess}}" text="{{texts.add}}" bind:press="onOpenPick" />
-      <template is="info-card" data="{{rows: totalRows}}" />
+      <!-- 还没加产品时不出合计卡（不然是一张空白卡） -->
+      <template wx:if="{{lines.length > 0}}" is="info-card" data="{{rows: totalRows}}" />
     </view>
     <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{note}}" bind:change="onNote" />
   </block>

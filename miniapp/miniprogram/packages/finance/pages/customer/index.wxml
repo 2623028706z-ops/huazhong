@@ -9,7 +9,7 @@
 </view>
 <template is="buttons" data="{{buttons, busy}}" />
 <hz-sheet show="{{layer !== ''}}" title="{{layerTitle}}" back="{{layers.length > 1}}" bind:close="onSheetClose" bind:back="onSheetBack">
-  <view class="u-sheet-form">
+  <view class="u-sheet-form u-sheet-plain">
     <hz-error wx:if="{{sheetError}}" message="{{sheetError}}" />
     <block wx:if="{{layer === 'order' && orderSheet}}">
       <template is="info" data="{{title: orderSheet.title, rows: orderSheet.rows}}" />

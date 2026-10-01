@@ -1,0 +1,7 @@
+/* 点名称改名：点击区域撑满整行高度（44px），不只是文字那一行 */
+.hz-category-sheet__name {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  min-height: var(--hz-tap);
+}

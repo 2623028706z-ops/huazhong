@@ -462,7 +462,10 @@
   border-top: 1px solid var(--hz-line);
 }
 
+/* 右边的日期、库存不断行，名称长了自己换行 */
 .u-pick-row__sub {
+  flex: none;
+  white-space: nowrap;
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);
 }
@@ -510,4 +513,31 @@
   flex-direction: column;
   gap: 4px;
   min-width: 0;
+}
+
+/* 只读弹层（收款、售后、订单详情弹层）：详情模板里的卡片在弹层里不装框，
+   区块之间 --hz-line 细线，区块小标题 12px 次要色（02 章第 4 节 hz-sheet、第 6 节第 2 条）。
+   卡片底色和弹层亮格分不出来，可点的 hz-card（订单弹层里的售后）也一样摊平，和下面的核销行对齐 */
+.u-sheet-plain .u-card {
+  background: transparent;
+  border-radius: 0;
+}
+
+.u-sheet-plain .u-info,
+.u-sheet-plain .u-rows,
+.u-sheet-plain .hz-card {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.u-sheet-plain .u-section {
+  padding-top: var(--hz-row-pad);
+  border-top: 1px solid var(--hz-line);
+}
+
+.u-sheet-plain .u-section__title {
+  font-size: var(--hz-font-sm);
+  font-weight: 400;
+  color: var(--hz-muted);
+  letter-spacing: 0;
 }

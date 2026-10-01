@@ -32,7 +32,7 @@
 }
 
 .hz-filter-bar__button--bare {
-  height: 40px;
+  height: var(--hz-tap);
 }
 
 .hz-filter-bar__dot {
@@ -45,32 +45,32 @@
   border-radius: 50%;
 }
 
-/* 状态标签行：没有外框，两端不留内边距；下面一条细线 */
+/* 状态标签行：没有外框，两端不留内边距；下面一条细线；高 44px（点击区域，2026-10-05 从 40px 改） */
 .hz-filter-bar__tabs {
   display: flex;
   align-items: stretch;
-  height: 40px;
+  height: var(--hz-tap);
   border-bottom: 1px solid var(--hz-rule);
 }
 
 .hz-filter-bar__scroll {
   flex: 1;
   min-width: 0;
-  height: 40px;
+  height: var(--hz-tap);
   white-space: nowrap;
 }
 
 .hz-filter-bar__track {
   display: inline-flex;
   gap: 12px;
-  height: 40px;
+  height: var(--hz-tap);
 }
 
 .hz-filter-bar__tab {
   position: relative;
   display: flex;
   align-items: center;
-  height: 40px;
+  height: var(--hz-tap);
   font-size: var(--hz-font);
   color: var(--hz-muted);
   white-space: nowrap;
@@ -145,7 +145,7 @@
   flex: 1 1 auto;
   align-items: center;
   justify-content: center;
-  height: 36px;
+  height: var(--hz-tap);
   padding: 0 6px;
   white-space: nowrap;
   border-radius: var(--hz-radius-inner);
