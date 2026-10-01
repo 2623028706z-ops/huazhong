@@ -128,8 +128,9 @@
   border-top: 1px solid var(--hz-line);
 }
 
-/* 区块的小标题（原因、改动） */
-.u-sheet-section__title {
+/* 小标题只一种（02 章第 6 节第 2 条）：12px 次要色。弹层区块小标题（原因、改动）、组件总览和筛选弹层的说明 */
+.u-sheet-section__title,
+.u-caption {
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);
 }
@@ -221,8 +222,6 @@
 /* 小标题：弹层里的「下单日期」、组件总览的分组说明 */
 .u-caption {
   margin-bottom: 8px;
-  font-size: var(--hz-font-sm);
-  color: var(--hz-muted);
 }
 
 /* 铺品牌背景的页面（各首页、我的）：左右 20px，抬头下面 32px 开始放窗格 */
@@ -245,12 +244,17 @@
   padding: 12px var(--hz-gap-page);
 }
 
-/* 按天分组的列表组头（操作日志）：13px 墨色加粗（02 章第 1 节、第 6 节） */
-.u-list__group {
-  padding: var(--hz-line-gap) 2px 0;
+/* 组标题只一种（02 章第 6 节第 2 条）：页面卡片外 13px 墨色加粗。
+   列表组头（操作日志按天、产品按分类）和详情、表单里的一组共用 */
+.u-list__group,
+.u-section__title {
   font-size: var(--hz-font-note);
   font-weight: 600;
   letter-spacing: 0.04em;
+}
+
+.u-list__group {
+  padding: var(--hz-line-gap) 2px 0;
 }
 
 .u-list__end {
@@ -272,9 +276,6 @@
 .u-section__title {
   margin-bottom: calc(var(--hz-line-gap) - var(--hz-card-gap));
   padding: 0 2px;
-  font-size: var(--hz-font-note);
-  font-weight: 600;
-  letter-spacing: 0.04em;
 }
 
 /* 一张卡里多行、行间细线（订货目录、配方）：比一行一张卡紧凑 */
@@ -525,7 +526,8 @@
 
 .u-sheet-plain .u-info,
 .u-sheet-plain .u-rows,
-.u-sheet-plain .hz-card {
+.u-sheet-plain .hz-card,
+.u-sheet-plain .hz-line-item__list {
   padding-right: 0;
   padding-left: 0;
 }

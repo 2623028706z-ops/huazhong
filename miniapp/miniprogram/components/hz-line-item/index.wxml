@@ -16,6 +16,32 @@
     </view>
   </view>
 </view>
+<!-- 售后明细：①名称 + 售后金额（门店端没有金额时不写）②数量 · 原因 ③问题说明、图片 -->
+<view wx:elif="{{mode === 'after'}}" class="u-card hz-line-item__list">
+  <view wx:for="{{lines}}" wx:key="key" class="hz-line-item__row">
+    <view class="hz-line-item__head">
+      <text class="hz-line-item__name">{{item.name}}</text>
+      <text wx:if="{{item.amountText}}" class="hz-line-item__amount u-serif-amount">{{item.amountText}}</text>
+    </view>
+    <view class="hz-line-item__sub">
+      <text>{{item.meta}}</text>
+    </view>
+    <text wx:if="{{item.description}}" class="hz-line-item__note">{{item.description}}</text>
+    <view wx:if="{{item.images.length > 0}}" class="u-thumbs">
+      <image
+        wx:for="{{item.images}}"
+        wx:for-item="image"
+        wx:key="url"
+        class="u-thumbs__item"
+        src="{{image.thumbUrl}}"
+        mode="aspectFill"
+        data-url="{{image.url}}"
+        data-urls="{{item.urls}}"
+        bindtap="onPreview"
+      />
+    </view>
+  </view>
+</view>
 <view wx:else class="hz-line-item__cards">
   <view wx:for="{{lines}}" wx:key="key" class="u-card hz-line-item__card">
     <template is="head" data="{{...item}}" />

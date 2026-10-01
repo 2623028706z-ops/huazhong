@@ -10,9 +10,9 @@
       <scroll-view class="hz-sheet__body {{footer ? 'hz-sheet__body--footer' : ''}}" scroll-y>
         <slot />
       </scroll-view>
-      <view wx:if="{{footer}}" class="hz-sheet__footer">
+      <hz-action-bar wx:if="{{footer}}" class="hz-sheet__footer" inline>
         <slot name="footer" />
-      </view>
+      </hz-action-bar>
     </view>
   </t-popup>
 </view>

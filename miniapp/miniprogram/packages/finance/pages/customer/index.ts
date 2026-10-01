@@ -18,7 +18,6 @@ import type { PagedList } from '../../../../core/list'
 import { request, type Result } from '../../../../core/request'
 import { failureOf, messageOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
-import { previewImage } from '../../../../views/after'
 import { arRowOf } from '../../../../views/ar'
 import { listHandlers, listOf, listQueryOf, showList } from '../../../../views/list'
 import { receiptViewOf } from '../../receipt-view'
@@ -199,5 +198,4 @@ Page({
     const message = messageOf(view)
     this.setData({ voidError: message })
   },
-  onPreview: previewImage,
 })

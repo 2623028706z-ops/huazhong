@@ -29,3 +29,10 @@
 .hz-action-bar__spacer--tabbar {
   height: calc(var(--hz-tap) + 18px);
 }
+
+/* 弹层底部：跟在内容后面，上面一条卡片内细线 */
+.hz-action-bar--inline {
+  position: static;
+  background: transparent;
+  border-top: 1px solid var(--hz-line);
+}

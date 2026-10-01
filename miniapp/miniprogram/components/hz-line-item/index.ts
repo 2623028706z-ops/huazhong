@@ -1,5 +1,6 @@
 // 明细行（02 章第 4 节，方案甲）：
-// view 只读，全部明细一张卡片；qty 只改数量（门店订货，单价写成文字）；price 数量和单价都能改。
+// view 只读，全部明细一张卡片；after 只读的售后明细（02 章第 6 节第 5 条：两行 + 第三行说明、图片，
+// 点缩略图看大图）；qty 只改数量（门店订货，单价写成文字）；price 数量和单价都能改。
 // 表单一行一张卡片。行金额由页面用 shared 的函数算好传进来（00 章第 1 节），这里只显示
 import { copy } from '@huazhong/shared'
 import type { DetailEvent, IndexEvent } from '../../core/events'
@@ -35,6 +36,10 @@ Component({
         index: event.currentTarget.dataset.index,
         text: event.detail.value,
       })
+    },
+    onPreview(event: DetailEvent<unknown, { url: string; urls: string[] }>) {
+      const { url, urls } = event.currentTarget.dataset
+      void wx.previewImage({ current: url, urls })
     },
     onRemove(event: IndexEvent) {
       this.triggerEvent('remove', event.currentTarget.dataset.index)

@@ -9,7 +9,7 @@ import { unwatchOnLeave, watchNewer } from '../../../../core/live'
 import { request } from '../../../../core/request'
 import { failureOf, messageOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
-import { afterInfoOf, afterLinesOf, afterReasonsOf, previewImage } from '../../../../views/after'
+import { afterInfoOf, afterLinesOf, afterReasonsOf } from '../../../../views/after'
 
 type SheetCode = 'closeAfter' | 'voidAfter'
 
@@ -143,7 +143,6 @@ Page({
     const message = messageOf(view)
     this.setData({ sheetError: message })
   },
-  onPreview: previewImage,
   onFailureAction() {
     void this.load()
   },

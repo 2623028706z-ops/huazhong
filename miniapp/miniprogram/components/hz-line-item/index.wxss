@@ -39,6 +39,11 @@
   color: var(--hz-muted);
 }
 
+/* 售后第三行：问题说明 */
+.hz-line-item__note {
+  font-size: var(--hz-font-note);
+}
+
 /* 表单：一行一张卡片 */
 .hz-line-item__cards {
   display: flex;

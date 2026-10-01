@@ -16,13 +16,7 @@ import { emptyFilter } from '../../../../core/filter'
 import type { PagedList } from '../../../../core/list'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
-import {
-  afterInfoOf,
-  afterLinesOf,
-  afterReasonsOf,
-  afterRowOf,
-  previewImage,
-} from '../../../../views/after'
+import { afterInfoOf, afterLinesOf, afterReasonsOf, afterRowOf } from '../../../../views/after'
 import { listHandlers, listOf, listQueryOf, showList } from '../../../../views/list'
 import { lineTitleOf, shipDateText } from '../../../../views/order'
 
@@ -138,5 +132,4 @@ Page({
   onCloseDetail() {
     this.setData({ detailSheet: false })
   },
-  onPreview: previewImage,
 })

@@ -20,33 +20,11 @@
   </view>
   <template wx:else is="info-card" data="{{title, status, statusKind, rows}}" />
 </template>
-<!-- 售后产品：数量和原因、问题说明、图片直接展开 -->
+<!-- 售后产品：数量和原因、问题说明、图片直接展开（hz-line-item after 变体） -->
 <template name="after-lines">
   <view class="u-section">
     <text class="u-section__title">{{heading}}</text>
-    <view class="u-card u-info">
-      <view wx:for="{{lines}}" wx:for-item="line" wx:key="key" class="u-info__line">
-        <view class="u-info__head">
-          <text class="u-info__title">{{line.name}}</text>
-          <text wx:if="{{line.amountText}}" class="u-serif-amount">{{line.amountText}}</text>
-        </view>
-        <text class="u-info__meta">{{line.meta}}</text>
-        <text wx:if="{{line.description}}">{{line.description}}</text>
-        <view wx:if="{{line.images.length > 0}}" class="u-thumbs">
-          <image
-            wx:for="{{line.images}}"
-            wx:for-item="image"
-            wx:key="url"
-            class="u-thumbs__item"
-            src="{{image.thumbUrl}}"
-            mode="aspectFill"
-            data-url="{{image.url}}"
-            data-urls="{{line.urls}}"
-            bindtap="onPreview"
-          />
-        </view>
-      </view>
-    </view>
+    <hz-line-item lines="{{lines}}" mode="after" />
   </view>
 </template>
 <!-- 底部操作区：按 core/actions 的 buttonsOf 显示，点了发 onAction（data-code 是操作码） -->

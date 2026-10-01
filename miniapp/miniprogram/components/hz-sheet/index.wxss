@@ -43,13 +43,7 @@
   max-height: calc(75vh - 48px - var(--hz-tap) - 19px - env(safe-area-inset-bottom));
 }
 
+/* 底部按钮排法用 hz-action-bar 的 inline 模式，这里只让它不被压缩 */
 .hz-sheet__footer {
-  display: grid;
   flex: none;
-  grid-auto-columns: 1fr;
-  grid-auto-flow: column;
-  gap: 8px;
-  padding: 9px var(--hz-gap-bar);
-  padding-bottom: calc(9px + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--hz-line);
 }
