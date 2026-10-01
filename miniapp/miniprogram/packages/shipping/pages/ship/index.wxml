@@ -1,0 +1,22 @@
+<import src="/views/detail.wxml" />
+<hz-navbar title="{{title}}" back guard="{{changed}}" />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<view wx:else class="u-list">
+  <hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" />
+  <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+  <hz-error wx:if="{{formError}}" message="{{formError}}" />
+  <hz-skeleton wx:if="{{!loaded}}" type="detail" />
+  <block wx:elif="{{isForm}}">
+    <template is="info" data="{{...info}}" />
+    <hz-line-item wx:if="{{canShip}}" lines="{{lineViews}}" mode="qty" min="{{0}}" bind:qty="onQty" />
+    <hz-line-item wx:else lines="{{lineViews}}" />
+    <template is="info" data="{{rows: amountRows}}" />
+    <hz-field wx:if="{{canShip}}" label="{{texts.shipNote}}" type="textarea" placeholder="{{texts.optional}}" value="{{shipNote}}" bind:change="onNote" />
+    <hz-records wx:if="{{view.changes.length > 0}}" type="orderChange" items="{{view.changes}}" />
+  </block>
+  <template wx:elif="{{view}}" is="order-body" data="{{...view}}" />
+</view>
+<hz-action-bar wx:if="{{isForm}}">
+  <hz-button text="{{texts.ship}}" disabled="{{!canShip}}" reason="{{shipReason}}" loading="{{saving}}" bind:press="onShip" />
+</hz-action-bar>
+<hz-confirm id="hz-confirm" />

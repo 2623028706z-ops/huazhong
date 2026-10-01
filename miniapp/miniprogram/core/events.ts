@@ -10,3 +10,6 @@ export type DetailEvent<T, D extends AnyObject = AnyObject> = Omit<
   WechatMiniprogram.CustomEvent<AnyObject, AnyObject, D>,
   'detail'
 > & { detail: T }
+
+// 底部操作区的按钮：data-code 是操作码
+export type CodeEvent = WechatMiniprogram.TouchEvent<AnyObject, AnyObject, { code: string }>

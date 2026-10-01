@@ -1,0 +1,25 @@
+<!-- 列表页的公共区块：页面 <import src="/views/list.wxml" /> 后用 template 引用 -->
+<!-- 整页状态、刷新失败、骨架屏、空状态（02 章第 5 节） -->
+<template name="list-state">
+  <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+  <hz-error wx:elif="{{failure}}" message="{{failure.message}}" request-id="{{failure.requestId}}" retry bind:retry="onFailureAction" />
+  <hz-skeleton wx:if="{{skeleton}}" type="list" />
+  <hz-state wx:elif="{{loaded && rows.length === 0}}" object="{{emptyObject}}" />
+</template>
+<!-- 三行卡片，点开发 onOpen（data-key 是行的 id） -->
+<template name="cards">
+  <view wx:for="{{rows}}" wx:key="id" data-key="{{item.id}}" bindtap="onOpen">
+    <hz-card
+      date="{{item.date}}"
+      status-kind="{{statusKind}}"
+      status="{{item.status}}"
+      title="{{item.title}}"
+      total="{{item.total}}"
+      meta="{{item.meta}}"
+      amount="{{item.amount}}"
+      amount-text="{{item.amountText}}"
+      tags="{{item.tags}}"
+    />
+  </view>
+  <text wx:if="{{done && rows.length > 0}}" class="u-list__end">{{allLoaded}}</text>
+</template>

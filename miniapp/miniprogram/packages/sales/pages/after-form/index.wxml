@@ -1,0 +1,45 @@
+<import src="/views/pick.wxml" />
+<import src="/views/detail.wxml" />
+<hz-navbar title="{{title}}" back guard="{{changed}}" />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<view wx:else class="u-list">
+  <hz-error wx:if="{{formError}}" message="{{formError}}" />
+  <hz-skeleton wx:if="{{!loaded}}" type="form" />
+  <block wx:else>
+    <template is="info" data="{{rows: info}}" />
+    <view wx:for="{{lines}}" wx:key="id" class="u-card u-form-card">
+      <view class="u-info__head">
+        <text class="u-info__title">{{item.name}}</text>
+        <text class="u-serif-amount">{{amountTexts[index]}}</text>
+        <view wx:if="{{!isProcess}}" class="u-tap" data-index="{{index}}" bindtap="onRemoveLine">
+          <text class="hz-icon hz-icon--trash-2"></text>
+        </view>
+      </view>
+      <view class="u-info__head">
+        <text class="u-info__meta">{{item.maxText}}</text>
+        <hz-stepper value="{{item.qty}}" min="{{isProcess ? 0 : 1}}" max="{{item.maxQty}}" data-index="{{index}}" bind:change="onQty" />
+      </view>
+      <text wx:if="{{lineErrors[index].qty}}" class="u-field__error">{{lineErrors[index].qty}}</text>
+      <hz-field label="{{texts.price}}" type="digit" value="{{item.priceText}}" error="{{lineErrors[index].price}}" data-index="{{index}}" bind:change="onPrice" />
+      <block wx:if="{{isProcess}}">
+        <text class="u-info__meta">{{item.readonlyMeta}}</text>
+        <text wx:if="{{item.description}}">{{item.description}}</text>
+        <view wx:if="{{item.images.length > 0}}" class="u-thumbs">
+          <image wx:for="{{item.images}}" wx:for-item="image" wx:key="url" class="u-thumbs__item" src="{{image.thumbUrl}}" mode="aspectFill" data-url="{{image.url}}" data-urls="{{item.urls}}" bindtap="onPreview" />
+        </view>
+      </block>
+      <block wx:else>
+        <hz-picker label="{{texts.reason}}" options="{{reasonOptions}}" value="{{item.reason}}" error="{{lineErrors[index].reason}}" data-index="{{index}}" bind:change="onReason" />
+        <hz-field label="{{texts.description}}" type="textarea" placeholder="{{texts.optional}}" value="{{item.description}}" data-index="{{index}}" bind:change="onDescription" />
+      </block>
+    </view>
+    <hz-add-button wx:if="{{!isProcess}}" text="{{texts.add}}" bind:press="onOpenPick" />
+    <template is="info" data="{{rows: totalRows}}" />
+    <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{note}}" bind:change="onNote" />
+  </block>
+</view>
+<hz-action-bar>
+  <hz-button text="{{texts.save}}" loading="{{saving}}" bind:press="onSubmit" />
+</hz-action-bar>
+<template is="pick-sheet" data="{{show: pickSheet, title: texts.pickTitle, picks, empty: texts.noPick}}" />
+<hz-confirm id="hz-confirm" />

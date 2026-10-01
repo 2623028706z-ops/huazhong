@@ -145,3 +145,9 @@ export function request<E extends Endpoint>(
   inFlightWrites.set(key, sending)
   return sending
 }
+
+// 并行取几个接口：第一个失败的原因（都成功为 null）
+export function firstFailure(results: readonly Result<unknown>[]): Failure | null {
+  for (const result of results) if (!result.ok) return result.failure
+  return null
+}

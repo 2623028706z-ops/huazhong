@@ -21,8 +21,12 @@ export const realtime = new Realtime({ onResync: refreshCurrentPage, onAuthFailu
 
 const watchers = new WeakMap<object, (() => void)[]>()
 
-// 页面 onShow 时调：先退掉上一次的订阅，再订这次的
-export function watch(page: object, topics: Topic[], onChange: () => void): void {
+// 页面 onShow 时调：先退掉上一次的订阅，再订这次的。详情页用 version 判断是不是比当前新
+export function watch(
+  page: object,
+  topics: Topic[],
+  onChange: (version: number | null) => void,
+): void {
   unwatch(page)
   watchers.set(
     page,
@@ -33,4 +37,26 @@ export function watch(page: object, topics: Topic[], onChange: () => void): void
 export function unwatch(page: object): void {
   for (const stop of watchers.get(page) ?? []) stop()
   watchers.delete(page)
+}
+
+// 详情页、编辑页：推送来的版本比当前新才算别人改了（自己刚提交的不算）
+export function watchNewer(
+  page: object,
+  topic: Topic,
+  current: () => number | undefined,
+  onNewer: () => void,
+): void {
+  watch(page, [topic], (version) => {
+    if (version === null || version > (current() ?? 0)) onNewer()
+  })
+}
+
+// 离开页面就退订：Page({ ...unwatchOnLeave, … })
+export const unwatchOnLeave = {
+  onHide(this: object) {
+    unwatch(this)
+  },
+  onUnload(this: object) {
+    unwatch(this)
+  },
 }

@@ -63,6 +63,17 @@ function formatMoney(cents) {
 function formatQty(qty, unit) {
     return qty + ' ' + unit;
 }
+var UNIT_SEPARATOR = ' · ';
+function formatUnitTotals(totals) {
+    var text = '';
+    for (var i = 0; i < totals.length; i += 1) {
+        var total = totals[i];
+        if (total === undefined)
+            continue;
+        text = text + (i > 0 ? UNIT_SEPARATOR : '') + formatQty(total.qty, total.unit);
+    }
+    return text;
+}
 function formatCardDate(date, today) {
     return date.slice(0, 4) === today.slice(0, 4) ? date.slice(5) : date;
 }
@@ -107,6 +118,7 @@ module.exports = {
   shanghaiDateOf: shanghaiDateOf,
   formatMoney: formatMoney,
   formatQty: formatQty,
+  formatUnitTotals: formatUnitTotals,
   formatCardDate: formatCardDate,
   shanghaiDayOf: shanghaiDayOf,
   formatTime: formatTime,

@@ -1,0 +1,35 @@
+<hz-navbar title="{{title}}" back guard="{{changed}}" />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<view wx:else class="u-list">
+  <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+  <hz-error wx:if="{{formError}}" message="{{formError}}" />
+  <hz-skeleton wx:if="{{!loaded}}" type="form" />
+  <block wx:else>
+    <hz-picker label="{{texts.customer}}" options="{{customerOptions}}" value="{{customerId}}" error="{{fields.customerId}}" bind:change="onCustomer" />
+    <block wx:if="{{!isAllocate}}">
+      <hz-picker label="{{texts.date}}" mode="date" value="{{form.receiptDate}}" end="{{today}}" error="{{fields.receiptDate}}" bind:change="onDate" />
+      <hz-field label="{{texts.amount}}" type="digit" value="{{form.amountText}}" error="{{fields.amountCents}}" bind:change="onAmount" />
+      <hz-picker label="{{texts.method}}" options="{{methodOptions}}" value="{{form.methodName}}" error="{{fields.methodName}}" bind:change="onMethod" />
+      <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{form.note}}" bind:change="onNote" />
+    </block>
+    <block wx:if="{{customerId}}">
+      <text class="u-caption">{{texts.allocDetail}}</text>
+      <text wx:if="{{allocRows.length === 0}}" class="u-info__meta">{{texts.empty}}</text>
+      <view wx:for="{{allocRows}}" wx:key="orderId" class="u-card u-form-card">
+        <view class="u-info__head">
+          <text class="u-info__title">{{item.name}}</text>
+          <text class="u-info__meta">{{item.sub}}</text>
+        </view>
+        <view class="u-info__head">
+          <hz-field label="{{texts.allocThis}}" type="digit" value="{{item.text}}" data-index="{{index}}" bind:change="onAlloc" />
+          <hz-button kind="text" text="{{texts.fill}}" data-index="{{index}}" bind:press="onFill" />
+        </view>
+      </view>
+      <hz-notice text="{{summary}}" />
+    </block>
+  </block>
+</view>
+<hz-action-bar>
+  <hz-button text="{{isAllocate ? texts.confirmAllocate : texts.confirmReceipt}}" loading="{{saving}}" disabled="{{!customerId}}" bind:press="onSubmit" />
+</hz-action-bar>
+<hz-confirm id="hz-confirm" />

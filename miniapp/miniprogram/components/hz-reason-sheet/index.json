@@ -1,0 +1,10 @@
+{
+  "component": true,
+  "styleIsolation": "apply-shared",
+  "usingComponents": {
+    "hz-sheet": "../hz-sheet/index",
+    "hz-field": "../hz-field/index",
+    "hz-error": "../hz-error/index",
+    "hz-button": "../hz-button/index"
+  }
+}

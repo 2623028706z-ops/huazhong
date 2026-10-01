@@ -1,0 +1,12 @@
+<import src="/views/pick.wxml" />
+<import src="/views/list.wxml" />
+<hz-navbar title="{{title}}" back />
+<view class="u-list">
+  <hz-filter-bar status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" date-label="{{dateLabel}}" dimensions="{{dimensions}}" value="{{filter}}" bind:change="onFilter" />
+  <template is="list-state" data="{{failure, skeleton, loaded, rows, emptyObject}}" />
+  <template is="cards" data="{{rows, statusKind, done, allLoaded}}" />
+</view>
+<hz-action-bar wx:if="{{canCreate}}">
+  <hz-button text="{{texts.create}}" bind:press="onCreate" />
+</hz-action-bar>
+<template is="pick-sheet" data="{{show: pickSheet, title: texts.pickTitle, picks, empty: texts.noPick, error: pickError}}" />

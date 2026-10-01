@@ -21,7 +21,7 @@ Component({
   properties: {
     lines: { type: Array, value: [] as Line[] },
     mode: { type: String, value: 'view' },
-    // actions 里有 removeLine 时才显示垃圾桶
+    // 能不能删行由页面定：新建表单能删；只读和处理门店提交的售后不能删
     removable: { type: Boolean, value: false },
     min: { type: Number, value: 0 },
   },

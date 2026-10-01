@@ -1,3 +1,18 @@
 .hz-module-home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-gap-controls);
   padding: 12px var(--hz-gap-home);
+}
+
+.hz-module-home__todos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-card-gap);
+}
+
+.hz-module-home__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }

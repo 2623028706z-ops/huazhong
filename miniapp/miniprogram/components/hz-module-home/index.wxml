@@ -2,6 +2,30 @@
 <hz-navbar title="{{title}}" back="{{back}}" roles="{{roles}}" person="{{person}}" transparent />
 <view class="hz-module-home">
   <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
-  <hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+  <block wx:else>
+    <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+    <hz-entry-grid wx:if="{{entries.length > 0}}" entries="{{entries}}" compact bind:select="onEntry" />
+    <view wx:if="{{hasTodos}}" class="hz-module-home__todos">
+      <view class="hz-module-home__head">
+        <text class="u-caption">{{texts.todos}}</text>
+        <hz-button wx:if="{{todoCount > 0}}" kind="text" text="{{texts.viewAll}}" bind:press="onAll" />
+        <hz-button wx:elif="{{idleText}}" kind="text" text="{{idleText}}" bind:press="onAll" />
+      </view>
+      <hz-state wx:if="{{todos.length === 0}}" object="{{todoEmpty}}" />
+      <view wx:for="{{todos}}" wx:key="id" data-key="{{item.id}}" bindtap="onTodo">
+        <hz-card
+          date="{{item.date}}"
+          status-kind="{{item.statusKind}}"
+          status="{{item.status}}"
+          title="{{item.title}}"
+          total="{{item.total}}"
+          meta="{{item.meta}}"
+          amount="{{item.amount}}"
+          amount-text="{{item.amountText}}"
+          tags="{{item.tags}}"
+        />
+      </view>
+    </view>
+  </block>
 </view>
 <hz-tabbar wx:if="{{tabs.length > 0}}" tabs="{{tabs}}" current="home" />

@@ -12,5 +12,6 @@
     <hz-tag wx:for="{{tags}}" wx:key="text" text="{{item.text}}" warn="{{item.warn}}" />
     <text class="u-ellipsis">{{meta}}</text>
     <text wx:if="{{amount !== null}}" class="hz-card__amount u-serif-amount">{{format.formatMoney(amount)}}</text>
+    <text wx:elif="{{amountText}}" class="hz-card__amount">{{amountText}}</text>
   </view>
 </view>

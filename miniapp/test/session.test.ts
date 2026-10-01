@@ -1,5 +1,5 @@
 import type { Me } from '@huazhong/shared'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { identityOf, isLandingModule, landingUrl, tabsOf } from '../miniprogram/core/session'
 
 vi.mock('../miniprogram/core/config', () => ({
@@ -53,5 +53,30 @@ describe('身份行', () => {
   it('门店、供应商写组织名', () => {
     const store = { ...base, type: 'store' as const, name: '陈女士', orgLabel: '晨曦花艺 · 滨江店' }
     expect(identityOf(store)).toEqual({ lead: '晨曦花艺 · 滨江店', person: '陈女士' })
+  })
+})
+
+describe('门店底栏', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('门店多一个「购物车」，角标是本机购物车件数', () => {
+    const cart = [
+      { productId: '1', qty: 2, name: '粉玫瑰日常花束', unit: '束', priceCents: 6800 },
+      { productId: '2', qty: 3, name: '白绿清新花束', unit: '束', priceCents: 8000 },
+    ]
+    vi.stubGlobal('wx', { getStorageSync: (key: string) => (key === 'hz-cart:9' ? cart : '') })
+    const store: Me = {
+      ...base,
+      id: '9',
+      type: 'store',
+      modules: [],
+      landing: 'store_home',
+      menus: [],
+    }
+    const tabs = tabsOf(store)
+    expect(tabs.map((tab) => tab.key)).toEqual(['home', 'cart', 'my'])
+    expect(tabs[1]?.badge).toBe(5)
   })
 })

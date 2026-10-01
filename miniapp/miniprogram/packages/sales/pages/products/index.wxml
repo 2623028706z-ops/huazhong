@@ -1,0 +1,50 @@
+<hz-navbar title="{{title}}" back />
+<view class="u-list">
+  <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+  <hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+  <hz-skeleton wx:if="{{!loaded}}" type="list" />
+  <hz-state wx:elif="{{groups.length === 0}}" object="{{texts.empty}}" />
+  <block wx:for="{{groups}}" wx:key="id" wx:for-item="group">
+    <text class="u-list__group">{{group.name}}</text>
+    <view wx:for="{{group.rows}}" wx:key="id" class="u-card u-product" data-key="{{item.id}}" bindtap="onOpen">
+      <image wx:if="{{item.imageUrl}}" class="u-thumbs__item" src="{{item.imageUrl}}" mode="aspectFill" lazy-load />
+      <view wx:else class="u-thumbs__item"></view>
+      <view class="u-product__info">
+        <view class="u-info__head">
+          <text class="u-info__title">{{item.name}}</text>
+          <hz-tag wx:if="{{item.disabled}}" text="{{texts.disabled}}" />
+        </view>
+        <text class="u-info__meta">{{item.meta}}</text>
+      </view>
+    </view>
+  </block>
+</view>
+<hz-action-bar wx:if="{{canCreate || canManage}}">
+  <hz-button wx:if="{{canManage}}" kind="secondary" text="{{texts.manage}}" bind:press="onManage" />
+  <hz-button wx:if="{{canCreate}}" text="{{texts.create}}" bind:press="onCreate" />
+</hz-action-bar>
+<hz-sheet show="{{sheet}}" title="{{texts.categories}}" back="{{renaming !== null}}" bind:close="onCloseSheet" bind:back="onBackSheet">
+  <view class="u-sheet-form">
+    <hz-error wx:if="{{sheetError}}" message="{{sheetError}}" />
+    <block wx:if="{{renaming}}">
+      <hz-field label="{{texts.name}}" value="{{nameText}}" bind:change="onNameText" />
+      <hz-button text="{{texts.save}}" loading="{{saving}}" bind:press="onSaveName" />
+    </block>
+    <block wx:else>
+      <view wx:for="{{categories}}" wx:key="id" class="u-sheet-form__row">
+        <text data-key="{{item.id}}" bindtap="onRename">{{item.name}}</text>
+        <view class="u-sheet-form__value">
+          <hz-button wx:if="{{index > 0}}" kind="text" text="{{texts.up}}" data-index="{{index}}" bind:press="onUp" />
+          <view class="u-tap" data-key="{{item.id}}" bindtap="onDelete">
+            <text class="hz-icon hz-icon--trash-2"></text>
+          </view>
+        </view>
+      </view>
+      <view class="u-sheet-form__group">
+        <hz-field label="{{texts.add}}" value="{{newName}}" bind:change="onNewName" />
+        <hz-button kind="secondary" text="{{texts.add}}" loading="{{saving}}" bind:press="onAdd" />
+      </view>
+    </block>
+  </view>
+</hz-sheet>
+<hz-confirm id="hz-confirm" />

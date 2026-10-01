@@ -1,0 +1,48 @@
+<import src="/views/list.wxml" />
+<import src="/views/detail.wxml" />
+<hz-navbar title="{{title}}" back />
+<view class="u-list">
+  <hz-filter-bar status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" date-label="{{dateLabel}}" value="{{filter}}" bind:change="onFilter" />
+  <hz-statement wx:if="{{cells.length > 0}}" cells="{{cells}}" />
+  <template is="list-state" data="{{failure, skeleton, loaded, rows, emptyObject}}" />
+  <template is="cards" data="{{rows, statusKind, done, allLoaded}}" />
+</view>
+<template is="buttons" data="{{buttons, busy}}" />
+<hz-sheet show="{{layer !== ''}}" title="{{layerTitle}}" back="{{layers.length > 1}}" bind:close="onSheetClose" bind:back="onSheetBack">
+  <view class="u-sheet-form">
+    <hz-error wx:if="{{sheetError}}" message="{{sheetError}}" />
+    <block wx:if="{{layer === 'order' && orderSheet}}">
+      <template is="info" data="{{title: orderSheet.title, rows: orderSheet.rows}}" />
+      <text wx:if="{{orderSheet.afters.length > 0}}" class="u-caption">{{texts.after}}</text>
+      <view wx:for="{{orderSheet.afters}}" wx:key="id" data-key="{{item.id}}" bindtap="onOpenAfter">
+        <hz-card date="{{item.date}}" status-kind="afterStatus" status="{{item.status}}" title="{{item.title}}" total="{{item.total}}" meta="{{item.meta}}" amount="{{item.amount}}" amount-text="{{item.amountText}}" />
+      </view>
+      <text wx:if="{{orderSheet.allocs.length > 0}}" class="u-caption">{{texts.allocations}}</text>
+      <view wx:for="{{orderSheet.allocs}}" wx:key="id" class="u-pick-row" data-key="{{item.key}}" bindtap="onOpenReceipt">
+        <view class="u-sheet-head">
+          <text>{{item.name}}</text>
+          <text class="u-pick-row__sub">{{item.sub}}</text>
+        </view>
+        <text class="u-serif-amount">{{item.amount}}</text>
+      </view>
+    </block>
+    <block wx:if="{{layer === 'after' && afterSheet}}">
+      <template is="after-body" data="{{...afterSheet}}" />
+      <hz-button wx:if="{{afterSheet.canVoid}}" kind="secondary" text="{{texts.voidAfter}}" bind:press="onVoid" />
+    </block>
+    <block wx:if="{{layer === 'receipt' && receiptSheet}}">
+      <template is="receipt" data="{{...receiptSheet}}" />
+      <hz-button wx:if="{{receiptSheet.canVoid}}" kind="secondary" text="{{texts.voidReceipt}}" bind:press="onVoid" />
+    </block>
+  </view>
+</hz-sheet>
+<hz-reason-sheet
+  show="{{voidSheet}}"
+  title="{{layer === 'after' ? texts.voidAfter : texts.voidReceipt}}"
+  required="{{voidRequired}}"
+  confirm="{{texts.confirmVoid}}"
+  error="{{voidError}}"
+  loading="{{busy === 'void'}}"
+  bind:close="onCloseVoid"
+  bind:submit="onSubmitVoid"
+/>

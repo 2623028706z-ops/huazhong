@@ -1,0 +1,18 @@
+/* 购物车：明细 →「清空」→ 结算条（结算条在列表里，底栏占着屏幕底部） */
+.hz-cart__clear {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.hz-cart__settle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--hz-row-pad);
+  align-items: center;
+  padding: var(--hz-row-pad) var(--hz-card-pad);
+}
+
+.hz-cart__sum {
+  display: flex;
+  flex-direction: column;
+}

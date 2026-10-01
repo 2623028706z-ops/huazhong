@@ -1,0 +1,12 @@
+<!-- 选择弹层（选订单、选产品、选花材）：页面 <import src="/views/pick.wxml" /> 后用；
+     点一行发 onPick（data-key 是 id），关闭发 onClosePick -->
+<template name="pick-sheet">
+  <hz-sheet show="{{show}}" title="{{title}}" bind:close="onClosePick">
+    <view wx:if="{{error}}" class="u-sheet-section"><hz-error message="{{error}}" /></view>
+    <view wx:elif="{{picks.length === 0}}" class="u-sheet-section">{{empty}}</view>
+    <view wx:for="{{picks}}" wx:key="id" class="u-pick-row" data-key="{{item.id}}" bindtap="onPick">
+      <text>{{item.name}}</text>
+      <text class="u-pick-row__sub">{{item.sub}}</text>
+    </view>
+  </hz-sheet>
+</template>

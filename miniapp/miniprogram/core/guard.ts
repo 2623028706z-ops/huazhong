@@ -53,3 +53,13 @@ export function confirmLeave(host: ConfirmHost, changed: boolean): Promise<boole
     confirm: copy.confirm.discard,
   })
 }
+
+interface ChangeHost {
+  setData(patch: { changed: boolean }): void
+}
+
+// 表单页改没改：顶栏返回（hz-navbar guard="{{changed}}"）和右滑返回用同一个结果
+export function markChanged(host: ChangeHost, changed: boolean): void {
+  host.setData({ changed })
+  syncUnloadAlert(changed)
+}

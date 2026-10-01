@@ -1,0 +1,28 @@
+<import src="/views/pick.wxml" />
+<import src="/views/detail.wxml" />
+<hz-navbar title="{{title}}" back guard="{{changed}}" />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<view wx:else class="u-list">
+  <hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" />
+  <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+  <hz-error wx:if="{{formError}}" message="{{formError}}" />
+  <hz-skeleton wx:if="{{!loaded}}" type="form" />
+  <block wx:else>
+    <block wx:if="{{mode === 'create'}}">
+      <hz-picker label="{{texts.customer}}" options="{{customerOptions}}" value="{{form.customerId}}" error="{{fields.customerId}}" bind:change="onCustomer" />
+      <hz-picker label="{{texts.store}}" options="{{storeOptions}}" value="{{form.storeId}}" error="{{fields.storeId}}" bind:change="onStore" />
+    </block>
+    <template wx:else is="info" data="{{rows: customerRows}}" />
+    <hz-picker label="{{texts.shipDate}}" mode="date" value="{{form.shipDate}}" error="{{fields.shipDate}}" bind:change="onShipDate" />
+    <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{form.note}}" bind:change="onNote" />
+    <hz-line-item lines="{{lineViews}}" mode="price" removable min="{{1}}" bind:qty="onQty" bind:price="onPrice" bind:remove="onRemove" />
+    <hz-add-button text="{{texts.add}}" bind:press="onOpenPick" />
+    <template is="info" data="{{rows: amountRows}}" />
+    <hz-field wx:if="{{mode !== 'create'}}" label="{{texts.reason}}" type="textarea" value="{{form.reason}}" error="{{fields.reason}}" bind:change="onReason" />
+  </block>
+</view>
+<hz-action-bar>
+  <hz-button text="{{submitText}}" loading="{{saving}}" bind:press="onSubmit" />
+</hz-action-bar>
+<template is="pick-sheet" data="{{show: pickSheet, title: texts.pickTitle, picks, empty: texts.noPick}}" />
+<hz-confirm id="hz-confirm" />

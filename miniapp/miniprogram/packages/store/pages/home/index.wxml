@@ -7,7 +7,7 @@
     <hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
     <block wx:else>
       <hz-notice wx:if="{{notice}}" text="{{notice}}" />
-      <hz-hub hero="{{hero}}" minis="{{minis}}" />
+      <hz-hub wx:if="{{hero}}" hero="{{hero}}" minis="{{minis}}" bind:select="onSelect" />
     </block>
   </view>
 </view>

@@ -1,0 +1,23 @@
+<import src="/views/detail.wxml" />
+<hz-navbar title="{{title}}" back />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<view wx:else class="u-list">
+  <hz-realtime-bar text="{{realtime}}" />
+  <hz-error wx:if="{{failure}}" message="{{failure.message}}" request-id="{{failure.requestId}}" retry bind:retry="onFailureAction" />
+  <hz-skeleton wx:if="{{!loaded}}" type="detail" />
+  <block wx:elif="{{view}}">
+    <hz-notice wx:if="{{view.notice}}" text="{{view.notice}}" />
+    <template is="after-body" data="{{...view}}" />
+  </block>
+</view>
+<template is="buttons" data="{{buttons, busy}}" />
+<hz-reason-sheet
+  show="{{sheetCode !== ''}}"
+  title="{{sheetTitle}}"
+  required="{{sheetRequired}}"
+  confirm="{{sheetConfirm}}"
+  error="{{sheetError}}"
+  loading="{{busy !== ''}}"
+  bind:close="onCloseSheet"
+  bind:submit="onSubmitSheet"
+/>

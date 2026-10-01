@@ -1,0 +1,35 @@
+<import src="/views/pick.wxml" />
+<hz-navbar title="{{title}}" back guard="{{changed}}" />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<view wx:else class="u-list">
+  <hz-error wx:if="{{formError}}" message="{{formError}}" />
+  <hz-skeleton wx:if="{{!loaded}}" type="form" />
+  <block wx:else>
+    <hz-field label="{{texts.name}}" value="{{form.name}}" error="{{fields.name}}" bind:change="onName" />
+    <hz-picker label="{{texts.category}}" options="{{categoryOptions}}" value="{{form.categoryId}}" error="{{fields.categoryId}}" bind:change="onCategory" />
+    <hz-field label="{{texts.unit}}" value="{{form.unit}}" error="{{fields.unit}}" bind:change="onUnit" />
+    <text class="u-field__label">{{texts.image}}</text>
+    <hz-upload files="{{images}}" max="{{1}}" bind:add="onAddImage" bind:remove="onRemoveImage" />
+    <hz-switch label="{{texts.enabled}}" value="{{form.enabled}}" bind:change="onEnabled" />
+    <text class="u-caption">{{texts.bom}}</text>
+    <text wx:if="{{fields.bom}}" class="u-field__error">{{fields.bom}}</text>
+    <view wx:for="{{form.bom}}" wx:key="materialId" class="u-card u-form-card">
+      <view class="u-info__head">
+        <text class="u-info__title">{{item.name}}</text>
+        <view class="u-tap" data-index="{{index}}" bindtap="onRemoveBom">
+          <text class="hz-icon hz-icon--trash-2"></text>
+        </view>
+      </view>
+      <view class="u-info__head">
+        <text class="u-info__meta">{{item.unit}}</text>
+        <hz-stepper value="{{item.qty}}" min="{{1}}" data-index="{{index}}" bind:change="onBomQty" />
+      </view>
+    </view>
+    <hz-add-button text="{{texts.add}}" bind:press="onOpenPick" />
+  </block>
+</view>
+<hz-action-bar>
+  <hz-button text="{{texts.save}}" loading="{{saving}}" disabled="{{uploading}}" bind:press="onSave" />
+</hz-action-bar>
+<template is="pick-sheet" data="{{show: pickSheet, title: texts.pickTitle, picks, empty: texts.noPick}}" />
+<hz-confirm id="hz-confirm" />

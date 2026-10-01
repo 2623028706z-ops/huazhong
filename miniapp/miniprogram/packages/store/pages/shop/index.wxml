@@ -1,0 +1,48 @@
+<wxs src="../../../../core/format.wxs" module="format" />
+<hz-navbar title="{{title}}" back />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<block wx:else>
+  <view class="hz-shop__top">
+    <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+    <hz-error wx:if="{{catalogError}}" message="{{catalogError}}" />
+    <view class="hz-shop__head">
+      <text class="u-info__title">{{head}}</text>
+      <text class="u-info__meta">{{dateLabel}} {{date}}{{countText ? ' · ' + countText : ''}}</text>
+    </view>
+    <hz-search value="{{keyword}}" placeholder="{{searchPlaceholder}}" bind:search="onSearch" />
+  </view>
+  <view class="hz-shop__body">
+    <view wx:if="{{!keyword}}" class="hz-shop__side">
+      <hz-side-list items="{{categories}}" value="{{categoryId}}" bind:change="onCategory" />
+    </view>
+    <scroll-view class="hz-shop__main" scroll-y>
+      <hz-skeleton wx:if="{{!loaded}}" type="list" />
+      <hz-state wx:elif="{{products.length === 0}}" object="{{emptyObject}}" />
+      <view wx:for="{{products}}" wx:key="id" class="u-card hz-shop__product">
+        <image wx:if="{{item.thumbUrl}}" class="u-thumbs__item" src="{{item.thumbUrl}}" mode="aspectFill" lazy-load />
+        <view wx:else class="u-thumbs__item"></view>
+        <view class="hz-shop__info">
+          <text class="hz-shop__name">{{item.name}}</text>
+          <view class="hz-shop__buy">
+            <text class="u-serif-amount">{{item.priceText}}</text>
+            <hz-stepper value="{{item.qty}}" min="{{0}}" data-key="{{item.id}}" bind:change="onQty" />
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+  <hz-action-bar>
+    <view class="hz-shop__bar" bindtap="onOpenCart">
+      <text class="u-serif-amount">{{format.formatMoney(cartTotal)}}</text>
+      <text class="u-info__meta">{{cartText}}</text>
+    </view>
+    <hz-button text="{{texts.checkout}}" disabled="{{cartCount === 0}}" bind:press="onCheckout" />
+  </hz-action-bar>
+</block>
+<hz-sheet show="{{cartSheet}}" title="{{texts.picked}}" footer bind:close="onCloseCart">
+  <view class="u-sheet-form">
+    <hz-line-item lines="{{cartRows}}" mode="qty" removable bind:qty="onCartQty" bind:remove="onCartRemove" />
+  </view>
+  <hz-button slot="footer" kind="secondary" text="{{texts.clear}}" bind:press="onClear" />
+  <hz-button slot="footer" text="{{texts.checkout}}" disabled="{{cartCount === 0}}" bind:press="onCheckout" />
+</hz-sheet>

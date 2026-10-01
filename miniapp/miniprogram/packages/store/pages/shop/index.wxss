@@ -1,0 +1,62 @@
+/* 订货：顶部信息 + 搜索，下面左侧分类、右侧产品（只写布局） */
+.hz-shop__top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-line-gap);
+  padding: 12px var(--hz-gap-page) 0;
+}
+
+.hz-shop__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hz-shop__body {
+  display: flex;
+  height: calc(100vh - 260px);
+  margin-top: var(--hz-gap-controls);
+}
+
+.hz-shop__side {
+  flex: none;
+  width: 96px;
+}
+
+.hz-shop__main {
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--hz-gap-page) 0 var(--hz-line-gap);
+}
+
+.hz-shop__product {
+  display: flex;
+  gap: var(--hz-row-pad);
+  padding: var(--hz-row-pad);
+  margin-bottom: var(--hz-card-gap);
+}
+
+.hz-shop__info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.hz-shop__name {
+  font-size: var(--hz-font-md);
+}
+
+.hz-shop__buy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hz-shop__bar {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: var(--hz-tap);
+}

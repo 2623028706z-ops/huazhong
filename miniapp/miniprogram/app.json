@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/login/index",
+    "pages/link/index",
     "pages/home/index",
     "pages/my/index",
     "pages/inventory/index",
@@ -9,13 +10,63 @@
     "pages/dev-gallery/index"
   ],
   "subPackages": [
-    { "root": "packages/sales", "pages": ["pages/home/index"] },
-    { "root": "packages/shipping", "pages": ["pages/home/index"] },
-    { "root": "packages/purchase", "pages": ["pages/home/index"] },
-    { "root": "packages/warehouse", "pages": ["pages/home/index"] },
-    { "root": "packages/finance", "pages": ["pages/home/index"] },
-    { "root": "packages/store", "pages": ["pages/home/index"] },
-    { "root": "packages/supplier", "pages": ["pages/home/index"] }
+    {
+      "root": "packages/sales",
+      "pages": [
+        "pages/home/index",
+        "pages/orders/index",
+        "pages/order-detail/index",
+        "pages/order-form/index",
+        "pages/afters/index",
+        "pages/after-detail/index",
+        "pages/after-form/index",
+        "pages/customers/index",
+        "pages/products/index",
+        "pages/product-form/index",
+        "pages/directory/index"
+      ]
+    },
+    {
+      "root": "packages/shipping",
+      "pages": ["pages/home/index", "pages/list/index", "pages/ship/index"]
+    },
+    {
+      "root": "packages/purchase",
+      "pages": ["pages/home/index"]
+    },
+    {
+      "root": "packages/warehouse",
+      "pages": ["pages/home/index"]
+    },
+    {
+      "root": "packages/finance",
+      "pages": [
+        "pages/home/index",
+        "pages/customers/index",
+        "pages/customer/index",
+        "pages/receive/index",
+        "pages/records/index",
+        "pages/methods/index"
+      ]
+    },
+    {
+      "root": "packages/store",
+      "pages": [
+        "pages/home/index",
+        "pages/shop/index",
+        "pages/cart/index",
+        "pages/orders/index",
+        "pages/checkout/index",
+        "pages/order-detail/index",
+        "pages/afters/index",
+        "pages/after-form/index",
+        "pages/statement/index"
+      ]
+    },
+    {
+      "root": "packages/supplier",
+      "pages": ["pages/home/index"]
+    }
   ],
   "window": {
     "navigationStyle": "custom",

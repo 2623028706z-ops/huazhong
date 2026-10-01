@@ -251,3 +251,117 @@
   color: var(--hz-muted);
   text-align: center;
 }
+
+/* 详情页的信息卡（views/detail.wxml）：单号 + 状态，下面「标签　值」一行一项 */
+.u-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-line-gap);
+  padding: var(--hz-row-pad) var(--hz-card-pad);
+  font-size: var(--hz-font-note);
+}
+
+.u-info__head {
+  display: flex;
+  gap: var(--hz-line-gap);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.u-info__title {
+  font-size: var(--hz-font-md);
+  font-weight: 600;
+}
+
+.u-info__meta {
+  color: var(--hz-muted);
+}
+
+/* 一张卡里的多行（售后产品），行间细线 */
+.u-info__line {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: var(--hz-line-gap);
+  border-bottom: 1px solid var(--hz-line);
+}
+
+.u-info__line:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+/* 售后图片缩略图 1:1 */
+.u-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--hz-line-gap);
+}
+
+.u-thumbs__item {
+  width: 72px;
+  height: 72px;
+  background: var(--hz-tint);
+  border-radius: var(--hz-radius-inner);
+}
+
+/* 选择弹层里的一行（选订单、选产品）：整行可点 */
+.u-pick-row {
+  display: flex;
+  gap: var(--hz-row-pad);
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--hz-tap);
+  padding: var(--hz-line-gap) var(--hz-gap-sheet);
+  font-size: var(--hz-font);
+  border-top: 1px solid var(--hz-line);
+}
+
+.u-pick-row__sub {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+/* 表单里一行一张卡片、行里有多个字段（申请售后、售后表单、配方） */
+.u-form-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-row-pad);
+  padding: var(--hz-row-pad) var(--hz-card-pad);
+}
+
+/* 左侧列表 + 右侧内容（客户门店、订货目录） */
+.u-split {
+  display: flex;
+  min-height: calc(100vh - 160px);
+}
+
+.u-split__side {
+  flex: none;
+  width: 108px;
+}
+
+.u-split__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--hz-card-gap);
+  min-width: 0;
+  padding: 0 var(--hz-gap-page) 12px var(--hz-line-gap);
+}
+
+/* 带图的一行（产品管理）：左图右字 */
+.u-product {
+  display: flex;
+  gap: var(--hz-row-pad);
+  align-items: center;
+  padding: var(--hz-row-pad);
+}
+
+.u-product__info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}

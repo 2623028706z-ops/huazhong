@@ -1,0 +1,21 @@
+<hz-cover mode="login" />
+<hz-navbar transparent />
+<view class="u-home">
+  <hz-brand lead="{{texts.invite}}" person="{{storeLabel}}" />
+  <view class="u-home__body">
+    <hz-state wx:if="{{phase === 'failure'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+    <hz-state wx:elif="{{phase === 'invalid'}}" kind="linkInvalid" detail="{{invalidDetail}}" />
+    <block wx:elif="{{phase === 'other'}}">
+      <hz-state kind="empty" message="{{otherText}}" />
+      <hz-button kind="secondary" text="{{texts.goMy}}" bind:press="onGoMy" />
+    </block>
+    <block wx:elif="{{phase === 'login'}}">
+      <view class="hz-link__agree" bindtap="onToggleAgree">
+        <text class="hz-link__check {{agreed ? 'hz-link__check--on' : ''}} hz-icon {{agreed ? 'hz-icon--check' : ''}}"></text>
+        <text>{{texts.prefix}}<text class="hz-link__contract" catchtap="onOpenContract">{{texts.contract}}</text></text>
+      </view>
+      <hz-error wx:if="{{error}}" message="{{error}}" />
+      <hz-button text="{{texts.button}}" open-type="{{openType}}" loading="{{busy}}" bind:press="onPress" bind:phone="onPhone" />
+    </block>
+  </view>
+</view>

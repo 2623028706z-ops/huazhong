@@ -1,0 +1,37 @@
+.hz-side-list {
+  height: 100%;
+}
+
+.hz-side-list__item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+  min-height: var(--hz-tap);
+  padding: var(--hz-line-gap) var(--hz-row-pad);
+  font-size: var(--hz-font);
+  color: var(--hz-muted);
+}
+
+.hz-side-list__item--on {
+  font-weight: 600;
+  color: var(--hz-ink);
+  background: var(--hz-paper);
+}
+
+.hz-side-list__item--on::before {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 2px;
+  content: '';
+  background: var(--hz-brand);
+}
+
+.hz-side-list__sub {
+  font-size: var(--hz-font-xs);
+  font-weight: 400;
+  color: var(--hz-muted);
+}

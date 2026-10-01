@@ -1,0 +1,17 @@
+{
+  "usingComponents": {
+    "hz-navbar": "/components/hz-navbar/index",
+    "hz-filter-bar": "/components/hz-filter-bar/index",
+    "hz-statement": "/components/hz-statement/index",
+    "hz-card": "/components/hz-card/index",
+    "hz-skeleton": "/components/hz-skeleton/index",
+    "hz-state": "/components/hz-state/index",
+    "hz-error": "/components/hz-error/index",
+    "hz-notice": "/components/hz-notice/index",
+    "hz-status": "/components/hz-status/index",
+    "hz-action-bar": "/components/hz-action-bar/index",
+    "hz-button": "/components/hz-button/index",
+    "hz-sheet": "/components/hz-sheet/index",
+    "hz-reason-sheet": "/components/hz-reason-sheet/index"
+  }
+}

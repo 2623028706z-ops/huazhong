@@ -6,6 +6,9 @@
     "hz-navbar": "../hz-navbar/index",
     "hz-state": "../hz-state/index",
     "hz-error": "../hz-error/index",
-    "hz-tabbar": "../hz-tabbar/index"
+    "hz-tabbar": "../hz-tabbar/index",
+    "hz-entry-grid": "../hz-entry-grid/index",
+    "hz-card": "../hz-card/index",
+    "hz-button": "../hz-button/index"
   }
 }

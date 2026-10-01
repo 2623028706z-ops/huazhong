@@ -1,0 +1,34 @@
+<import src="/views/pick.wxml" />
+<hz-navbar title="{{title}}" back guard="{{changed}}" />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<block wx:else>
+  <view class="u-list">
+    <hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" />
+    <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+    <hz-error wx:if="{{formError}}" message="{{formError}}" />
+  </view>
+  <hz-skeleton wx:if="{{!loaded}}" type="list" />
+  <hz-state wx:elif="{{side.length === 0}}" object="{{texts.noCustomers}}" />
+  <view wx:else class="u-split">
+    <view class="u-split__side">
+      <hz-side-list items="{{side}}" value="{{customerId}}" bind:change="onCustomer" />
+    </view>
+    <view class="u-split__main">
+      <text wx:if="{{rows.length === 0}}" class="u-info__meta">{{texts.empty}}</text>
+      <view wx:for="{{rows}}" wx:key="productId" class="u-card u-form-card">
+        <view class="u-info__head">
+          <text class="u-info__title">{{item.name}}</text>
+          <text class="u-info__meta">{{item.meta}}</text>
+        </view>
+        <hz-field label="{{texts.price}}" type="digit" value="{{item.priceText}}" error="{{rowErrors[item.productId]}}" data-key="{{item.productId}}" bind:change="onPrice" />
+        <hz-switch label="{{texts.enabled}}" value="{{item.enabled}}" data-key="{{item.productId}}" bind:change="onEnabled" />
+      </view>
+    </view>
+  </view>
+</block>
+<hz-action-bar>
+  <hz-button kind="secondary" text="{{texts.add}}" bind:press="onOpenPick" />
+  <hz-button text="{{texts.save}}" loading="{{saving}}" bind:press="onSave" />
+</hz-action-bar>
+<template is="pick-sheet" data="{{show: pickSheet, title: texts.pickTitle, picks, empty: texts.noPick}}" />
+<hz-confirm id="hz-confirm" />

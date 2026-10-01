@@ -1,0 +1,67 @@
+<hz-navbar title="{{title}}" back />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<block wx:else>
+  <view class="u-list">
+    <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+  </view>
+  <hz-skeleton wx:if="{{!loaded}}" type="list" />
+  <hz-state wx:elif="{{side.length === 0}}" object="{{texts.empty}}" />
+  <view wx:else class="u-split">
+    <view class="u-split__side">
+      <hz-side-list items="{{side}}" value="{{customerId}}" bind:change="onCustomer" />
+    </view>
+    <view class="u-split__main">
+      <view class="u-info__head">
+        <text class="u-info__title">{{customerName}}</text>
+        <hz-button kind="text" text="{{texts.editCustomer}}" bind:press="onEditCustomer" />
+      </view>
+      <text wx:if="{{stores.length === 0}}" class="u-info__meta">{{texts.noStores}}</text>
+      <view wx:for="{{stores}}" wx:key="id" data-key="{{item.id}}" bindtap="onOpen">
+        <hz-card title="{{item.title}}" total="{{item.total}}" meta="{{item.meta}}" tags="{{item.tags}}" />
+      </view>
+    </view>
+  </view>
+</block>
+<hz-action-bar wx:if="{{canCreate || canCreateCustomer}}">
+  <hz-button wx:if="{{canCreateCustomer}}" kind="secondary" text="{{texts.createCustomer}}" bind:press="onNewCustomer" />
+  <hz-button wx:if="{{canCreate}}" text="{{texts.createStore}}" bind:press="onNewStore" />
+</hz-action-bar>
+<hz-sheet show="{{customerSheet}}" title="{{editingCustomer ? texts.customerTitle : texts.newCustomerTitle}}" guard footer bind:close="onCloseSheet">
+  <view class="u-sheet-form">
+    <hz-error wx:if="{{formError}}" message="{{formError}}" />
+    <hz-field label="{{texts.name}}" value="{{customerForm.name}}" error="{{fields.name}}" bind:change="onCustomerName" />
+    <hz-switch label="{{texts.enabled}}" value="{{customerForm.enabled}}" bind:change="onCustomerEnabled" />
+  </view>
+  <hz-button slot="footer" text="{{texts.save}}" loading="{{saving}}" bind:press="onSaveCustomer" />
+</hz-sheet>
+<hz-sheet show="{{storeSheet}}" title="{{editingStore ? texts.storeTitle : texts.newStoreTitle}}" guard footer bind:close="onCloseSheet">
+  <view class="u-sheet-form">
+    <hz-error wx:if="{{formError}}" message="{{formError}}" />
+    <hz-picker wx:if="{{!editingStore}}" label="{{texts.customer}}" options="{{customerOptions}}" value="{{storeForm.customerId}}" error="{{fields.customerId}}" data-field="customerId" bind:change="patchStore" />
+    <hz-field label="{{texts.name}}" value="{{storeForm.name}}" error="{{fields.name}}" data-field="name" bind:change="patchStore" />
+    <hz-field label="{{texts.contact}}" value="{{storeForm.contact}}" error="{{fields.contact}}" data-field="contact" bind:change="patchStore" />
+    <hz-field label="{{texts.phone}}" value="{{storeForm.phone}}" type="number" data-field="phone" bind:change="patchStore" />
+    <hz-field label="{{texts.address}}" value="{{storeForm.address}}" data-field="address" bind:change="patchStore" />
+    <view class="u-sheet-form__group">
+      <hz-field label="{{texts.loginPhone}}" value="{{storeForm.loginPhone}}" type="number" error="{{fields.loginPhone}}" data-field="loginPhone" bind:change="patchStore" />
+      <hz-switch label="{{texts.enabled}}" value="{{storeForm.enabled}}" data-field="enabled" bind:change="patchStore" />
+      <view wx:if="{{canUnbind}}" class="u-sheet-form__row">
+        <text>{{texts.wechat}}</text>
+        <view class="u-sheet-form__value">
+          <text>{{texts.bound}}</text>
+          <hz-button kind="text" text="{{texts.unbind}}" bind:press="onUnbind" />
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{invite}}" class="u-sheet-form__group">
+      <text class="u-field__label">{{texts.invite}}</text>
+      <block wx:if="{{shared}}">
+        <text class="u-info__meta">{{shared.expiresText}}</text>
+        <hz-button kind="secondary" text="{{texts.share}}" open-type="share" />
+      </block>
+      <hz-button wx:else kind="secondary" text="{{texts.generate}}" disabled="{{!invite.enabled}}" reason="{{invite.reason}}" loading="{{saving}}" bind:press="onGenerateInvite" />
+    </view>
+  </view>
+  <hz-button slot="footer" text="{{texts.save}}" loading="{{saving}}" bind:press="onSaveStore" />
+</hz-sheet>
+<hz-confirm id="hz-confirm" />

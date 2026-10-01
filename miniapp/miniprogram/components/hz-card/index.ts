@@ -21,6 +21,8 @@ Component({
     meta: { type: String, value: '' },
     // 分；null 不显示
     amount: { type: null, optionalTypes: [Number], value: null as number | null },
+    // amount 为 null 时这一格写的字，例如售后「待确认」「—」
+    amountText: { type: String, value: '' },
     tags: { type: Array, value: [] as Tag[] },
   },
   data: { today: '' },

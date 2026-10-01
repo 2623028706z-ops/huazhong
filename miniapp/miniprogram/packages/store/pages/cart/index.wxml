@@ -1,0 +1,25 @@
+<wxs src="../../../../core/format.wxs" module="format" />
+<hz-navbar title="{{title}}" />
+<view class="u-list">
+  <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+  <block wx:else>
+    <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+    <hz-notice wx:if="{{notice}}" text="{{notice}}" />
+    <hz-skeleton wx:if="{{!loaded}}" type="list" />
+    <hz-state wx:elif="{{rows.length === 0}}" object="{{emptyObject}}" />
+    <block wx:else>
+      <hz-line-item lines="{{rows}}" mode="qty" removable bind:qty="onQty" bind:remove="onRemove" />
+      <view class="hz-cart__clear">
+        <hz-button kind="text" text="{{texts.clear}}" bind:press="onClear" />
+      </view>
+      <view class="u-card hz-cart__settle">
+        <view class="hz-cart__sum">
+          <text class="u-serif-amount">{{format.formatMoney(total)}}</text>
+          <text class="u-info__meta">{{countText}}</text>
+        </view>
+        <hz-button text="{{texts.checkout}}" disabled="{{count === 0 || notice !== ''}}" reason="{{notice}}" bind:press="onCheckout" />
+      </view>
+    </block>
+  </block>
+</view>
+<hz-tabbar tabs="{{tabs}}" current="cart" />

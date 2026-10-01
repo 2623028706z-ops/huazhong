@@ -1,0 +1,29 @@
+/* 隐私勾选一行：勾选框 + 说明（外观同登录页） */
+.hz-link__agree {
+  display: flex;
+  gap: var(--hz-line-gap);
+  align-items: center;
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+.hz-link__check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: var(--hz-font-xs);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--hz-rule);
+}
+
+.hz-link__check--on {
+  color: var(--hz-on-brand);
+  background: var(--hz-brand);
+  box-shadow: none;
+}
+
+.hz-link__contract {
+  color: var(--hz-ink);
+}
