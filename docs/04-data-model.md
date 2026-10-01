@@ -144,20 +144,20 @@
 
 | 表 | 字段（类型与约束） | 说明 | 原型字段 |
 |---|---|---|---|
-| `customers` | `name TEXT NOT NULL UNIQUE`、`enabled` | 客户（往来单位），对账按客户。停用规则见 03 章第 5 节 | `customers[]`（原型没有 enabled，新加） |
-| `stores` | `customer_id → customers.id NOT NULL`、`name TEXT NOT NULL`、`contact TEXT`、`phone TEXT`、`address TEXT`、`enabled` | 唯一 `(customer_id, name)`。停用规则见 03 章第 2、5 节 | `stores[]` |
-| `product_categories` | `name TEXT NOT NULL UNIQUE`、`sort INTEGER NOT NULL DEFAULT 0` | 产品分类（门店订货左侧分类） | `cats[]` |
-| `products` | `name TEXT NOT NULL`、`category_id → product_categories.id`、`unit TEXT NOT NULL`、`image_file_id → files.id NULL`、`enabled` | 成品。停用规则见 03 章第 5 节；原型没有产品级启用，新加 | `products[]` |
-| `product_bom_lines` | `product_id → products.id`、`material_id → materials.id`、`qty INTEGER NOT NULL CHECK (qty > 0)` | 配方，唯一 `(product_id, material_id)`。直接关联花材，原型的「配方对不上花材资料」在新版不会出现 | `bom[]` |
-| `catalog_items` | `customer_id → customers.id`、`product_id → products.id`、`price_cents INTEGER NOT NULL CHECK (price_cents >= 0)`、`enabled`、有版本 | 订货目录：每个客户一份价目。唯一 `(customer_id, product_id)`。`enabled=false` 即停订 | `directory[客户][]` |
+| `customers` | `name TEXT NOT NULL UNIQUE`、`enabled`、有版本 | 客户（往来单位），对账按客户。在客户门店页新建、改名、启用 / 停用；停用规则见 03 章第 5 节 | `customers[]`（原型没有 enabled，新加） |
+| `stores` | `customer_id → customers.id NOT NULL`、`name TEXT NOT NULL`、`contact`、`phone`、`address` 都是 `TEXT NOT NULL DEFAULT ''`、`enabled`、有版本 | 唯一 `(customer_id, name)`。填了登录手机号（有启用的门店账号）时 `contact` 不能为空，门店账号的 `accounts.name` 跟着 `contact` 改（服务层，同一事务）。停用规则见 03 章第 2、5 节 | `stores[]` |
+| `product_categories` | `name TEXT NOT NULL UNIQUE`、`sort INTEGER NOT NULL DEFAULT 0` | 产品分类（门店订货左侧分类）。按 `sort, id` 排；没有产品（含停用的产品）时可以删除（03 章第 5 节） | `cats[]` |
+| `products` | `name TEXT NOT NULL UNIQUE`、`category_id → product_categories.id`、`unit TEXT NOT NULL`、`image_file_id → files.id NULL`、`enabled`、有版本 | 成品。停用规则见 03 章第 5 节；原型没有产品级启用，新加 | `products[]` |
+| `product_bom_lines` | `product_id → products.id`、`material_id → materials.id`、`qty INTEGER NOT NULL CHECK (qty > 0)` | 配方，唯一 `(product_id, material_id)`；每个产品至少一行（服务层）。直接关联花材，原型的「配方对不上花材资料」在新版不会出现 | `bom[]` |
+| `catalog_items` | `customer_id → customers.id`、`product_id → products.id`、`price_cents INTEGER NOT NULL CHECK (price_cents >= 0)`、`enabled`、有版本 | 订货目录：每个客户一份价目。唯一 `(customer_id, product_id)`。`enabled=false` 即停订。改 `price_cents` 时同一事务更新这个客户待确认订单里这种产品的 `order_lines.price_cents`、`list_price_cents`（03 章第 8.1 节） | `directory[客户][]` |
 
 ### 4.2 `orders` 订单（有版本）
 
 | 字段 | 类型与约束 | 说明 | 原型字段 |
 |---|---|---|---|
 | no | `TEXT NOT NULL UNIQUE` | SO-… | `id` |
-| order_date | `DATE NOT NULL` | 下单日期；门店改单不变 | `date` |
-| ship_date | `DATE NOT NULL` | 出货日期；门店端不能早于今天，销售可以，服务层校验 | `ship` |
+| order_date | `DATE NOT NULL` | 下单日期 = 录入那天（服务端写），门店和销售都不能改 | `date` |
+| ship_date | `DATE NULL` | 出货日期，由销售定：门店下的单待确认时为空，确认订单、修改并确认时写入；销售可以选今天以前（补录） | `ship` |
 | customer_id | `→ customers.id NOT NULL` | | `customer` |
 | store_id | `→ stores.id NOT NULL` | 必须属于 customer_id（服务层校验） | `store` |
 | status | `order_status NOT NULL` | | `status` |
@@ -169,9 +169,9 @@
 | cancelled_by / cancelled_at | `NULL` | | 无 |
 | cancel_reason | `TEXT NULL` | 取消原因；待确认取消时为空 | `closeReason` |
 
-约束：`CHECK (status <> 'shipped' OR shipped_at IS NOT NULL)`。索引：`(status, ship_date)`、`(store_id, order_date DESC)`、`(customer_id, status)`。
+约束：`CHECK (status <> 'shipped' OR shipped_at IS NOT NULL)`、`CHECK (status <> 'pending_confirm' OR ship_date IS NULL)`、`CHECK (status NOT IN ('to_ship','shipped') OR ship_date IS NOT NULL)`。索引：`(status, ship_date)`、`(store_id, order_date DESC)`、`(customer_id, status)`。
 
-状态流转：门店下单 → `pending_confirm`；销售新建 → `to_ship`；`pending_confirm` → `to_ship`（确认、修改并确认）；`to_ship` → `shipped`（确认发货）；`pending_confirm`、`to_ship` → `cancelled`。
+状态流转：门店下单 → `pending_confirm`；销售新建 → `to_ship`；`pending_confirm` → `to_ship`（确认、修改并确认，同时写 `ship_date`）；`to_ship` → `shipped`（确认发货）；`pending_confirm`、`to_ship` → `cancelled`。
 
 ### 4.3 `order_lines` 订单明细
 
@@ -181,8 +181,8 @@
 | product_id | `→ products.id NOT NULL` | 唯一 `(order_id, product_id)` | `product` |
 | name / unit | `TEXT NOT NULL` | 快照 | `name`、`unit` |
 | qty | `INTEGER NOT NULL CHECK (qty > 0)` | 订货数量 | `qty` |
-| price_cents | `INTEGER NOT NULL CHECK (price_cents >= 0)` | 下单单价，可改（改过的标「改价」） | `price` |
-| list_price_cents | `INTEGER NOT NULL CHECK (list_price_cents >= 0)` | 下单时的目录价快照 | `listPrice` |
+| price_cents | `INTEGER NOT NULL CHECK (price_cents >= 0)` | 下单单价，销售可改（改过的标「改价」）；待确认订单始终等于目录价，随目录调价同步 | `price` |
+| list_price_cents | `INTEGER NOT NULL CHECK (list_price_cents >= 0)` | 下单时的目录价快照；待确认订单随目录调价同步 | `listPrice` |
 | shipped_qty | `INTEGER NULL CHECK (shipped_qty >= 0 AND shipped_qty <= qty)` | 实发；确认发货时写，之后不能改 | `shipped` |
 | sort | `INTEGER NOT NULL` | 显示顺序 | 数组下标 |
 
@@ -193,7 +193,7 @@
 | order_id | `→ orders.id NOT NULL` | | |
 | actor_label | `TEXT NOT NULL` | 快照 | `changes[].actor` |
 | reason | `TEXT NOT NULL DEFAULT ''` | 门店改单为空；销售改单、修改并确认必填 | `changes[].reason` |
-| items | `JSONB NOT NULL` | 字符串数组，例如 `["粉玫瑰日常花束 数量 15 → 18","出货日期 2026-09-29 → 2026-09-30"]`；内容没变不写记录 | `changes[].items` |
+| items | `JSONB NOT NULL` | 字符串数组，例如 `["粉玫瑰日常花束 数量 15 → 18","出货日期 2026-09-29 → 2026-09-30"]`；内容没变不写记录；确认订单时第一次写出货日期、目录调价同步单价都不写 | `changes[].items` |
 
 索引 `(order_id, created_at)`。有记录即卡片标「改单」。
 
@@ -228,7 +228,7 @@
 | qty | `INTEGER NOT NULL CHECK (qty >= 0)` | 售后数量：门店提交时 = `requested_qty`；销售处理门店售后时改这一列，可以填 0，服务层校验至少一行 > 0 | `qty` |
 | price_cents | `INTEGER NOT NULL CHECK (price_cents >= 0)` | 默认发货单价，只能改低（服务层对 `order_lines.price_cents` 校验） | `price` |
 | reason | `after_reason NOT NULL` | 门店提交的售后只读 | `reason` |
-| description | `TEXT NOT NULL DEFAULT ''` | 问题说明；门店提交时必填 | `description` |
+| description | `TEXT NOT NULL DEFAULT ''` | 问题说明；门店提交时必填，销售新建时选填 | `description` |
 | sort | `INTEGER NOT NULL` | | 下标 |
 
 行金额 = `qty × price_cents`，整数不需要四舍五入。原型的 `max`（可申请数量）不存，按第 8 节现算。
@@ -241,7 +241,7 @@
 | file_id | `→ files.id NOT NULL` | 只能引用 `purpose='after_image' AND status='ok'` | `images[]` |
 | sort | `SMALLINT NOT NULL` | | |
 
-唯一 `(after_line_id, file_id)`；每行最多 `AFTER_IMAGE_MAX_COUNT` 张（服务层校验，单张 ≤ `IMAGE_MAX_BYTES` 在签名时限制，配置在 `shared/config`）。
+只有门店提交的售后有图片，销售新建的不带。唯一 `(after_line_id, file_id)`；每行最多 `AFTER_IMAGE_MAX_COUNT` 张（服务层校验，单张 ≤ `IMAGE_MAX_BYTES` 在签名时限制，配置在 `shared/config`）。
 
 ### 4.8 `store_invites` 门店邀请下单
 
@@ -434,7 +434,7 @@
 | 字段 | 类型与约束 | 说明 | 原型字段 |
 |---|---|---|---|
 | no | `TEXT NOT NULL UNIQUE` | SK-… | `id` |
-| receipt_date | `DATE NOT NULL` | | `date` |
+| receipt_date | `DATE NOT NULL` | 不晚于今天（服务层） | `date` |
 | customer_id | `→ customers.id NOT NULL` | 按客户登记 | `customer` |
 | amount_cents | `INTEGER NOT NULL CHECK (amount_cents > 0)` | | `amount` |
 | method_name | `TEXT NOT NULL` | 快照；登记时必须是启用的收款方式 | `method` |
@@ -463,7 +463,7 @@
 | 字段 | 类型与约束 | 说明 | 原型字段 |
 |---|---|---|---|
 | no | `TEXT NOT NULL UNIQUE` | FK-… | `id` |
-| pay_date | `DATE NOT NULL` | | `date` |
+| pay_date | `DATE NOT NULL` | 不晚于今天（服务层） | `date` |
 | supplier_id | `→ suppliers.id NOT NULL` | | `supplier` |
 | po_id | `→ purchase_orders.id NULL` | | `po`（PO- 开头） |
 | wh_doc_id | `→ wh_docs.id NULL` | 只能是手工入库单 | `po`（RK- 开头） |
@@ -486,6 +486,8 @@
 | 售后金额（`afterCents`）、应收 | `afters.amount_cents`（`status='processed'`） | 应收不小于 0 |
 | 已收、未收（`unpaidCents`）、预收（`prepaidCents`）、`payStatus`、`offsetByAfter` | `allocations`（`revoked_at IS NULL`）、`receipts`（`status='valid'`、`amount_cents`） | 按客户取核销，按 `created_at` 升序逐条算生效金额 = min(登记金额, 发货单剩余应收, 这笔收款剩余)，≤ 0 跳过。`payStatus`：未收 ≤ 0 为 `paid`，已收 > 0 为 `partial`，否则 `unpaid`；`offsetByAfter` = 应收 0 且售后 > 0。作废售后、作废收款后不改核销表，重算即可 |
 | 可申请售后数量（`maxQty`） | `order_lines.shipped_qty`、`after_lines.qty`（所属售后 `status IN ('pending','processed')`） | 处理某张售后时排除这张本身 |
+| 门店售后申请期限 | `orders.shipped_at` | `shipped_at` 的上海日期 + `AFTER_APPLY_DAYS` ≥ 今天才在期限内；只限门店申请（`applyAfter`），销售新建不看 |
+| 对账按出货日期筛选 | `orders.ship_date` | `from`、`to` 只筛发货单和对账格里的发货金额、售后、已收、未收；预收按客户全部有效收款和核销算，不受筛选影响 |
 | 应付（`payableCents`）、`apStatus`、`allReturned` | `purchase_order_lines.received_qty`、`returned_qty`、`price_cents`；`wh_doc_lines.qty`、`price_cents`；`payments`（`status='valid'`） | 采购单只算 `received`；手工入库单 `voided` 为 0。`apStatus`：有有效付款 `paid`，应付 0 `no_pay`，否则 `to_pay`。`allReturned`：已收货且每行 `returned_qty = received_qty` |
 | 可退数量（`maxReturnQty`） | `received_qty − returned_qty`、这种花材的库存 | 取两者较小值 |
 | 库存（`stockQty`、`bookQty`） | `stock_batches.left_qty` | 和流水的核对见 6.3 |
@@ -494,7 +496,7 @@
 ### 8.1 `actions` 和 `lockedReason`
 
 - 不存库。每次返回详情或列表项（以及列表级 `actions`）时，service 按「账号角色 + 数据归属 + 单据当前状态」算出 `actions`（`[{ code, enabled, disabledReason, reasonRequired }]`，操作码见 05 第 1.5 节）和 `lockedReason`，文案在 `shared/copy`。
-- `enabled: false` 和 `disabledReason`、`reasonRequired` 同样是查询时算的；明细行能否增删（`addLine`、`removeLine`）、能否换供应商（`changeSupplier`）也在这里算（看 `afters.origin`、`purchase_orders.invite_id`），不存布尔字段。
+- `enabled: false` 和 `disabledReason`、`reasonRequired` 同样是查询时算的；能否换供应商（`changeSupplier`）也在这里算（看 `purchase_orders.invite_id`），不存布尔字段。
 - 用到的判断（是否付过款、可申请数量、应付、门店是否启用）复用第 8 节表里的同一批函数，写接口的前置校验也调同一个函数，不另写一份。
 - 列表查询一次算完整页的 `actions`，不在循环里逐条查库（例如一条 SQL 带出每张采购单是否付过款）。
 
@@ -552,8 +554,8 @@ erDiagram
 
 ## 10. 模型约束与技术表示
 
-以下两条已写入当前模型和接口，属于现行实现约束；第 3 条是后续阶段需要统一的技术表示，不是新增业务决定：
+以下三条已写入当前模型和接口，属于现行实现约束：
 
 1. 同一订单同一产品只允许一行明细（原型按产品去重），`order_lines`、`purchase_order_lines`、`wh_doc_lines` 都加了唯一约束。
 2. 核销预收时多笔收款按收款时间先后扣（原型 `finSaveReceive`），本文照此写在 05 章，没有单独字段。
-3. `stores` 的联系人、电话、地址写的是可空 `TEXT`，`suppliers` 的是 `NOT NULL DEFAULT ''`，两种写法要统一成一种。阶段 0 只建了这两张表的名称、归属、启用列，其余列在阶段 3、4 加的时候一起定。
+3. `stores`、`suppliers` 的联系人、电话、地址统一写成 `TEXT NOT NULL DEFAULT ''`（没填就是空字符串，接口也返回 `""`），阶段 3、4 加列时按这个写。

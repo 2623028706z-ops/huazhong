@@ -8,7 +8,7 @@
 |---|---|---|
 | 权限 | 每个接口按角色和数据归属做最终校验 | 只按后端返回的结果显示或隐藏入口，不自己判断角色 |
 | 业务规则 | 状态流转、前提条件、数量上限、互斥，全部在后端做最终校验 | 不重复写业务规则 |
-| 能做哪些操作 | 每张单据返回 `actions`：当前账号在这张单上能看到的操作按钮，一个列表，每项 `{ code, enabled, disabledReason, reasonRequired }`。`enabled: false` 表示按钮显示成禁用，`disabledReason` 写原因（例如门店停用时的「确认订单」：「门店已停用，启用后才能确认」）；`reasonRequired` 表示提交时必须写原因（例如取消待发货的订单）；不适用的字段为 `null`。明细行能不能增删、能不能换供应商这类，也用操作码表达（例如 `addLine`、`removeLine`、`changeSupplier` 在不在列表里），不另加 `xxxLocked`、`xxxEditable` 字段。需要写状态提示时另返回 `lockedReason`（一句话，可以和 `actions` 同时出现，没有就是 `null`） | 按 `actions` 显示按钮：`enabled` 为 true 的可点，false 的显示禁用并写 `disabledReason`；按 `reasonRequired` 决定弹层里要不要原因框；按 `lockedReason` 显示状态提示。不根据状态自己推算。只和本页输入有关的条件（例如还没勾选花材）由前端自己禁用 |
+| 能做哪些操作 | 每张单据返回 `actions`：当前账号在这张单上能看到的操作按钮，一个列表，每项 `{ code, enabled, disabledReason, reasonRequired }`。`enabled: false` 表示按钮显示成禁用，`disabledReason` 写原因（例如门店停用时的「确认订单」：「门店已停用，启用后才能确认」）；`reasonRequired` 表示提交时必须写原因（例如取消待发货的订单）；不适用的字段为 `null`。能不能换供应商这类，也用操作码表达（例如 `changeSupplier` 在不在列表里），不另加 `xxxLocked`、`xxxEditable` 字段。需要写状态提示时另返回 `lockedReason`（一句话，可以和 `actions` 同时出现，没有就是 `null`） | 按 `actions` 显示按钮：`enabled` 为 true 的可点，false 的显示禁用并写 `disabledReason`；按 `reasonRequired` 决定弹层里要不要原因框；按 `lockedReason` 显示状态提示。不根据状态自己推算。只和本页输入有关的条件（例如还没勾选花材）由前端自己禁用 |
 | 金额、库存 | 应收、应付、预收、已收、未收、可申请数量、余量都由后端算好返回 | 只显示，不计算。例外：表单里边输入边显示的行金额、合计、盘点差异，以及从余量带出的缺口（`gapOf(leftQty)`），用 `shared` 里前后端同一个函数算，提交后以后端返回为准 |
 | 校验 | 用 `shared` 的同一份 Zod 规则做最终校验 | 用同一份规则即时提示，减少来回；提交结果以后端为准 |
 | 界面 | — | 交互、展示、加载、空、断网、报错、提交中、实时提示（02 章第 5 节） |
