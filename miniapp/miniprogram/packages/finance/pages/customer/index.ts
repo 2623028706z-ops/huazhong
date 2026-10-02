@@ -1,29 +1,27 @@
 // F3 客户对账详情（06 章 F3）：筛选收款状态、出货日期（默认全部）→ 对账格 → 发货单三行卡片。
 // 底部「核销预收」（allocate，次）、「登记收款」（registerReceipt）→ F4。
 // 同一个弹层里切换：发货单 → 售后详情（作废售后）/ 收款详情（作废收款），左上角返回上一层
-import {
-  contract,
-  copy,
-  payStatuses,
-  type AfterDetail,
-  type ArCard,
-  type PayStatus,
-  type ReceiptDetail,
-} from '@huazhong/shared'
+import { contract, copy, payStatuses, type ArCard, type PayStatus } from '@huazhong/shared'
 import { buttonsOf, type ButtonView } from '../../../../core/actions'
-import type { CodeEvent, DetailEvent, KeyEvent } from '../../../../core/events'
+import type { CodeEvent, KeyEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { emptyFilter } from '../../../../core/filter'
 import type { PagedList } from '../../../../core/list'
 import { request, type Result } from '../../../../core/request'
-import { failureOf, messageOf } from '../../../../core/session'
-import { showSuccess } from '../../../../core/toast'
+import { failureOf } from '../../../../core/session'
 import { arRowOf } from '../../../../views/ar'
-import { listHandlers, listOf, listQueryOf, showList } from '../../../../views/list'
-import { receiptViewOf } from '../../receipt-view'
+import { listHandlers, listOf, listQueryOf } from '../../../../views/list'
+import {
+  PaymentPanel,
+  paymentPanelData,
+  paymentPanelHandlers,
+} from '../../../../views/payment-panel'
+import { watch } from '../../../../core/live'
 import { afterSheetOf, cellsOf, orderSheetOf } from './view'
+import { textOfCents } from '../../../../core/money'
+import { labels } from '@huazhong/shared'
 
-type Layer = 'order' | 'after' | 'receipt'
+type Layer = 'order' | 'after'
 
 // 标成 string：取到客户名后换成客户名
 const DEFAULT_TITLE: string = copy.screen.title.arCustomer
@@ -31,12 +29,13 @@ const buttonSpecs = [{ code: 'allocate', secondary: true }, { code: 'registerRec
 const layerTitles: Record<Layer, string> = {
   order: copy.screen.label.shipAmount,
   after: copy.screen.title.afterDetail,
-  receipt: copy.screen.title.receipt,
 }
 
 Page({
   ...listHandlers,
+  ...paymentPanelHandlers,
   data: {
+    ...paymentPanelData,
     title: DEFAULT_TITLE,
     statusKind: 'payStatus',
     statuses: [...payStatuses],
@@ -44,6 +43,13 @@ Page({
     dateLabel: copy.field.shipDate,
     filter: emptyFilter,
     cells: [] as ReturnType<typeof cellsOf>,
+    refunds: [] as {
+      receiptId: string | null
+      no: string
+      date: string
+      amount: string
+      status: string
+    }[],
     rows: [] as ReturnType<typeof arRowOf>[],
     loaded: false,
     skeleton: false,
@@ -59,10 +65,6 @@ Page({
     sheetError: '',
     orderSheet: null as ReturnType<typeof orderSheetOf> | null,
     afterSheet: null as ReturnType<typeof afterSheetOf> | null,
-    receiptSheet: null as ReturnType<typeof receiptViewOf> | null,
-    voidSheet: false,
-    voidRequired: false,
-    voidError: '',
     texts: {
       after: copy.screen.label.after,
       allocations: copy.screen.label.allocations,
@@ -72,11 +74,13 @@ Page({
     },
   },
   id: '',
+  pendingOrderId: '',
   list: null as PagedList<ArCard> | null,
-  after: null as AfterDetail | null,
-  receipt: null as ReceiptDetail | null,
+  panel: null as PaymentPanel | null,
   onLoad(query: Record<string, string | undefined>) {
     this.id = query.id ?? ''
+    this.pendingOrderId = query.orderId ?? ''
+    this.panel = new PaymentPanel(this, () => void this.list?.refresh())
     this.list = listOf(
       this,
       async (cursor) => {
@@ -89,6 +93,13 @@ Page({
             counts: result.data.counts,
             cells: cellsOf(result.data),
             buttons: buttonsOf(result.data.actions, buttonSpecs),
+            refunds: result.data.refunds.map((refund) => ({
+              receiptId: refund.receiptId,
+              no: refund.no,
+              date: refund.refundDate,
+              amount: textOfCents(refund.amountCents),
+              status: labels.recordStatus[refund.status],
+            })),
           })
         }
         return result
@@ -97,7 +108,15 @@ Page({
     )
   },
   onShow() {
-    showList(this, [`ar:${this.id}`])
+    void this.list?.refresh()
+    if (this.pendingOrderId) {
+      void this.openOrder(this.pendingOrderId)
+      this.pendingOrderId = ''
+    }
+    watch(this, [`ar:${this.id}`], () => {
+      void this.list?.refresh()
+      if (this.data.paymentLayer) void this.panel?.refresh()
+    })
   },
   onAction(event: CodeEvent) {
     const mode = event.currentTarget.dataset.code === 'allocate' ? 'allocate' : 'receipt'
@@ -123,10 +142,13 @@ Page({
       this.setData({ sheetError: failureOf(result.failure, 'refresh')?.message ?? '' })
   },
   async onOpen(event: KeyEvent): Promise<void> {
+    await this.openOrder(event.currentTarget.dataset.key)
+  },
+  async openOrder(id: string): Promise<void> {
     this.setData({ layers: [], orderSheet: null })
     this.push('order')
     const result = await request(contract.getArOrder, {
-      params: { id: event.currentTarget.dataset.key },
+      params: { id },
     })
     if (result.ok) this.setData({ orderSheet: orderSheetOf(result.data) })
     else this.showSheetError(result)
@@ -134,68 +156,16 @@ Page({
   async onOpenAfter(event: KeyEvent): Promise<void> {
     this.push('after')
     this.setData({ afterSheet: null })
-    const result = await request(contract.getAfter, {
+    const result = await request(contract.getFinanceAfter, {
       params: { id: event.currentTarget.dataset.key },
     })
     if (!result.ok) {
       this.showSheetError(result)
       return
     }
-    this.after = result.data
     this.setData({ afterSheet: afterSheetOf(result.data) })
   },
   async onOpenReceipt(event: KeyEvent): Promise<void> {
-    this.push('receipt')
-    this.setData({ receiptSheet: null })
-    const result = await request(contract.getReceipt, {
-      params: { id: event.currentTarget.dataset.key },
-    })
-    if (!result.ok) {
-      this.showSheetError(result)
-      return
-    }
-    this.receipt = result.data
-    this.setData({ receiptSheet: receiptViewOf(result.data) })
-  },
-  onVoid() {
-    const required =
-      this.data.layer === 'after'
-        ? this.data.afterSheet?.voidRequired
-        : this.data.receiptSheet?.voidRequired
-    this.setData({ voidSheet: true, voidRequired: required === true, voidError: '' })
-  },
-  onCloseVoid() {
-    this.setData({ voidSheet: false })
-  },
-  async onSubmitVoid(event: DetailEvent<string>): Promise<void> {
-    this.setData({ busy: 'void', voidError: '' })
-    const reason = event.detail
-    if (this.data.layer === 'after' && this.after) {
-      const input = { params: { id: this.after.id }, body: { version: this.after.version, reason } }
-      const result = await request(contract.voidAfter, input)
-      if (result.ok) this.setData({ afterSheet: afterSheetOf(result.data) })
-      this.afterVoid(result, copy.after.voided)
-    } else if (this.receipt) {
-      const input = {
-        params: { id: this.receipt.id },
-        body: { version: this.receipt.version, reason },
-      }
-      const result = await request(contract.voidReceipt, input)
-      if (result.ok) this.setData({ receiptSheet: receiptViewOf(result.data) })
-      this.afterVoid(result, copy.finance.receiptVoided)
-    }
-  },
-  afterVoid(result: Result<AfterDetail | ReceiptDetail>, done: string) {
-    this.setData({ busy: '' })
-    if (result.ok) {
-      this.setData({ voidSheet: false })
-      showSuccess(done)
-      void this.list?.refresh()
-      return
-    }
-    const view = failureOf(result.failure, 'submit')
-    if (!view) return
-    const message = messageOf(view)
-    this.setData({ voidError: message })
+    await this.panel?.open(event.currentTarget.dataset.key, 'receipt')
   },
 })

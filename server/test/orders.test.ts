@@ -18,7 +18,9 @@ afterEach(async () => {
 })
 
 const detail = async (key: 'u2' | 's1' | 'u7' | 'u1', id: string) =>
-  dataOf<OrderDetail>(await (await s.as(key)).get(`/orders/${id}`))
+  dataOf<OrderDetail>(
+    await (await s.as(key)).get(key === 'u7' ? `/shipping/orders/${id}` : `/orders/${id}`),
+  )
 
 // 按详情原样组一份修改内容，改掉某个产品的数量
 function salesEdit(
@@ -56,7 +58,8 @@ describe('actions 按账号和状态', () => {
       'confirm',
     ])
     expect(codesOf((await detail('s1', o018)).actions)).toEqual(['storeCancel', 'storeEdit'])
-    expect((await (await s.as('u7')).get(`/orders/${o018}`)).status).toBe(404)
+    expect((await (await s.as('u7')).get(`/orders/${o018}`)).status).toBe(403)
+    expect((await (await s.as('u7')).get(`/shipping/orders/${o018}`)).status).toBe(404)
   })
 
   test('J25 取消的 reasonRequired：待确认 false、待发货 true；门店 false；待发货不带原因 → fields.reason', async () => {
@@ -80,7 +83,7 @@ describe('actions 按账号和状态', () => {
       await s.as('u2')
     ).post(`/orders/${o018}/confirm`, { version: sales.version, shipDate: TOMORROW })
     const view = await detail('s1', o018)
-    expect(view.actions).toEqual([])
+    expect(codesOf(view.actions)).toEqual(['requestCancel'])
     expect(view.lockedReason).toBe('销售已确认，如需修改请联系花众销售')
     expect(codesOf((await detail('u2', o016)).actions)).toEqual(['cancel', 'edit'])
     expect(codesOf((await detail('u7', o016)).actions)).toEqual(['ship'])

@@ -1,7 +1,7 @@
 <hz-sheet show="{{show}}" title="{{title}}" footer bind:close="onClose">
   <view class="u-sheet-form">
     <hz-error wx:if="{{error}}" message="{{error}}" />
-    <hz-field wx:if="{{required}}" label="{{reasonLabel}}" type="textarea" value="{{text}}" bind:change="onInput" />
+    <hz-field wx:if="{{required || optional}}" label="{{reasonLabel}}" type="textarea" placeholder="{{optional ? optionalHint : ''}}" value="{{text}}" bind:change="onInput" />
     <text wx:else>{{body}}</text>
   </view>
   <hz-button slot="footer" kind="secondary" text="{{backText}}" bind:press="onClose" />

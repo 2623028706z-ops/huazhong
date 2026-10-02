@@ -4,6 +4,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { accounts, operationLogs } from '../db/schema/index.ts'
 import { dataOf, idBy, startSales, type SalesApp } from './support/sales.ts'
+import { uploadAfterImage } from './support/images.ts'
 
 let s: SalesApp
 beforeEach(async () => {
@@ -66,10 +67,19 @@ describe('门店申请售后', () => {
     const o021 = await idBy(s.t, 'orders.no', 'SO-260927-021')
     const store = await s.as('s1')
     const line = (await storeDetail(o021)).lines.find((l) => l.name === '粉玫瑰日常花束')
+    const imageFileId = await uploadAfterImage(s, store)
     const apply = (qty: number, description: string) =>
       store.post('/store/afters', {
         orderId: o021,
-        lines: [{ orderLineId: line?.id, qty, reason: 'damaged', description, imageFileIds: [] }],
+        lines: [
+          {
+            orderLineId: line?.id,
+            qty,
+            reason: 'damaged',
+            description,
+            imageFileIds: [imageFileId],
+          },
+        ],
       })
     const empty = await store.post('/store/afters', { orderId: o021, lines: [] })
     expect(empty.status).toBe(422)

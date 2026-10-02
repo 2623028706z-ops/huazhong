@@ -21,11 +21,26 @@ import { orderViewOf } from '../../../../views/order'
 const PAGES = '/packages/sales/pages'
 const buttonSpecs = [
   { code: 'cancel', secondary: true },
+  { code: 'approveCancel', secondary: true },
+  { code: 'rejectCancel', secondary: true },
+  { code: 'voidOrder', secondary: true },
   { code: 'editAndConfirm', secondary: true },
   { code: 'confirm' },
   { code: 'edit' },
   { code: 'createAfter' },
 ] as const
+type ReasonCode = 'cancel' | 'approveCancel' | 'rejectCancel' | 'voidOrder'
+const reasonTitles: Record<ReasonCode, string> = {
+  cancel: copy.screen.action.cancel,
+  approveCancel: copy.rework.approveCancel,
+  rejectCancel: copy.rework.rejectCancel,
+  voidOrder: copy.rework.voidOrder,
+}
+const sheetDefaults = { cancelMode: 'cancel' as ReasonCode }
+const CONFIRM_CANCEL: string = copy.screen.action.confirmCancel
+function isReasonAction(code: string): code is ReasonCode {
+  return Object.hasOwn(reasonTitles, code)
+}
 
 Page({
   ...unwatchOnLeave,
@@ -37,6 +52,7 @@ Page({
     view: null as ReturnType<typeof orderViewOf> | null,
     buttons: [] as ButtonView[],
     busy: '',
+    ...sheetDefaults,
     confirmSheet: false,
     shipDate: '',
     confirmError: '',
@@ -47,9 +63,9 @@ Page({
       confirmTitle: copy.screen.title.confirmOrder,
       confirm: copy.screen.action.confirm,
       shipDate: copy.field.shipDate,
-      cancelTitle: copy.screen.action.cancel,
+      cancelTitle: reasonTitles.cancel,
       cancelBody: copy.screen.confirm.cancelOrder,
-      confirmCancel: copy.screen.action.confirmCancel,
+      confirmCancel: CONFIRM_CANCEL,
     },
   },
   id: '',
@@ -91,9 +107,16 @@ Page({
     if (code === 'confirm') {
       const shipDate = addDays(shanghaiDateOf(Date.now()), SHIP_DATE_DEFAULT_OFFSET_DAYS)
       this.setData({ confirmSheet: true, shipDate, confirmError: '' })
-    } else if (code === 'cancel') {
-      const cancelRequired = isReasonRequired(order.actions, 'cancel')
-      this.setData({ cancelSheet: true, cancelRequired, cancelError: '' })
+    } else if (isReasonAction(code)) {
+      const cancelRequired = isReasonRequired(order.actions, code)
+      const title = reasonTitles[code]
+      this.setData({
+        cancelSheet: true,
+        cancelRequired,
+        cancelError: '',
+        cancelMode: code,
+        texts: { ...this.data.texts, cancelTitle: title, confirmCancel: title },
+      })
     } else if (code === 'edit' || code === 'editAndConfirm') {
       void wx.navigateTo({ url: `${PAGES}/order-form/index?mode=${code}&id=${order.id}` })
     } else if (code === 'createAfter') {
@@ -123,7 +146,7 @@ Page({
     if (view.kind === 'stale') {
       const latest = view.latest as OrderDetail
       this.show(latest)
-      this.setData({ cancelRequired: isReasonRequired(latest.actions, 'cancel') })
+      this.setData({ cancelRequired: isReasonRequired(latest.actions, this.data.cancelMode) })
     }
     const errorKey = sheet === 'confirm' ? 'confirmError' : 'cancelError'
     const message = messageOf(view)
@@ -143,7 +166,18 @@ Page({
     this.setData({ busy: 'cancel', cancelError: '' })
     const reason = event.detail || undefined
     const body = { version: order.version, reason }
-    const result = await request(contract.cancelOrder, { params: { id: order.id }, body })
+    const endpoint =
+      this.data.cancelMode === 'approveCancel'
+        ? contract.approveOrderCancel
+        : this.data.cancelMode === 'rejectCancel'
+          ? contract.rejectOrderCancel
+          : this.data.cancelMode === 'voidOrder'
+            ? contract.voidOrder
+            : contract.cancelOrder
+    const result = await request(endpoint, {
+      params: { id: order.id },
+      body: { ...body, reason: reason ?? '' },
+    })
     this.settle(result, 'cancel', copy.order.cancelled)
   },
   onFailureAction() {

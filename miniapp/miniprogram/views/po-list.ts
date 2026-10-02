@@ -1,6 +1,6 @@
-import { contract, copy, poStatuses, type PoCard } from '@huazhong/shared'
-import { hasAction } from '../core/actions'
-import type { KeyEvent } from '../core/events'
+import { contract, copy, poStatuses, type PoCard, type SupplierPoDetail } from '@huazhong/shared'
+import { buttonsOf, hasAction, type ButtonView } from '../core/actions'
+import type { KeyEvent, CodeEvent, DetailEvent } from '../core/events'
 import type { FailureView } from '../core/failure-view'
 import { emptyFilter, type FilterDimension } from '../core/filter'
 import type { PagedList } from '../core/list'
@@ -33,6 +33,10 @@ const data = {
   sheetError: '',
   view: null as ReturnType<typeof poViewOf> | null,
   detailId: '',
+  detailVersion: 0,
+  detailButtons: [] as ButtonView[],
+  cancelSheet: false,
+  cancelBusy: false,
 }
 interface Host {
   data: typeof data
@@ -78,6 +82,7 @@ const methods = {
       return
     }
     void this.list?.refresh()
+    if (this.data.sheet) void this.open(this.data.detailId)
     const me = await loadMe()
     if (me.ok)
       watch(this, [`supplier:${me.data.supplierId ?? ''}`], () => {
@@ -99,7 +104,15 @@ const methods = {
   },
   async open(this: Host, id: string) {
     const result = await request(contract.supplierPurchaseOrder, { params: { id } })
-    if (result.ok) this.setData({ view: poViewOf(result.data, true) })
+    if (result.ok)
+      this.setData({
+        view: poViewOf(result.data, true),
+        detailVersion: result.data.version,
+        detailButtons: buttonsOf(result.data.actions, [
+          { code: 'supplierCancelPo', secondary: true },
+          { code: 'supplierEditPo' },
+        ]),
+      })
     else this.setData({ sheetError: failureOf(result.failure, 'refresh')?.message ?? '' })
   },
   onCloseSheet(this: Host) {
@@ -107,6 +120,45 @@ const methods = {
   },
   onCreate() {
     void wx.navigateTo({ url: '/packages/purchase/pages/order-form/index' })
+  },
+  onAction(this: Host, event: CodeEvent) {
+    if (this.data.kind !== 'supplier') return
+    if (event.currentTarget.dataset.code === 'supplierEditPo') {
+      void wx.navigateTo({
+        url: `/packages/supplier/pages/supply/index?poId=${this.data.detailId}`,
+      })
+    } else if (event.currentTarget.dataset.code === 'supplierCancelPo')
+      this.setData({ cancelSheet: true, sheetError: '' })
+  },
+  onCloseCancel(this: Host) {
+    this.setData({ cancelSheet: false })
+  },
+  async onCancel(this: Host, event: DetailEvent<string>) {
+    this.setData({ cancelBusy: true, sheetError: '' })
+    const result = await request(contract.supplierCancelPurchaseOrder, {
+      params: { id: this.data.detailId },
+      body: { version: this.data.detailVersion, reason: event.detail },
+    })
+    this.setData({ cancelBusy: false })
+    if (result.ok) {
+      this.setData({ cancelSheet: false })
+      await this.open(this.data.detailId)
+      void this.list?.refresh()
+      return
+    }
+    const failure = failureOf(result.failure, 'submit')
+    if (failure?.kind === 'stale') {
+      const latest = failure.latest as SupplierPoDetail
+      this.setData({
+        view: poViewOf(latest, true),
+        detailVersion: latest.version,
+        detailButtons: buttonsOf(latest.actions, [
+          { code: 'supplierCancelPo', secondary: true },
+          { code: 'supplierEditPo' },
+        ]),
+      })
+    }
+    this.setData({ sheetError: failure?.message ?? '' })
   },
 }
 export const poListPage = { ...methods, data }

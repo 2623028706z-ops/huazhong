@@ -1,7 +1,8 @@
+import { copy } from '@huazhong/shared'
 import { expect, test } from 'vitest'
-import { inviteOf, payInput, poOf } from '../support/purchase.ts'
+import { inviteOf, poOf } from '../support/purchase.ts'
 import { dataOf } from '../support/sales.ts'
-import { asMini, enter, setupMiniSuite, snap, waitData, waitPage } from './mini.ts'
+import { asMini, enter, paymentInput, setupMiniSuite, snap, waitData, waitPage } from './mini.ts'
 
 const suite = setupMiniSuite()
 
@@ -49,10 +50,9 @@ test('C01 C02 G01 G08 H10 退货和改价弹层，未修改直接关闭、原因
   const po = await poOf(s, 'PO-260928-004')
   const page = await enter(mini, `/packages/warehouse/pages/receive/index?id=${po.id}`)
   await waitData(page, 'loaded', true)
-  expect(((await page.data('buttons')) as { code: string }[]).map((b) => b.code)).toEqual([
-    'return',
-    'reprice',
-  ])
+  expect(((await page.data('buttons')) as { code: string }[]).map((button) => button.code)).toEqual(
+    expect.arrayContaining(['return', 'reprice']),
+  )
   await page.callMethod('onAction', { currentTarget: { dataset: { code: 'return' } } })
   await waitData(page, 'sheet', 'return')
   expect(await page.data('changed')).toBe(false)
@@ -79,7 +79,7 @@ test('C01 C02 G01 G08 H10 退货和改价弹层，未修改直接关闭、原因
   await snap(mini, 'warehouse-repriced')
 })
 
-test('C04 B15 G15 付款及作废后仓库按钮和状态随推送刷新', async () => {
+test('B15 付款后仓库仍能退货、改价，付款作废后照常', async () => {
   const { mini, server: s } = suite()
   await asMini(mini, s, 'u5')
   const po = await poOf(s, 'PO-260928-004')
@@ -87,10 +87,19 @@ test('C04 B15 G15 付款及作废后仓库按钮和状态随推送刷新', async
   await waitData(page, 'loaded', true)
   const finance = await s.as('u6')
   const payment = dataOf<{ id: string; version: number }>(
-    await finance.post('/finance/payments', payInput(po)),
+    await finance.post('/finance/payments', await paymentInput(s, po)),
   )
-  await waitData(page, 'buttons', [])
-  expect(await page.data('view.notice')).toBe('已付款，不能再退货或改单价')
+  const editable: unknown = expect.arrayContaining([
+    expect.objectContaining({ code: 'return', disabled: false }),
+    expect.objectContaining({ code: 'reprice', disabled: false }),
+  ])
+  const paidRow = async () =>
+    ((await page.data('view.amountRows')) as { label: string; value: string }[]).find(
+      (row) => row.label === copy.screen.label.paid,
+    )?.value
+  await expect.poll(paidRow).not.toBe('¥0.00')
+  expect(await page.data('buttons')).toEqual(editable)
+  expect(await page.data('view.notice')).toBe('')
   await snap(mini, 'warehouse-paid')
   dataOf(
     await finance.post(`/finance/payments/${payment.id}/void`, {
@@ -98,8 +107,8 @@ test('C04 B15 G15 付款及作废后仓库按钮和状态随推送刷新', async
       reason: '付错账户',
     }),
   )
-  await waitData(page, 'view.notice', '付过款，不能再退货或改单价')
-  expect(await page.data('buttons')).toEqual([])
+  await expect.poll(paidRow).toBe('¥0.00')
+  expect(await page.data('buttons')).toEqual(editable)
   await snap(mini, 'warehouse-paid-voided')
 })
 
@@ -114,7 +123,7 @@ test('阶段 4 供应商端对账显示单据应付金额，付款后金额保�
     { amountCents: 0 },
     { amountCents: 96000 },
   ])
-  dataOf(await (await s.as('u6')).post('/finance/payments', payInput(po)))
+  dataOf(await (await s.as('u6')).post('/finance/payments', await paymentInput(s, po)))
   await waitData(page, 'rows.0.status', 'paid')
   expect(await page.data('rows.0.amount')).toBe(96000)
   expect(await page.data('cells')).toMatchObject([

@@ -8,24 +8,5 @@
   <template is="list-state" data="{{failure, skeleton, loaded, rows, emptyObject}}" />
   <template is="cards" data="{{rows, statusKind, done, allLoaded}}" />
 </view>
-<hz-sheet show="{{sheet}}" title="{{texts.receipt}}" bind:close="onCloseSheet">
-  <view class="u-sheet-form u-sheet-plain">
-    <hz-error wx:if="{{sheetError}}" message="{{sheetError}}" />
-    <block wx:if="{{receiptSheet}}">
-      <template is="receipt" data="{{...receiptSheet}}" />
-      <hz-button wx:if="{{receiptSheet.canVoid}}" kind="secondary" text="{{texts.voidReceipt}}" bind:press="onVoid" />
-    </block>
-  </view>
-</hz-sheet>
-<hz-reason-sheet
-  show="{{voidSheet}}"
-  title="{{texts.voidReceipt}}"
-  required="{{receiptSheet.voidRequired}}"
-  confirm="{{texts.confirmVoid}}"
-  error="{{voidError}}"
-  loading="{{busy === 'void'}}"
-  bind:close="onCloseVoid"
-  bind:submit="onSubmitVoid"
-/>
-<template is="payment-panel" data="{{paymentLayer,paymentFields,paymentView,paymentError,paymentReason,paymentBusy,paymentTexts}}" />
+<template is="payment-panel" data="{{paymentLayer,paymentFields,paymentView,paymentError,paymentReason,paymentBusy,paymentTexts,refundForm,refundMethods}}" />
 <hz-confirm id="hz-confirm" />

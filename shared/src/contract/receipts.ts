@@ -17,6 +17,7 @@ import { actionSchema } from './actions.ts'
 import { paymentSchema } from './payments.ts'
 import type { Endpoint } from './endpoint.ts'
 import { allocationSchema } from './finance.ts'
+import { ledgerTokenSchema, receiptExpectedSchema, refundSchema, actorSchema } from './ledger.ts'
 import {
   checkDateRange,
   checkDistinct,
@@ -30,12 +31,21 @@ const allocsSchema = z.array(
   z.object({ orderId: idSchema, amountCents: positiveIntSchema(copy.finance.allocRequired) }),
 )
 
-function checkAllocs(value: { allocs: { orderId: string }[] }, ctx: z.RefinementCtx) {
+function checkAllocs(
+  value: { allocs: { orderId: string }[]; expected: { orderId: string }[] },
+  ctx: z.RefinementCtx,
+) {
   checkDistinct(ctx, {
     items: value.allocs,
     keyOf: (a) => a.orderId,
     message: copy.finance.duplicateOrder,
     path: ['allocs', 'orderId'],
+  })
+  checkDistinct(ctx, {
+    items: value.expected,
+    keyOf: (item) => item.orderId,
+    message: copy.finance.duplicateOrder,
+    path: ['expected', 'orderId'],
   })
 }
 
@@ -47,6 +57,8 @@ export const receiptCreateSchema = z
     methodName: requiredTextSchema(copy.finance.methodRequired),
     note: z.string().trim(),
     allocs: allocsSchema,
+    ledgerToken: ledgerTokenSchema,
+    expected: z.array(receiptExpectedSchema),
   })
   .superRefine((value, ctx) => {
     checkAllocs(value, ctx)
@@ -61,6 +73,8 @@ export const prepaidAllocateSchema = z
   .object({
     customerId: requiredIdSchema(copy.catalog.customerRequired),
     allocs: allocsSchema.min(1, { error: copy.finance.allocRequired }),
+    ledgerToken: ledgerTokenSchema,
+    expected: z.array(receiptExpectedSchema),
   })
   .superRefine(checkAllocs)
 export type PrepaidAllocate = z.infer<typeof prepaidAllocateSchema>
@@ -86,6 +100,8 @@ export const receiptDetailSchema = receiptCardSchema.extend({
   note: z.string().nullable(),
   voidReason: z.string().nullable(),
   voidedAt: timestampSchema.nullable(),
+  voidedBy: actorSchema.nullable(),
+  refunds: z.array(refundSchema),
   // 生效的核销（作废后为空）
   allocations: z.array(allocationSchema),
   // 作废后「已作废，核销已撤回。」
@@ -99,7 +115,7 @@ export const createReceipt = {
   grants: ['finance'],
   body: receiptCreateSchema,
   response: receiptDetailSchema,
-  errors: ['NOT_FOUND', 'BUSINESS_RULE'],
+  errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
   idempotent: true,
 } as const satisfies Endpoint
 
@@ -110,7 +126,7 @@ export const allocatePrepaid = {
   grants: ['finance'],
   body: prepaidAllocateSchema,
   response: z.object({ customerId: idSchema, prepaidCents: centsSchema }),
-  errors: ['NOT_FOUND', 'BUSINESS_RULE'],
+  errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
   idempotent: true,
 } as const satisfies Endpoint
 
@@ -133,7 +149,7 @@ export const voidReceipt = {
     reason: requiredTextSchema(copy.finance.voidReasonRequired),
   }),
   response: receiptDetailSchema,
-  errors: ['NOT_FOUND', 'STALE'],
+  errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
 } as const satisfies Endpoint
 
 // 按类型分页：收款默认选中，与阶段 3 的入口一致。

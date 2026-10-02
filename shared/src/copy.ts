@@ -2,11 +2,14 @@
 // 出处：02 章第 5 节（通用状态）、05 章（接口返回的句子）、06 章（各页文案）。
 
 import { screen, financeCopy } from './copy-screen.ts'
+import { reworkCopy, recordsCopy } from './copy-rework.ts'
+import { logCopy } from './copy-log.ts'
 
 // 同一行里并列的几项之间（身份行、卡片第 3 行）
 const SEPARATOR = ' · '
 
 export const copy = {
+  rework: reworkCopy,
   separator: SEPARATOR,
   error: {
     unauthenticated: '没有绑定账号',
@@ -43,93 +46,7 @@ export const copy = {
     roleSeparator: '、',
   },
   // 账号类操作日志（05 章第 2 节）：module 为空 = 公共
-  log: {
-    kindAccount: '账号',
-    bind: '绑定微信',
-    unbind: '解绑微信',
-    createStaff: '新增员工',
-    updateStaff: '修改员工',
-    publicModule: '公共',
-    reason: '原因',
-    before: '修改前',
-    after: '修改后',
-    changes: '改动',
-    // 改动「旧 → 新」里旧值后面接的箭头
-    arrow: ' → ',
-    date: '操作日期',
-    // 阶段 3 的对象类别和动作（04 章第 3.3 节 kind、action）
-    kind: {
-      order: '订单',
-      after: '售后',
-      customer: '客户',
-      store: '门店',
-      product: '产品',
-      category: '分类',
-      catalog: '订货目录',
-      receipt: '收款',
-      method: '收付款方式',
-      purchaseOrder: '采购单',
-      invite: '填报邀请',
-      supplier: '供应商',
-      payment: '付款',
-      material: '花材',
-    },
-    action: {
-      createOrder: '新建订单',
-      confirmOrder: '确认订单',
-      editAndConfirm: '修改并确认订单',
-      editOrder: '修改订单',
-      cancelOrder: '取消订单',
-      storeOrder: '门店下单',
-      storeEdit: '门店改单',
-      storeCancel: '门店取消订单',
-      shipOrder: '确认发货',
-      applyAfter: '申请售后',
-      createAfter: '新建售后',
-      processAfter: '处理售后',
-      closeAfter: '关闭售后',
-      voidAfter: '作废售后',
-      createCustomer: '新增客户',
-      updateCustomer: '修改客户',
-      createStore: '新增门店',
-      updateStore: '修改门店',
-      inviteStore: '生成门店邀请',
-      acceptInvite: '门店接受邀请',
-      unbindStore: '解绑门店微信',
-      createProduct: '新增产品',
-      updateProduct: '修改产品',
-      createCategory: '新增分类',
-      updateCategory: '修改分类',
-      orderCategories: '调整分类顺序',
-      deleteCategory: '删除分类',
-      updateCatalog: '修改订货目录',
-      registerReceipt: '登记收款',
-      allocatePrepaid: '核销预收',
-      voidReceipt: '作废收款',
-      createMethod: '新增收付款方式',
-      enableMethod: '启用收付款方式',
-      disableMethod: '停用收付款方式',
-      createPurchaseOrder: '新建采购单',
-      updatePurchaseOrder: '修改采购单',
-      cancelPurchaseOrder: '取消采购单',
-      createInvite: '发出填报邀请',
-      updateInvite: '修改填报邀请',
-      cancelInvite: '取消填报邀请',
-      shareInvite: '复制填报链接',
-      submitSupply: '提交填报',
-      receivePurchaseOrder: '确认收货',
-      rejectPurchaseOrder: '拒收采购单',
-      returnPurchaseOrder: '退货',
-      repricePurchaseOrder: '改单价',
-      registerPayment: '登记付款',
-      voidPayment: '作废付款',
-      createSupplier: '新增供应商',
-      updateSupplier: '修改供应商',
-      disableSupplier: '停用供应商',
-      createMaterial: '新增花材',
-      updateMaterial: '修改花材',
-    },
-  },
+  log: logCopy,
   // 账号字段名：员工弹层、个人资料、日志的修改前后共用
   field: {
     name: '名字',
@@ -207,7 +124,7 @@ export const copy = {
     shipCancelled: '销售已取消这张订单，不能发货',
     shipChanged: '销售修改了这张订单，已刷新成最新内容，请核对后再确认发货',
     shipNotDue: '出货日期还没到，不能发货',
-    shipNoteRequired: '少发时请填写发货备注',
+    shipNoteRequired: reworkCopy.shipDifferenceNoteRequired,
     shipNothing: '至少发出一项产品；整单不发请联系销售取消订单',
     allAftered: '这张订单的产品都已申请过售后',
     afterExpired: '已超过售后申请时间，请联系花众销售',
@@ -415,13 +332,7 @@ export const copy = {
     search: (object: string) => `搜索${object}`,
   },
   // 记录列表标题（hz-records）
-  records: {
-    orderChange: '变更记录',
-    poChange: '改单记录',
-    priceChange: '改价记录',
-    returns: '退货记录',
-    reason: (text: string) => `原因：${text}`,
-  },
+  records: recordsCopy,
   placeholder: {
     choose: '请选择',
     optional: '选填',

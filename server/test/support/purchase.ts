@@ -25,7 +25,7 @@ export function supplierInput(row: Supplier) {
     account: { enabled: row.account.enabled, loginPhone: row.account.loginPhone },
   }
 }
-export function poInput(po: PoDetail) {
+export function poInput(po: Pick<PoDetail, 'version' | 'supplierId' | 'note' | 'lines'>) {
   return {
     version: po.version,
     supplierId: po.supplierId,
@@ -38,7 +38,7 @@ export function poInput(po: PoDetail) {
     })),
   }
 }
-export function receiveInput(po: PoDetail) {
+export function receiveInput(po: Pick<PoDetail, 'version' | 'lines'>) {
   return {
     version: po.version,
     recvNote: '',
@@ -51,9 +51,9 @@ export function receiveInput(po: PoDetail) {
 }
 export function payInput(po: PoDetail) {
   return {
-    docType: 'po' as const,
-    docId: po.id,
-    amountCents: po.payableCents,
+    supplierId: po.supplierId,
+    allocs: [{ docType: 'po' as const, docId: po.id, amountCents: po.unpaidCents }],
+    amountCents: po.unpaidCents,
     payDate: TODAY,
     methodName: '微信',
     note: '',

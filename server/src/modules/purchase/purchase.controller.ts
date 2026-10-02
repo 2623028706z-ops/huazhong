@@ -60,12 +60,36 @@ export class PurchaseController {
     @CurrentViewer() viewer: Viewer,
     @Input() input: In<'supplierPurchaseOrder'>,
   ): Promise<OutputOf<typeof contract.supplierPurchaseOrder>> {
-    return this.reads.get(viewer, Number(input.params.id))
+    return this.reads
+      .get(viewer, Number(input.params.id))
+      .then((detail) => this.reads.supplierView(detail))
+  }
+  @Route(contract.supplierUpdatePurchaseOrder)
+  async supplierUpdate(
+    @CurrentViewer() viewer: Viewer,
+    @Input() input: In<'supplierUpdatePurchaseOrder'>,
+  ) {
+    return this.reads.supplierView(
+      await this.writes.updateSupplier(viewer, Number(input.params.id), input.body),
+    )
+  }
+  @Route(contract.supplierCancelPurchaseOrder)
+  async supplierCancel(
+    @CurrentViewer() viewer: Viewer,
+    @Input() input: In<'supplierCancelPurchaseOrder'>,
+  ) {
+    return this.reads.supplierView(
+      await this.writes.cancel(viewer, Number(input.params.id), input.body),
+    )
   }
 }
 @Controller()
 export class DemandController {
   constructor(private readonly demand: PurchaseDemand) {}
+  @Route(contract.reviewPurchase)
+  review(@Input() input: In<'reviewPurchase'>) {
+    return this.demand.review(input.body)
+  }
   @Route(contract.listPurchaseDemand)
   list(
     @Input() input: In<'listPurchaseDemand'>,

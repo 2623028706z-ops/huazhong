@@ -8,14 +8,20 @@ import {
   type PayStatus,
 } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
-import type { Db } from '../../../db/client.ts'
+import type { Db, Tx } from '../../../db/client.ts'
 import { DB } from '../../common/db.ts'
 import { actionOf } from '../../common/domain/actions.ts'
 import { decodeCursor, pageOf } from '../../common/domain/cursor.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import { SalesService } from '../sales/sales.service.ts'
 import { summaryOf } from './domain/ar.ts'
-import { effectiveAllocations, loadLedger, loadLedgers, type Ledger } from './ledger.ts'
+import {
+  effectiveAllocations,
+  loadLedger,
+  loadLedgers,
+  type Ledger,
+} from '../../common/customer-ledger.ts'
+import { refundView } from '../../common/finance-history.ts'
 
 interface Range {
   from?: string | undefined
@@ -70,11 +76,17 @@ export class ArReads {
 
   async customers(
     query: PageQuery & { q?: string | undefined },
+    executor: Db | Tx = this.db,
   ): Promise<OutputOf<typeof contract.listArCustomers>> {
+    if (executor === this.db)
+      return this.db.transaction((tx) => this.customers(query, tx), {
+        isolationLevel: 'repeatable read',
+        accessMode: 'read only',
+      })
     const rows = await this.sales.customers(query)
     const page = pageOf(rows, query.limit, (row) => [row.id, row.id])
     const ledgers = await loadLedgers(
-      this.db,
+      executor,
       this.sales,
       page.items.map((row) => row.id),
     )
@@ -97,9 +109,15 @@ export class ArReads {
   async customer(
     id: number,
     query: PageQuery & Range & { status?: PayStatus | undefined },
+    executor: Db | Tx = this.db,
   ): Promise<OutputOf<typeof contract.getArCustomer>> {
-    const customer = await this.sales.customer(this.db, id)
-    const ledger = await loadLedger(this.db, this.sales, id)
+    if (executor === this.db)
+      return this.db.transaction((tx) => this.customer(id, query, tx), {
+        isolationLevel: 'repeatable read',
+        accessMode: 'read only',
+      })
+    const customer = await this.sales.customer(executor, id)
+    const ledger = await loadLedger(executor, this.sales, id)
     const ranged = ledger.cards.filter((entry) => inRange(entry, query))
     const cards = ranged.map((entry) => entry.card)
     const listed = ranged.filter(
@@ -117,30 +135,56 @@ export class ArReads {
       customerName: customer.name,
       ...summaryOf(cards),
       prepaidCents: ledger.prepaidCents,
+      refunds: await Promise.all(ledger.refunds.map((row) => refundView(executor, row))),
     }
   }
 
   // 登记收款、核销预收表单：全部有未收的发货单，出货日期升序
-  async unpaidOrders(id: number): Promise<OutputOf<typeof contract.listUnpaidOrders>> {
-    await this.sales.customer(this.db, id)
-    const ledger = await loadLedger(this.db, this.sales, id)
+  async unpaidOrders(
+    id: number,
+    executor: Db | Tx = this.db,
+  ): Promise<OutputOf<typeof contract.listUnpaidOrders>> {
+    if (executor === this.db)
+      return this.db.transaction((tx) => this.unpaidOrders(id, tx), {
+        isolationLevel: 'repeatable read',
+        accessMode: 'read only',
+      })
+    await this.sales.customer(executor, id)
+    const ledger = await loadLedger(executor, this.sales, id)
     const items = ledger.cards
       .filter((entry) => entry.card.unpaidCents > 0)
       .reverse()
       .map((entry) => entry.card)
-    return { prepaidCents: ledger.prepaidCents, items }
+    return { ledgerToken: ledger.token, prepaidCents: ledger.prepaidCents, items }
   }
 
-  async order(viewer: Viewer, orderId: number): Promise<OutputOf<typeof contract.getArOrder>> {
-    const customerId = await this.sales.shippedOrderCustomer(this.db, orderId)
-    const ledger = await loadLedger(this.db, this.sales, customerId)
+  async order(
+    viewer: Viewer,
+    orderId: number,
+    executor: Db | Tx = this.db,
+  ): Promise<OutputOf<typeof contract.getArOrder>> {
+    if (executor === this.db)
+      return this.db.transaction((tx) => this.order(viewer, orderId, tx), {
+        isolationLevel: 'repeatable read',
+        accessMode: 'read only',
+      })
+    const customerId = await this.sales.shippedOrderCustomer(executor, orderId)
+    const ledger = await loadLedger(executor, this.sales, customerId)
     const entry = ledger.cards.find((item) => item.order.orderId === orderId)
     if (!entry) throw appError.notFound()
     return {
       ...entry.card,
       customerId: String(customerId),
-      afters: await this.sales.processedAfterCards(this.db, orderId, viewer),
-      allocations: effectiveAllocations(ledger, (alloc) => alloc.orderId === orderId),
+      afters: (await this.sales.processedAfterCards(executor, orderId, viewer)).map((after) => ({
+        ...after,
+        actions: [],
+      })),
+      allocations: await effectiveAllocations(
+        ledger,
+        (alloc) => alloc.orderId === orderId,
+        executor,
+        viewer,
+      ),
     }
   }
 
@@ -148,10 +192,16 @@ export class ArReads {
   async storeStatement(
     viewer: Viewer,
     query: PageQuery & Range,
+    executor: Db | Tx = this.db,
   ): Promise<OutputOf<typeof contract.storeStatement>> {
+    if (executor === this.db)
+      return this.db.transaction((tx) => this.storeStatement(viewer, query, tx), {
+        isolationLevel: 'repeatable read',
+        accessMode: 'read only',
+      })
     if (viewer.customerId === null || viewer.storeId === null) throw appError.internal()
     const storeId = viewer.storeId
-    const ledger = await loadLedger(this.db, this.sales, viewer.customerId)
+    const ledger = await loadLedger(executor, this.sales, viewer.customerId)
     const own = ledger.cards.filter(
       (entry) => entry.order.storeId === storeId && inRange(entry, query),
     )

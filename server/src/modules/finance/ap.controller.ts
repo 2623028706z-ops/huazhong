@@ -34,11 +34,15 @@ export class ApController {
   ): Promise<OutputOf<typeof contract.supplierStatement>> {
     return this.ap.statement(viewer, input.query)
   }
-  @Route(contract.getPayable)
+  @Route(contract.getApDocument)
   payable(
     @CurrentViewer() viewer: Viewer,
-    @Input() input: In<'getPayable'>,
-  ): Promise<OutputOf<typeof contract.getPayable>> {
+    @Input() input: In<'getApDocument'>,
+  ): Promise<OutputOf<typeof contract.getApDocument>> {
     return this.ap.payable(viewer, Number(input.params.id))
+  }
+  @Route(contract.listUnpaidDocuments)
+  unpaid(@CurrentViewer() viewer: Viewer, @Input() input: In<'listUnpaidDocuments'>) {
+    return this.ap.unpaid(viewer, Number(input.params.id))
   }
 }

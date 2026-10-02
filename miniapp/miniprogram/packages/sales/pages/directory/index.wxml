@@ -34,6 +34,7 @@
   </view>
 </block>
 <hz-action-bar>
+  <hz-button wx:if="{{canCopy}}" kind="secondary" text="复制目录" bind:press="onOpenCopy" />
   <hz-button kind="secondary" text="{{texts.manage}}" bind:press="onManage" />
   <hz-button text="{{texts.add}}" disabled="{{categories.length === 0}}" reason="{{texts.needCategory}}" bind:press="onOpenPick" />
 </hz-action-bar>
@@ -84,3 +85,12 @@
   bind:remove="onRemoveCategory"
 />
 <hz-confirm id="hz-confirm" />
+<hz-sheet show="{{copySheet}}" title="复制其他客户目录" footer bind:close="onCloseCopy">
+  <view class="u-sheet-form">
+    <hz-picker label="来源客户" options="{{copyOptions}}" value="{{copySourceId}}" bind:change="onCopySource" />
+    <hz-error wx:if="{{copyError}}" message="{{copyError}}" />
+    <view wx:if="{{copyPreview}}" class="u-info__meta">可复制 {{copyPreview.copyCount}} 项，跳过 {{copyPreview.skipCount}} 项。目标空分类按名称复用；不会覆盖现有目录项。</view>
+    <hz-button kind="secondary" text="重新预览" disabled="{{!copySourceId}}" loading="{{copyBusy}}" bind:press="onPreviewCopy" />
+  </view>
+  <hz-button slot="footer" text="确认复制" disabled="{{!copyPreview.copyCount}}" loading="{{copyBusy}}" bind:press="onCopyCatalog" />
+</hz-sheet>

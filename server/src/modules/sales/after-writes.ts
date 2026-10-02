@@ -28,6 +28,7 @@ import { afterVisibleTo, AfterReads } from './after-query.ts'
 import { checkClaims, checkProcess, type ClaimLine } from './domain/order-rules.ts'
 import { orderDetailOf } from './order-query.ts'
 import { lockOrder } from './order-rows.ts'
+import { notifyCustomerFinance, owns } from '../../common/ledger.ts'
 
 const afterVersionPlusOne = sql`${afters.version} + 1`
 
@@ -83,7 +84,14 @@ function afterLogView(detail: AfterDetail): Record<string, string> {
 // 行锁售后（门店只能锁本店的），返回它挂的订单和客户
 async function lockAfter(tx: Tx, viewer: Viewer, id: number) {
   const [row] = await tx
-    .select({ orderId: afters.orderId, customerId: afters.customerId, storeId: afters.storeId })
+    .select({
+      orderId: afters.orderId,
+      customerId: afters.customerId,
+      storeId: afters.storeId,
+      origin: afters.origin,
+      createdBy: afters.createdBy,
+      processedBy: afters.processedBy,
+    })
     .from(afters)
     .where(and(eq(afters.id, id), afterVisibleTo(viewer)))
     .for('update')
@@ -105,6 +113,7 @@ export class AfterWrites {
 
   // 售后变了：应收可能变，推给这个客户的每家门店（核销会重算）
   private async notifyAr(ctx: WriteContext, detail: AfterDetail, customerId: number) {
+    await notifyCustomerFinance(ctx, customerId)
     ctx.notify(
       [
         { topic: `after:${detail.id}`, version: detail.version },
@@ -355,6 +364,8 @@ export class AfterWrites {
       await lockCustomer(ctx.tx, found(owner).customerId)
       const ref = await lockAfter(ctx.tx, viewer, id)
       const before = await this.reads.detail(ctx.tx, viewer, id)
+      if (!owns(viewer, (ref.origin === 'store' ? ref.processedBy : ref.createdBy) ?? 0))
+        throw appError.forbidden()
       gateAction(before, {
         code: 'voidAfter',
         version: input.version,

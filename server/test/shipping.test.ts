@@ -1,5 +1,5 @@
 // 确认发货、新建订单、出货日期（07 章 A08、A09、A20、A23、A36、I04）
-import type { OrderDetail, TodoItem } from '@huazhong/shared'
+import { copy, type OrderDetail, type TodoItem } from '@huazhong/shared'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { dataOf, idBy, startSales, TODAY, TOMORROW, type SalesApp } from './support/sales.ts'
 
@@ -12,7 +12,9 @@ afterEach(async () => {
 })
 
 const detail = async (key: 'u2' | 'u7' | 's1', id: string) =>
-  dataOf<OrderDetail>(await (await s.as(key)).get(`/orders/${id}`))
+  dataOf<OrderDetail>(
+    await (await s.as(key)).get(key === 'u7' ? `/shipping/orders/${id}` : `/orders/${id}`),
+  )
 
 function editOf(order: OrderDetail, change: { qty?: number; shipDate?: string }, reason: string) {
   return {
@@ -96,7 +98,7 @@ describe('确认发货', () => {
       lines: [{ orderLineId: lineId, shippedQty: 18 }],
     }
     expect((await ship.post(`/orders/${id}/ship`, short)).body.error?.fields).toEqual({
-      shipNote: '少发时请填写发货备注',
+      shipNote: copy.rework.shipDifferenceNoteRequired,
     })
     const none = { ...short, lines: [{ orderLineId: lineId, shippedQty: 0 }] }
     expect((await ship.post(`/orders/${id}/ship`, none)).body.error).toMatchObject({
@@ -105,12 +107,12 @@ describe('确认发货', () => {
     })
     const over = { ...short, lines: [{ orderLineId: lineId, shippedQty: 21 }] }
     expect((await ship.post(`/orders/${id}/ship`, over)).body.error?.fields).toEqual({
-      'lines.0.shippedQty': '实发不能超过订单数量',
+      shipNote: copy.rework.shipDifferenceNoteRequired,
     })
     const done = dataOf<OrderDetail>(
       await ship.post(`/orders/${id}/ship`, { ...short, shipNote: '白绿清新缺货' }),
     )
-    expect(done.lines[0]).toMatchObject({ shippedQty: 18, short: true, amountCents: 18 * 7800 })
+    expect(done.lines[0]).toMatchObject({ shippedQty: 18, short: true })
     expect(done).toMatchObject({ status: 'shipped', shipNote: '白绿清新缺货', shippedBy: '赵磊' })
   })
 

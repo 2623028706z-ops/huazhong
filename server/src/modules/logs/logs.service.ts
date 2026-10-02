@@ -6,9 +6,10 @@ import {
   type LogItem,
   type ModuleKey,
   type OutputOf,
+  moduleKeys,
 } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
-import { and, desc, eq, inArray, sql, type SQL } from 'drizzle-orm'
+import { and, desc, eq, isNotNull, sql, type SQL } from 'drizzle-orm'
 import type { Db } from '../../../db/client.ts'
 import { operationLogs } from '../../../db/schema/index.ts'
 import { BUSINESS_TIME_ZONE } from '../../common/clock.ts'
@@ -30,14 +31,13 @@ type LogView = Record<string, string> | null
 // 能看哪些日志：管理员不限（module 为空 = 公共也在内）；员工只看自己模块，不含公共
 function visibleTo(viewer: Viewer): SQL | undefined {
   if (viewer.type === 'admin') return undefined
-  return inArray(operationLogs.module, [...viewer.modules])
+  return and(eq(operationLogs.createdBy, viewer.accountId), isNotNull(operationLogs.module))
 }
 
 // 传了模块：员工只能传自己的模块（05 章第 3 节）
 function moduleFilter(viewer: Viewer, module: ModuleKey | undefined): SQL | undefined {
   if (module === undefined) return visibleTo(viewer)
-  if (viewer.type !== 'admin' && !viewer.modules.includes(module)) throw appError.forbidden()
-  return eq(operationLogs.module, module)
+  return and(visibleTo(viewer), eq(operationLogs.module, module))
 }
 
 // 业务日期两头都含，按上海时间
@@ -98,7 +98,23 @@ export class LogsService {
       .orderBy(desc(operationLogs.createdAt), desc(operationLogs.id))
       .limit(query.limit + 1)
     const page = pageOf(rows, query.limit, (row) => [row.createdAt.toISOString(), row.id])
-    return { items: page.items.map(toItem), nextCursor: page.nextCursor, actions: [] }
+    const historical =
+      viewer.type === 'admin'
+        ? []
+        : await this.db
+            .selectDistinct({ module: operationLogs.module })
+            .from(operationLogs)
+            .where(visibleTo(viewer))
+    const filterModules =
+      viewer.type === 'admin'
+        ? [...moduleKeys]
+        : moduleKeys.filter((module) => historical.some((row) => row.module === module))
+    return {
+      items: page.items.map(toItem),
+      nextCursor: page.nextCursor,
+      actions: [],
+      filterModules,
+    }
   }
 
   // 看不到的日志（含员工读公共日志）当成找不到

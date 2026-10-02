@@ -17,6 +17,8 @@ export interface OrderFacts {
 }
 
 export interface OrderRoles {
+  accountId?: number
+  admin?: boolean
   store: boolean
   sales: boolean
   shipping: boolean
@@ -31,6 +33,8 @@ const NONE: ActionSet = { actions: [], lockedReason: null }
 
 export function rolesOf(viewer: Viewer): OrderRoles {
   return {
+    accountId: viewer.accountId,
+    admin: viewer.type === 'admin',
     store: viewer.type === 'store',
     sales: viewer.modules.includes('sales'),
     shipping: viewer.modules.includes('shipping'),
@@ -76,6 +80,7 @@ function storeActions(facts: OrderFacts, today: string): ActionSet {
       return afterActions('applyAfter', facts, expired)
     }
     case 'cancelled':
+    case 'voided':
       return NONE
   }
 }
@@ -112,6 +117,7 @@ function salesActions(facts: OrderFacts): ActionSet {
     case 'shipped':
       return afterActions('createAfter', facts, null)
     case 'cancelled':
+    case 'voided':
       return NONE
   }
 }

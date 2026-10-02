@@ -210,7 +210,7 @@ function financeTodo(item: TodoOf<'payable'> | TodoOf<'prepaid'>) {
       amount: po.unpaidCents,
       amountText: '',
       tags: [],
-      url: `${FINANCE}/payable/index?docType=po&id=${po.id}`,
+      url: `${FINANCE}/supplier/index?id=${po.supplierId}`,
     }
   }
   return {

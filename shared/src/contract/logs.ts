@@ -1,4 +1,3 @@
-// 操作日志（05 章第 3 节、06 章 M6）：管理员看全部（含公共），员工只看自己模块
 import * as z from 'zod'
 import { moduleKeys } from '../enums.ts'
 import { idSchema, timestampSchema } from '../rules.ts'
@@ -42,7 +41,7 @@ export const listLogs = {
   path: '/logs',
   grants: ['staff'],
   query: logQuerySchema,
-  response: pageSchema(logItemSchema),
+  response: pageSchema(logItemSchema).extend({ filterModules: z.array(z.enum(moduleKeys)) }),
   errors: [],
 } as const satisfies Endpoint
 

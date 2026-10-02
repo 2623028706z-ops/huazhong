@@ -1,12 +1,11 @@
 // 销售模块对外的读：财务对账要的发货单、售后卡片、客户；模块首页的销售、发货待办（00 章第 11.2 节）
-import { TODO_PREVIEW_COUNT, type AfterCard, type TodoItem, type UnitTotal } from '@huazhong/shared'
+import { TODO_PREVIEW_COUNT, type AfterCard, type TodoItem } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
 import { and, asc, count, eq, inArray, lte, sql, type SQL } from 'drizzle-orm'
 import type { Db, Tx } from '../../../db/client.ts'
-import { afters, customers, orderLines, orders, stores } from '../../../db/schema/index.ts'
+import { afters, customers, orders } from '../../../db/schema/index.ts'
 import { Clock } from '../../common/clock.ts'
 import { DB } from '../../common/db.ts'
-import { unitTotalsOf } from '../../common/domain/units.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import { afterCursor } from '../../common/page.ts'
 import { found } from '../../common/scope.ts'
@@ -14,42 +13,16 @@ import { searchAny } from '../../common/search.ts'
 import { afterCardsOf, afterRowsQuery, orderAfterCards } from './after-query.ts'
 import { orderCardsOf } from './order-query.ts'
 import { orderRowsQuery } from './order-rows.ts'
+import { shippedLedgerOrders } from '../../common/customer-ledger.ts'
 
 type Executor = Db | Tx
 
 // 已发货订单（发货单）：发货金额按实发，售后只算已处理的
-export interface ShippedOrder {
-  orderId: number
-  orderNo: string
-  customerId: number
-  storeId: number
-  storeName: string
-  shipDate: string
-  units: UnitTotal[]
-  shippedCents: number
-  afterCents: number
-}
 
 export interface CustomerRef {
   id: number
   name: string
   enabled: boolean
-}
-
-// 每张发货单按单位合计的实发（卡片第 2 行）
-async function unitsOf(executor: Executor, orderIds: readonly number[]) {
-  const units = new Map<number, UnitTotal[]>()
-  if (orderIds.length === 0) return units
-  const lines = await executor
-    .select({ orderId: orderLines.orderId, unit: orderLines.unit, qty: orderLines.shippedQty })
-    .from(orderLines)
-    .where(inArray(orderLines.orderId, [...orderIds]))
-    .orderBy(orderLines.orderId, orderLines.sort)
-  for (const orderId of orderIds) {
-    const own = lines.filter((line) => line.orderId === orderId)
-    units.set(orderId, unitTotalsOf(own.map((line) => ({ unit: line.unit, qty: line.qty ?? 0 }))))
-  }
-  return units
 }
 
 @Injectable()
@@ -59,42 +32,8 @@ export class SalesService {
     private readonly clock: Clock,
   ) {}
 
-  async shippedOrders(executor: Executor, customerIds: readonly number[]): Promise<ShippedOrder[]> {
-    if (customerIds.length === 0) return []
-    const shipped = executor
-      .select({
-        total: sql<number>`coalesce(sum(${orderLines.shippedQty} * ${orderLines.priceCents}), 0)::int`,
-      })
-      .from(orderLines)
-      .where(eq(orderLines.orderId, orders.id))
-    const aftered = executor
-      .select({ total: sql<number>`coalesce(sum(${afters.amountCents}), 0)::int` })
-      .from(afters)
-      .where(and(eq(afters.orderId, orders.id), eq(afters.status, 'processed')))
-    const rows = await executor
-      .select({
-        orderId: orders.id,
-        orderNo: orders.no,
-        customerId: orders.customerId,
-        storeId: orders.storeId,
-        storeName: stores.name,
-        shipDate: orders.shipDate,
-        shippedCents: sql<number>`(${shipped})`,
-        afterCents: sql<number>`(${aftered})`,
-      })
-      .from(orders)
-      .innerJoin(stores, eq(stores.id, orders.storeId))
-      .where(and(inArray(orders.customerId, [...customerIds]), eq(orders.status, 'shipped')))
-      .orderBy(asc(orders.id))
-    const units = await unitsOf(
-      executor,
-      rows.map((row) => row.orderId),
-    )
-    return rows.map((row) => ({
-      ...row,
-      shipDate: row.shipDate ?? '',
-      units: units.get(row.orderId) ?? [],
-    }))
+  shippedOrders(executor: Executor, customerIds: readonly number[]) {
+    return shippedLedgerOrders(executor, customerIds)
   }
 
   // 发货单弹层里已处理的售后（项 actions ⊆ voidAfter）

@@ -8,6 +8,7 @@ import type { Viewer } from '../../common/domain/viewer.ts'
 import type { ParsedInput } from '../../common/endpoint.ts'
 import { found } from '../../common/scope.ts'
 import { WriteService, type WriteContext } from '../../common/write.service.ts'
+import { PurchaseDemand } from './demand.ts'
 import { lockSupplier, materialSnapshots } from './purchase-common.ts'
 import { InviteReads } from './invite-reads.ts'
 import { inviteLog, lockInvite, notifyInvite } from './invite-common.ts'
@@ -41,6 +42,7 @@ function inviteView(lines: readonly { name: string; needQty: number; unit: strin
 @Injectable()
 export class InviteWrites {
   constructor(
+    private readonly demand: PurchaseDemand,
     private readonly writes: WriteService,
     private readonly reads: InviteReads,
     private readonly clock: Clock,
@@ -51,6 +53,7 @@ export class InviteWrites {
       viewer,
       async (ctx) => {
         await lockSupplier(ctx.tx, Number(input.supplierId), true)
+        await this.demand.assertReview(ctx, input, 'invite')
         const [row] = await ctx.tx
           .insert(invites)
           .values({

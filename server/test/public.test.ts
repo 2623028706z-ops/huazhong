@@ -23,7 +23,7 @@ const get = (openid: string, path: string) => call(t, 'GET', path, { openid })
 
 describe('操作日志', () => {
   async function seedLogs(): Promise<{ salesId: number; publicId: number }> {
-    const [admin] = await t.db.select().from(accounts).where(eq(accounts.phone, '13700000001'))
+    const [admin] = await t.db.select().from(accounts).where(eq(accounts.phone, '13700000002'))
     const base = { createdBy: admin?.id ?? null, targetType: 'orders', actorLabel: '李敏' }
     const [sales] = await t.db
       .insert(operationLogs)
@@ -43,7 +43,7 @@ describe('操作日志', () => {
     const li = await t.bind('u2')
     const own = (await get(li, '/logs')).body.data as Page<LogItem>
     expect(own.items.map((item) => item.action)).toEqual(['确认订单'])
-    expect((await get(li, '/logs?module=finance')).status).toBe(403)
+    expect((await get(li, '/logs?module=finance')).body.data).toMatchObject({ items: [] })
     expect((await get(li, `/logs/${publicId}`)).status).toBe(404)
   })
 

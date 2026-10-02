@@ -1,4 +1,4 @@
-import { contract, type OrderDetail, type OutputOf } from '@huazhong/shared'
+import { contract, type OrderDetail, type OutputOf, type ShippingDetail } from '@huazhong/shared'
 import { Controller } from '@nestjs/common'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import { CurrentViewer, Input, Route, type ParsedInput } from '../../common/endpoint.ts'
@@ -36,6 +36,10 @@ export class OrdersController {
   get(@CurrentViewer() viewer: Viewer, @Input() input: In<'getOrder'>): Promise<OrderDetail> {
     return this.reads.detail(viewer, Number(input.params.id))
   }
+  @Route(contract.getShippingOrder)
+  shipping(@CurrentViewer() viewer: Viewer, @Input() input: In<'getShippingOrder'>) {
+    return this.reads.shipping(viewer, Number(input.params.id))
+  }
 
   @Route(contract.createOrder)
   create(@CurrentViewer() viewer: Viewer, @Input() input: In<'createOrder'>): Promise<OrderDetail> {
@@ -61,7 +65,7 @@ export class OrdersController {
   }
 
   @Route(contract.shipOrder)
-  ship(@CurrentViewer() viewer: Viewer, @Input() input: In<'shipOrder'>): Promise<OrderDetail> {
+  ship(@CurrentViewer() viewer: Viewer, @Input() input: In<'shipOrder'>): Promise<ShippingDetail> {
     return this.sales.ship(viewer, Number(input.params.id), input.body)
   }
 

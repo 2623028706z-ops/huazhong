@@ -7,7 +7,9 @@ import { gateAction } from '../../common/domain/actions.ts'
 import { actorLabelOf, type Viewer } from '../../common/domain/viewer.ts'
 import type { ParsedInput } from '../../common/endpoint.ts'
 import { found } from '../../common/scope.ts'
+import { owns } from '../../common/ledger.ts'
 import { WriteService, type WriteContext } from '../../common/write.service.ts'
+import { PurchaseDemand } from './demand.ts'
 import {
   insertPoLines,
   lockPo,
@@ -56,6 +58,7 @@ function lineChanges(
 @Injectable()
 export class PoWrites {
   constructor(
+    private readonly demand: PurchaseDemand,
     private readonly writes: WriteService,
     private readonly reads: PoReads,
     private readonly clock: Clock,
@@ -66,6 +69,7 @@ export class PoWrites {
       viewer,
       async (ctx) => {
         await lockSupplier(ctx.tx, Number(input.supplierId))
+        await this.demand.assertReview(ctx, input, 'po')
         const [row] = await ctx.tx
           .insert(purchaseOrders)
           .values({
@@ -92,12 +96,29 @@ export class PoWrites {
   update(viewer: Viewer, id: number, input: Update) {
     return this.writes.run(viewer, (ctx) => this.updateInTx(ctx, id, input))
   }
+  updateSupplier(
+    viewer: Viewer,
+    id: number,
+    input: ParsedInput<typeof contract.supplierUpdatePurchaseOrder>['body'],
+  ) {
+    return this.writes.run(viewer, async (ctx) => {
+      const po = found(
+        (await ctx.tx.select().from(purchaseOrders).where(eq(purchaseOrders.id, id)))[0],
+      )
+      return this.updateInTx(ctx, id, {
+        ...input,
+        supplierId: String(po.supplierId),
+        note: po.note,
+      })
+    })
+  }
   private async updateInTx(ctx: WriteContext, id: number, input: Update) {
     const viewer = found(ctx.viewer ?? undefined)
-    const po = await lockPo(ctx.tx, id)
+    const po = await lockPo(ctx.tx, id, Number(input.supplierId))
     const before = await this.reads.detail(ctx.tx, viewer, id)
+    if (viewer.type === 'supplier' && po.inviteId === null) throw appError.forbidden()
     gateAction(before, {
-      code: 'editPo',
+      code: viewer.type === 'supplier' ? 'supplierEditPo' : 'editPo',
       version: input.version,
       missing: copy.finance.poStateLocked,
       stale: copy.finance.poStale,
@@ -106,7 +127,8 @@ export class PoWrites {
       throw appError.businessRule(copy.finance.poCannotChangeSupplier)
     const changes = await this.changes(ctx, before, input)
     if (changes.length === 0) throw appError.businessRule(copy.error.noChange)
-    if (input.reason === '') throw appError.validation({ reason: copy.finance.poReasonRequired })
+    if (viewer.type !== 'supplier' && input.reason === '')
+      throw appError.validation({ reason: copy.finance.poReasonRequired })
     await this.replaceLines(ctx, id, input.lines)
     await ctx.tx
       .update(purchaseOrders)
@@ -116,6 +138,26 @@ export class PoWrites {
         version: sql`${purchaseOrders.version} + 1`,
       })
       .where(eq(purchaseOrders.id, id))
+    await this.recordUpdate(ctx, { po, before, input, changes, viewer })
+    notifyPo(
+      ctx,
+      { ...po, supplierId: Number(input.supplierId), version: po.version + 1 },
+      po.supplierId,
+    )
+    return this.reads.detail(ctx.tx, viewer, id)
+  }
+  private async recordUpdate(
+    ctx: WriteContext,
+    data: {
+      po: typeof purchaseOrders.$inferSelect
+      before: Awaited<ReturnType<PoReads['detail']>>
+      input: Update
+      changes: string[]
+      viewer: Viewer
+    },
+  ) {
+    const { po, before, input, changes, viewer } = data
+    const id = po.id
     await ctx.tx.insert(poChanges).values({
       poId: id,
       actorLabel: actorLabelOf(viewer),
@@ -124,7 +166,12 @@ export class PoWrites {
       createdBy: viewer.accountId,
     })
     await ctx.log({
-      ...poLog(po, copy.log.action.updatePurchaseOrder),
+      ...poLog(
+        po,
+        viewer.type === 'supplier'
+          ? copy.log.action.supplierUpdatePurchaseOrder
+          : copy.log.action.updatePurchaseOrder,
+      ),
       reason: input.reason,
       before: {
         [copy.records.poChange]: before.lines
@@ -135,12 +182,6 @@ export class PoWrites {
       },
       after: { [copy.log.changes]: changes.join(copy.separator) },
     })
-    notifyPo(
-      ctx,
-      { ...po, supplierId: Number(input.supplierId), version: po.version + 1 },
-      po.supplierId,
-    )
-    return this.reads.detail(ctx.tx, viewer, id)
   }
   private async replaceLines(ctx: WriteContext, id: number, lines: Update['lines']) {
     const old = await ctx.tx
@@ -189,8 +230,10 @@ export class PoWrites {
     return this.writes.run(viewer, async (ctx) => {
       const po = await lockPo(ctx.tx, id)
       const current = await this.reads.detail(ctx.tx, viewer, id)
+      if (viewer.type !== 'supplier' && !owns(viewer, po.buyerId)) throw appError.forbidden()
+      if (viewer.type === 'supplier' && po.inviteId === null) throw appError.forbidden()
       gateAction(current, {
-        code: 'cancelPo',
+        code: viewer.type === 'supplier' ? 'supplierCancelPo' : 'cancelPo',
         version: input.version,
         missing: copy.finance.poStateLocked,
         stale: copy.finance.poStale,
@@ -207,7 +250,15 @@ export class PoWrites {
           version: sql`${purchaseOrders.version} + 1`,
         })
         .where(eq(purchaseOrders.id, id))
-      await ctx.log({ ...poLog(po, copy.log.action.cancelPurchaseOrder), reason: input.reason })
+      await ctx.log({
+        ...poLog(
+          po,
+          viewer.type === 'supplier'
+            ? copy.log.action.supplierCancelPurchaseOrder
+            : copy.log.action.cancelPurchaseOrder,
+        ),
+        reason: input.reason,
+      })
       notifyPo(ctx, { ...po, version: po.version + 1 })
       return this.reads.detail(ctx.tx, viewer, id)
     })

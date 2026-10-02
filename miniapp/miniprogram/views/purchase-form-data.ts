@@ -50,6 +50,11 @@ export interface PurchaseForm {
 export interface PurchaseDraft {
   supplierId: string
   lines: PurchaseLine[]
+  demandContext?: {
+    from: string
+    to: string
+    expected?: { materialId: string; needQty: number; stockQty: number; inTransitQty: number }[]
+  }
 }
 export function blankPurchaseForm(): PurchaseForm {
   return { supplierId: '', note: '', reason: '', lines: [] }
@@ -57,7 +62,10 @@ export function blankPurchaseForm(): PurchaseForm {
 export function purchaseLineOf(m: MaterialOption, qty = 1): PurchaseLine {
   return { ...m, qty, priceText: '', needQty: null, enabled: true }
 }
-export function poFormOf(po: PoDetail, reason = ''): PurchaseForm {
+export function poFormOf(
+  po: Pick<PoDetail, 'supplierId' | 'note' | 'lines'>,
+  reason = '',
+): PurchaseForm {
   return {
     supplierId: po.supplierId,
     note: po.note ?? '',
@@ -105,7 +113,18 @@ export function purchaseLineViews(
 export function purchaseAmount(lines: PurchaseLine[]): number {
   return sumCents(lines, (line) => lineCents(line.qty, centsOfText(line.priceText)))
 }
-export function checkPurchaseForm(form: PurchaseForm, mode: PurchaseMode, version: number | null) {
+export interface PurchaseCheckOptions {
+  reviewToken?: string
+  demandContext?: PurchaseDraft['demandContext']
+  supplierEditing?: boolean
+}
+export function checkPurchaseForm(
+  form: PurchaseForm,
+  mode: PurchaseMode,
+  version: number | null,
+  options: PurchaseCheckOptions = {},
+) {
+  const { reviewToken = '', demandContext, supplierEditing = false } = options
   const lines = form.lines.map((l) => ({
     materialId: l.id,
     qty: l.qty,
@@ -119,16 +138,20 @@ export function checkPurchaseForm(form: PurchaseForm, mode: PurchaseMode, versio
       reason: form.reason,
       lines,
       version,
+      reviewToken,
+      demandContext,
     }
-    return checkedOf(
+    return checkedOf<unknown>(
       version === null
         ? contract.createPurchaseOrder.body.safeParse(input)
-        : contract.updatePurchaseOrder.body.safeParse(input),
+        : supplierEditing
+          ? contract.supplierUpdatePurchaseOrder.body.safeParse(input)
+          : contract.updatePurchaseOrder.body.safeParse(input),
     )
   }
   if (mode === 'supply')
     return checkedOf(contract.submitSupplierInvite.body.safeParse({ version, lines }))
-  const input = { supplierId: form.supplierId, version, lines }
+  const input = { supplierId: form.supplierId, version, lines, reviewToken, demandContext }
   return checkedOf<unknown>(
     version === null
       ? contract.createInvite.body.safeParse(input)

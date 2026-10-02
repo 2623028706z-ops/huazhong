@@ -1,5 +1,5 @@
 // 下单、发货、售后提交时的纯函数规则（03 章第 4、5 节）
-import { AppError } from '@huazhong/shared'
+import { AppError, copy } from '@huazhong/shared'
 import { describe, expect, test } from 'vitest'
 import {
   checkClaims,
@@ -89,17 +89,17 @@ describe('shippedQtysOf', () => {
     expect(errorOf(() => shippedQtysOf(lines, dup, '')).code).toBe('VALIDATION_FAILED')
   })
 
-  test('实发刚好等于订单数量能发，多 1 拦在那一行', () => {
+  test('实发没有上限，多发也需要备注', () => {
     expect(shippedQtysOf(lines, input(10, 5), '').get(2)).toBe(5)
     expect(errorOf(() => shippedQtysOf(lines, input(10, 6), '')).fields).toEqual({
-      'lines.1.shippedQty': '实发不能超过订单数量',
+      shipNote: copy.rework.shipDifferenceNoteRequired,
     })
   })
 
   test('全 0 不能发；少发要写备注，写了按实发', () => {
     expect(errorOf(() => shippedQtysOf(lines, input(0, 0), '备注')).code).toBe('BUSINESS_RULE')
     expect(errorOf(() => shippedQtysOf(lines, input(10, 0), '')).fields).toEqual({
-      shipNote: '少发时请填写发货备注',
+      shipNote: copy.rework.shipDifferenceNoteRequired,
     })
     expect(shippedQtysOf(lines, input(10, 0), '缺货').get(2)).toBe(0)
   })

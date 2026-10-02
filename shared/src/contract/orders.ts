@@ -1,7 +1,7 @@
 // 订单：卡片、详情、列表（05 章第 4–6 节，06 章 S3、S6、X2、X3、H2、H3）。
 // 销售、发货、财务、门店（本店）都读；写接口在 order-writes.ts、store.ts
 import * as z from 'zod'
-import { orderOrigins, orderStatuses } from '../enums.ts'
+import { cancelRequestStatuses, orderOrigins, orderStatuses } from '../enums.ts'
 import {
   businessDateSchema,
   centsSchema,
@@ -12,6 +12,7 @@ import {
 } from '../rules.ts'
 import { actionSchema } from './actions.ts'
 import { afterCardSchema } from './afters.ts'
+import { externalAllocationSchema } from './ledger.ts'
 import type { Endpoint } from './endpoint.ts'
 import {
   checkDateRange,
@@ -43,6 +44,7 @@ export const orderCardSchema = z.object({
   amountCents: centsSchema,
   changed: z.boolean(),
   repriced: z.boolean(),
+  cancelRequested: z.boolean(),
   actions: z.array(actionSchema),
   lockedReason: z.string().nullable(),
 })
@@ -66,6 +68,7 @@ export const orderLineSchema = z.object({
   shippedQty: z.number().int().nonnegative().nullable(),
   // 实发少于订单数量
   short: z.boolean(),
+  over: z.boolean(),
   // 已发货才有：可申请售后数量
   maxQty: z.number().int().nonnegative().nullable(),
   // 发货前按数量，已发货按实发
@@ -82,6 +85,14 @@ export const orderChangeSchema = z.object({
   items: z.array(z.string()),
 })
 export type OrderChange = z.infer<typeof orderChangeSchema>
+export const cancelRequestSchema = z.object({
+  id: idSchema,
+  status: z.enum(cancelRequestStatuses),
+  reason: z.string(),
+  requestedAt: timestampSchema,
+  handledAt: timestampSchema.nullable(),
+  rejectReason: z.string().nullable(),
+})
 
 export const orderDetailSchema = orderCardSchema.extend({
   note: z.string().nullable(),
@@ -94,10 +105,35 @@ export const orderDetailSchema = orderCardSchema.extend({
   shipNote: z.string().nullable(),
   cancelReason: z.string().nullable(),
   cancelledAt: timestampSchema.nullable(),
+  voidReason: z.string().nullable(),
+  voidedAt: timestampSchema.nullable(),
+  cancelRequests: z.array(cancelRequestSchema),
   // 已发货的才有（门店看不到已关闭、已作废的金额）
   afters: z.array(afterCardSchema),
+  allocations: z.array(externalAllocationSchema),
 })
 export type OrderDetail = z.infer<typeof orderDetailSchema>
+export const shippingCardSchema = orderCardSchema.omit({ amountCents: true }).strict()
+export const shippingLineSchema = orderLineSchema
+  .omit({ priceCents: true, listPriceCents: true, amountCents: true, maxQty: true, repriced: true })
+  .strict()
+export const shippingDetailSchema = shippingCardSchema
+  .extend({
+    note: z.string().nullable(),
+    lines: z.array(shippingLineSchema),
+    changes: z.array(orderChangeSchema),
+    cancelRequests: z.array(cancelRequestSchema),
+    shippedBy: z.string().nullable(),
+    shippedAt: timestampSchema.nullable(),
+    shipNote: z.string().nullable(),
+    cancelReason: z.string().nullable(),
+    cancelledAt: timestampSchema.nullable(),
+    voidReason: z.string().nullable(),
+    voidedAt: timestampSchema.nullable(),
+  })
+  .strict()
+export type ShippingCard = z.infer<typeof shippingCardSchema>
+export type ShippingDetail = z.infer<typeof shippingDetailSchema>
 
 export const orderQuerySchema = pageQuerySchema
   .extend({
@@ -115,7 +151,7 @@ export const orderQuerySchema = pageQuerySchema
 export const listOrders = {
   method: 'GET',
   path: '/orders',
-  grants: ['sales', 'shipping', 'finance', 'store'],
+  grants: ['sales', 'finance', 'store'],
   query: orderQuerySchema,
   // 列表级 actions ⊆ create（销售）
   response: countedPageSchema(orderCardSchema, orderStatuses),
@@ -132,15 +168,23 @@ export const listShippingOrders = {
     status: z.enum(['to_ship', 'shipped']).optional(),
     q: z.string().trim().optional(),
   }),
-  response: countedPageSchema(orderCardSchema, orderStatuses),
+  response: countedPageSchema(shippingCardSchema, orderStatuses),
   errors: [],
 } as const satisfies Endpoint
 
 export const getOrder = {
   method: 'GET',
   path: '/orders/:id',
-  grants: ['sales', 'shipping', 'finance', 'store'],
+  grants: ['sales', 'finance', 'store'],
   params: idParamsSchema,
   response: orderDetailSchema,
+  errors: ['NOT_FOUND'],
+} as const satisfies Endpoint
+export const getShippingOrder = {
+  method: 'GET',
+  path: '/shipping/orders/:id',
+  grants: ['shipping'],
+  params: idParamsSchema,
+  response: shippingDetailSchema,
   errors: ['NOT_FOUND'],
 } as const satisfies Endpoint

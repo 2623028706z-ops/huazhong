@@ -56,6 +56,8 @@ export function afterRowsQuery(executor: Executor) {
       version: afters.version,
       status: afters.status,
       origin: afters.origin,
+      createdBy: afters.createdBy,
+      processedBy: afters.processedBy,
       afterDate: afters.afterDate,
       orderId: afters.orderId,
       orderNo: orders.no,

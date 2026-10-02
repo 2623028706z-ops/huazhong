@@ -11,7 +11,7 @@ import { idParamsSchema } from './page.ts'
 export const requestUploadTicket = {
   method: 'POST',
   path: '/files/upload-ticket',
-  grants: ['store', 'sales'],
+  grants: ['store', 'sales', 'warehouse'],
   body: z.object({
     purpose: z.enum(filePurposes),
     mime: z.enum(IMAGE_MIME_TYPES, { error: copy.file.badType }),
@@ -30,7 +30,7 @@ export const requestUploadTicket = {
 export const completeUpload = {
   method: 'POST',
   path: '/files/:id/complete',
-  grants: ['store', 'sales'],
+  grants: ['store', 'sales', 'warehouse'],
   params: idParamsSchema,
   response: z.object({
     status: z.enum(fileStatuses),

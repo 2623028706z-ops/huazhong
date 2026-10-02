@@ -44,6 +44,18 @@ export const receivePurchaseOrder = {
   response: poDetailSchema,
   errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
 } as const satisfies Endpoint
+export const voidPurchaseOrder = {
+  method: 'POST',
+  path: '/purchase-orders/:id/void',
+  grants: ['warehouse'],
+  params: idParamsSchema,
+  body: z.object({
+    version: versionSchema,
+    reason: requiredTextSchema(copy.rework.voidReasonRequired),
+  }),
+  response: poDetailSchema,
+  errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
+} as const satisfies Endpoint
 export const returnPurchaseOrder = {
   method: 'POST',
   path: '/purchase-orders/:id/returns',

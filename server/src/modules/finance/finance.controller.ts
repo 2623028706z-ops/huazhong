@@ -71,8 +71,14 @@ export class FinanceController {
   }
 
   @Route(contract.getReceipt)
-  receipt(@Input() input: In<'getReceipt'>): Promise<ReceiptDetail> {
-    return this.receipts.detail(this.db, Number(input.params.id))
+  receipt(
+    @CurrentViewer() viewer: Viewer,
+    @Input() input: In<'getReceipt'>,
+  ): Promise<ReceiptDetail> {
+    return this.db.transaction((tx) => this.receipts.detail(tx, Number(input.params.id), viewer), {
+      isolationLevel: 'repeatable read',
+      accessMode: 'read only',
+    })
   }
 
   @Route(contract.voidReceipt)

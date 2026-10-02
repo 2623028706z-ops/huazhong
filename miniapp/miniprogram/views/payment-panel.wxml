@@ -1,13 +1,33 @@
 <import src="detail.wxml" />
 <template name="payment-panel">
-  <hz-sheet show="{{paymentLayer !== ''}}" title="{{paymentLayer === 'void' ? paymentTexts.void : paymentTexts.title}}" back="{{paymentLayer === 'void'}}" guard="{{paymentReason !== ''}}" footer bind:close="onClosePayment" bind:back="onBackPayment">
+  <hz-sheet id="fund-sheet" show="{{paymentLayer !== ''}}" title="{{paymentLayer === 'void' ? paymentTexts.void : paymentLayer === 'refund' ? paymentTexts.registerRefund : paymentTexts.title}}" back="{{paymentLayer !== 'detail'}}" guard="{{paymentReason !== '' || (paymentLayer === 'refund' && (refundForm.amountText || refundForm.note))}}" footer bind:close="onClosePayment" bind:back="onBackPayment">
     <view class="u-sheet-form u-sheet-plain">
       <hz-error wx:if="{{paymentError}}" message="{{paymentError}}" />
+      <hz-notice wx:if="{{paymentView.notice}}" text="{{paymentView.notice}}" />
       <hz-skeleton wx:if="{{!paymentView}}" type="detail" />
       <template wx:else is="info" data="{{...paymentView}}" />
-      <hz-field wx:if="{{paymentLayer === 'void'}}" label="{{paymentTexts.reason}}" value="{{paymentReason}}" error="{{paymentFields.reason}}" bind:change="onPaymentReason" />
+      <hz-notice wx:if="{{paymentLayer === 'void' && paymentTexts.confirmNotice}}" text="{{paymentTexts.confirmNotice}}" />
+      <hz-field id="fund-reason" wx:if="{{paymentLayer === 'void'}}" label="{{paymentTexts.reason}}" value="{{paymentReason}}" error="{{paymentFields.reason}}" bind:change="onPaymentReason" />
+      <block wx:if="{{paymentLayer === 'refund'}}">
+        <hz-notice text="{{paymentTexts.refundConfirm}}" />
+        <hz-picker id="refund-date" label="{{paymentTexts.refundDate}}" mode="date" value="{{refundForm.refundDate}}" data-field="refundDate" bind:change="onRefundField" />
+        <hz-field id="refund-amount" label="{{paymentTexts.refundAmount}}" type="digit" value="{{refundForm.amountText}}" data-field="amountText" bind:change="onRefundField" />
+        <hz-button kind="secondary" text="{{paymentTexts.all}}" bind:press="onFillRefund" />
+        <hz-picker id="refund-method" label="{{paymentTexts.refundMethod}}" options="{{refundMethods}}" value="{{refundForm.methodName}}" data-field="methodName" bind:change="onRefundField" />
+        <hz-field label="{{paymentTexts.note}}" value="{{refundForm.note}}" data-field="note" bind:change="onRefundField" />
+      </block>
+      <block wx:if="{{paymentLayer === 'detail'}}">
+        <view wx:if="{{paymentView.allocations.length}}" class="u-section"><text class="u-section__title">{{paymentTexts.allocationHistory}}</text>
+          <view class="u-card u-info"><view wx:for="{{paymentView.allocations}}" wx:key="id" class="u-info__line"><text>{{item.name}}</text><text>{{item.amount}}</text><text class="u-info__meta">{{item.sub}}</text><hz-button wx:if="{{item.canRevoke}}" kind="secondary" text="{{paymentTexts.revokeAllocation}}" data-key="{{item.id}}" bind:press="onRevokeAllocation" /></view></view>
+        </view>
+        <view wx:if="{{paymentView.refunds.length}}" class="u-section"><text class="u-section__title">{{paymentTexts.refundHistory}}</text>
+          <view class="u-card u-info"><view wx:for="{{paymentView.refunds}}" wx:key="id" class="u-info__line"><text>{{item.no}} · {{item.date}} · {{item.amount}} · {{item.status}}</text><text class="u-info__meta">{{item.meta}}</text><hz-button wx:if="{{item.canVoid}}" kind="secondary" text="{{paymentTexts.voidRefund}}" data-key="{{item.id}}" bind:press="onVoidRefund" /></view></view>
+        </view>
+        <hz-button id="register-refund" wx:if="{{paymentView.canRefund}}" kind="secondary" text="{{paymentTexts.registerRefund}}" bind:press="onRegisterRefund" />
+      </block>
     </view>
-    <hz-button wx:if="{{paymentLayer === 'void'}}" slot="footer" text="{{paymentTexts.confirm}}" loading="{{paymentBusy}}" bind:press="onSubmitPaymentVoid" />
+    <hz-button id="fund-confirm" wx:if="{{paymentLayer === 'void'}}" slot="footer" text="{{paymentTexts.confirm}}" loading="{{paymentBusy}}" bind:press="onSubmitPaymentVoid" />
+    <hz-button id="refund-confirm" wx:elif="{{paymentLayer === 'refund'}}" slot="footer" text="{{paymentTexts.registerRefund}}" loading="{{paymentBusy}}" bind:press="onSubmitRefund" />
     <hz-button wx:elif="{{paymentView.canVoid}}" slot="footer" kind="secondary" text="{{paymentTexts.void}}" bind:press="onVoidPayment" />
   </hz-sheet>
 </template>

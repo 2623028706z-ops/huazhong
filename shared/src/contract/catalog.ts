@@ -13,6 +13,7 @@ import {
 } from '../rules.ts'
 import type { Endpoint } from './endpoint.ts'
 import { bomInputSchema, bomLineSchema, checkBom } from './products.ts'
+import { actionSchema } from './actions.ts'
 
 // 这个客户的订货分类：门店订货页按它分组
 export const catalogCategorySchema = z.object({
@@ -46,6 +47,7 @@ export type CatalogItem = z.infer<typeof catalogItemSchema>
 
 // 分类按 sort，目录项按分类、再按产品
 export const catalogSchema = z.object({
+  actions: z.array(actionSchema),
   customerId: idSchema,
   customerName: z.string(),
   categories: z.array(catalogCategorySchema),
@@ -80,6 +82,29 @@ export const getCatalog = {
   params: customerParamsSchema,
   response: catalogSchema,
   errors: ['NOT_FOUND'],
+} as const satisfies Endpoint
+export const previewCatalogCopy = {
+  method: 'GET',
+  path: '/catalog/:customerId/copy-preview',
+  grants: ['sales'],
+  params: customerParamsSchema,
+  query: z.object({ fromCustomerId: idSchema }),
+  response: z.object({
+    copyCount: z.number().int().nonnegative(),
+    skipCount: z.number().int().nonnegative(),
+    previewToken: z.string().min(1),
+  }),
+  errors: ['NOT_FOUND', 'BUSINESS_RULE'],
+} as const satisfies Endpoint
+export const copyCatalog = {
+  method: 'POST',
+  path: '/catalog/:customerId/copy',
+  grants: ['sales'],
+  params: customerParamsSchema,
+  body: z.object({ fromCustomerId: idSchema, previewToken: z.string().min(1) }),
+  response: catalogSchema,
+  errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
+  idempotent: true,
 } as const satisfies Endpoint
 
 // 新加或修改一个目录项；返回整份目录

@@ -10,14 +10,26 @@ import {
 } from '../../../db/schema/index.ts'
 import { found } from '../../common/scope.ts'
 import type { WriteContext } from '../../common/write.service.ts'
+import { lockSupplierLedger } from '../../common/ledger.ts'
 
-export async function lockPo(tx: Tx, id: number) {
+export async function lockPo(tx: Tx, id: number, nextSupplierId?: number) {
+  const [pointer] = await tx
+    .select({ supplierId: purchaseOrders.supplierId })
+    .from(purchaseOrders)
+    .where(eq(purchaseOrders.id, id))
+  const supplierId = found(pointer).supplierId
+  for (const ownerId of [
+    ...new Set([supplierId, ...(nextSupplierId === undefined ? [] : [nextSupplierId])]),
+  ].sort((a, b) => a - b))
+    await lockSupplierLedger(tx, ownerId)
   const [row] = await tx
     .select()
     .from(purchaseOrders)
     .where(eq(purchaseOrders.id, id))
     .for('update')
-  return found(row)
+  const current = found(row)
+  if (current.supplierId !== supplierId) throw appError.stale(copy.finance.poStale, null)
+  return current
 }
 export async function lockSupplier(tx: Tx, id: number, accountRequired = false) {
   const [row] = await tx.select().from(suppliers).where(eq(suppliers.id, id)).for('update')

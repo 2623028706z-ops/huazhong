@@ -10,6 +10,8 @@ import {
   type OrderChange,
   type OrderDetail,
   type OrderLine,
+  type ShippingCard,
+  type ShippingDetail,
 } from '@huazhong/shared'
 
 interface Tag {
@@ -36,6 +38,7 @@ function cardTagsOf(order: OrderCard): Tag[] {
   const tags: Tag[] = []
   if (order.changed) tags.push({ text: copy.screen.tag.changed, warn: false })
   if (order.repriced) tags.push({ text: copy.screen.tag.repriced, warn: true })
+  if (order.cancelRequested) tags.push({ text: copy.rework.cancelPending, warn: true })
   return tags
 }
 
@@ -61,6 +64,7 @@ function lineTagsOf(line: OrderLine, shipped: boolean): Tag[] {
   const tags: Tag[] = []
   if (line.repriced) tags.push({ text: copy.screen.tag.repriced, warn: true })
   if (line.short) tags.push({ text: copy.screen.tag.short, warn: true })
+  if (line.over) tags.push({ text: copy.rework.overShipped, warn: true })
   if (line.discontinued && !shipped) tags.push({ text: copy.screen.tag.discontinued, warn: true })
   return tags
 }
@@ -125,6 +129,16 @@ function cancelInfoOf(order: OrderDetail): InfoRow[] {
   ])
 }
 
+function voidInfoOf(order: { voidReason: string | null; voidedAt: string | null }) {
+  return {
+    heading: copy.screen.section.void,
+    rows: rowsOf([
+      [copy.screen.label.voidReason, order.voidReason],
+      [copy.screen.label.voidedAt, order.voidedAt ? formatTime(order.voidedAt) : null],
+    ]),
+  }
+}
+
 // 详情页（S6、X3、H3 只读）：信息卡 → 产品明细（明细 + 金额）→ 发货信息 → 变更记录 → 取消信息。
 // 员工多写来源、客户门店
 export function orderViewOf(order: OrderDetail, forStore: boolean) {
@@ -148,10 +162,90 @@ export function orderViewOf(order: OrderDetail, forStore: boolean) {
     },
     linesHeading: copy.screen.section.lines,
     lines: orderLinesOf(order),
+    allocations: order.allocations.map((allocation) => ({
+      date: allocation.date,
+      amount: formatMoney(allocation.amountCents),
+    })),
     amountRows: [amountRowOf(order)],
     ship: { heading: copy.screen.section.ship, rows: shipInfoOf(order) },
     changes: changesOf(order.changes),
+    requests: cancelRequestRowsOf(order.cancelRequests),
+    void: voidInfoOf(order),
     reason: { heading: copy.screen.section.cancel, rows: cancelInfoOf(order) },
+    notice: order.lockedReason ?? '',
+  }
+}
+
+function cancelRequestRowsOf(requests: OrderDetail['cancelRequests']) {
+  return requests.map((request) => ({
+    id: request.id,
+    rows: rowsOf([
+      [copy.rework.cancelRequest, labels.cancelRequestStatus[request.status]],
+      [copy.rework.cancelRequestReasonLabel, request.reason],
+      [copy.rework.cancelRequestedAt, formatTime(request.requestedAt)],
+      [copy.rework.cancelHandledAt, request.handledAt ? formatTime(request.handledAt) : null],
+      [copy.rework.rejectReason, request.rejectReason],
+    ]),
+  }))
+}
+
+export function shippingRowOf(order: ShippingCard) {
+  return {
+    id: order.id,
+    date: order.orderDate,
+    status: order.status,
+    title: copy.org.store(order.customerName, order.storeName),
+    total: formatUnitTotals(order.units),
+    meta: [order.no, shipDateText(order.shipDate)].join(copy.separator),
+    tags: [
+      ...(order.changed ? [{ text: copy.screen.tag.changed, warn: false }] : []),
+      ...(order.cancelRequested ? [{ text: copy.rework.cancelPending, warn: true }] : []),
+    ],
+  }
+}
+
+export function shippingViewOf(order: ShippingDetail) {
+  return {
+    info: {
+      title: order.no,
+      statusKind: 'orderStatus',
+      status: order.status,
+      rows: rowsOf([
+        [copy.screen.label.customerStore, copy.org.store(order.customerName, order.storeName)],
+        [copy.field.shipDate, shipDateText(order.shipDate)],
+        [copy.field.note, order.note],
+      ]),
+    },
+    linesHeading: copy.screen.section.lines,
+    lines: order.lines.map((line) => ({
+      key: line.id,
+      name: line.name,
+      code: line.customerCode,
+      qty: line.shippedQty ?? line.qty,
+      unit: line.unit,
+      tags: [
+        ...(line.short ? [{ text: copy.screen.tag.short, warn: true }] : []),
+        ...(line.over ? [{ text: copy.rework.overShipped, warn: true }] : []),
+      ],
+    })),
+    ship: {
+      heading: copy.screen.section.ship,
+      rows: rowsOf([
+        [copy.screen.label.shippedBy, order.shippedBy],
+        [copy.screen.label.shippedAt, order.shippedAt ? formatTime(order.shippedAt) : null],
+        [copy.screen.label.shipNote, order.shipNote],
+      ]),
+    },
+    changes: changesOf(order.changes),
+    requests: cancelRequestRowsOf(order.cancelRequests),
+    reason: {
+      heading: copy.screen.section.cancel,
+      rows: rowsOf([
+        [copy.screen.label.cancelReason, order.cancelReason],
+        [copy.screen.label.cancelledAt, order.cancelledAt ? formatTime(order.cancelledAt) : null],
+      ]),
+    },
+    void: voidInfoOf(order),
     notice: order.lockedReason ?? '',
   }
 }

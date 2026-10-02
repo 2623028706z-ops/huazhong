@@ -11,7 +11,7 @@ import { afterEach, beforeEach, expect, test } from 'vitest'
 import { accounts, operationLogs } from '../db/schema/index.ts'
 import { phoneCode } from './support/phone.ts'
 import { inviteOf, supplierInput, supplierOf } from './support/purchase.ts'
-import { apiOf, dataOf, idBy, startSales, type SalesApp } from './support/sales.ts'
+import { apiOf, dataOf, idBy, snapshotInput, startSales, type SalesApp } from './support/sales.ts'
 import { connect } from './support/ws.ts'
 
 let s: SalesApp
@@ -42,15 +42,17 @@ test('B05 供应商名称校验、停用后旧单照常收货', async () => {
     dataOf<OutputOf<typeof contract.listSuppliers>>(await api.get('/suppliers')).items,
   ).toHaveLength(4)
   const supplier = await supplierOf(s, '云岭花卉')
+  const bodyToReview = {
+    supplierId: supplier.id,
+    note: '',
+    lines: [{ materialId: await idBy(s.t, 'materials.name', '向日葵'), qty: 1, priceCents: 350 }],
+  }
+  const reviewedBody = await snapshotInput(s.t, api.openid, '/purchase-orders', bodyToReview)
   const changed = dataOf<Supplier>(
     await api.patch(`/suppliers/${supplier.id}`, { ...supplierInput(supplier), enabled: false }),
   )
   expect(changed).toMatchObject({ enabled: false, openPoCount: 1 })
-  const res = await api.post('/purchase-orders', {
-    supplierId: supplier.id,
-    note: '',
-    lines: [{ materialId: await idBy(s.t, 'materials.name', '向日葵'), qty: 1, priceCents: 350 }],
-  })
+  const res = await api.post('/purchase-orders', reviewedBody)
   expect(res.body.error?.code).toBe('BUSINESS_RULE')
 })
 test('F05 开账号校验、关闭账号保留绑定及取消邀请，重新开通恢复登录', async () => {

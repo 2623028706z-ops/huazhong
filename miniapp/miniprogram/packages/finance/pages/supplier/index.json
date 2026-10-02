@@ -13,6 +13,9 @@
     "hz-status": "/components/hz-status/index",
     "hz-line-item": "/components/hz-line-item/index",
     "hz-records": "/components/hz-records/index",
-    "hz-statement": "/components/hz-statement/index"
+    "hz-statement": "/components/hz-statement/index",
+    "hz-field": "/components/hz-field/index",
+    "hz-picker": "/components/hz-picker/index",
+    "hz-confirm": "/components/hz-confirm/index"
   }
 }

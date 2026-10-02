@@ -1,15 +1,18 @@
 // 采购与供应商端：阶段 4 开始实现的接口。
 import * as z from 'zod'
 import { apStatuses, inviteStatuses, poStatuses } from '../enums.ts'
+import { copy } from '../copy.ts'
 import {
   businessDateSchema,
   centsSchema,
   idSchema,
+  requiredTextSchema,
   timestampSchema,
   unitTotalSchema,
   versionSchema,
 } from '../rules.ts'
 import { actionSchema } from './actions.ts'
+import { paymentAllocationSchema, externalAllocationSchema } from './ledger.ts'
 import type { Endpoint } from './endpoint.ts'
 import {
   checkDateRange,
@@ -40,6 +43,8 @@ export const poCardSchema = z.object({
   units: z.array(unitTotalSchema),
   amountCents: centsSchema,
   payableCents: centsSchema,
+  paidCents: centsSchema,
+  unpaidCents: centsSchema,
   apStatus: z.enum(apStatuses),
   changed: z.boolean(),
   repriced: z.boolean(),
@@ -55,6 +60,8 @@ export const poDetailSchema = poCardSchema.extend({
   inviteNo: z.string().nullable(),
   cancelReason: z.string().nullable(),
   cancelledAt: timestampSchema.nullable(),
+  voidReason: z.string().nullable(),
+  voidedAt: timestampSchema.nullable(),
   receivedAt: timestampSchema.nullable(),
   receivedBy: z.string().nullable(),
   lines: z.array(
@@ -86,9 +93,13 @@ export const poDetailSchema = poCardSchema.extend({
     }),
   ),
   notice: z.string().nullable(),
-  paidBefore: z.boolean(),
+  allocations: z.array(paymentAllocationSchema),
 })
 export type PoDetail = z.infer<typeof poDetailSchema>
+export const supplierPoDetailSchema = poDetailSchema.extend({
+  allocations: z.array(externalAllocationSchema),
+})
+export type SupplierPoDetail = z.infer<typeof supplierPoDetailSchema>
 export const poQuerySchema = pageQuerySchema
   .extend({
     status: z.enum(poStatuses).optional(),
@@ -118,7 +129,7 @@ export const createPurchaseOrder = {
   grants: ['purchase'],
   body: poCreateSchema,
   response: poDetailSchema,
-  errors: ['NOT_FOUND', 'BUSINESS_RULE'],
+  errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
   idempotent: true,
 } as const satisfies Endpoint
 export const updatePurchaseOrder = {
@@ -135,7 +146,10 @@ export const cancelPurchaseOrder = {
   path: '/purchase-orders/:id/cancel',
   grants: ['purchase'],
   params: idParamsSchema,
-  body: z.object({ version: versionSchema, reason: z.string().trim() }),
+  body: z.object({
+    version: versionSchema,
+    reason: requiredTextSchema(copy.rework.reasonRequired),
+  }),
   response: poDetailSchema,
   errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
 } as const satisfies Endpoint
@@ -208,7 +222,7 @@ export const createInvite = {
   grants: ['purchase'],
   body: inviteCreateSchema,
   response: inviteDetailSchema,
-  errors: ['NOT_FOUND', 'BUSINESS_RULE'],
+  errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
   idempotent: true,
 } as const satisfies Endpoint
 export const updateInvite = {
@@ -267,7 +281,7 @@ export const submitSupplierInvite = {
   grants: ['supplier'],
   params: idParamsSchema,
   body: supplySchema,
-  response: z.object({ invite: inviteDetailSchema, purchaseOrder: poDetailSchema }),
+  response: z.object({ invite: inviteDetailSchema, purchaseOrder: supplierPoDetailSchema }),
   errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
   idempotent: true,
 } as const satisfies Endpoint
@@ -284,71 +298,28 @@ export const supplierPurchaseOrder = {
   path: '/supplier/purchase-orders/:id',
   grants: ['supplier'],
   params: idParamsSchema,
-  response: poDetailSchema,
+  response: supplierPoDetailSchema,
   errors: ['NOT_FOUND'],
 } as const satisfies Endpoint
-export const demandQuerySchema = z.object(dateRangeShape).superRefine(checkDateRange)
-const inviteSourceSchema = z.object({
-  inviteId: idSchema,
-  no: z.string(),
-  supplierName: z.string(),
-  needQty: z.number().int().positive(),
-})
-export const listPurchaseDemand = {
-  method: 'GET',
-  path: '/purchase/demand',
-  grants: ['purchase'],
-  query: demandQuerySchema,
-  response: z.object({
-    from: businessDateSchema,
-    to: businessDateSchema,
-    orderCount: z.number().int().nonnegative(),
-    mats: z.array(
-      z.object({
-        materialId: idSchema,
-        name: z.string(),
-        unit: z.string(),
-        enabled: z.boolean(),
-        needQty: z.number().int().nonnegative(),
-        stockQty: z.number().int().nonnegative(),
-        inTransitQty: z.number().int().nonnegative(),
-        leftQty: z.number().int(),
-        invited: z.boolean(),
-        invites: z.array(inviteSourceSchema),
-      }),
-    ),
-    actions,
-  }),
-  errors: [],
+export const supplierUpdatePurchaseOrder = {
+  method: 'PUT',
+  path: '/supplier/purchase-orders/:id',
+  grants: ['supplier'],
+  params: idParamsSchema,
+  body: supplySchema.safeExtend({ reason: z.string().trim().default('') }),
+  response: supplierPoDetailSchema,
+  errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
 } as const satisfies Endpoint
-export const listDemandSources = {
-  method: 'GET',
-  path: '/purchase/demand/:materialId/sources',
-  grants: ['purchase'],
-  params: z.object({ materialId: idSchema }),
-  query: demandQuerySchema,
-  response: z.object({
-    materialId: idSchema,
-    inTransitQty: z.number().int().nonnegative(),
-    invites: z.array(inviteSourceSchema),
-    groups: z.array(
-      z.object({
-        shipDate: businessDateSchema,
-        items: z.array(
-          z.object({
-            orderId: idSchema,
-            orderNo: z.string(),
-            customerName: z.string(),
-            storeName: z.string(),
-            productName: z.string(),
-            qty: z.number().int().positive(),
-            productUnit: z.string(),
-            bomQty: z.number().int().positive(),
-            materialQty: z.number().int().positive(),
-          }),
-        ),
-      }),
-    ),
+export const supplierCancelPurchaseOrder = {
+  method: 'POST',
+  path: '/supplier/purchase-orders/:id/cancel',
+  grants: ['supplier'],
+  params: idParamsSchema,
+  body: z.object({
+    version: versionSchema,
+    reason: requiredTextSchema(copy.rework.reasonRequired),
   }),
-  errors: ['NOT_FOUND'],
+  response: supplierPoDetailSchema,
+  errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
 } as const satisfies Endpoint
+export { demandQuerySchema, listPurchaseDemand, listDemandSources } from './purchase-demand.ts'

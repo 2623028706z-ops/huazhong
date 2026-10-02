@@ -1,5 +1,6 @@
 import {
   contract,
+  shanghaiDateOf,
   copy,
   type Action,
   type PoCard,
@@ -29,6 +30,9 @@ import type { ParsedInput } from '../../common/endpoint.ts'
 import { beforeCursor, dateBetween } from '../../common/page.ts'
 import { found } from '../../common/scope.ts'
 import { poExtras } from './po-detail.ts'
+import { loadPaymentLedger } from '../../common/payment-ledger.ts'
+import { paymentHistory } from '../../common/finance-history.ts'
+import { owns } from '../../common/ledger.ts'
 
 type Executor = Db | Tx
 type PoQuery = ParsedInput<typeof contract.listPurchaseOrders>['query']
@@ -44,8 +48,7 @@ const totals = {
   changed: sql<boolean>`EXISTS (SELECT 1 FROM po_changes WHERE po_id = ${purchaseOrders.id})`,
   repriced: sql<boolean>`EXISTS (SELECT 1 FROM price_changes WHERE po_id = ${purchaseOrders.id})`,
   allReturned: sql<boolean>`${purchaseOrders.status} = 'received' AND NOT EXISTS (SELECT 1 FROM purchase_order_lines WHERE po_id = ${purchaseOrders.id} AND received_qty <> returned_qty)`,
-  paidBefore: sql<boolean>`EXISTS (SELECT 1 FROM payments WHERE po_id = ${purchaseOrders.id})`,
-  paid: sql<boolean>`EXISTS (SELECT 1 FROM payments WHERE po_id = ${purchaseOrders.id} AND status = 'valid')`,
+  liveAllocation: sql<boolean>`EXISTS (SELECT 1 FROM payment_allocations a JOIN payments p ON p.id = a.payment_id WHERE a.po_id = ${purchaseOrders.id} AND a.revoked_at IS NULL AND p.status = 'valid')`,
 }
 function rowsQuery(executor: Executor) {
   return executor
@@ -65,28 +68,43 @@ type Line = typeof purchaseOrderLines.$inferSelect
 function purchaseActions(row: PoRow, viewer: Viewer): Action[] {
   const actions: Action[] = []
   if (row.po.status === 'to_receive' && viewer.modules.includes('purchase')) {
-    actions.push(enabledAction('editPo', true), enabledAction('cancelPo', true))
+    actions.push(enabledAction('editPo', true))
+    if (owns(viewer, row.po.buyerId)) actions.push(enabledAction('cancelPo', true))
     if (row.po.inviteId === null) actions.push(enabledAction('changeSupplier', null))
   }
+  if (
+    viewer.type === 'supplier' &&
+    row.po.inviteId !== null &&
+    row.po.status === 'to_receive' &&
+    viewer.supplierId === row.po.supplierId
+  )
+    actions.push(enabledAction('supplierEditPo', false), enabledAction('supplierCancelPo', true))
   return actions
 }
 function actionsOf(row: PoRow, viewer: Viewer): Action[] {
   const actions = purchaseActions(row, viewer)
-  if (row.po.status === 'to_receive' && viewer.modules.includes('warehouse'))
-    actions.push(enabledAction('receive', false))
-  if (
-    row.po.status === 'received' &&
-    !row.paidBefore &&
-    !row.allReturned &&
-    viewer.modules.includes('warehouse')
-  ) {
+  if (!viewer.modules.includes('warehouse')) return actions
+  if (row.po.status === 'to_receive') actions.push(enabledAction('receive', false))
+  if (row.po.status === 'received' && !row.allReturned) {
     actions.push(enabledAction('return', false), enabledAction('reprice', true))
   }
-  if (row.payableCents > 0 && !row.paid && viewer.modules.includes('finance'))
-    actions.push(enabledAction('pay', false))
+  if (
+    row.po.status === 'received' &&
+    !row.liveAllocation &&
+    owns(viewer, row.po.receivedBy ?? row.po.createdBy)
+  )
+    actions.push(enabledAction('voidPo', true))
   return actions
 }
-function cardOf(row: PoRow, lines: Line[], viewer: Viewer): PoCard {
+async function cardOf(
+  row: PoRow,
+  lines: Line[],
+  viewer: Viewer,
+  executor: Executor,
+): Promise<PoCard> {
+  const ledger = await loadPaymentLedger(executor, row.po.supplierId)
+  const paidCents = ledger.replay.received.get(row.po.id) ?? 0
+  const unpaidCents = Math.max(row.payableCents - paidCents, 0)
   const { po } = row
   return {
     id: String(po.id),
@@ -100,17 +118,21 @@ function cardOf(row: PoRow, lines: Line[], viewer: Viewer): PoCard {
     units: unitTotalsOf(lines),
     amountCents: row.amountCents,
     payableCents: row.payableCents,
-    apStatus: row.paid ? 'paid' : row.payableCents === 0 ? 'no_pay' : 'to_pay',
+    paidCents,
+    unpaidCents,
+    apStatus:
+      row.payableCents === 0
+        ? 'no_pay'
+        : unpaidCents === 0
+          ? 'paid'
+          : paidCents > 0
+            ? 'partial'
+            : 'unpaid',
     changed: row.changed,
     repriced: row.repriced,
     allReturned: row.allReturned,
     actions: actionsOf(row, viewer),
-    lockedReason:
-      viewer.type !== 'supplier' && row.paidBefore
-        ? row.paid
-          ? copy.finance.poPaidLocked
-          : copy.finance.paidBeforeLocked
-        : null,
+    lockedReason: null,
   }
 }
 function scopeOf(viewer: Viewer): SQL | undefined {
@@ -175,8 +197,22 @@ async function recordsOf(executor: Executor, poId: number) {
 @Injectable()
 export class PoReads {
   constructor(@Inject(DB) private readonly db: Db) {}
+  supplierView(detail: PoDetail): OutputOf<typeof contract.supplierPurchaseOrder> {
+    return {
+      ...detail,
+      allocations: detail.allocations
+        .filter((row) => row.status === 'valid' && row.effectiveCents > 0)
+        .map((row) => ({
+          date: shanghaiDateOf(Date.parse(row.createdAt)),
+          amountCents: row.effectiveCents,
+        })),
+    }
+  }
   get(viewer: Viewer, id: number) {
-    return this.detail(this.db, viewer, id)
+    return this.db.transaction((tx) => this.detail(tx, viewer, id), {
+      isolationLevel: 'repeatable read',
+      accessMode: 'read only',
+    })
   }
 
   async cards(executor: Executor, viewer: Viewer, where?: SQL): Promise<PoCard[]> {
@@ -187,13 +223,23 @@ export class PoReads {
       executor,
       rows.map((row) => row.po.id),
     )
-    return rows.map((row) =>
-      cardOf(
-        row,
-        lines.filter((line) => line.poId === row.po.id),
-        viewer,
+    return Promise.all(
+      rows.map((row) =>
+        cardOf(
+          row,
+          lines.filter((line) => line.poId === row.po.id),
+          viewer,
+          executor,
+        ),
       ),
     )
+  }
+  private async waitingCount(base: SQL | undefined) {
+    const [waiting] = await this.db
+      .select({ total: count() })
+      .from(purchaseOrders)
+      .where(and(base, eq(purchaseOrders.status, 'to_receive')))
+    return waiting?.total ?? 0
   }
   async list(
     viewer: Viewer,
@@ -227,21 +273,21 @@ export class PoReads {
       this.db,
       page.items.map((row) => row.po.id),
     )
-    const [waiting] = await this.db
-      .select({ total: count() })
-      .from(purchaseOrders)
-      .where(and(base, eq(purchaseOrders.status, 'to_receive')))
+    const waiting = await this.waitingCount(base)
     return {
-      items: page.items.map((row) =>
-        cardOf(
-          row,
-          lines.filter((line) => line.poId === row.po.id),
-          viewer,
+      items: await Promise.all(
+        page.items.map((row) =>
+          cardOf(
+            row,
+            lines.filter((line) => line.poId === row.po.id),
+            viewer,
+            this.db,
+          ),
         ),
       ),
       nextCursor: page.nextCursor,
       actions: viewer.modules.includes('purchase') ? [enabledAction('create', null)] : [],
-      counts: { to_receive: waiting?.total ?? 0 },
+      counts: { to_receive: waiting },
     }
   }
   async detail(executor: Executor, viewer: Viewer, poId: number): Promise<PoDetail> {
@@ -249,15 +295,21 @@ export class PoReads {
     const current = found(row)
     const lines = await lineRows(executor, [poId])
     return {
-      ...cardOf(current, lines, viewer),
+      ...(await cardOf(current, lines, viewer, executor)),
       ...(await recordsOf(executor, poId)),
       ...(await poExtras(executor, current.po, lines)),
       note: orNull(current.po.note),
       recvNote: orNull(current.po.recvNote),
       cancelReason: current.po.cancelReason,
       cancelledAt: current.po.cancelledAt?.toISOString() ?? null,
-      notice: current.repriced && !current.paid ? copy.finance.repriceNotice : null,
-      paidBefore: current.paidBefore,
+      notice: current.repriced && !current.liveAllocation ? copy.finance.repriceNotice : null,
+      allocations: await paymentHistory(
+        executor,
+        await loadPaymentLedger(executor, current.po.supplierId),
+        viewer,
+      ).then((rows) => rows.filter((row) => row.docType === 'po' && row.docId === String(poId))),
+      voidReason: current.po.voidReason,
+      voidedAt: current.po.voidedAt?.toISOString() ?? null,
     }
   }
 }

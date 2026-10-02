@@ -1,13 +1,8 @@
 // 客户对账（05 章第 10 节，06 章 F2、F3、S9）：发货单的应收、已收、未收、预收由核销现算，不存库
 import * as z from 'zod'
-import { allocKinds, payStatuses } from '../enums.ts'
-import {
-  businessDateSchema,
-  centsSchema,
-  idSchema,
-  timestampSchema,
-  unitTotalSchema,
-} from '../rules.ts'
+import { payStatuses } from '../enums.ts'
+import { allocationHistoryShape, ledgerTokenSchema, refundSchema } from './ledger.ts'
+import { businessDateSchema, centsSchema, idSchema, unitTotalSchema } from '../rules.ts'
 import { afterCardSchema } from './afters.ts'
 import type { Endpoint } from './endpoint.ts'
 import {
@@ -21,6 +16,7 @@ import {
 
 // 发货单（已发货订单）的收款情况；门店对账同一个结构
 export const arCardSchema = z.object({
+  version: z.number().int().positive(),
   orderId: idSchema,
   orderNo: z.string(),
   shipDate: businessDateSchema,
@@ -80,6 +76,7 @@ export const getArCustomer = {
     customerId: idSchema,
     customerName: z.string(),
     ...arSummaryShape,
+    refunds: z.array(refundSchema),
   }),
   errors: ['NOT_FOUND'],
 } as const satisfies Endpoint
@@ -90,20 +87,21 @@ export const listUnpaidOrders = {
   path: '/finance/customers/:id/unpaid-orders',
   grants: ['finance'],
   params: idParamsSchema,
-  response: z.object({ prepaidCents: centsSchema, items: z.array(arCardSchema) }),
+  response: z.object({
+    ledgerToken: ledgerTokenSchema,
+    prepaidCents: centsSchema,
+    items: z.array(arCardSchema),
+  }),
   errors: ['NOT_FOUND'],
 } as const satisfies Endpoint
 
 // 生效的核销：售后后来冲减应收时，生效金额按登记顺序重算，超出部分回到这笔收款的预收
 export const allocationSchema = z.object({
-  id: idSchema,
+  ...allocationHistoryShape,
   receiptId: idSchema,
   receiptNo: z.string(),
   orderId: idSchema,
   orderNo: z.string(),
-  kind: z.enum(allocKinds),
-  createdAt: timestampSchema,
-  amountCents: centsSchema,
 })
 export type Allocation = z.infer<typeof allocationSchema>
 

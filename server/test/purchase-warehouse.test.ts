@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto'
-import type { PaymentDetail, PoDetail, contract, OutputOf } from '@huazhong/shared'
+import {
+  copy,
+  type PaymentDetail,
+  type PoDetail,
+  type contract,
+  type OutputOf,
+} from '@huazhong/shared'
 import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, expect, test } from 'vitest'
 import { payments, stockBatches, stockMoves } from '../db/schema/index.ts'
@@ -10,6 +16,7 @@ import {
   dataOf,
   idBy,
   startSales,
+  snapshotInput,
   TODAY,
   TOMORROW,
   type SalesApp,
@@ -73,7 +80,7 @@ test('C01 C02 C19 退货库存限制、净实收限制、流水和改价原因',
     priceChanges: [{ reason: '供应商让价', items: [{ fromCents: 800, toCents: 750 }] }],
   })
 })
-test('B08 C04 供应商对账、付款后锁定、有效付款只有一笔', async () => {
+test('B08 C04 供应商对账保留已付单，付款后仍可退货改价但不可作废', async () => {
   const finance = await s.as('u6'),
     wh = await s.as('u5')
   const po = await poOf(s, 'PO-260928-004')
@@ -82,9 +89,17 @@ test('B08 C04 供应商对账、付款后锁定、有效付款只有一笔', asy
     await wh.post(`/purchase-orders/${po.id}/reprice`, price(ret, 750, '供应商让价')),
   )
   const paid = dataOf<PaymentDetail>(await finance.post('/finance/payments', payInput(repriced)))
-  expect(paid).toMatchObject({ amountCents: 82500, docNo: po.no, status: 'valid' })
+  expect(paid).toMatchObject({
+    amountCents: 82500,
+    status: 'valid',
+    allocations: [{ docNo: po.no }],
+  })
   const locked = dataOf<PoDetail>(await wh.get(`/purchase-orders/${po.id}`))
-  expect(locked).toMatchObject({ actions: [], lockedReason: '已付款，不能再退货或改单价' })
+  expect(codesOf(locked.actions)).toEqual(['return', 'reprice'])
+  expect(
+    (await wh.post(`/purchase-orders/${po.id}/void`, { version: locked.version, reason: '错误' }))
+      .body.error?.code,
+  ).toBe('BUSINESS_RULE')
   const statement = dataOf<OutputOf<typeof contract.getFinanceSupplier>>(
     await finance.get(`/finance/suppliers/${po.supplierId}`),
   )
@@ -92,7 +107,7 @@ test('B08 C04 供应商对账、付款后锁定、有效付款只有一笔', asy
     payableCents: 82500,
     paidCents: 82500,
     unpaidCents: 0,
-    counts: { to_pay: 0 },
+    counts: { unpaid: 0, partial: 0 },
   })
   expect(statement.items[0]?.docType).toBe('po')
   const supplier = dataOf<OutputOf<typeof contract.supplierStatement>>(
@@ -103,16 +118,16 @@ test('B08 C04 供应商对账、付款后锁定、有效付款只有一笔', asy
   const records = dataOf<OutputOf<typeof contract.listFinanceRecords>>(
     await finance.get('/finance/records?kind=payment'),
   )
-  expect(records.items[0]).toMatchObject({ id: paid.id, docType: 'po' })
+  expect(records.items[0]).toMatchObject({ id: paid.id, supplierId: po.supplierId })
   expect((await finance.post('/finance/payments', payInput(repriced))).status).toBe(409)
   expect(
     await s.t.db
       .select()
       .from(payments)
-      .where(eq(payments.poId, Number(po.id))),
+      .where(eq(payments.supplierId, Number(po.supplierId))),
   ).toHaveLength(1)
 })
-test('D08 B15 付款日期、幂等、作废再付和永久锁定仓库修改', async () => {
+test('D08 B15 付款日期、幂等、作废释放核销后可退货并重新付款', async () => {
   const finance = await s.as('u6'),
     wh = await s.as('u5'),
     po = await poOf(s, 'PO-260928-004')
@@ -120,7 +135,11 @@ test('D08 B15 付款日期、幂等、作废再付和永久锁定仓库修改', 
     (await finance.post('/finance/payments', { ...payInput(po), payDate: TOMORROW })).body.error
       ?.fields,
   ).toEqual({ payDate: '付款日期不能晚于今天' })
-  const options = { openid: finance.openid, body: payInput(po), idempotencyKey: randomUUID() }
+  const options = {
+    openid: finance.openid,
+    body: await snapshotInput(s.t, finance.openid, '/finance/payments', payInput(po)),
+    idempotencyKey: randomUUID(),
+  }
   const paid = dataOf<PaymentDetail>(await call(s.t, 'POST', '/finance/payments', options))
   expect(dataOf(await call(s.t, 'POST', '/finance/payments', options))).toEqual(paid)
   expect(
@@ -135,27 +154,28 @@ test('D08 B15 付款日期、幂等、作废再付和永久锁定仓库修改', 
   )
   expect(voided).toMatchObject({ status: 'voided', voidReason: '付错供应商账户', actions: [] })
   const after = dataOf<PoDetail>(await finance.get(`/purchase-orders/${po.id}`))
-  expect(after.apStatus).toBe('to_pay')
-  expect(codesOf(after.actions)).toContain('pay')
+  expect(after.apStatus).toBe('unpaid')
+  expect(codesOf(after.actions)).not.toContain('pay')
   const locked = dataOf<PoDetail>(await wh.get(`/purchase-orders/${po.id}`))
-  expect(locked).toMatchObject({ actions: [], lockedReason: '付过款，不能再退货或改单价' })
-  expect(
-    (await wh.post(`/purchase-orders/${po.id}/returns`, returns(locked, 1))).body.error?.message,
-  ).toBe('这张单付过款，不能再退货')
-  dataOf(await finance.post('/finance/payments', payInput(after)))
+  expect(codesOf(locked.actions)).toContain('return')
+  const returned = dataOf<PoDetail>(
+    await wh.post(`/purchase-orders/${po.id}/returns`, returns(locked, 1)),
+  )
+  dataOf(await finance.post('/finance/payments', payInput(returned)))
 })
 test('B16 付款复核新金额，失败不写付款', async () => {
   const finance = await s.as('u6'),
     wh = await s.as('u5'),
     po = await poOf(s, 'PO-260928-004')
+  const input = await snapshotInput(s.t, finance.openid, '/finance/payments', payInput(po))
   const repriced = dataOf<PoDetail>(
     await wh.post(`/purchase-orders/${po.id}/reprice`, price(po, 750, '供应商让价')),
   )
-  const stale = await finance.post('/finance/payments', payInput(po))
+  const stale = await finance.post('/finance/payments', input)
   expect(stale.body.error).toMatchObject({
     code: 'STALE',
-    message: '应付已变为 ¥900.00，请核对后再付款',
-    latest: { payableCents: 90000, payment: null },
+    message: copy.rework.ledgerStale,
+    latest: { items: [{ payableCents: 90000 }] },
   })
   expect(await s.t.db.select().from(payments)).toHaveLength(0)
   expect(
@@ -175,7 +195,8 @@ test('B13 B30 C03 零应付、整单拒收和全部退货不进入财务', async
   const returned = dataOf<PoDetail>(
     await wh.post(`/purchase-orders/${gift.id}/returns`, returns(received, 10)),
   )
-  expect(returned).toMatchObject({ allReturned: true, actions: [], payableCents: 0 })
+  expect(returned).toMatchObject({ allReturned: true, payableCents: 0 })
+  expect(codesOf(returned.actions)).toEqual(['voidPo'])
   expect(
     (await wh.post(`/purchase-orders/${gift.id}/reprice`, price(returned, 100, '改价'))).status,
   ).toBe(409)

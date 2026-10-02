@@ -3,6 +3,7 @@ import {
   appError,
   copy,
   waitCodesOf,
+  shanghaiDateOf,
   type contract,
   type OrderCard,
   type OrderDetail,
@@ -12,7 +13,16 @@ import {
 import { Inject, Injectable } from '@nestjs/common'
 import { and, asc, desc, eq, sql, type SQL } from 'drizzle-orm'
 import type { Db } from '../../../db/client.ts'
-import { accounts, customers, orderChanges, orders, stores } from '../../../db/schema/index.ts'
+import {
+  accounts,
+  customers,
+  orderChanges,
+  orders,
+  stores,
+  orderCancelRequests,
+} from '../../../db/schema/index.ts'
+import { shippingCard, shippingDetail } from './shipping-view.ts'
+import { loadLedger } from '../../common/customer-ledger.ts'
 import { Clock } from '../../common/clock.ts'
 import { DB } from '../../common/db.ts'
 import { actionOf } from '../../common/domain/actions.ts'
@@ -110,6 +120,8 @@ async function detailExtraOf(executor: Executor, id: number) {
       shipNote: orders.shipNote,
       cancelReason: orders.cancelReason,
       cancelledAt: orders.cancelledAt,
+      voidReason: orders.voidReason,
+      voidedAt: orders.voidedAt,
       shippedBy: accounts.name,
     })
     .from(orders)
@@ -122,6 +134,8 @@ async function detailExtraOf(executor: Executor, id: number) {
     shipNote: orNull(row.shipNote),
     cancelReason: row.cancelReason,
     cancelledAt: row.cancelledAt ? row.cancelledAt.toISOString() : null,
+    voidReason: row.voidReason,
+    voidedAt: row.voidedAt?.toISOString() ?? null,
   }
 }
 
@@ -141,6 +155,22 @@ async function orderChangesOf(executor: Executor, id: number) {
   }))
 }
 
+async function cancelRequestsOf(executor: Executor, id: number) {
+  return (
+    await executor
+      .select()
+      .from(orderCancelRequests)
+      .where(eq(orderCancelRequests.orderId, id))
+      .orderBy(asc(orderCancelRequests.requestedAt), asc(orderCancelRequests.id))
+  ).map((row) => ({
+    id: String(row.id),
+    status: row.status,
+    reason: row.reason,
+    requestedAt: row.requestedAt.toISOString(),
+    handledAt: row.handledAt?.toISOString() ?? null,
+    rejectReason: row.rejectReason,
+  }))
+}
 export async function orderDetailOf(
   executor: Executor,
   viewer: Viewer,
@@ -153,6 +183,7 @@ export async function orderDetailOf(
   const order = found(row)
   const extra = await detailExtraOf(executor, id)
   const lineRows = await loadLineRows(executor, [id])
+  const ledger = await loadLedger(executor, null, order.customerId)
   return {
     ...toOrderCard(order, lineRows, rolesOf(viewer), today),
     note: extra.note,
@@ -165,7 +196,21 @@ export async function orderDetailOf(
     shipNote: extra.shipNote,
     cancelReason: extra.cancelReason,
     cancelledAt: extra.cancelledAt,
+    voidReason: extra.voidReason,
+    voidedAt: extra.voidedAt,
+    cancelRequests: await cancelRequestsOf(executor, id),
     afters: order.status === 'shipped' ? await orderAfterCards(executor, id, viewer) : [],
+    allocations: ledger.allocations
+      .filter(
+        (row) =>
+          row.orderId === id &&
+          row.revokedAt === null &&
+          (ledger.replay.effective.get(row.id) ?? 0) > 0,
+      )
+      .map((row) => ({
+        date: shanghaiDateOf(row.createdAt.getTime()),
+        amountCents: ledger.replay.effective.get(row.id) ?? 0,
+      })),
   }
 }
 
@@ -253,7 +298,7 @@ export class OrderReads {
     }
     const page = pageOf(rows, query.limit, shippingCursorOf)
     return {
-      items: await orderCardsOf(this.db, page.items, viewer, today),
+      items: (await orderCardsOf(this.db, page.items, viewer, today)).map(shippingCard),
       nextCursor: page.nextCursor,
       actions: [],
       counts: await orderStatusCounts(this.db, search, ['to_ship']),
@@ -261,6 +306,23 @@ export class OrderReads {
   }
 
   detail(viewer: Viewer, id: number): Promise<OrderDetail> {
-    return orderDetailOf(this.db, viewer, id, this.clock.today())
+    return this.db.transaction((tx) => orderDetailOf(tx, viewer, id, this.clock.today()), {
+      isolationLevel: 'repeatable read',
+      accessMode: 'read only',
+    })
+  }
+  async shipping(viewer: Viewer, id: number) {
+    return this.db.transaction(
+      async (tx) =>
+        shippingDetail(
+          await orderDetailOf(
+            tx,
+            { ...viewer, type: 'staff', modules: ['shipping'] },
+            id,
+            this.clock.today(),
+          ),
+        ),
+      { isolationLevel: 'repeatable read', accessMode: 'read only' },
+    )
   }
 }

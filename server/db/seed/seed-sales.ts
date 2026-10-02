@@ -260,7 +260,7 @@ async function insertReceipts(tx: Tx, ids: SeedIds, refs: Map<string, OrderRef>)
       receiptId: row.id,
       orderId: idOf(refs, a.order).id,
       amountCents: a.amount,
-      kind: 'receipt' as const,
+      kind: 'direct' as const,
       createdBy: cashier,
       createdAt,
     }))

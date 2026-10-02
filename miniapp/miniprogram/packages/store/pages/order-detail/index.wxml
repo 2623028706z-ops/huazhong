@@ -12,6 +12,7 @@
   show="{{sheet}}"
   title="{{texts.cancelTitle}}"
   required="{{sheetRequired}}"
+  optional="{{cancelMode === 'requestCancel'}}"
   body="{{texts.cancelBody}}"
   confirm="{{texts.confirmCancel}}"
   error="{{sheetError}}"

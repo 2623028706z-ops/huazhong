@@ -127,6 +127,8 @@ describe('实时推送权限', () => {
     expect(canSubscribe(staff(['sales']), 'todo:*')).toBe(true)
     expect(canSubscribe(staff(['finance']), 'ar:*')).toBe(true)
     expect(canSubscribe(staff(['finance']), 'supplier:21')).toBe(false)
+    expect(canSubscribe(staff(['finance']), 'payment:21')).toBe(true)
+    expect(canSubscribe(staff(['sales']), 'payment:21')).toBe(false)
   })
 
   test('只有本人能订阅 account 主题', () => {

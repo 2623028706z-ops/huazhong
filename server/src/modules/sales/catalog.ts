@@ -3,6 +3,7 @@
 // 目录弹层一次保存一个目录项，可以一起换产品本身的配方（所有客户共用，2026-10-03 确认）
 import {
   appError,
+  contract,
   copy,
   formatMoney,
   type Catalog,
@@ -11,6 +12,9 @@ import {
   type CatalogItemSave,
 } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
+import { enabledAction } from '../../common/domain/actions.ts'
+import { ledgerToken } from '../../common/ledger.ts'
+import { lockCustomer } from '../../common/org.ts'
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import type { Db } from '../../../db/client.ts'
 import {
@@ -29,6 +33,7 @@ import { WriteService, type WriteContext } from '../../common/write.service.ts'
 import { bomLinesOf } from './bom.ts'
 import type { Executor } from './order-rows.ts'
 import { ProductService } from './products.ts'
+import { insertCatalogCopy } from './catalog-copy.ts'
 
 const CODE_FIELDS = {
   catalog_items_customer_code_unique: { customerCode: copy.catalog.customerCodeTaken },
@@ -92,11 +97,14 @@ export async function catalogOf(executor: Executor, customerId: number): Promise
     .select({ name: customers.name })
     .from(customers)
     .where(eq(customers.id, customerId))
+  const categories = await catalogCategoriesOf(executor, customerId)
+  const items = await itemsOf(executor, customerId)
   return {
     customerId: String(customerId),
     customerName: found(customer).name,
-    categories: await catalogCategoriesOf(executor, customerId),
-    items: await itemsOf(executor, customerId),
+    categories,
+    items,
+    actions: items.length === 0 ? [enabledAction('copyCatalog', false)] : [],
   }
 }
 
@@ -145,6 +153,57 @@ export class CatalogService {
   get(customerId: number): Promise<Catalog> {
     return catalogOf(this.db, customerId)
   }
+  private async copySnapshot(executor: Executor, customerId: number, sourceId: number) {
+    if (customerId === sourceId) throw appError.businessRule(copy.rework.catalogCopySame)
+    const source = await catalogOf(executor, sourceId)
+    const target = await catalogOf(executor, customerId)
+    if (target.items.length > 0) throw appError.businessRule(copy.rework.catalogCopyNotEmpty)
+    const items = source.items.filter((item) => item.enabled && item.productEnabled)
+    const preview = {
+      copyCount: items.length,
+      skipCount: source.items.length - items.length,
+      previewToken: ledgerToken({ source, target }),
+    }
+    return { source, target, items, preview }
+  }
+  preview(customerId: number, sourceId: number) {
+    return this.db.transaction(
+      async (tx) => (await this.copySnapshot(tx, customerId, sourceId)).preview,
+      { isolationLevel: 'repeatable read', accessMode: 'read only' },
+    )
+  }
+  copy(
+    viewer: Viewer,
+    customerId: number,
+    input: { fromCustomerId: string; previewToken: string },
+    key: string,
+  ) {
+    return this.writes.run(
+      viewer,
+      async (ctx) => {
+        const sourceId = Number(input.fromCustomerId)
+        for (const id of [...new Set([customerId, sourceId])].sort((a, b) => a - b))
+          await lockCustomer(ctx.tx, id)
+        const snapshot = await this.copySnapshot(ctx.tx, customerId, sourceId)
+        if (snapshot.preview.previewToken !== input.previewToken)
+          throw appError.stale(copy.rework.catalogCopyStale, snapshot.preview)
+        if (!snapshot.items.length) throw appError.businessRule(copy.rework.catalogCopyEmpty)
+        await insertCatalogCopy(ctx, { ...snapshot, customerId, accountId: viewer.accountId })
+        await ctx.log({
+          module: 'sales',
+          kind: copy.log.kind.catalog,
+          action: copy.log.action.copyCatalog,
+          targetType: 'customers',
+          targetId: customerId,
+          targetLabel: snapshot.target.customerName,
+          after: { 来源: snapshot.source.customerName, 产品数: snapshot.items.length },
+        })
+        ctx.notify([{ topic: `catalog:${customerId}`, version: null }])
+        return catalogOf(ctx.tx, customerId)
+      },
+      { endpoint: contract.copyCatalog, key },
+    )
+  }
 
   // 新加或修改一个目录项；停用的产品不能新加进目录（已在目录里的可以改成停用）
   saveItem(
@@ -165,6 +224,7 @@ export class CatalogService {
     productId: number,
     input: CatalogItemSave,
   ): Promise<Catalog> {
+    await lockCustomer(ctx.tx, customerId)
     const latest = await catalogOf(ctx.tx, customerId)
     const stale = () => Promise.reject(appError.stale(copy.catalog.catalogStale, latest))
     const row = await this.lockItem(ctx, customerId, productId)

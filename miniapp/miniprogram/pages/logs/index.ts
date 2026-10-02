@@ -13,7 +13,7 @@ import { emptyFilter, queryOf, type FilterDimension, type FilterValue } from '..
 import { PagedList } from '../../core/list'
 import type { PagerView } from '../../core/pager'
 import { request } from '../../core/request'
-import { failureOf, loadMe } from '../../core/session'
+import { failureOf } from '../../core/session'
 import { detailOf, groupsOf } from './view'
 
 const MODULE = 'module'
@@ -40,11 +40,13 @@ Page({
   list: null as PagedList<LogItem> | null,
   onLoad() {
     this.list = new PagedList(
-      (cursor) => {
+      async (cursor) => {
         const query = queryOf(this.data.filter, shanghaiDateOf(Date.now()))
         const module = query.picks[MODULE] as ModuleKey | undefined
         const range = { from: query.dateFrom ?? undefined, to: query.dateTo ?? undefined }
-        return request(contract.listLogs, { query: { module, ...range, cursor } })
+        const result = await request(contract.listLogs, { query: { module, ...range, cursor } })
+        if (result.ok) this.setModules(result.data.filterModules)
+        return result
       },
       (view: PagerView<LogItem>) => {
         const { items, ...rest } = view
@@ -54,20 +56,16 @@ Page({
         this.setData(patch)
       },
     )
-    void this.loadModules()
   },
   onShow() {
     void this.refresh()
   },
   // 可选的模块就是 /me 的 modules，多于一项才显示（05 章第 2 节）
-  async loadModules(): Promise<void> {
-    const result = await loadMe()
-    if (!result.ok) {
-      this.setData({ failure: failureOf(result.failure, 'load') })
+  setModules(modules: ModuleKey[]) {
+    if (modules.length < 2) {
+      this.setData({ dimensions: [] })
       return
     }
-    const { modules } = result.data
-    if (modules.length < 2) return
     const options = modules.map((key) => ({ id: key, name: labels.module[key] }))
     this.setData({ dimensions: [{ key: MODULE, label: copy.object.module, options }] })
   },

@@ -1,18 +1,16 @@
 // H3 发货（06 章 H3）：actions 含 ship 时是表单：状态区 → 客户门店、出货日期、备注 → 明细（订单数量、实发，
 // 默认等于订单数量）→ 发货金额 → 发货备注 → 变更记录。出货日期还没到时按钮禁用、写 disabledReason，实发和备注不能填。
 // 否则只读。确认后回进来的列表
-import { contract, copy, orderShipSchema, fieldsOf, type OrderDetail } from '@huazhong/shared'
+import { contract, copy, orderShipSchema, fieldsOf, type ShippingDetail } from '@huazhong/shared'
 import { canDo, findAction } from '../../../../core/actions'
 import type { DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
-import { formTotalOf } from '../../../../core/form'
 import { markChanged, syncUnloadAlert } from '../../../../core/guard'
 import { unwatch, watchNewer } from '../../../../core/live'
-import { lineCents, sumCents } from '../../../../core/money'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
-import { orderViewOf, rowsOf, shipDateText } from '../../../../views/order'
+import { shippingViewOf, rowsOf, shipDateText } from '../../../../views/order'
 
 interface ShipLine {
   id: string
@@ -20,17 +18,15 @@ interface ShipLine {
   unit: string
   qty: number
   shippedQty: number
-  priceCents: number
 }
 
-function shipLinesOf(order: OrderDetail): ShipLine[] {
+function shipLinesOf(order: ShippingDetail): ShipLine[] {
   return order.lines.map((line) => ({
     id: line.id,
     name: line.name,
     unit: line.unit,
     qty: line.qty,
     shippedQty: line.qty,
-    priceCents: line.priceCents,
   }))
 }
 
@@ -39,17 +35,19 @@ function lineViewsOf(lines: readonly ShipLine[]) {
   return lines.map((line) => ({
     key: line.id,
     name: line.name,
-    tags: line.shippedQty < line.qty ? [{ text: copy.screen.tag.short, warn: true }] : [],
+    tags:
+      line.shippedQty < line.qty
+        ? [{ text: copy.screen.tag.short, warn: true }]
+        : line.shippedQty > line.qty
+          ? [{ text: copy.rework.overShipped, warn: true }]
+          : [],
     meta: `${copy.screen.label.orderQty} ${line.qty} ${line.unit}`,
-    amountCents: lineCents(line.shippedQty, line.priceCents),
     qty: line.shippedQty,
     unit: line.unit,
-    priceCents: line.priceCents,
-    priceText: '',
   }))
 }
 
-function infoOf(order: OrderDetail) {
+function infoOf(order: ShippingDetail) {
   return {
     title: order.no,
     statusKind: 'orderStatus',
@@ -74,7 +72,7 @@ Page({
     canShip: false,
     shipReason: '',
     info: null as ReturnType<typeof infoOf> | null,
-    view: null as ReturnType<typeof orderViewOf> | null,
+    view: null as ReturnType<typeof shippingViewOf> | null,
     lines: [] as ShipLine[],
     lineViews: [] as ReturnType<typeof lineViewsOf>,
     amountRows: [] as { label: string; value: string }[],
@@ -88,12 +86,12 @@ Page({
     },
   },
   id: '',
-  order: null as OrderDetail | null,
+  order: null as ShippingDetail | null,
   onLoad(query: Record<string, string | undefined>) {
     this.id = query.id ?? ''
   },
   onShow() {
-    void this.load()
+    if (!this.data.changed) void this.load()
     watchNewer(
       this,
       `order:${this.id}`,
@@ -111,14 +109,30 @@ Page({
     syncUnloadAlert(false)
   },
   async load(): Promise<void> {
-    const result = await request(contract.getOrder, { params: { id: this.id } })
+    const result = await request(contract.getShippingOrder, { params: { id: this.id } })
     if (!result.ok) {
       this.setData({ failure: failureOf(result.failure, this.data.loaded ? 'refresh' : 'load') })
       return
     }
-    this.show(result.data)
+    this.applyLatest(result.data)
   },
-  show(order: OrderDetail) {
+  applyLatest(order: ShippingDetail) {
+    const changed = this.data.changed,
+      lines = this.data.lines,
+      note = this.data.shipNote
+    this.show(order)
+    if (changed && canDo(order.actions, 'ship')) {
+      const quantities = new Map(lines.map((line) => [line.id, line.shippedQty]))
+      this.setLines(
+        shipLinesOf(order).map((line) => ({
+          ...line,
+          shippedQty: quantities.get(line.id) ?? line.shippedQty,
+        })),
+      )
+      this.setData({ shipNote: note, realtime: copy.screen.realtime.editing })
+    }
+  },
+  show(order: ShippingDetail) {
     this.order = order
     const action = findAction(order.actions, 'ship')
     this.setData({
@@ -129,28 +143,16 @@ Page({
       canShip: canDo(order.actions, 'ship'),
       shipReason: action?.disabledReason ?? '',
       info: infoOf(order),
-      view: orderViewOf(order, false),
+      view: shippingViewOf(order),
       shipNote: '',
     })
     this.setLines(shipLinesOf(order), false)
   },
   setLines(lines: ShipLine[], changed = true) {
-    const total = sumCents(lines, (line) => lineCents(line.shippedQty, line.priceCents))
     this.setData({
       lines,
       lineViews: lineViewsOf(lines),
-      amountRows:
-        lines.length > 1
-          ? [
-              {
-                label: copy.screen.label.total,
-                value: formTotalOf(
-                  total,
-                  lines.map((line) => ({ unit: line.unit, qty: line.shippedQty })),
-                ),
-              },
-            ]
-          : [],
+      amountRows: [],
       formError: '',
     })
     markChanged(this, changed)
@@ -169,8 +171,10 @@ Page({
     void this.load()
   },
   async onShip(): Promise<void> {
+    if (this.data.saving) return
     const order = this.order
     if (!order) return
+    if (!this.validateDifference()) return
     const lines = this.data.lines.map((line) => ({
       orderLineId: line.id,
       shippedQty: line.shippedQty,
@@ -196,9 +200,18 @@ Page({
       void wx.navigateBack()
       return
     }
-    const view = failureOf(result.failure, 'submit')
+    this.showShipFailure(result.failure)
+  },
+  validateDifference() {
+    if (!this.data.lines.some((line) => line.shippedQty !== line.qty) || this.data.shipNote.trim())
+      return true
+    this.setData({ formError: copy.rework.shipDifferenceNoteRequired })
+    return false
+  },
+  showShipFailure(failure: Parameters<typeof failureOf>[0]) {
+    const view = failureOf(failure, 'submit')
     if (view?.kind === 'stale') {
-      this.show(view.latest as OrderDetail)
+      this.applyLatest(view.latest as ShippingDetail)
       this.setData({ formError: view.message })
     } else if (view?.kind === 'page') this.setData({ failure: view })
     else if (view) this.setData({ formError: view.message })

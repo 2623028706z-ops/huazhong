@@ -12,6 +12,7 @@
     "hz-notice": "/components/hz-notice/index",
     "hz-status": "/components/hz-status/index",
     "hz-line-item": "/components/hz-line-item/index",
-    "hz-records": "/components/hz-records/index"
+    "hz-records": "/components/hz-records/index",
+    "hz-reason-sheet": "/components/hz-reason-sheet/index"
   }
 }

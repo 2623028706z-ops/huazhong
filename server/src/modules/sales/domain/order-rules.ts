@@ -58,18 +58,12 @@ export function shippedQtysOf(
   if (!covered || qtys.size !== lines.length) {
     throw appError.validation({ lines: copy.error.validationFallback })
   }
-  const fields: Record<string, string> = {}
-  input.forEach((item, index) => {
-    const line = lines.find((l) => l.id === Number(item.orderLineId))
-    if (line && item.shippedQty > line.qty)
-      fields[`lines.${index}.shippedQty`] = copy.order.shipOverQty
-  })
-  if (Object.keys(fields).length > 0) throw appError.validation(fields)
   if (lines.every((line) => qtys.get(line.id) === 0)) {
     throw appError.businessRule(copy.order.shipNothing)
   }
-  const short = lines.some((line) => (qtys.get(line.id) ?? 0) < line.qty)
-  if (short && shipNote === '') throw appError.validation({ shipNote: copy.order.shipNoteRequired })
+  const short = lines.some((line) => (qtys.get(line.id) ?? 0) !== line.qty)
+  if (short && shipNote === '')
+    throw appError.validation({ shipNote: copy.rework.shipDifferenceNoteRequired })
   return qtys
 }
 

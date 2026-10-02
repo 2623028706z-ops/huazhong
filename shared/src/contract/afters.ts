@@ -111,6 +111,14 @@ export const getAfter = {
   response: afterDetailSchema,
   errors: ['NOT_FOUND'],
 } as const satisfies Endpoint
+export const getFinanceAfter = {
+  method: 'GET',
+  path: '/finance/afters/:id',
+  grants: ['finance'],
+  params: idParamsSchema,
+  response: afterDetailSchema.extend({ actions: z.array(actionSchema).length(0) }),
+  errors: ['NOT_FOUND'],
+} as const satisfies Endpoint
 
 // 同一张售后同一行发货明细只能一行
 function checkAfterLines(value: { lines: { orderLineId: string }[] }, ctx: z.RefinementCtx) {
@@ -190,7 +198,7 @@ export const closeAfter = {
 export const voidAfter = {
   method: 'POST',
   path: '/afters/:id/void',
-  grants: ['sales', 'finance'],
+  grants: ['sales'],
   params: idParamsSchema,
   body: z.object({
     version: versionSchema,
@@ -217,7 +225,20 @@ export const storeAfterCreateSchema = z
       )
       .min(1, { error: copy.after.linesRequired }),
   })
-  .superRefine(checkAfterLines)
+  .superRefine((value, ctx) => {
+    checkAfterLines(value, ctx)
+    value.lines.forEach((line, index) => {
+      if (
+        (line.reason === 'damaged' || line.reason === 'quality') &&
+        line.imageFileIds.length === 0
+      )
+        ctx.addIssue({
+          code: 'custom',
+          message: copy.rework.afterImageRequired,
+          path: ['lines', index, 'imageFileIds'],
+        })
+    })
+  })
 export type StoreAfterCreate = z.infer<typeof storeAfterCreateSchema>
 
 export const createStoreAfter = {

@@ -8,15 +8,23 @@ import {
   type OrderShip,
   type OrderStatus,
   type OrderUpdate,
+  type ShippingDetail,
 } from '@huazhong/shared'
 import { Injectable } from '@nestjs/common'
 import { and, eq } from 'drizzle-orm'
-import { customers, orderLines, orders, stores } from '../../../db/schema/index.ts'
+import {
+  customers,
+  orderLines,
+  orders,
+  stores,
+  orderCancelRequests,
+} from '../../../db/schema/index.ts'
 import { Clock } from '../../common/clock.ts'
 import { gateAction } from '../../common/domain/actions.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import { WriteService, type WriteContext } from '../../common/write.service.ts'
-import { namesText } from './domain/order-actions.ts'
+import { namesText, rolesOf } from './domain/order-actions.ts'
+import { ownsOrder } from './domain/order-view.ts'
 import { diffOrder, orderLogView } from './domain/order-diff.ts'
 import { orderableEntries, shippedQtysOf } from './domain/order-rules.ts'
 import {
@@ -31,6 +39,8 @@ import {
 } from './order-lines.ts'
 import { orderDetailOf } from './order-query.ts'
 import { lockOrder } from './order-rows.ts'
+import { shippingDetail } from './shipping-view.ts'
+import { found } from '../../common/scope.ts'
 
 // 这张单已经不能做这个操作时的一句话（按现在的状态）
 function closedMessage(status: OrderStatus): string {
@@ -41,6 +51,7 @@ function closedMessage(status: OrderStatus): string {
     case 'shipped':
       return copy.order.shippedLocked
     case 'cancelled':
+    case 'voided':
       return copy.order.cancelledAlready
   }
 }
@@ -256,6 +267,8 @@ export class SalesOrderWrites {
     return this.writes.run(viewer, async (ctx) => {
       await lockOrder(ctx.tx, viewer, id)
       const before = await this.detail(ctx, viewer, id)
+      const owner = found((await ctx.tx.select().from(orders).where(eq(orders.id, id)))[0])
+      if (!ownsOrder(owner, rolesOf(viewer))) throw appError.forbidden()
       const action = gateAction(before, {
         code: 'cancel',
         version: input.version,
@@ -284,11 +297,11 @@ export class SalesOrderWrites {
   }
 
   // 出货日期到了才能发；打开后销售改过单或取消了 → STALE
-  ship(viewer: Viewer, id: number, input: OrderShip): Promise<OrderDetail> {
+  ship(viewer: Viewer, id: number, input: OrderShip): Promise<ShippingDetail> {
     return this.writes.run(viewer, async (ctx) => {
       await lockOrder(ctx.tx, viewer, id)
       const before = await this.detail(ctx, viewer, id)
-      gateAction(before, {
+      gateAction(shippingDetail(before), {
         code: 'ship',
         version: input.version,
         missing: shipMissing(before.status),
@@ -315,7 +328,11 @@ export class SalesOrderWrites {
         reason: input.shipNote,
       })
       notifyOrder(ctx, detail, ['todo:shipping', `ar:${detail.customerId}`, 'demand'])
-      return detail
+      await ctx.tx
+        .update(orderCancelRequests)
+        .set({ status: 'lapsed', handledBy: viewer.accountId, handledAt: this.clock.now() })
+        .where(and(eq(orderCancelRequests.orderId, id), eq(orderCancelRequests.status, 'pending')))
+      return shippingDetail(await this.detail(ctx, viewer, id))
     })
   }
 }

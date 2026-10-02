@@ -170,7 +170,7 @@ describe('收款、核销、作废', () => {
       receivableCents: 196400,
       receivedCents: 196400,
     })
-    expect(card026.afters.map((a) => codesOf(a.actions))).toEqual([['voidAfter']])
+    expect(card026.afters.map((a) => codesOf(a.actions))).toEqual([[]])
 
     // D05 作废 SK-260928-001：核销撤回
     const old = dataOf<ReceiptDetail>(
@@ -190,7 +190,6 @@ describe('收款、核销、作废', () => {
     expect(voided).toMatchObject({
       status: 'voided',
       voidReason: '重复登记',
-      allocations: [],
       actions: [],
       prepaidCents: 0,
     })
@@ -214,7 +213,7 @@ describe('收款、核销、作废', () => {
     expect(await tuple()).toEqual([358800, 13600, 300000, 45200, 0])
     const card021 = await arOrder(o021)
     expect(card021).toMatchObject({ payStatus: 'partial', unpaidCents: 45200 })
-    expect(card021.allocations.map((a) => a.kind)).toEqual(['receipt', 'prepaid'])
+    expect(card021.allocations.map((a) => a.kind)).toEqual(['direct', 'direct', 'prepaid'])
 
     const records = dataOf<{ items: unknown[]; counts: object }>(
       await finance.get('/finance/records?status=voided'),
@@ -281,11 +280,11 @@ describe('售后和应收', () => {
     expect((await tuple())[4]).toBe(100000)
   })
 
-  test('A22 财务在发货单弹层作废售后：未收回到原值，弹层不再列这张', async () => {
+  test('A22 财务只读，由销售作废售后：未收回到原值，弹层不再列这张', async () => {
     const after = await salesAfter(o021, [{ name: '粉玫瑰日常花束', qty: 2 }])
     expect((await arOrder(o021)).unpaidCents).toBe(48800 - 13600)
     const voided = await (
-      await s.as('u6')
+      await s.as('u2')
     ).post(`/afters/${after.id}/void`, { version: after.version, reason: '重复登记' })
     expect(dataOf<AfterDetail>(voided)).toMatchObject({ status: 'voided', voidReason: '重复登记' })
     const card = await arOrder(o021)

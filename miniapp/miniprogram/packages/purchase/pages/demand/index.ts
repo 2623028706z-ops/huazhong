@@ -21,6 +21,7 @@ import { loadSuppliers } from '../../../../views/purchase-load'
 
 type Demand = OutputOf<typeof contract.listPurchaseDemand>
 type Sources = OutputOf<typeof contract.listDemandSources>
+const MONTH_DAY_OFFSET = 5
 function sourceGroupsOf(source: Sources, unit: string) {
   return source.groups.map((group) => ({
     shipDate: group.shipDate,
@@ -47,7 +48,14 @@ function rowsOf(demand: Demand, selected: string[]) {
     ...m,
     id: m.materialId,
     selected: selected.includes(m.materialId),
-    range: copy.filter.range(demand.from, demand.to),
+    range:
+      m.shipFrom && m.shipTo
+        ? copy.screen.sourceShipDate(
+            m.shipFrom === m.shipTo
+              ? m.shipFrom.slice(MONTH_DAY_OFFSET)
+              : `${m.shipFrom.slice(MONTH_DAY_OFFSET)} ~ ${m.shipTo.slice(MONTH_DAY_OFFSET)}`,
+          )
+        : copy.rework.noDemand,
     left: copy.screen.leftQty(m.leftQty),
     summary: copy.screen.demandNumbers(m.needQty, m.stockQty, m.inTransitQty),
     tags: [
@@ -69,9 +77,13 @@ Page({
     count: '',
     rows: [] as ReturnType<typeof rowsOf>,
     selected: [] as string[],
+    shortageOnly: false,
+    overdue: { count: 0, shipFrom: null as string | null, shipTo: null as string | null },
+    overdueText: '',
     canInvite: false,
     canCreate: false,
     sourceSheet: false,
+    sourceId: '',
     source: null as OutputOf<typeof contract.listDemandSources> | null,
     sourceSummary: '',
     sourceLeft: '',
@@ -96,6 +108,11 @@ Page({
       invited: copy.screen.invitedPending,
       noSuppliers: copy.screen.noInviteSupplier,
       empty: copy.screen.empty.demand,
+      inTransitSources: copy.rework.inTransitSources,
+      inTransitNote: copy.rework.inTransitNote,
+      noShortage: copy.rework.noShortage,
+      showAllMaterials: copy.rework.showAllMaterials,
+      shortageOnly: copy.rework.shortageOnly,
     },
   },
   demand: null as Demand | null,
@@ -110,13 +127,17 @@ Page({
   },
   async load() {
     const version = ++this.loadVersion
-    const query = { from: this.data.from, to: this.data.to }
+    const query = {
+      from: this.data.from,
+      to: this.data.to,
+      shortageOnly: String(this.data.shortageOnly),
+    }
     const checked = checkedOf(contract.listPurchaseDemand.query.safeParse(query))
     if (!checked.ok) {
       this.setData({ dateError: Object.values(checked.fields)[0] ?? '' })
       return
     }
-    const result = await request(contract.listPurchaseDemand, { query: checked.body })
+    const result = await request(contract.listPurchaseDemand, { query })
     if (version !== this.loadVersion) return
     if (!result.ok) {
       this.setData({ failure: failureOf(result.failure, this.data.loaded ? 'refresh' : 'load') })
@@ -133,30 +154,46 @@ Page({
       dateError: '',
       selected,
       rows: rowsOf(result.data, selected),
+      overdue: result.data.overdue,
+      overdueText: copy.rework.overdueSummary(result.data.overdue.count),
       count: copy.screen.orderCount(result.data.orderCount),
       canInvite: canDo(result.data.actions, 'inviteSupplier'),
       canCreate: canDo(result.data.actions, 'createPo'),
     })
+    if (this.data.sourceSheet && this.data.sourceId)
+      await this.onSource({ currentTarget: { dataset: { key: this.data.sourceId } } } as KeyEvent)
   },
   onFrom(event: DetailEvent<string>) {
     this.setData({ from: event.detail })
+    void this.load()
+  },
+  onShortageOnly() {
+    this.setData({ shortageOnly: !this.data.shortageOnly })
     void this.load()
   },
   onTo(event: DetailEvent<string>) {
     this.setData({ to: event.detail })
     void this.load()
   },
+  onOverdue() {
+    const { shipFrom, shipTo } = this.data.overdue
+    if (!shipFrom || !shipTo) return
+    this.setData({ from: shipFrom, to: shipTo })
+    void this.load()
+  },
   onToggle(event: KeyEvent) {
     const id = event.currentTarget.dataset.key
+    if (!this.demand?.mats.some((mat) => mat.materialId === id && mat.enabled)) return
     const selected = this.data.selected.includes(id)
       ? this.data.selected.filter((k) => k !== id)
       : [...this.data.selected, id]
-    if (this.demand) this.setData({ selected, rows: rowsOf(this.demand, selected) })
+    this.setData({ selected, rows: rowsOf(this.demand, selected) })
   },
   async onSource(event: KeyEvent) {
     const mat = this.demand?.mats.find((m) => m.materialId === event.currentTarget.dataset.key)
     this.setData({
       sourceSheet: true,
+      sourceId: event.currentTarget.dataset.key,
       source: null,
       ...sourceSummaryOf(mat),
       sourceGroups: [],
@@ -176,12 +213,35 @@ Page({
   onCloseSource() {
     this.setData({ sourceSheet: false })
   },
+  onOpenSourcePo(event: KeyEvent) {
+    void wx.navigateTo({
+      url: `/packages/purchase/pages/order-detail/index?id=${event.currentTarget.dataset.key}`,
+    })
+  },
+  onOpenSourceInvite(event: KeyEvent) {
+    void wx.navigateTo({
+      url: `/packages/purchase/pages/invites/index?id=${event.currentTarget.dataset.key}`,
+    })
+  },
   draft(): PurchaseDraft {
     const mats = this.demand?.mats.filter((m) => this.data.selected.includes(m.materialId)) ?? []
     return {
       supplierId: this.data.supplierId,
+      demandContext: {
+        from: this.data.from,
+        to: this.data.to,
+        expected: mats.map((mat) => ({
+          materialId: mat.materialId,
+          needQty: mat.needQty,
+          stockQty: mat.stockQty,
+          inTransitQty: mat.inTransitQty,
+        })),
+      },
       lines: mats.map((m) =>
-        purchaseLineOf({ id: m.materialId, name: m.name, unit: m.unit }, gapOf(m.leftQty)),
+        purchaseLineOf(
+          { id: m.materialId, name: m.name, unit: m.unit },
+          Math.max(1, gapOf(m.leftQty)),
+        ),
       ),
     }
   },

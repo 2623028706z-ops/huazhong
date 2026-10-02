@@ -11,7 +11,7 @@ function rowOf(s: Supplier) {
     id: s.supplierId,
     title: s.supplierName,
     total: `${copy.screen.label.due} ${formatMoney(s.unpaidCents)}`,
-    meta: `${copy.screen.label.payable} ${formatMoney(s.payableCents)}${copy.separator}${copy.screen.label.paid} ${formatMoney(s.paidCents)}`,
+    meta: `${copy.screen.label.payable} ${formatMoney(s.payableCents)}${copy.separator}${copy.screen.label.paid} ${formatMoney(s.paidCents)}${s.prepaidCents ? `${copy.separator}${copy.rework.paymentAvailablePrepaid(formatMoney(s.prepaidCents))}` : ''}`,
     amount: null,
     tags: s.enabled ? [] : [{ text: copy.tag.disabled, warn: false }],
   }

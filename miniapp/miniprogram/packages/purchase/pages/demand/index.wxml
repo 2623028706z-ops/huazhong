@@ -2,6 +2,8 @@
 <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
 <view wx:else class="u-list">
   <view class="hz-demand__dates"><hz-picker label="{{texts.from}}" mode="date" value="{{from}}" bind:change="onFrom" /><hz-picker label="{{texts.to}}" mode="date" value="{{to}}" error="{{dateError}}" bind:change="onTo" /></view>
+  <hz-button kind="secondary" text="{{shortageOnly ? '显示全部花材' : '只看缺货'}}" bind:press="onShortageOnly" />
+  <view wx:if="{{overdue.count}}" class="u-card u-info"><hz-button kind="text" text="{{overdueText}}" bind:press="onOverdue" /><text>{{overdue.shipFrom}} — {{overdue.shipTo}}</text></view>
   <hz-error wx:if="{{failure && !sourceSheet && !supplierSheet}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <hz-skeleton wx:if="{{!loaded}}" type="list" />
   <block wx:else><text class="u-info__meta">{{count}}</text><hz-state wx:if="{{!rows.length}}" object="{{texts.empty}}" /></block>
@@ -16,9 +18,10 @@
   <view class="u-sheet-form">
     <hz-error wx:if="{{error}}" message="{{error}}" />
     <view class="u-sheet-row"><text class="u-info__meta">{{sourceSummary}}</text><hz-tag text="{{sourceLeft}}" warn="{{sourceShort}}" /></view>
+    <view wx:if="{{source.inTransitSources.length}}" class="u-sheet-form__group"><text class="u-section__title">{{texts.inTransitSources}}</text><view wx:for="{{source.inTransitSources}}" wx:key="poId" class="u-info__line" data-key="{{item.poId}}" bind:tap="onOpenSourcePo"><text>{{item.no}} · {{item.supplierName}} · {{item.qty}} {{sourceUnit}}</text></view></view>
     <view wx:if="{{source.invites.length}}" class="u-sheet-form__group">
       <text class="u-section__title">{{texts.invited}}</text>
-      <view wx:for="{{source.invites}}" wx:key="inviteId" class="u-info__line"><view class="u-info__head"><text class="u-rows__title">{{item.supplierName}}</text><text class="u-amount">{{item.needQty}} {{sourceUnit}}</text></view><text class="u-rows__foot">{{item.no}}</text></view>
+      <view wx:for="{{source.invites}}" wx:key="inviteId" class="u-info__line" data-key="{{item.inviteId}}" bind:tap="onOpenSourceInvite"><view class="u-info__head"><text class="u-rows__title">{{item.supplierName}}</text><text class="u-amount">{{item.needQty}} {{sourceUnit}}</text></view><text class="u-rows__foot">{{item.no}}</text></view>
     </view>
     <view wx:for="{{sourceGroups}}" wx:key="shipDate" wx:for-item="group" class="u-sheet-form__group">
       <text class="u-section__title">{{group.title}}</text>

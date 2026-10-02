@@ -11,6 +11,7 @@
   <hz-records wx:if="{{prices.length}}" type="priceChange" items="{{prices}}" />
   <hz-records wx:if="{{returns.length}}" type="returns" items="{{returns}}" />
   <template wx:if="{{reason.rows.length}}" is="info" data="{{...reason}}" />
+  <view wx:if="{{payments.length}}" class="u-section"><text class="u-section__title">核销记录</text><view class="u-card u-info"><view wx:for="{{payments}}" wx:key="index" class="u-sheet-row"><text>{{item.date}}</text><text class="u-serif-amount">{{item.amount}}</text></view></view></view>
 </template>
 <template name="invite-body">
   <template is="info" data="{{...info}}" />

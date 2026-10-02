@@ -13,6 +13,7 @@ import { actorLabelOf } from '../../common/domain/viewer.ts'
 import type { WriteContext } from '../../common/write.service.ts'
 import type { LineState, OrderState } from './domain/order-diff.ts'
 import type { CatalogEntry } from './domain/order-rules.ts'
+import { lockCustomer } from '../../common/org.ts'
 
 // 这些产品在这个客户下的可订情况（产品不存在的不返回）
 export async function catalogEntriesOf(
@@ -41,6 +42,7 @@ export async function catalogEntriesOf(
 
 // 门店下单、改单先共享锁这个客户的目录，再锁订单：和「目录调价同步待确认订单」互斥，加锁顺序一致
 export async function lockCatalogShare(tx: Tx, customerId: number): Promise<void> {
+  await lockCustomer(tx, customerId)
   await tx
     .select({ id: catalogItems.id })
     .from(catalogItems)
@@ -138,6 +140,7 @@ export function notifyOrder(ctx: WriteContext, detail: OrderDetail, extra: reado
     [
       { topic: `order:${detail.id}`, version: detail.version },
       { topic: 'orders', version: null },
+      { topic: 'demand', version: null },
       ...extra.map((topic) => ({ topic, version: null })),
     ],
     { storeIds: [detail.storeId] },

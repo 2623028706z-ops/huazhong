@@ -8,8 +8,11 @@ import {
   type CatalogCategory,
   type InventoryItem,
   type ProductItem,
+  type OutputOf,
 } from '@huazhong/shared'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
+import { canDo } from '../../../../core/actions'
+import { catalogCopyMethods } from './catalog-copy'
 import type { FailureView } from '../../../../core/failure-view'
 import { confirmAsk, isChanged, markChanged, syncUnloadAlert } from '../../../../core/guard'
 import { unwatch, watch } from '../../../../core/live'
@@ -38,6 +41,7 @@ import {
 type IndexDetail<T> = DetailEvent<T, { index: number }>
 
 Page({
+  ...catalogCopyMethods,
   data: {
     changed: false,
     title: copy.screen.title.directory,
@@ -66,6 +70,13 @@ Page({
     categorySheet: false,
     categoryError: '',
     saving: false,
+    canCopy: false,
+    copySheet: false,
+    copySourceId: '',
+    copyOptions: [] as { id: string; name: string }[],
+    copyPreview: null as OutputOf<typeof contract.previewCatalogCopy> | null,
+    copyError: '',
+    copyBusy: false,
     texts: {
       customerItem: copy.screen.section.customerItem,
       sharedBom: copy.screen.section.sharedBom,
@@ -87,6 +98,10 @@ Page({
       noPick: copy.state.empty(copy.screen.empty.addableProducts),
       empty: copy.state.empty(copy.screen.empty.directory),
       noCustomers: copy.screen.empty.customers,
+      copy: copy.rework.copyCatalog,
+      copySource: copy.rework.copySource,
+      copyPreview: copy.rework.copyPreview,
+      copyConfirm: copy.rework.copyConfirm,
     },
   },
   catalog: null as Catalog | null,
@@ -131,7 +146,9 @@ Page({
     this.show(result.data)
     // 弹层开着时只提示，关着时直接刷新
     watch(this, [`catalog:${customerId}`], () => {
-      if (this.data.layer === '' && !this.data.categorySheet) void this.select(customerId)
+      if (this.data.copySheet)
+        this.setData({ copyPreview: null, copyError: copy.rework.catalogChanged })
+      else if (this.data.layer === '' && !this.data.categorySheet) void this.select(customerId)
       else if (!this.data.saving) this.setData({ realtime: copy.screen.realtime.editing })
     })
   },
@@ -141,6 +158,7 @@ Page({
       categories: catalog.categories,
       categoryOptions: catalog.categories.map(({ id, name }) => ({ id, name })),
       groups: groupsOf(catalog),
+      canCopy: canDo(catalog.actions, 'copyCatalog'),
       realtime: '',
     })
   },
@@ -150,7 +168,6 @@ Page({
   onRealtime() {
     void this.select(this.data.customerId)
   },
-
   // 目录项弹层
   openItem(form: ItemForm, adding: boolean) {
     this.setData({

@@ -84,10 +84,14 @@ class TxContext implements WriteContext {
     scope: Partial<ChangeScope> = {},
   ): void {
     for (const change of changes) {
-      const previous = this.changes.get(change.topic) ?? null
+      const previous = this.changes.get(change.topic)
       this.changes.set(
         change.topic,
-        previous === null ? change.version : Math.max(previous, change.version ?? 0),
+        previous === undefined
+          ? change.version
+          : previous === null || change.version === null
+            ? null
+            : Math.max(previous, change.version),
       )
     }
     for (const id of scope.storeIds ?? []) this.storeIds.add(id)
@@ -127,6 +131,7 @@ class TxContext implements WriteContext {
 interface Idempotency {
   endpoint: Endpoint
   key: string
+  replay?: (tx: Tx, response: unknown) => Promise<unknown>
 }
 
 type Claim = { replay: false } | { replay: true; response: unknown }
@@ -147,7 +152,10 @@ export class WriteService {
     return this.db.transaction(async (tx) => {
       if (idempotency && viewer) {
         const claim = await claimKey(tx, viewer.accountId, idempotency)
-        if (claim.replay) return claim.response as T
+        if (claim.replay)
+          return (
+            idempotency.replay ? await idempotency.replay(tx, claim.response) : claim.response
+          ) as T
       }
       const ctx = new TxContext(tx, viewer, this.clock)
       const result = await work(ctx)

@@ -1,18 +1,17 @@
-import { copy, type InviteDetail, type PoDetail, type Supplier } from '@huazhong/shared'
+import {
+  copy,
+  type InviteDetail,
+  type PoDetail,
+  type Supplier,
+  type SupplierPoDetail,
+} from '@huazhong/shared'
 import { eq } from 'drizzle-orm'
 import type { CustomElement } from 'miniprogram-automator/out/Element.js'
 import { expect, test } from 'vitest'
 import { materials } from '../../db/schema/index.ts'
-import {
-  inviteOf,
-  payInput,
-  poInput,
-  poOf,
-  supplierInput,
-  supplierOf,
-} from '../support/purchase.ts'
+import { inviteOf, poInput, poOf, supplierInput, supplierOf } from '../support/purchase.ts'
 import { dataOf, idBy } from '../support/sales.ts'
-import { asMini, enter, setupMiniSuite, snap, waitData, waitPage } from './mini.ts'
+import { asMini, enter, paymentInput, setupMiniSuite, snap, waitData, waitPage } from './mini.ts'
 
 const suite = setupMiniSuite()
 
@@ -53,10 +52,10 @@ test('B31 供应商删停用行后直接提交，已提交合并需求、未供�
 test('供应商已付款采购单详情不显示财务和仓库锁定提示', async () => {
   const { mini, server: s } = suite()
   const po = await poOf(s, 'PO-260928-004')
-  dataOf(await (await s.as('u6')).post('/finance/payments', payInput(po)))
+  dataOf(await (await s.as('u6')).post('/finance/payments', await paymentInput(s, po)))
   const api = await asMini(mini, s, 'p2')
   expect(
-    dataOf<PoDetail>(await api.get(`/supplier/purchase-orders/${po.id}`)).lockedReason,
+    dataOf<SupplierPoDetail>(await api.get(`/supplier/purchase-orders/${po.id}`)).lockedReason,
   ).toBeNull()
   const page = await enter(mini, `/packages/supplier/pages/orders/index?id=${po.id}`)
   await waitData(page, 'sheet', true)
@@ -166,7 +165,7 @@ test('B27 F02-F I01-F 填报默认需求量、校验、编辑保护、提交后�
   await waitData(page, 'form.lines', [])
   await page.callMethod('onSubmit')
   await waitData(page, 'formError', '请至少保留一种花材；全部不供请联系采购取消邀请')
-  await page.callMethod('load')
+  await page.callMethod('load', false)
   await waitData(page, 'form.lines.0.qty', 60)
   await page.callMethod('onQty', { detail: { index: 0, qty: 0 } })
   await page.callMethod('onSubmit')

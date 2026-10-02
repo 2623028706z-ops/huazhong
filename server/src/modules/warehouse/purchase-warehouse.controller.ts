@@ -7,6 +7,10 @@ type In<K extends keyof typeof contract> = ParsedInput<(typeof contract)[K]>
 @Controller()
 export class PurchaseWarehouseController {
   constructor(private readonly receiving: PoReceiving) {}
+  @Route(contract.voidPurchaseOrder)
+  void(@CurrentViewer() viewer: Viewer, @Input() input: In<'voidPurchaseOrder'>) {
+    return this.receiving.void(viewer, Number(input.params.id), input.body)
+  }
   @Route(contract.receivePurchaseOrder)
   receive(
     @CurrentViewer() viewer: Viewer,

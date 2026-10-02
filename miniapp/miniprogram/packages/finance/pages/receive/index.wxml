@@ -3,6 +3,8 @@
 <view wx:else class="u-list">
   <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <hz-error wx:if="{{formError}}" message="{{formError}}" />
+  <hz-button wx:if="{{needsReview}}" kind="secondary" text="{{texts.recheck}}" bind:press="onReviewLedger" />
+  <view wx:if="{{ledgerChanges.length}}" class="u-card u-info"><text class="u-section__title">本次重核变化</text><view wx:for="{{ledgerChanges}}" wx:key="*this" class="u-info__meta">{{item}}</view></view>
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
   <block wx:else>
     <!-- 核销预收只选客户，不写组标题 -->
@@ -26,6 +28,7 @@
           <text class="u-info__title">{{item.name}}</text>
           <text class="u-serif-amount u-amount">{{item.sub}}</text>
         </view>
+        <hz-button wx:if="{{item.notice}}" kind="text" text="{{item.notice}} · 查看退货与改价记录" data-key="{{item.orderId}}" bind:press="onOpenDocument" />
         <view class="u-info__head">
           <hz-field label="{{texts.allocThis}}" type="digit" value="{{item.text}}" data-index="{{index}}" bind:change="onAlloc" />
           <hz-button kind="text" text="{{texts.fill}}" data-index="{{index}}" bind:press="onFill" />

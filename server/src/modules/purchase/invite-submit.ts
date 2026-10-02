@@ -67,7 +67,7 @@ export class InviteSubmission {
     notifyPo(ctx, po)
     return {
       invite: await this.reads.detail(ctx.tx, viewer, id),
-      purchaseOrder: await this.po.detail(ctx.tx, viewer, po.id),
+      purchaseOrder: this.po.supplierView(await this.po.detail(ctx.tx, viewer, po.id)),
     }
   }
   private async generate(ctx: WriteContext, invite: InviteRow, lines: Supply['lines']) {

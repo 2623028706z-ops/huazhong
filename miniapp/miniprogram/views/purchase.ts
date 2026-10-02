@@ -8,6 +8,7 @@ import {
   type InviteCard,
   type PoCard,
   type PoDetail,
+  type SupplierPoDetail,
 } from '@huazhong/shared'
 import { lineCents } from '../core/money'
 import { rowsOf } from './order'
@@ -46,7 +47,7 @@ export function inviteRowOf(invite: InviteCard) {
   }
 }
 
-function poLinesOf(po: PoDetail) {
+function poLinesOf(po: PoDetail | SupplierPoDetail) {
   return po.lines.map((line) => ({
     key: line.id,
     name: line.name,
@@ -66,7 +67,7 @@ function poLinesOf(po: PoDetail) {
   }))
 }
 
-function poRecordsOf(po: PoDetail) {
+function poRecordsOf(po: PoDetail | SupplierPoDetail) {
   return {
     changes: po.changes.map((r) => ({
       id: r.id,
@@ -93,9 +94,17 @@ function poRecordsOf(po: PoDetail) {
     })),
   }
 }
-export function poViewOf(po: PoDetail, supplier = false) {
+function externalPaymentsOf(po: PoDetail | SupplierPoDetail) {
+  return po.allocations.flatMap((allocation) =>
+    'date' in allocation
+      ? [{ date: allocation.date, amount: formatMoney(allocation.amountCents) }]
+      : [],
+  )
+}
+export function poViewOf(po: PoDetail | SupplierPoDetail, supplier = false) {
   return {
     notice: supplier ? '' : (po.notice ?? po.lockedReason ?? ''),
+    payments: supplier ? externalPaymentsOf(po) : [],
     info: {
       title: po.no,
       statusKind: 'poStatus',
@@ -120,23 +129,31 @@ export function poViewOf(po: PoDetail, supplier = false) {
       rows: rowsOf([
         [copy.screen.label.cancelReason, po.cancelReason],
         [copy.screen.label.cancelledAt, po.cancelledAt ? formatTime(po.cancelledAt) : null],
+        [copy.screen.label.voidReason, po.voidReason],
+        [copy.screen.label.voidedAt, po.voidedAt ? formatTime(po.voidedAt) : null],
       ]),
     },
     lines: poLinesOf(po),
-    amountRows: [
-      { label: copy.screen.label.purchaseAmount, value: formatMoney(po.amountCents) },
-      { label: copy.screen.label.payable, value: formatMoney(po.payableCents) },
-      ...(!supplier
-        ? [
-            {
-              label: labels.module.finance,
-              value: po.allReturned ? copy.screen.allReturned : labels.apStatus[po.apStatus],
-            },
-          ]
-        : []),
-    ],
+    amountRows: poAmountsOf(po, supplier),
     ...poRecordsOf(po),
   }
+}
+
+function poAmountsOf(po: PoDetail | SupplierPoDetail, supplier: boolean) {
+  return [
+    { label: copy.screen.label.purchaseAmount, value: formatMoney(po.amountCents) },
+    { label: copy.screen.label.payable, value: formatMoney(po.payableCents) },
+    { label: copy.screen.label.paid, value: formatMoney(po.paidCents) },
+    { label: copy.screen.label.due, value: formatMoney(po.unpaidCents) },
+    ...(!supplier
+      ? [
+          {
+            label: labels.module.finance,
+            value: po.allReturned ? copy.screen.allReturned : labels.apStatus[po.apStatus],
+          },
+        ]
+      : []),
+  ]
 }
 
 export function materialPickOf(material: { id: string; name: string; unit: string }) {

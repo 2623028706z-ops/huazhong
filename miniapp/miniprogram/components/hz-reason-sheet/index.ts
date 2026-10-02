@@ -8,6 +8,7 @@ Component({
     show: { type: Boolean, value: false },
     title: { type: String, value: '' },
     required: { type: Boolean, value: false },
+    optional: { type: Boolean, value: false },
     body: { type: String, value: '' },
     confirm: { type: String, value: '' },
     error: { type: String, value: '' },
@@ -17,6 +18,7 @@ Component({
     text: '',
     reasonLabel: copy.screen.label.reason,
     backText: copy.action.back,
+    optionalHint: copy.placeholder.optional,
   },
   observers: {
     // 每次打开清空；弹层开着时 required 变了（STALE 后要原因）不清已填的

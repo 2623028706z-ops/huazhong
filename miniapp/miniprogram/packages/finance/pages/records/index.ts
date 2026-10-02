@@ -5,7 +5,6 @@ import {
   copy,
   recordStatuses,
   type ReceiptCard,
-  type ReceiptDetail,
   type PaymentDetail,
   type RecordStatus,
 } from '@huazhong/shared'
@@ -16,10 +15,8 @@ import type { FilterValue } from '../../../../core/filter'
 import { watch } from '../../../../core/live'
 import type { PagedList } from '../../../../core/list'
 import { request } from '../../../../core/request'
-import { failureOf, messageOf } from '../../../../core/session'
-import { showSuccess } from '../../../../core/toast'
 import { listHandlers, listOf, listQueryOf } from '../../../../views/list'
-import { recordRowOf, receiptViewOf } from '../../receipt-view'
+import { recordRowOf } from '../../../../views/receipt-view'
 import {
   PaymentPanel,
   paymentPanelData,
@@ -49,12 +46,6 @@ Page({
     failure: null as FailureView | null,
     emptyObject: copy.screen.empty.records,
     allLoaded: copy.state.allLoaded,
-    sheet: false,
-    sheetError: '',
-    receiptSheet: null as ReturnType<typeof receiptViewOf> | null,
-    voidSheet: false,
-    voidError: '',
-    busy: '',
     texts: {
       receipt: copy.screen.title.receipt,
       voidReceipt: copy.screen.action.voidReceipt,
@@ -62,7 +53,6 @@ Page({
     },
   },
   list: null as PagedList<ReceiptCard | PaymentDetail> | null,
-  receipt: null as ReceiptDetail | null,
   panel: null as PaymentPanel | null,
   onLoad() {
     this.panel = new PaymentPanel(this, () => void this.list?.refresh())
@@ -96,58 +86,8 @@ Page({
     void this.list?.refresh()
   },
   async onOpen(event: KeyEvent): Promise<void> {
-    const row = this.list
     const id = event.currentTarget.dataset.key
     const item = this.data.rows.find((item) => item.id === id)
-    if (item && item.kind === 'payment') {
-      await this.panel?.open(id)
-      return
-    }
-    if (!row) return
-    this.setData({ sheet: true, receiptSheet: null, sheetError: '' })
-    const result = await request(contract.getReceipt, {
-      params: { id: event.currentTarget.dataset.key },
-    })
-    if (!result.ok) {
-      this.setData({ sheetError: failureOf(result.failure, 'refresh')?.message ?? '' })
-      return
-    }
-    this.receipt = result.data
-    this.setData({ receiptSheet: receiptViewOf(result.data) })
-  },
-  onCloseSheet() {
-    this.setData({ sheet: false })
-  },
-  onVoid() {
-    this.setData({ voidSheet: true, voidError: '' })
-  },
-  onCloseVoid() {
-    this.setData({ voidSheet: false })
-  },
-  async onSubmitVoid(event: DetailEvent<string>): Promise<void> {
-    const receipt = this.receipt
-    if (!receipt) return
-    this.setData({ busy: 'void', voidError: '' })
-    const input = {
-      params: { id: receipt.id },
-      body: { version: receipt.version, reason: event.detail },
-    }
-    const result = await request(contract.voidReceipt, input)
-    this.setData({ busy: '' })
-    if (result.ok) {
-      this.receipt = result.data
-      this.setData({ voidSheet: false, receiptSheet: receiptViewOf(result.data) })
-      showSuccess(copy.finance.receiptVoided)
-      void this.list?.refresh()
-      return
-    }
-    const view = failureOf(result.failure, 'submit')
-    if (!view) return
-    if (view.kind === 'stale') {
-      this.receipt = view.latest as ReceiptDetail
-      this.setData({ receiptSheet: receiptViewOf(this.receipt) })
-    }
-    const message = messageOf(view)
-    this.setData({ voidError: message })
+    if (item) await this.panel?.open(id, item.kind)
   },
 })

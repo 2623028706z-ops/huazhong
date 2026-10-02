@@ -64,7 +64,7 @@ test.each(['退货', '改价'])('03 §6 登记付款与%s互斥', async (kind) =
   const after = dataOf<PoDetail>(await finance.get(`/purchase-orders/${po.id}`))
   if (results[0].status === 200)
     expect(after).toMatchObject({ apStatus: 'paid', payableCents: 96000 })
-  else expect(after.apStatus).toBe('to_pay')
+  else expect(after.apStatus).toBe('unpaid')
 })
 test('03 §6 不同采购单退同种花材不超扣库存', async () => {
   const first = await createPo(s),

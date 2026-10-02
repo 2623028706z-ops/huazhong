@@ -32,8 +32,10 @@ export interface Api {
 
 export function apiOf(t: TestApp, openid: string): Api {
   // 新建类接口都要幂等键；别的接口不看这个头
-  const send = (method: string, path: string, body?: unknown) =>
-    call(t, method, path, { openid, body, idempotencyKey: randomUUID() })
+  const send = async (method: string, path: string, body?: unknown) => {
+    const prepared = method === 'POST' ? await snapshotInput(t, openid, path, body) : body
+    return call(t, method, path, { openid, body: prepared, idempotencyKey: randomUUID() })
+  }
   return {
     openid,
     get: (path) => send('GET', path),
@@ -42,6 +44,68 @@ export function apiOf(t: TestApp, openid: string): Api {
     patch: (path, body) => send('PATCH', path, body),
     del: (path) => send('DELETE', path),
   }
+}
+async function reviewInput(
+  t: TestApp,
+  openid: string,
+  path: string,
+  input: Record<string, unknown>,
+) {
+  const lines = input.lines as { materialId: string; qty?: number; needQty?: number }[] | undefined
+  if (!lines?.length) return input
+  const result = await call(t, 'POST', '/purchase/review', {
+    openid,
+    body: {
+      kind: path === '/invites' ? 'invite' : 'po',
+      supplierId: input.supplierId,
+      lines: lines.map((row) => ({ materialId: row.materialId, qty: row.qty ?? row.needQty })),
+      ...(input.demandContext ? { demandContext: input.demandContext } : {}),
+    },
+  })
+  return result.body.ok
+    ? { ...input, reviewToken: (result.body.data as { reviewToken: string }).reviewToken }
+    : input
+}
+async function moneyInput(
+  t: TestApp,
+  openid: string,
+  receipt: boolean,
+  input: Record<string, unknown>,
+) {
+  const id = receipt ? input.customerId : input.supplierId
+  const result = await call(
+    t,
+    'GET',
+    receipt
+      ? `/finance/customers/${String(id)}/unpaid-orders`
+      : `/finance/suppliers/${String(id)}/unpaid-docs`,
+    { openid },
+  )
+  if (!result.body.ok) return input
+  const snapshot = result.body.data as {
+    ledgerToken: string
+    items: { id?: string; orderId?: string; version: number; unpaidCents: number }[]
+  }
+  return {
+    ...input,
+    ledgerToken: snapshot.ledgerToken,
+    expected: snapshot.items.map((row) =>
+      receipt
+        ? { orderId: row.orderId, version: row.version, unpaidCents: row.unpaidCents }
+        : { docType: 'po', docId: row.id, version: row.version, unpaidCents: row.unpaidCents },
+    ),
+  }
+}
+export async function snapshotInput(t: TestApp, openid: string, path: string, body: unknown) {
+  if (!body || typeof body !== 'object') return body
+  const input = body as Record<string, unknown>
+  if (['/purchase-orders', '/invites'].includes(path) && !input.reviewToken)
+    return reviewInput(t, openid, path, input)
+  const receipt = ['/finance/receipts', '/finance/prepaid-allocations'].includes(path)
+  const payment = ['/finance/payments', '/finance/prepaid-payment-allocations'].includes(path)
+  if ((receipt || payment) && !input.ledgerToken) return moneyInput(t, openid, receipt, input)
+
+  return body
 }
 
 export async function startSales(): Promise<SalesApp> {

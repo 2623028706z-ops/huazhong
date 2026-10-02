@@ -18,9 +18,9 @@ import {
   type ReceiveLine,
 } from './po-receive-form'
 
-function isOldResponse(next: PoDetail, current: PoDetail | null, pushed: boolean) {
+function isOldResponse(next: PoDetail, current: PoDetail | null) {
   const version = current?.version ?? 0
-  return next.version < version || (pushed && next.version === version)
+  return next.version < version
 }
 
 const data = {
@@ -33,6 +33,7 @@ const data = {
   buttons: [] as ButtonView[],
   busy: '',
   cancelSheet: false,
+  cancelMode: 'cancelPo',
   cancelRequired: true,
   error: '',
   fields: {} as Record<string, string>,
@@ -51,7 +52,7 @@ const data = {
     ...copy.screen.label,
     lines: copy.screen.section.materials,
     confirmCancel: copy.screen.action.confirmCancel,
-    cancelPo: copy.screen.action.cancelPo,
+    cancelPo: copy.screen.action.cancelPo as string,
     receive: copy.screen.action.receive,
     confirmReturn: copy.screen.confirmReturn,
     confirmReprice: copy.screen.confirmReprice,
@@ -99,14 +100,19 @@ const methods = {
       return
     }
     const po = result.data
-    if (isOldResponse(po, this.order, pushed)) return
+    if (isOldResponse(po, this.order)) return
+    // version: null 的派生通知（如自己改价引起的全账重算）重读后内容没变，不提示
+    if (pushed && JSON.stringify(po) === JSON.stringify(this.order)) return
     if (!replace && this.preserve(po)) return
     this.show(po, replace ? this.data.recvNote : '')
     if (pushed) this.setData({ realtime: copy.screen.realtime.refreshed })
   },
   preserve(this: Host, po: PoDetail) {
     if (!this.data.changed && !this.data.sheet) return false
-    if (this.order?.version === po.version) return true
+    if (this.order?.version === po.version) {
+      this.setData({ realtime: copy.screen.realtime.editing })
+      return true
+    }
     if (canDo(po.actions, this.data.sheet || 'receive')) {
       this.setData({ realtime: copy.screen.realtime.editing })
       return true
@@ -120,7 +126,11 @@ const methods = {
     const specs =
       this.data.kind === 'purchase'
         ? ([{ code: 'cancelPo', secondary: true }, { code: 'editPo' }] as const)
-        : ([{ code: 'return', secondary: true }, { code: 'reprice' }] as const)
+        : ([
+            { code: 'voidPo', secondary: true },
+            { code: 'return', secondary: true },
+            { code: 'reprice' },
+          ] as const)
     const lines = receiveLinesOf(po, 'receive')
     this.setData({
       loaded: true,
@@ -156,8 +166,18 @@ const methods = {
       void wx.navigateTo({ url: `/packages/purchase/pages/order-form/index?id=${this.id}` })
       return
     }
-    if (code === 'cancelPo') {
-      this.setData({ cancelSheet: true, error: '' })
+    if (code === 'cancelPo' || code === 'voidPo') {
+      this.setData({
+        cancelSheet: true,
+        error: '',
+        cancelMode: code,
+        texts: {
+          ...this.data.texts,
+          cancelPo: code === 'voidPo' ? copy.rework.voidPurchaseOrder : copy.screen.action.cancelPo,
+          confirmCancel:
+            code === 'voidPo' ? copy.screen.action.confirmVoid : copy.screen.action.confirmCancel,
+        },
+      })
       return
     }
     if ((code === 'return' || code === 'reprice') && this.order) {
@@ -206,13 +226,16 @@ const methods = {
     if (this.order) this.show(this.order)
   },
   async onCancel(this: Host, event: DetailEvent<string>) {
-    if (!this.order) return
+    if (!this.order || this.data.busy) return
     this.setData({ busy: 'cancelPo', error: '' })
-    const result = await request(contract.cancelPurchaseOrder, {
-      params: { id: this.id },
-      body: { version: this.order.version, reason: event.detail },
-    })
-    this.settle(result, copy.finance.poCancelled)
+    const result = await request(
+      this.data.cancelMode === 'voidPo' ? contract.voidPurchaseOrder : contract.cancelPurchaseOrder,
+      {
+        params: { id: this.id },
+        body: { version: this.order.version, reason: event.detail },
+      },
+    )
+    this.settle(result, result.ok ? labels.poStatus[result.data.status] : '')
   },
   async onReceive(this: Host) {
     if (!this.order) return

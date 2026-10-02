@@ -13,7 +13,7 @@ import {
 } from '../rules.ts'
 import type { Endpoint } from './endpoint.ts'
 import { checkDistinct, idParamsSchema } from './page.ts'
-import { orderDetailSchema } from './orders.ts'
+import { orderDetailSchema, shippingDetailSchema } from './orders.ts'
 
 // 同一张单同一种产品只能一行（04 章第 10 节）
 export function checkProductLines(value: { lines: { productId: string }[] }, ctx: z.RefinementCtx) {
@@ -116,6 +116,52 @@ export const shipOrder = {
   grants: ['shipping'],
   params: idParamsSchema,
   body: orderShipSchema,
+  response: shippingDetailSchema,
+  errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
+} as const satisfies Endpoint
+const versionBody = z.object({ version: versionSchema })
+export const requestOrderCancel = {
+  method: 'POST',
+  path: '/store/orders/:id/cancel-request',
+  grants: ['store'],
+  params: idParamsSchema,
+  body: versionBody.extend({ reason: z.string().trim().default('') }),
+  response: orderDetailSchema,
+  errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
+} as const satisfies Endpoint
+export const withdrawOrderCancel = {
+  method: 'POST',
+  path: '/store/orders/:id/cancel-request/withdraw',
+  grants: ['store'],
+  params: idParamsSchema,
+  body: versionBody,
+  response: orderDetailSchema,
+  errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
+} as const satisfies Endpoint
+export const approveOrderCancel = {
+  method: 'POST',
+  path: '/orders/:id/cancel-request/approve',
+  grants: ['sales'],
+  params: idParamsSchema,
+  body: versionBody,
+  response: orderDetailSchema,
+  errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
+} as const satisfies Endpoint
+export const rejectOrderCancel = {
+  method: 'POST',
+  path: '/orders/:id/cancel-request/reject',
+  grants: ['sales'],
+  params: idParamsSchema,
+  body: versionBody.extend({ reason: requiredTextSchema(copy.rework.rejectReasonRequired) }),
+  response: orderDetailSchema,
+  errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
+} as const satisfies Endpoint
+export const voidOrder = {
+  method: 'POST',
+  path: '/orders/:id/void',
+  grants: ['sales'],
+  params: idParamsSchema,
+  body: versionBody.extend({ reason: requiredTextSchema(copy.rework.voidReasonRequired) }),
   response: orderDetailSchema,
   errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
 } as const satisfies Endpoint

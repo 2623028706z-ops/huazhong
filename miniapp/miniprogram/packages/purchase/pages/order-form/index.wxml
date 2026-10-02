@@ -1,2 +1,2 @@
 <import src="/views/purchase-form.wxml" />
-<template is="purchase-form" data="{{title, mode, editing, submitText, loaded, changed, failure, formError, fields, realtime, saving, form, initial, lineViews, supplierOptions, supplierName, canChangeSupplier, editable, amount, pickSheet, picks, inviteView, poView, texts}}" />
+<template is="purchase-form" data="{{title, mode, editing, supplierEditing, submitText, loaded, changed, failure, formError, fields, realtime, saving, reviewing, reviewSheet, reviewWarnings, reviewInvites, reviewInviteView, reviewInviteSheet, reviewError, form, initial, lineViews, supplierOptions, supplierName, canChangeSupplier, editable, amount, pickSheet, picks, inviteView, poView, texts}}" />

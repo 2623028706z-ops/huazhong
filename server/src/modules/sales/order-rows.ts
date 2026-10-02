@@ -18,6 +18,7 @@ import { waitCounts } from '../../common/domain/counts.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import { found, ownStoreId } from '../../common/scope.ts'
 import type { LineRow } from './domain/order-view.ts'
+import { lockCustomer } from '../../common/org.ts'
 
 export type Executor = Db | Tx
 
@@ -90,6 +91,11 @@ export async function orderStatusCounts(
 // 行锁订单：写接口先锁住再按最新详情判断（门店只能锁本店的）
 export async function lockOrder(tx: Tx, viewer: Viewer, id: number): Promise<void> {
   const storeId = ownStoreId(viewer)
+  const [pointer] = await tx
+    .select({ customerId: orders.customerId })
+    .from(orders)
+    .where(and(eq(orders.id, id), storeId === null ? undefined : eq(orders.storeId, storeId)))
+  await lockCustomer(tx, found(pointer).customerId)
   const [row] = await tx
     .select({ id: orders.id })
     .from(orders)
@@ -110,6 +116,12 @@ export function orderRowsQuery(executor: Executor) {
       version: orders.version,
       status: orders.status,
       origin: orders.origin,
+      createdBy: orders.createdBy,
+      confirmedBy: orders.confirmedBy,
+      cancelRequested: sql<boolean>`EXISTS (SELECT 1 FROM order_cancel_requests WHERE order_id=${orders.id} AND status='pending')`,
+      cancelRejected: sql<boolean>`EXISTS (SELECT 1 FROM order_cancel_requests WHERE order_id=${orders.id} AND status='rejected')`,
+      hasLiveAllocation: sql<boolean>`EXISTS (SELECT 1 FROM allocations a JOIN receipts r ON r.id=a.receipt_id WHERE a.order_id=${orders.id} AND a.revoked_at IS NULL AND r.status='valid')`,
+      hasLiveAfter: sql<boolean>`EXISTS (SELECT 1 FROM afters WHERE order_id=${orders.id} AND status IN ('pending','processed'))`,
       orderDate: orders.orderDate,
       shipDate: orders.shipDate,
       customerId: orders.customerId,

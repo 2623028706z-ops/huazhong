@@ -2,7 +2,28 @@
 // enabled 为 false 显示禁用并写 disabledReason；reasonRequired 决定原因弹层要不要原因框
 import { copy, type Action, type ActionCode } from '@huazhong/shared'
 
-type ButtonCode = keyof typeof copy.screen.action
+const labels: Partial<Record<ActionCode, string>> = {
+  requestCancel: copy.rework.requestCancel,
+  withdrawCancel: copy.rework.withdrawCancel,
+  approveCancel: copy.rework.approveCancel,
+  rejectCancel: copy.rework.rejectCancel,
+  voidOrder: copy.rework.voidOrder,
+  registerPayment: copy.screen.action.pay,
+  allocatePrepaid: copy.rework.allocatePaymentPrepaid,
+  refundReceipt: copy.rework.registerRefund,
+  refundPayment: copy.rework.registerRefund,
+  revokeAllocation: copy.rework.revokeAllocation,
+  revokePaymentAllocation: copy.rework.revokeAllocation,
+  voidRefund: copy.rework.voidRefund,
+  voidPo: copy.rework.voidPurchaseOrder,
+  copyCatalog: copy.rework.copyCatalog,
+  supplierEditPo: copy.screen.action.editPo,
+  supplierCancelPo: copy.screen.action.cancelPo,
+}
+function textOf(code: ActionCode): string {
+  const existing: Partial<Record<ActionCode, string>> = copy.screen.action
+  return labels[code] ?? existing[code] ?? code
+}
 
 export interface ButtonView {
   code: string
@@ -30,7 +51,7 @@ export function isReasonRequired(actions: readonly Action[], code: ActionCode): 
 }
 
 interface ButtonSpec {
-  code: ActionCode & ButtonCode
+  code: ActionCode
   secondary?: boolean
 }
 
@@ -42,7 +63,7 @@ export function buttonsOf(actions: readonly Action[], specs: readonly ButtonSpec
     if (!action) continue
     views.push({
       code: spec.code,
-      text: copy.screen.action[spec.code],
+      text: textOf(spec.code),
       kind: spec.secondary ? 'secondary' : 'primary',
       disabled: !action.enabled,
       reason: action.disabledReason ?? '',

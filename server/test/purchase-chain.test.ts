@@ -121,13 +121,13 @@ test('B02–B09 完整采购、少收链路三家应付和模块日志一致', a
       ['滇花源', 79000],
     ]),
   )
-  const payable = dataOf<OutputOf<typeof contract.getPayable>>(
-    await finance.get(`/finance/payables/po/${spring.id}`),
+  const payable = dataOf<OutputOf<typeof contract.getApDocument>>(
+    await finance.get(`/finance/ap-documents/po/${spring.id}`),
   )
   expect(payable).toMatchObject({
     payableCents: 241400,
     amountCents: 255600,
-    apStatus: 'to_pay',
+    apStatus: 'unpaid',
     lines: [{ qty: 180, receivedQty: 170 }],
   })
   const extra = await createPo(s)

@@ -2,12 +2,18 @@
 import { mkdir } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import automator from 'miniprogram-automator'
+import type {
+  CustomElement,
+  InputElement,
+  TextareaElement,
+} from 'miniprogram-automator/out/Element.js'
 import { afterAll, afterEach, beforeAll, beforeEach, expect } from 'vitest'
 import type { SeedAccountKey } from '../../db/seed/data.ts'
-import { startSales, type SalesApp } from '../support/sales.ts'
+import { dataOf, startSales, TODAY, type SalesApp } from '../support/sales.ts'
+import type { contract, OutputOf, PoDetail } from '@huazhong/shared'
 
 export type MiniProgram = Awaited<ReturnType<typeof automator.connect>>
-type Page = NonNullable<Awaited<ReturnType<MiniProgram['currentPage']>>>
+export type Page = NonNullable<Awaited<ReturnType<MiniProgram['currentPage']>>>
 
 interface ContainerOptions {
   path: string
@@ -26,6 +32,38 @@ declare const wx: {
 }
 declare function getApp(): { uiRequests: unknown[] }
 export const screenshotDir = process.env.HZ_UI_SCREENSHOTS ?? resolve('.artifacts/stage4-screens')
+
+export async function paymentInput(
+  server: SalesApp,
+  document: PoDetail,
+  amountCents = document.payableCents,
+) {
+  const finance = await server.as('u6')
+  const ledger = dataOf<OutputOf<typeof contract.listUnpaidDocuments>>(
+    await finance.get(`/finance/suppliers/${document.supplierId}/unpaid-docs`),
+  )
+  return {
+    supplierId: document.supplierId,
+    ledgerToken: ledger.ledgerToken,
+    expected: ledger.items.map((item) => ({
+      docType: 'po',
+      docId: item.id,
+      version: item.version,
+      unpaidCents: item.unpaidCents,
+    })),
+    allocs: [
+      {
+        docType: 'po',
+        docId: document.id,
+        amountCents: Math.min(document.unpaidCents, amountCents),
+      },
+    ],
+    amountCents,
+    payDate: TODAY,
+    methodName: '微信',
+    note: '',
+  }
+}
 
 export async function connectMini(): Promise<MiniProgram> {
   await mkdir(screenshotDir, { recursive: true })
@@ -146,4 +184,44 @@ export async function snap(mini: MiniProgram, name: string) {
   const page = await mini.currentPage()
   await page?.waitFor(350)
   await mini.screenshot({ path: resolve(screenshotDir, `${name}.png`) })
+}
+
+export async function tapControl(control: CustomElement) {
+  const button = await control.$('miniprogram_npm\\/tdesign-miniprogram\\/button\\/button')
+  const target = button ? await button.$('button') : await control.$('.hz-button__text')
+  if (!target) throw new Error('no rendered button')
+  await target.tap()
+}
+
+export async function tapText(page: Page | CustomElement, text: string) {
+  const buttons = (await page.$$('components\\/hz-button\\/index')) as CustomElement[]
+  for (const button of buttons) {
+    if ((await button.data('text')) !== text) continue
+    const target = await button.size()
+    if (Number(target.height) === 0) continue
+    await tapControl(button)
+    return
+  }
+  throw new Error(`no rendered button ${text}`)
+}
+
+export async function inputField(page: Page | CustomElement, selector: string, value: string) {
+  const field = await page.$(selector)
+  const control =
+    (await field?.$('miniprogram_npm\\/tdesign-miniprogram\\/input\\/input')) ??
+    (await field?.$('miniprogram_npm\\/tdesign-miniprogram\\/textarea\\/textarea'))
+  const input = (await control?.$('input')) ?? (await control?.$('textarea'))
+  if (!input) throw new Error(`no input ${selector}`)
+  await (input as InputElement | TextareaElement).input(value)
+}
+
+export async function pickOption(page: Page | CustomElement, selector: string, value: string) {
+  const component = (await page.$(selector)) as CustomElement | null
+  const picker = await component?.$('picker')
+  if (!component || !picker) throw new Error(`no picker ${selector}`)
+  const mode = (await component.data('mode')) as string
+  const options = (await component.data('options')) as { id: string }[]
+  const index = options.findIndex((option) => option.id === value)
+  if (mode !== 'date' && index < 0) throw new Error(`no picker option ${value}`)
+  await picker.trigger('change', { value: mode === 'date' ? value : String(index) })
 }

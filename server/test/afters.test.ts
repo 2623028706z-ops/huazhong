@@ -2,6 +2,7 @@
 import type { AfterDetail, OrderDetail } from '@huazhong/shared'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { codesOf, dataOf, idBy, startSales, type SalesApp } from './support/sales.ts'
+import { uploadAfterImage } from './support/images.ts'
 
 let s: SalesApp
 let o021: string
@@ -20,9 +21,13 @@ const roseMax = async () => (await roseLine())?.maxQty
 
 async function storeApply(qty: number, description = '花头折损') {
   const line = await roseLine()
-  return (await s.as('s1')).post('/store/afters', {
+  const store = await s.as('s1')
+  const imageFileId = await uploadAfterImage(s, store)
+  return store.post('/store/afters', {
     orderId: o021,
-    lines: [{ orderLineId: line?.id, qty, reason: 'damaged', description, imageFileIds: [] }],
+    lines: [
+      { orderLineId: line?.id, qty, reason: 'damaged', description, imageFileIds: [imageFileId] },
+    ],
   })
 }
 

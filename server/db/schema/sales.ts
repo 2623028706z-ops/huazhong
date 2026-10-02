@@ -11,10 +11,18 @@ import {
   smallint,
   text,
   unique,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { products } from './catalog.ts'
 import { accountRef, commonColumns, timestamptz, versionColumn } from './columns.ts'
-import { afterOrigin, afterReason, afterStatus, orderOrigin, orderStatus } from './enums.ts'
+import {
+  afterOrigin,
+  afterReason,
+  afterStatus,
+  orderOrigin,
+  orderStatus,
+  cancelRequestStatus,
+} from './enums.ts'
 import { files } from './files.ts'
 import { customers, stores } from './org.ts'
 
@@ -52,6 +60,9 @@ export const orders = pgTable(
     cancelledBy: accountRef(),
     cancelledAt: timestamptz(),
     cancelReason: text(),
+    voidReason: text(),
+    voidedBy: accountRef(),
+    voidedAt: timestamptz(),
   },
   (t) => [
     check('orders_shipped_at', sql`${t.status} <> 'shipped' OR ${t.shippedAt} IS NOT NULL`),
@@ -61,7 +72,11 @@ export const orders = pgTable(
     ),
     check(
       'orders_ship_date_set',
-      sql`${t.status} NOT IN ('to_ship', 'shipped') OR ${t.shipDate} IS NOT NULL`,
+      sql`${t.status}::text NOT IN ('to_ship', 'shipped', 'voided') OR ${t.shipDate} IS NOT NULL`,
+    ),
+    check(
+      'orders_void_reason',
+      sql`${t.status}::text <> 'voided' OR (${t.shippedAt} IS NOT NULL AND ${t.voidReason} IS NOT NULL)`,
     ),
     index('orders_status_ship_date').on(t.status, t.shipDate),
     index('orders_store_date').on(t.storeId, t.orderDate.desc()),
@@ -94,14 +109,38 @@ export const orderLines = pgTable(
     unique().on(t.orderId, t.productId),
     check('order_lines_qty_positive', sql`${t.qty} > 0`),
     check('order_lines_price_nonnegative', sql`${t.priceCents} >= 0 AND ${t.listPriceCents} >= 0`),
-    check(
-      'order_lines_shipped_range',
-      sql`${t.shippedQty} IS NULL OR (${t.shippedQty} >= 0 AND ${t.shippedQty} <= ${t.qty})`,
-    ),
+    check('order_lines_shipped_range', sql`${t.shippedQty} IS NULL OR ${t.shippedQty} >= 0`),
   ],
 )
 
 // items 是给人看的字符串数组；内容没变不写
+export const orderCancelRequests = pgTable(
+  'order_cancel_requests',
+  {
+    ...commonColumns(),
+    orderId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => orders.id, { onDelete: 'restrict' }),
+    status: cancelRequestStatus().notNull().default('pending'),
+    reason: text().notNull().default(''),
+    requestedBy: accountRef().notNull(),
+    requestedAt: timestamptz().notNull(),
+    handledBy: accountRef(),
+    handledAt: timestamptz(),
+    rejectReason: text(),
+  },
+  (table) => [
+    uniqueIndex('order_cancel_requests_pending')
+      .on(table.orderId)
+      .where(sql`${table.status} = 'pending'`),
+    index('order_cancel_requests_status_time').on(table.status, table.requestedAt),
+    check(
+      'order_cancel_requests_reject_reason',
+      sql`${table.status} <> 'rejected' OR ${table.rejectReason} IS NOT NULL`,
+    ),
+  ],
+)
+
 export const orderChanges = pgTable(
   'order_changes',
   {

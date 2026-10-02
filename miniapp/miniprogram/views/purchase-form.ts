@@ -1,21 +1,30 @@
-import { contract, copy, labels, type InviteDetail, type PoDetail } from '@huazhong/shared'
-import { canDo } from '../core/actions'
+import {
+  contract,
+  copy,
+  labels,
+  type InviteDetail,
+  type PoDetail,
+  type SupplierPoDetail,
+  type OutputOf,
+} from '@huazhong/shared'
 import type { DetailEvent, KeyEvent } from '../core/events'
 import type { FailureView } from '../core/failure-view'
 import { formTotalOf } from '../core/form'
 import { isChanged, syncUnloadAlert } from '../core/guard'
-import { unwatch, watchNewer } from '../core/live'
+import { unwatch, watch, watchNewer } from '../core/live'
 import { newIdempotencyKey, request, type Failure } from '../core/request'
 import { failureOf, messageOf } from '../core/session'
 import { showSuccess } from '../core/toast'
-import { materialPickOf, poViewOf } from './purchase'
-import { inviteViewOf, openInvitePo } from './invite-detail'
+import { materialPickOf, type poViewOf } from './purchase'
+import { reviewDraft, purchaseReviewData, purchaseReviewMethods } from './purchase-review'
+import { submitPurchase } from './purchase-submit'
+import { purchaseFormDetails } from './purchase-form-detail'
+import type { Checked } from '../core/form'
+import { openInvitePo, type inviteViewOf } from './invite-detail'
 import { loadInventory, loadMaterials, loadSuppliers, loadSupplyMaterials } from './purchase-load'
 import {
   blankPurchaseForm,
   checkPurchaseForm,
-  inviteFormOf,
-  poFormOf,
   purchaseAmount,
   purchaseLineOf,
   purchaseLineViews,
@@ -30,6 +39,7 @@ import {
 
 const data = {
   mode: 'po' as PurchaseMode,
+  supplierEditing: false,
   title: '',
   submitText: '',
   loaded: false,
@@ -39,6 +49,8 @@ const data = {
   fields: {} as Record<string, string>,
   realtime: '',
   saving: false,
+  reviewing: false,
+  ...purchaseReviewData,
   editing: false,
   form: blankPurchaseForm(),
   initial: blankPurchaseForm(),
@@ -61,23 +73,31 @@ const data = {
     noPick: copy.state.empty(copy.screen.empty.addableMaterials),
     note: copy.field.note,
     supplierPlaceholder: copy.screen.supplierPlaceholder,
+    reviewTitle: copy.rework.reviewBeforeSubmit,
+    continueSubmit: copy.rework.continueSubmit,
+    backToReview: copy.rework.backToReview,
+    allowOverGap: copy.rework.allowOverGap,
+    inviteTitle: copy.screen.title.invite,
+    reasonOptional: copy.placeholder.optional,
   },
 }
-interface Host {
+export interface PurchaseFormHost {
   data: typeof data
   id: string
   key: string
-  po: PoDetail | null
+  po: PoDetail | SupplierPoDetail | null
   invite: InviteDetail | null
   materials: MaterialOption[]
   draft: PurchaseDraft | null
   setData(patch: Record<string, unknown>): void
+  selectComponent(selector: string): unknown
   getOpenerEventChannel(): {
     on?: (event: string, fn: (draft: PurchaseDraft) => void) => void
     emit?: (event: string, data: unknown) => void
   }
-  load(): Promise<void>
+  load(preserve?: boolean): Promise<void>
   loadChoices(): Promise<boolean>
+  loadExternalMaterials(): Promise<boolean>
   loadStock(): Promise<boolean>
   loadDetail(preserve?: boolean): Promise<boolean>
   loadPo(preserve: boolean): Promise<boolean>
@@ -86,17 +106,25 @@ interface Host {
   update(patch: Partial<PurchaseForm>): void
   fail(failure: Failure): Promise<void>
   save(body: unknown): Promise<void>
+  prepare(): Promise<Checked<unknown> | null>
   saveSupply(body: unknown): Promise<void>
+  reviewResolve: ((confirmed: boolean) => void) | null
+  confirmReview(review: OutputOf<typeof contract.reviewPurchase>): Promise<boolean>
 }
+type Host = PurchaseFormHost
 const methods = {
+  ...purchaseFormDetails,
+  ...purchaseReviewMethods,
   id: '',
   key: '',
-  po: null as PoDetail | null,
+  po: null as PoDetail | SupplierPoDetail | null,
   invite: null as InviteDetail | null,
   materials: [] as MaterialOption[],
   draft: null as PurchaseDraft | null,
   onLoad(this: Host, query: Record<string, string | undefined>) {
-    this.id = query.id ?? ''
+    if (query.poId && this.data.mode === 'supply')
+      this.setData({ mode: 'po', supplierEditing: true })
+    this.id = query.poId ?? query.id ?? ''
     this.key = newIdempotencyKey()
     this.setData({ ...purchaseTitles(this.data.mode, !!this.id), editing: !!this.id })
     if (this.data.mode === 'supply')
@@ -108,7 +136,12 @@ const methods = {
     void this.load()
   },
   onShow(this: Host) {
-    if (!this.id) return
+    if (!this.id) {
+      watch(this, ['demand'], () => {
+        this.setData({ realtime: copy.screen.realtime.editing })
+      })
+      return
+    }
     const topic =
       this.data.mode === 'po' ? (`po:${this.id}` as const) : (`invite:${this.id}` as const)
     watchNewer(
@@ -122,15 +155,16 @@ const methods = {
   onHide() {
     unwatch(this)
   },
-  onUnload() {
+  onUnload(this: Host) {
+    this.reviewResolve?.(false)
     unwatch(this)
     syncUnloadAlert(false)
   },
-  async load(this: Host) {
+  async load(this: Host, preserve = this.data.changed) {
     if (!(await this.loadChoices())) return
-    if (this.id && !(await this.loadDetail())) return
+    if (this.id && !(await this.loadDetail(preserve))) return
     this.setData({ loaded: true, failure: null, realtime: '' })
-    if (!this.id) {
+    if (!this.id && !this.data.changed) {
       this.render({ ...blankPurchaseForm(), ...this.draft }, true)
       this.setData({
         supplierName:
@@ -139,15 +173,8 @@ const methods = {
     }
   },
   async loadChoices(this: Host) {
-    if (this.data.mode === 'supply') {
-      const result = await loadSupplyMaterials()
-      if (!result.ok) {
-        this.setData({ failure: failureOf(result.failure, 'load') })
-        return false
-      }
-      this.materials = result.data
-      return true
-    }
+    if (this.data.mode === 'supply' || this.data.supplierEditing)
+      return this.loadExternalMaterials()
     const materials = await loadMaterials()
     const suppliers = await loadSuppliers({
       enabled: 'true',
@@ -161,6 +188,15 @@ const methods = {
     this.materials = materials.data
     this.setData({ supplierOptions: suppliers.data.map((s) => ({ id: s.id, name: s.name })) })
     return this.data.mode !== 'invite' || (await this.loadStock())
+  },
+  async loadExternalMaterials(this: Host) {
+    const result = await loadSupplyMaterials()
+    if (!result.ok) {
+      this.setData({ failure: failureOf(result.failure, 'load') })
+      return false
+    }
+    this.materials = result.data
+    return true
   },
   async loadStock(this: Host) {
     const stock = await loadInventory()
@@ -176,65 +212,6 @@ const methods = {
   },
   async loadDetail(this: Host, preserve = false) {
     return this.data.mode === 'po' ? this.loadPo(preserve) : this.loadInvite(preserve)
-  },
-  async loadPo(this: Host, preserve: boolean) {
-    const result = await request(contract.getPurchaseOrder, { params: { id: this.id } })
-    if (!result.ok) {
-      this.setData({ failure: failureOf(result.failure, 'load') })
-      return false
-    }
-    const editable = canDo(result.data.actions, 'editPo')
-    this.setData({
-      supplierName: result.data.supplierName,
-      canChangeSupplier: canDo(result.data.actions, 'changeSupplier'),
-      editable,
-      lockedReason: result.data.lockedReason ?? labels.poStatus[result.data.status],
-      poView: poViewOf(result.data),
-    })
-    if (preserve && editable) {
-      if (this.po?.version !== result.data.version)
-        this.setData({ realtime: copy.screen.realtime.editing })
-      return true
-    }
-    this.po = result.data
-    this.render(poFormOf(result.data, this.data.form.reason), true)
-    return true
-  },
-  async loadInvite(this: Host, preserve: boolean) {
-    const endpoint = this.data.mode === 'supply' ? contract.supplierInvite : contract.getInvite
-    const result = await request(endpoint, { params: { id: this.id } })
-    if (!result.ok) {
-      this.setData({ failure: failureOf(result.failure, 'load') })
-      return false
-    }
-    const editable = canDo(
-      result.data.actions,
-      this.data.mode === 'supply' ? 'submitSupply' : 'editInvite',
-    )
-    if (preserve && editable) {
-      if (this.invite?.version !== result.data.version)
-        this.setData({
-          realtime:
-            this.data.mode === 'supply' ? copy.screen.supplyEdited : copy.screen.realtime.editing,
-        })
-      if (this.data.mode === 'supply') {
-        const enabled = new Set(this.materials.map((material) => material.id))
-        this.render({
-          ...this.data.form,
-          lines: this.data.form.lines.map((line) => ({ ...line, enabled: enabled.has(line.id) })),
-        })
-      }
-      return true
-    }
-    this.invite = result.data
-    this.setData({
-      supplierName: result.data.supplierName,
-      canChangeSupplier: false,
-      editable,
-      inviteView: inviteViewOf(result.data),
-    })
-    this.render(inviteFormOf(result.data), true)
-    return true
   },
   render(this: Host, form: PurchaseForm, initial = false) {
     if (this.data.mode === 'invite')
@@ -301,18 +278,29 @@ const methods = {
     this.setData({ pickSheet: false })
     if (material) this.update({ lines: [...this.data.form.lines, purchaseLineOf(material)] })
   },
+  async prepare(this: Host): Promise<Checked<unknown> | null> {
+    const version = this.po?.version ?? this.invite?.version ?? null
+    const options = {
+      reviewToken: 'pending-review',
+      demandContext: this.draft?.demandContext,
+      supplierEditing: this.data.supplierEditing,
+    }
+    const preliminary = checkPurchaseForm(this.data.form, this.data.mode, version, options)
+    if (!preliminary.ok || version !== null || this.data.mode === 'supply') return preliminary
+    const reviewToken = await reviewDraft(this, this.data.mode, options.demandContext)
+    if (!reviewToken) return null
+    return checkPurchaseForm(this.data.form, this.data.mode, version, { ...options, reviewToken })
+  },
   async onSubmit(this: Host) {
+    if (this.data.saving || this.data.reviewing || this.data.reviewSheet) return
     if (this.data.mode === 'supply' && this.data.form.lines.some((line) => !line.enabled)) {
       this.setData({ fields: {}, formError: copy.finance.inviteMaterialDisabled })
       return
     }
-    const version = this.po?.version ?? this.invite?.version ?? null
-    const checked = checkPurchaseForm(this.data.form, this.data.mode, version)
+    const checked = await this.prepare()
+    if (!checked) return
     if (!checked.ok) {
-      this.setData({
-        fields: checked.fields,
-        formError: purchaseErrorOf(checked.fields),
-      })
+      this.setData({ fields: checked.fields, formError: purchaseErrorOf(checked.fields) })
       this.render(this.data.form)
       return
     }
@@ -321,34 +309,17 @@ const methods = {
     this.setData({ saving: false })
   },
   async save(this: Host, body: unknown) {
-    const params = { id: this.id },
-      options = { idempotencyKey: this.key }
     if (this.data.mode === 'supply') {
       await this.saveSupply(body)
       return
     }
-    const result =
-      this.data.mode === 'po'
-        ? this.id
-          ? await request(contract.updatePurchaseOrder, {
-              params,
-              body: contract.updatePurchaseOrder.body.parse(body),
-            })
-          : await request(
-              contract.createPurchaseOrder,
-              { body: contract.createPurchaseOrder.body.parse(body) },
-              options,
-            )
-        : this.id
-          ? await request(contract.updateInvite, {
-              params,
-              body: contract.updateInvite.body.parse(body),
-            })
-          : await request(
-              contract.createInvite,
-              { body: contract.createInvite.body.parse(body) },
-              options,
-            )
+    const result = await submitPurchase({
+      mode: this.data.mode,
+      id: this.id,
+      body,
+      key: this.key,
+      supplierEditing: this.data.supplierEditing,
+    })
     if (!result.ok) {
       await this.fail(result.failure)
       return
@@ -379,7 +350,7 @@ const methods = {
     if (!view) return
     if (view.kind === 'page') this.setData({ failure: view })
     else {
-      if (view.kind === 'stale') await this.load()
+      if (view.kind === 'stale' && this.id) await this.load()
       this.setData({
         formError: view.kind === 'fields' ? purchaseErrorOf(view.fields) : messageOf(view),
         fields: view.kind === 'fields' ? view.fields : {},
@@ -387,8 +358,9 @@ const methods = {
       this.render(this.data.form)
     }
   },
+  // 用户点实时提示条才换成最新内容，丢弃本地草稿（02 章第 5 节）
   onRealtime(this: Host) {
-    void this.load()
+    void this.load(false)
   },
   onFailureAction(this: Host) {
     void this.load()

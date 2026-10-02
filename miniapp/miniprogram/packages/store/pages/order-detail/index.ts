@@ -2,7 +2,7 @@
 // 底部「取消订单」（storeCancel）、「修改订单」（storeEdit）、「申请售后」（applyAfter），禁用时写 disabledReason
 import { contract, copy, type OrderDetail } from '@huazhong/shared'
 import { buttonsOf, isReasonRequired, type ButtonView } from '../../../../core/actions'
-import type { CodeEvent } from '../../../../core/events'
+import type { CodeEvent, DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { unwatchOnLeave, watchNewer } from '../../../../core/live'
 import { request } from '../../../../core/request'
@@ -13,9 +13,26 @@ import { startEdit } from '../../cart-source'
 
 const buttonSpecs = [
   { code: 'storeCancel', secondary: true },
+  { code: 'requestCancel', secondary: true },
+  { code: 'withdrawCancel', secondary: true },
   { code: 'storeEdit' },
   { code: 'applyAfter' },
 ] as const
+type CancelCode = 'storeCancel' | 'requestCancel' | 'withdrawCancel'
+const cancelTitles: Record<CancelCode, string> = {
+  storeCancel: copy.screen.action.storeCancel,
+  requestCancel: copy.rework.requestCancel,
+  withdrawCancel: copy.rework.withdrawCancel,
+}
+const cancelConfirms: Record<CancelCode, string> = {
+  storeCancel: copy.screen.action.confirmCancel,
+  requestCancel: copy.rework.submitCancelRequest,
+  withdrawCancel: copy.rework.confirmWithdrawCancel,
+}
+const sheetDefaults = { cancelMode: 'storeCancel' as CancelCode }
+function isCancelAction(code: string): code is CancelCode {
+  return Object.hasOwn(cancelTitles, code)
+}
 
 Page({
   ...unwatchOnLeave,
@@ -30,10 +47,11 @@ Page({
     sheet: false,
     sheetRequired: false,
     sheetError: '',
+    ...sheetDefaults,
     texts: {
-      cancelTitle: copy.screen.action.storeCancel,
+      cancelTitle: cancelTitles.storeCancel,
       cancelBody: copy.screen.confirm.cancelOrder,
-      confirmCancel: copy.screen.action.confirmCancel,
+      confirmCancel: cancelConfirms.storeCancel,
     },
   },
   id: '',
@@ -72,9 +90,19 @@ Page({
     const order = this.order
     if (!order) return
     const { code } = event.currentTarget.dataset
-    if (code === 'storeCancel') {
-      const required = isReasonRequired(order.actions, 'storeCancel')
-      this.setData({ sheet: true, sheetRequired: required, sheetError: '' })
+    if (isCancelAction(code)) {
+      const required = isReasonRequired(order.actions, code)
+      this.setData({
+        sheet: true,
+        sheetRequired: required,
+        sheetError: '',
+        cancelMode: code,
+        texts: {
+          ...this.data.texts,
+          cancelTitle: cancelTitles[code],
+          confirmCancel: cancelConfirms[code],
+        },
+      })
     } else if (code === 'storeEdit') {
       startEdit(order)
       void wx.navigateTo({ url: '/packages/store/pages/shop/index?mode=edit' })
@@ -85,19 +113,25 @@ Page({
   onCloseSheet() {
     this.setData({ sheet: false })
   },
-  async onCancel(): Promise<void> {
+  async onCancel(event: DetailEvent<string>): Promise<void> {
     const order = this.order
     if (!order) return
     this.setData({ busy: 'storeCancel', sheetError: '' })
-    const result = await request(contract.cancelStoreOrder, {
+    const endpoint =
+      this.data.cancelMode === 'requestCancel'
+        ? contract.requestOrderCancel
+        : this.data.cancelMode === 'withdrawCancel'
+          ? contract.withdrawOrderCancel
+          : contract.cancelStoreOrder
+    const result = await request(endpoint, {
       params: { id: order.id },
-      body: { version: order.version },
+      body: { version: order.version, reason: event.detail },
     })
     this.setData({ busy: '' })
     if (result.ok) {
       this.show(result.data)
       this.setData({ sheet: false })
-      showSuccess(copy.order.cancelled)
+      showSuccess(this.data.cancelMode === 'storeCancel' ? copy.order.cancelled : copy.action.saved)
       return
     }
     const view = failureOf(result.failure, 'submit')

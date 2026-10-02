@@ -39,11 +39,18 @@ export const purchaseOrders = pgTable(
     cancelReason: text(),
     cancelledBy: accountRef(),
     cancelledAt: timestamptz(),
+    voidReason: text(),
+    voidedBy: accountRef(),
+    voidedAt: timestamptz(),
   },
   (t) => [
     index('purchase_orders_status_date').on(t.status, t.orderDate.desc()),
     index('purchase_orders_supplier_status').on(t.supplierId, t.status),
     unique('purchase_orders_invite_unique').on(t.inviteId),
+    check(
+      'purchase_orders_void_reason',
+      sql`${t.status}::text <> 'voided' OR (${t.receivedAt} IS NOT NULL AND ${t.voidReason} IS NOT NULL)`,
+    ),
     check(
       'purchase_orders_received_at',
       sql`${t.status} NOT IN ('received', 'rejected') OR ${t.receivedAt} IS NOT NULL`,

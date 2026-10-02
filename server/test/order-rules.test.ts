@@ -18,7 +18,9 @@ afterEach(async () => {
 })
 
 const detail = async (key: 'u2' | 's1' | 'u7', id: string) =>
-  dataOf<OrderDetail>(await (await s.as(key)).get(`/orders/${id}`))
+  dataOf<OrderDetail>(
+    await (await s.as(key)).get(key === 'u7' ? `/shipping/orders/${id}` : `/orders/${id}`),
+  )
 
 const actionOf = (o: OrderDetail, code: string) => o.actions.find((a) => a.code === code)
 

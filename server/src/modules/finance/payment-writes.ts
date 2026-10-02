@@ -1,78 +1,63 @@
-import { appError, contract, copy, formatMoney, labels, type OutputOf } from '@huazhong/shared'
+import { appError, contract, copy, type OutputOf } from '@huazhong/shared'
 import { Injectable } from '@nestjs/common'
-import { and, eq, sql } from 'drizzle-orm'
-import { paymentMethods, payments, purchaseOrders } from '../../../db/schema/index.ts'
+import { and, eq, isNull, sql } from 'drizzle-orm'
+import { paymentAllocations, paymentMethods, payments } from '../../../db/schema/index.ts'
 import { Clock } from '../../common/clock.ts'
 import { gateAction } from '../../common/domain/actions.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import type { ParsedInput } from '../../common/endpoint.ts'
 import { found } from '../../common/scope.ts'
 import { WriteService, type WriteContext } from '../../common/write.service.ts'
-import { PurchaseService } from '../purchase/purchase.service.ts'
+import { drawPrepaid } from './domain/ar.ts'
+import {
+  assertSnapshot,
+  lockSupplierLedger,
+  notifySupplierFinance,
+  owns,
+} from '../../common/ledger.ts'
+import { loadPaymentLedger } from '../../common/payment-ledger.ts'
 import { PaymentReads } from './payment-reads.ts'
-
-type Create = ParsedInput<typeof contract.createPayment>['body']
-type Void = ParsedInput<typeof contract.voidPayment>['body']
-function paymentLog(row: { id: number; no: string }, action: string) {
-  return {
-    module: 'finance' as const,
-    kind: copy.log.kind.payment,
-    action,
-    targetType: 'payments',
-    targetId: row.id,
-    targetLabel: row.no,
-  }
-}
+type In<K extends keyof typeof contract> = ParsedInput<(typeof contract)[K]>['body']
 @Injectable()
 export class PaymentWrites {
   constructor(
     private readonly writes: WriteService,
-    private readonly purchase: PurchaseService,
-    private readonly reads: PaymentReads,
     private readonly clock: Clock,
+    private readonly reads: PaymentReads,
   ) {}
-  create(
-    viewer: Viewer,
-    input: Create,
-    key: string,
-  ): Promise<OutputOf<typeof contract.createPayment>> {
-    return this.writes.run(
-      viewer,
-      async (ctx) => {
-        const po = await this.purchase.lock(ctx.tx, Number(input.docId))
-        const detail = await this.purchase.detail(ctx.tx, viewer, po.id)
-        this.validate(detail, input)
-        const saved = await this.insert(ctx, po, input)
-        await ctx.log({
-          ...paymentLog(saved, copy.log.action.registerPayment),
-          after: {
-            [copy.field.amount]: formatMoney(saved.amountCents),
-            [copy.screen.label.methodShort]: saved.methodName,
-          },
-        })
-        await this.bump(ctx, po)
-        return this.reads.detail(ctx.tx, saved.id)
-      },
-      { endpoint: contract.createPayment, key },
+  private async check(
+    ctx: WriteContext,
+    input: In<'createPayment'> | In<'allocatePaymentPrepaid'>,
+  ) {
+    const supplierId = Number(input.supplierId)
+    await lockSupplierLedger(ctx.tx, supplierId)
+    const ledger = await loadPaymentLedger(ctx.tx, supplierId)
+    if (
+      input.allocs.some((allocation) => !ledger.cards.some((card) => card.id === allocation.docId))
     )
+      throw appError.notFound()
+    assertSnapshot(
+      { ledgerToken: ledger.token, items: ledger.cards.filter((row) => row.unpaidCents > 0) },
+      input,
+      input.allocs.map((row) => row.docId),
+      input.expected.map((row) => row.docId),
+    )
+    for (const allocation of input.allocs) {
+      const doc = ledger.cards.find((row) => row.id === allocation.docId)
+      if (!doc) throw appError.notFound()
+      if (allocation.amountCents > doc.unpaidCents)
+        throw appError.businessRule(copy.rework.paymentAllocOver)
+    }
+    return ledger
   }
-  private validate(detail: Awaited<ReturnType<PurchaseService['detail']>>, input: Create) {
-    gateAction(detail, {
-      code: 'pay',
-      missing: detail.apStatus === 'paid' ? copy.finance.paymentAlready : copy.finance.noPayment,
-      stale: copy.finance.paymentStale,
-    })
+  async notify(ctx: WriteContext, supplierId: number) {
+    await notifySupplierFinance(ctx, supplierId)
+  }
+  private async validatePayment(ctx: WriteContext, input: In<'createPayment'>) {
     if (input.payDate > this.clock.today())
       throw appError.validation({ payDate: copy.finance.payDateFuture })
-    if (input.amountCents !== detail.payableCents)
-      throw appError.stale(copy.finance.paymentAmountStale(formatMoney(detail.payableCents)), {
-        ...detail,
-        payment: null,
-      })
-  }
-  private async insert(ctx: WriteContext, po: { id: number; supplierId: number }, input: Create) {
     const [method] = await ctx.tx
-      .select({ id: paymentMethods.id })
+      .select()
       .from(paymentMethods)
       .where(
         and(
@@ -81,71 +66,154 @@ export class PaymentWrites {
           eq(paymentMethods.enabled, true),
         ),
       )
-      .for('share')
     if (!method) throw appError.businessRule(copy.finance.paymentMethodDisabled)
-    return found(
-      (
-        await ctx.tx
-          .insert(payments)
-          .values({
-            no: await ctx.nextDocNo('FK'),
-            poId: po.id,
-            supplierId: po.supplierId,
-            payDate: input.payDate,
-            amountCents: input.amountCents,
-            methodName: input.methodName,
-            note: input.note,
-            createdBy: ctx.viewer?.accountId ?? 0,
-          })
-          .returning()
-      )[0],
+  }
+  create(
+    viewer: Viewer,
+    input: In<'createPayment'>,
+    key: string,
+  ): Promise<OutputOf<typeof contract.createPayment>> {
+    return this.writes.run(
+      viewer,
+      async (ctx) => {
+        await this.check(ctx, input)
+        await this.validatePayment(ctx, input)
+        const row = found(
+          (
+            await ctx.tx
+              .insert(payments)
+              .values({
+                no: await ctx.nextDocNo('FK'),
+                supplierId: Number(input.supplierId),
+                payDate: input.payDate,
+                amountCents: input.amountCents,
+                methodName: input.methodName,
+                note: input.note,
+                createdBy: viewer.accountId,
+              })
+              .returning()
+          )[0],
+        )
+        if (input.allocs.length)
+          await ctx.tx.insert(paymentAllocations).values(
+            input.allocs.map((allocation) => ({
+              paymentId: row.id,
+              poId: Number(allocation.docId),
+              amountCents: allocation.amountCents,
+              kind: 'direct' as const,
+              createdBy: viewer.accountId,
+            })),
+          )
+        await this.logPayment(ctx, row, input)
+        await this.notify(ctx, row.supplierId)
+        return this.reads.detail(ctx.tx, row.id, viewer)
+      },
+      {
+        endpoint: contract.createPayment,
+        key,
+        replay: (tx, response) =>
+          this.reads.detail(tx, Number((response as { id: string }).id), viewer),
+      },
     )
   }
-  void(viewer: Viewer, id: number, input: Void): Promise<OutputOf<typeof contract.voidPayment>> {
+  private logPayment(
+    ctx: WriteContext,
+    row: { id: number; no: string },
+    input: In<'createPayment'>,
+  ) {
+    return ctx.log({
+      module: 'finance',
+      kind: copy.log.kind.payment,
+      action: copy.log.action.registerPayment,
+      targetType: 'payments',
+      targetId: row.id,
+      targetLabel: row.no,
+      after: input,
+    })
+  }
+  allocate(
+    viewer: Viewer,
+    input: In<'allocatePaymentPrepaid'>,
+    key: string,
+  ): Promise<OutputOf<typeof contract.allocatePaymentPrepaid>> {
+    return this.writes.run(
+      viewer,
+      async (ctx) => {
+        const ledger = await this.check(ctx, input)
+        const total = input.allocs.reduce((sum, row) => sum + row.amountCents, 0)
+        if (total > ledger.prepaidCents) throw appError.businessRule(copy.rework.paymentPrepaidOver)
+        const draws = drawPrepaid(
+          ledger.money.map((row) => ({ ...row, receiptDate: row.payDate })),
+          ledger.replay.left,
+          input.allocs.map((row) => ({ orderId: Number(row.docId), amountCents: row.amountCents })),
+        )
+        await ctx.tx.insert(paymentAllocations).values(
+          draws.map((row) => ({
+            paymentId: row.receiptId,
+            poId: row.orderId,
+            amountCents: row.amountCents,
+            kind: 'prepaid' as const,
+            createdBy: viewer.accountId,
+          })),
+        )
+        await ctx.log({
+          module: 'finance',
+          kind: copy.log.kind.payment,
+          action: copy.log.action.allocatePaymentPrepaid,
+          targetType: 'suppliers',
+          targetId: ledger.supplierId,
+          targetLabel: input.supplierId,
+          after: input,
+        })
+        await this.notify(ctx, ledger.supplierId)
+        return {
+          supplierId: input.supplierId,
+          prepaidCents: (await loadPaymentLedger(ctx.tx, ledger.supplierId)).prepaidCents,
+        }
+      },
+      { endpoint: contract.allocatePaymentPrepaid, key },
+    )
+  }
+  void(viewer: Viewer, id: number, input: In<'voidPayment'>) {
     return this.writes.run(viewer, async (ctx) => {
-      const pointer = found(
-        (await ctx.tx.select({ poId: payments.poId }).from(payments).where(eq(payments.id, id)))[0],
-      )
-      // 和登记付款、退货、改价保持相同锁序：采购单在前，付款记录在后。
-      const po = await this.purchase.lock(ctx.tx, pointer.poId)
-      const row = found(
-        (await ctx.tx.select().from(payments).where(eq(payments.id, id)).for('update'))[0],
-      )
-      const detail = await this.reads.detail(ctx.tx, id)
+      const row = found((await ctx.tx.select().from(payments).where(eq(payments.id, id)))[0])
+      await lockSupplierLedger(ctx.tx, row.supplierId)
+      const detail = await this.reads.detail(ctx.tx, id, viewer)
+      if (!owns(viewer, row.createdBy)) throw appError.forbidden()
+      if (detail.refunds.some((refund) => refund.status === 'valid'))
+        throw appError.businessRule(copy.rework.paymentVoidLocked)
       gateAction(detail, {
         code: 'voidPayment',
         version: input.version,
-        missing: copy.finance.paymentStale,
-        stale: copy.finance.paymentStale,
+        missing: copy.rework.paymentStale,
+        stale: copy.rework.paymentStale,
       })
+      const now = this.clock.now()
       await ctx.tx
         .update(payments)
         .set({
           status: 'voided',
           voidReason: input.reason,
           voidedBy: viewer.accountId,
-          voidedAt: this.clock.now(),
+          voidedAt: now,
           version: sql`${payments.version} + 1`,
         })
         .where(eq(payments.id, id))
+      await ctx.tx
+        .update(paymentAllocations)
+        .set({ revokedAt: now, revokedBy: viewer.accountId, revokeReason: input.reason })
+        .where(and(eq(paymentAllocations.paymentId, id), isNull(paymentAllocations.revokedAt)))
       await ctx.log({
-        ...paymentLog(row, copy.log.action.voidPayment),
+        module: 'finance',
+        kind: copy.log.kind.payment,
+        action: copy.log.action.voidPayment,
+        targetType: 'payments',
+        targetId: id,
+        targetLabel: row.no,
         reason: input.reason,
-        before: { [copy.field.status]: labels.recordStatus.valid },
-        after: { [copy.field.status]: labels.recordStatus.voided },
       })
-      await this.bump(ctx, po)
-      return this.reads.detail(ctx.tx, id)
+      await this.notify(ctx, row.supplierId)
+      return this.reads.detail(ctx.tx, id, viewer)
     })
-  }
-  private async bump(
-    ctx: WriteContext,
-    po: { id: number; supplierId: number; version: number; inviteId: number | null },
-  ) {
-    await ctx.tx
-      .update(purchaseOrders)
-      .set({ version: sql`${purchaseOrders.version} + 1` })
-      .where(eq(purchaseOrders.id, po.id))
-    this.purchase.notify(ctx, { ...po, version: po.version + 1 })
   }
 }

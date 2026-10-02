@@ -6,7 +6,7 @@ import type { Db } from '../../../db/client.ts'
 import { receipts } from '../../../db/schema/index.ts'
 import { DB } from '../../common/db.ts'
 import { SalesService } from '../sales/sales.service.ts'
-import { loadLedgers } from './ledger.ts'
+import { loadLedgers } from '../../common/customer-ledger.ts'
 import { ApReads } from './ap-reads.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 

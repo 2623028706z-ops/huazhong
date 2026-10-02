@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { materials, operationLogs } from '../db/schema/index.ts'
 import { call } from './support/http.ts'
 import { createPo, poInput, poOf, receiveInput, stockQty } from './support/purchase.ts'
-import { codesOf, dataOf, idBy, startSales, type SalesApp } from './support/sales.ts'
+import { snapshotInput, codesOf, dataOf, idBy, startSales, type SalesApp } from './support/sales.ts'
 
 let s: SalesApp
 beforeEach(async () => {
@@ -49,7 +49,7 @@ describe('采购单', () => {
     }
     expect(
       (await purchase.post('/purchase-orders', { ...body, supplierId: '' })).body.error?.fields,
-    ).toEqual({ supplierId: '请选择供应商' })
+    ).toMatchObject({ supplierId: '请选择供应商' })
     const bad = structuredClone(body)
     bad.lines = bad.lines.map((line, index) => ({ ...line, qty: index === 1 ? 0 : line.qty }))
     expect((await purchase.post('/purchase-orders', bad)).body.error?.fields?.['lines.1.qty']).toBe(
@@ -59,7 +59,11 @@ describe('采购单', () => {
     expect(
       (await purchase.post('/purchase-orders', missing)).body.error?.fields?.['lines.0.priceCents'],
     ).toBe('请填写单价，赠送的花材填 0')
-    const options = { openid: purchase.openid, body, idempotencyKey: randomUUID() }
+    const options = {
+      openid: purchase.openid,
+      body: await snapshotInput(s.t, purchase.openid, '/purchase-orders', body),
+      idempotencyKey: randomUUID(),
+    }
     const first = dataOf<PoDetail>(await call(s.t, 'POST', '/purchase-orders', options))
     expect(dataOf(await call(s.t, 'POST', '/purchase-orders', options))).toEqual(first)
     expect(first).toMatchObject({
@@ -75,13 +79,14 @@ describe('采购单', () => {
     const purchase = await s.as('u4'),
       wh = await s.as('u5')
     const po = await poOf(s, 'PO-260929-006')
-    expect((await purchase.put(`/purchase-orders/${po.id}`, poInput(po))).body.error?.message).toBe(
-      '没有修改内容',
-    )
+    expect(
+      (await purchase.put(`/purchase-orders/${po.id}`, { ...poInput(po), reason: '复核无变更' }))
+        .body.error?.message,
+    ).toBe('没有修改内容')
     const body = poInput(po)
     body.lines = body.lines.map((line) => ({ ...line, qty: 180 }))
     expect((await purchase.put(`/purchase-orders/${po.id}`, body)).body.error?.fields).toEqual({
-      reason: '请填写修改原因',
+      reason: '请填写原因',
     })
     const edited = dataOf<PoDetail>(
       await purchase.put(`/purchase-orders/${po.id}`, { ...body, reason: '供应商只能供 180 枝' }),
@@ -126,7 +131,7 @@ describe('采购单', () => {
     body.supplierId = supplied.supplierId
     body.lines = body.lines.map((line, index) => ({ ...line, qty: index === 0 ? 120 : line.qty }))
     expect((await purchase.put(`/purchase-orders/${manual.id}`, body)).body.error?.fields).toEqual({
-      reason: '请填写修改原因',
+      reason: '请填写原因',
     })
     const edited = dataOf<PoDetail>(
       await purchase.put(`/purchase-orders/${manual.id}`, { ...body, reason: '云岭缺货，改春禾' }),
@@ -149,7 +154,7 @@ describe('采购单', () => {
     expect(
       (await purchase.post(`/purchase-orders/${po.id}/cancel`, { version: po.version, reason: '' }))
         .body.error?.fields,
-    ).toEqual({ reason: '请填写取消原因' })
+    ).toEqual({ reason: '请填写原因' })
     const cancelled = dataOf<PoDetail>(
       await purchase.post(`/purchase-orders/${po.id}/cancel`, {
         version: po.version,

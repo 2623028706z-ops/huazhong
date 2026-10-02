@@ -7,15 +7,16 @@
   <hz-error wx:if="{{formError}}" message="{{formError}}" />
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="detail" /></block>
   <block wx:elif="{{isForm}}">
+    <hz-notice wx:if="{{view.notice}}" text="{{view.notice}}" />
     <template is="info" data="{{...info}}" />
     <view class="u-section">
       <text class="u-section__title">{{texts.lines}}</text>
-      <hz-line-item wx:if="{{canShip}}" lines="{{lineViews}}" mode="qty" min="{{0}}" bind:qty="onQty" />
-      <hz-line-item wx:else lines="{{lineViews}}" />
-      <template wx:if="{{amountRows.length}}" is="info-card" data="{{rows: amountRows}}" />
+      <hz-line-item wx:if="{{canShip}}" lines="{{lineViews}}" mode="qty" quantity-only min="{{0}}" bind:qty="onQty" />
+      <hz-line-item wx:else lines="{{lineViews}}" quantity-only />
     </view>
     <hz-field wx:if="{{canShip}}" label="{{texts.shipNote}}" type="textarea" placeholder="{{texts.optional}}" value="{{shipNote}}" bind:change="onNote" />
     <hz-records wx:if="{{view.changes.length > 0}}" type="orderChange" items="{{view.changes}}" />
+    <template wx:for="{{view.requests}}" wx:key="id" is="info-card" data="{{rows: item.rows}}" />
   </block>
   <template wx:elif="{{view}}" is="order-body" data="{{...view}}" />
 </view>

@@ -198,6 +198,22 @@ export class CatalogController {
   getCatalog(@Input() input: In<'getCatalog'>): Promise<Catalog> {
     return this.catalogs.get(Number(input.params.customerId))
   }
+  @Route(contract.previewCatalogCopy)
+  previewCopy(@Input() input: In<'previewCatalogCopy'>) {
+    return this.catalogs.preview(
+      Number(input.params.customerId),
+      Number(input.query.fromCustomerId),
+    )
+  }
+  @Route(contract.copyCatalog)
+  copyCatalog(@CurrentViewer() viewer: Viewer, @Input() input: In<'copyCatalog'>) {
+    return this.catalogs.copy(
+      viewer,
+      Number(input.params.customerId),
+      input.body,
+      input.idempotencyKey,
+    )
+  }
 
   @Route(contract.saveCatalogItem)
   saveCatalogItem(

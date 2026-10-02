@@ -1,9 +1,8 @@
 // F3 客户对账详情的显示：对账格、发货单弹层、售后详情弹层（06 章 F3）
 import { copy, formatMoney, labels, type AfterDetail, type ArOrder } from '@huazhong/shared'
-import { findAction } from '../../../../core/actions'
 import { afterInfoOf, afterLinesOf, afterReasonsOf, afterRowOf } from '../../../../views/after'
 import { rowsOf } from '../../../../views/order'
-import { allocRowsOf } from '../../receipt-view'
+import { allocRowsOf } from '../../../../views/receipt-view'
 
 interface Summary {
   shippedCents: number
@@ -41,7 +40,6 @@ export function orderSheetOf(order: ArOrder) {
 }
 
 export function afterSheetOf(after: AfterDetail) {
-  const action = findAction(after.actions, 'voidAfter')
   return {
     info: {
       title: after.no,
@@ -52,7 +50,7 @@ export function afterSheetOf(after: AfterDetail) {
     linesHeading: copy.screen.section.afterLines,
     lines: afterLinesOf(after),
     reason: afterReasonsOf(after),
-    canVoid: action?.enabled === true,
-    voidRequired: action?.reasonRequired === true,
+    canVoid: false,
+    voidRequired: false,
   }
 }

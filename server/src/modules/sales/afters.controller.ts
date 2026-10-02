@@ -29,6 +29,15 @@ export class AftersController {
   get(@CurrentViewer() viewer: Viewer, @Input() input: In<'getAfter'>): Promise<AfterDetail> {
     return this.reads.detail(this.db, viewer, Number(input.params.id))
   }
+  @Route(contract.getFinanceAfter)
+  async finance(@CurrentViewer() viewer: Viewer, @Input() input: In<'getFinanceAfter'>) {
+    const detail = await this.reads.detail(
+      this.db,
+      { ...viewer, type: 'staff', modules: ['finance'] },
+      Number(input.params.id),
+    )
+    return { ...detail, actions: [] }
+  }
 
   @Route(contract.createAfter)
   create(@CurrentViewer() viewer: Viewer, @Input() input: In<'createAfter'>): Promise<AfterDetail> {

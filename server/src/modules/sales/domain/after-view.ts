@@ -1,10 +1,18 @@
 // 售后卡片、明细行、actions 的组装（纯函数，05 章第 1.5、4 节）
-import type { Action, AfterCard, AfterLine, AfterStatus } from '@huazhong/shared'
+import {
+  copy,
+  type Action,
+  type AfterCard,
+  type AfterLine,
+  type AfterStatus,
+} from '@huazhong/shared'
 import { actionOf, uniqueActions } from '../../../common/domain/actions.ts'
 import { unitTotalsOf } from '../../../common/domain/units.ts'
 import type { Viewer } from '../../../common/domain/viewer.ts'
 
 export interface AfterRow {
+  createdBy?: number
+  processedBy?: number | null
   id: number
   no: string
   version: number
@@ -39,12 +47,19 @@ export interface AfterLineRow {
 }
 
 export interface AfterRoles {
+  accountId?: number
+  admin?: boolean
   sales: boolean
   finance: boolean
 }
 
 export function afterRolesOf(viewer: Viewer): AfterRoles {
-  return { sales: viewer.modules.includes('sales'), finance: viewer.modules.includes('finance') }
+  return {
+    sales: viewer.modules.includes('sales'),
+    finance: viewer.modules.includes('finance'),
+    accountId: viewer.accountId,
+    admin: viewer.type === 'admin',
+  }
 }
 
 // 底部操作区：关闭售后（次）、处理售后、作废售后（次）；门店为 []
@@ -53,7 +68,7 @@ function afterActionsOf(roles: AfterRoles, status: AfterStatus): Action[] {
   if (roles.sales && status === 'pending') {
     actions.push(actionOf('closeAfter', null, true), actionOf('processAfter', null, false))
   }
-  if ((roles.sales || roles.finance) && status === 'processed') {
+  if (roles.sales && status === 'processed') {
     actions.push(actionOf('voidAfter', null, true))
   }
   return uniqueActions(actions)
@@ -80,7 +95,22 @@ export function toAfterCard(
     units: unitTotalsOf(lines),
     // 只有已处理的有金额（已关闭、已作废不显示金额，03 章第 7 节）
     amountCents: row.status === 'processed' ? row.amountCents : null,
-    actions: afterActionsOf(roles, row.status),
+    actions: afterActionsOf(roles, row.status)
+      .filter(
+        (action) =>
+          action.code === 'processAfter' ||
+          roles.admin ||
+          action.code === 'voidAfter' ||
+          row.origin === 'store' ||
+          roles.accountId === row.createdBy,
+      )
+      .map((action) =>
+        action.code === 'voidAfter' &&
+        !roles.admin &&
+        roles.accountId !== (row.origin === 'store' ? row.processedBy : row.createdBy)
+          ? { ...action, enabled: false as const, disabledReason: copy.error.forbidden }
+          : action,
+      ),
     lockedReason: null,
   }
 }

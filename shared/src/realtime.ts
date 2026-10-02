@@ -39,6 +39,8 @@ export type Topic =
   | `catalog:${Id}`
   | 'stock'
   | 'demand'
+  | `payment:${Id}`
+  | `refund:${Id}`
   | `todo:${(typeof moduleKeys)[number]}`
   | 'todo:*'
   | `account:${Id}`
@@ -47,7 +49,7 @@ export type Topic =
 const topicPattern = new RegExp(
   '^(?:' +
     [
-      '(?:order|after|po|invite|wh_doc|receipt|supplier|catalog|account|store_invites):[1-9][0-9]*',
+      '(?:order|after|po|invite|wh_doc|receipt|payment|refund|supplier|catalog|account|store_invites):[1-9][0-9]*',
       'payable:(?:po|wh):[1-9][0-9]*',
       '(?:ar|ap):(?:[1-9][0-9]*|\\*)',
       `todo:(?:${moduleKeys.join('|')}|\\*)`,

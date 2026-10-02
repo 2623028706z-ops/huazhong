@@ -8,6 +8,8 @@ import {
   type ArCard,
   type PrepaidAllocate,
   type ReceiptCreate,
+  type OutputOf,
+  contract,
 } from '@huazhong/shared'
 import { centsOfText, sumCents, textOfCents } from '../../../../core/money'
 import { checkedOf, type Checked } from '../../../../core/form'
@@ -17,6 +19,8 @@ export interface AllocLine {
   orderNo: string
   unpaidCents: number
   text: string
+  version: number
+  notice?: string | null
 }
 
 export interface ReceiveForm {
@@ -33,6 +37,7 @@ export function allocLinesOf(cards: readonly ArCard[]): AllocLine[] {
     orderNo: card.orderNo,
     unpaidCents: card.unpaidCents,
     text: '',
+    version: card.version,
   }))
 }
 
@@ -60,15 +65,24 @@ export function allocRowsOf(lines: readonly AllocLine[]) {
     name: line.orderNo,
     sub: formatMoney(line.unpaidCents),
     text: line.text,
+    notice: line.notice ?? '',
   }))
 }
 
 // 汇总：登记收款「本次核销 ¥… / 转为预收 ¥…」；核销预收「可用预收 ¥…」
-export function summaryOf(form: ReceiveForm, isAllocate: boolean, prepaidCents: number): string {
+export function summaryOf(
+  form: ReceiveForm,
+  isAllocate: boolean,
+  prepaidCents: number,
+  isPayment = false,
+): string {
   const allocated = sumCents(form.allocs, allocCents)
-  if (isAllocate) return copy.screen.availablePrepaid(formatMoney(prepaidCents - allocated))
+  if (isAllocate)
+    return (isPayment ? copy.rework.paymentAvailablePrepaid : copy.screen.availablePrepaid)(
+      formatMoney(prepaidCents - allocated),
+    )
   const amount = centsOfText(form.amountText) ?? 0
-  return copy.screen.allocSummary(
+  return (isPayment ? copy.rework.paymentAllocSummary : copy.screen.allocSummary)(
     formatMoney(allocated),
     formatMoney(Math.max(0, amount - allocated)),
   )
@@ -84,6 +98,7 @@ export function checkReceipt(
   form: ReceiveForm,
   customerId: string,
   today: string,
+  ledgerToken = '',
 ): Checked<ReceiptCreate> {
   if (form.receiptDate > today)
     return { ok: false, fields: { receiptDate: copy.finance.receiptDateFuture } }
@@ -95,12 +110,87 @@ export function checkReceipt(
       methodName: form.methodName,
       note: form.note,
       allocs: bodyAllocsOf(form.allocs),
+      ledgerToken,
+      expected: expectedOf(form.allocs),
     }),
   )
 }
 
-export function checkAllocate(form: ReceiveForm, customerId: string): Checked<PrepaidAllocate> {
+function expectedOf(lines: readonly AllocLine[]) {
+  return lines.map((line) => ({
+    orderId: line.orderId,
+    version: line.version,
+    unpaidCents: line.unpaidCents,
+  }))
+}
+
+export function autoFillAll(lines: readonly AllocLine[], availableCents: number): AllocLine[] {
+  let remaining = availableCents
+  return lines.map((line) => {
+    const amount = Math.max(0, Math.min(line.unpaidCents, remaining))
+    remaining -= amount
+    return { ...line, text: amount ? textOfCents(amount) : '' }
+  })
+}
+
+export function checkAllocate(
+  form: ReceiveForm,
+  customerId: string,
+  ledgerToken = '',
+): Checked<PrepaidAllocate> {
   return checkedOf(
-    prepaidAllocateSchema.safeParse({ customerId, allocs: bodyAllocsOf(form.allocs) }),
+    prepaidAllocateSchema.safeParse({
+      customerId,
+      allocs: bodyAllocsOf(form.allocs),
+      ledgerToken,
+      expected: expectedOf(form.allocs),
+    }),
+  )
+}
+
+export function paymentLinesOf(
+  cards: OutputOf<typeof contract.listUnpaidDocuments>['items'],
+): AllocLine[] {
+  return cards.map((card) => ({
+    orderId: card.id,
+    orderNo: card.no,
+    version: card.version,
+    unpaidCents: card.unpaidCents,
+    text: '',
+    notice: card.notice,
+  }))
+}
+
+export function checkPayment(
+  form: ReceiveForm,
+  supplierId: string,
+  ledgerToken: string,
+  isAllocate: boolean,
+) {
+  const snapshot = {
+    supplierId,
+    ledgerToken,
+    expected: form.allocs.map((line) => ({
+      docType: 'po',
+      docId: line.orderId,
+      version: line.version,
+      unpaidCents: line.unpaidCents,
+    })),
+    allocs: bodyAllocsOf(form.allocs).map((allocation) => ({
+      docType: 'po',
+      docId: allocation.orderId,
+      amountCents: allocation.amountCents,
+    })),
+  }
+  return checkedOf<unknown>(
+    isAllocate
+      ? contract.allocatePaymentPrepaid.body.safeParse(snapshot)
+      : contract.createPayment.body.safeParse({
+          ...snapshot,
+          payDate: form.receiptDate,
+          amountCents: centsOfText(form.amountText),
+          methodName: form.methodName,
+          note: form.note,
+        }),
   )
 }

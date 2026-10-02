@@ -281,9 +281,10 @@ export class ProductService {
       .select({ customerId: catalogItems.customerId })
       .from(catalogItems)
       .where(eq(catalogItems.productId, id))
-    ctx.notify(
-      owners.map((owner) => ({ topic: `catalog:${owner.customerId}` as const, version: null })),
-    )
+    ctx.notify([
+      { topic: 'demand', version: null },
+      ...owners.map((owner) => ({ topic: `catalog:${owner.customerId}` as const, version: null })),
+    ])
     return item
   }
 }

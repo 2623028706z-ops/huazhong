@@ -99,7 +99,8 @@ import { createSupplier, getSupplier, listSuppliers, updateSupplier } from './su
 import { createPayment, getPayment, voidPayment } from './payments.ts'
 import {
   getFinanceSupplier,
-  getPayable,
+  getApDocument,
+  listUnpaidDocuments,
   listFinanceSuppliers,
   listPayables,
   supplierStatement,
@@ -110,7 +111,41 @@ import {
   returnPurchaseOrder,
 } from './purchase-warehouse.ts'
 
+import { voidPurchaseOrder } from './purchase-warehouse.ts'
+import { getShippingOrder } from './orders.ts'
+import {
+  requestOrderCancel,
+  withdrawOrderCancel,
+  approveOrderCancel,
+  rejectOrderCancel,
+  voidOrder,
+} from './order-writes.ts'
+import { previewCatalogCopy, copyCatalog } from './catalog.ts'
+import { allocatePaymentPrepaid } from './payments.ts'
+import { createRefund, voidRefund, revokeAllocation, revokePaymentAllocation } from './refunds.ts'
+import { reviewPurchase } from './purchase-review.ts'
+import { getFinanceAfter } from './afters.ts'
+import { supplierUpdatePurchaseOrder, supplierCancelPurchaseOrder } from './purchase.ts'
+
 export const contract = {
+  getFinanceAfter,
+  supplierUpdatePurchaseOrder,
+  supplierCancelPurchaseOrder,
+  getShippingOrder,
+  requestOrderCancel,
+  withdrawOrderCancel,
+  approveOrderCancel,
+  rejectOrderCancel,
+  voidOrder,
+  previewCatalogCopy,
+  copyCatalog,
+  allocatePaymentPrepaid,
+  createRefund,
+  voidRefund,
+  revokeAllocation,
+  revokePaymentAllocation,
+  reviewPurchase,
+  voidPurchaseOrder,
   me,
   bindPhone,
   unbind,
@@ -224,7 +259,8 @@ export const contract = {
   listPayables,
   listFinanceSuppliers,
   getFinanceSupplier,
-  getPayable,
+  getApDocument,
+  listUnpaidDocuments,
   createPayment,
   getPayment,
   voidPayment,

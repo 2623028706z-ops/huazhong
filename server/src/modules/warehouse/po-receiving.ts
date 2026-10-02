@@ -16,6 +16,7 @@ import { WriteService, type WriteContext } from '../../common/write.service.ts'
 import { PurchaseService } from '../purchase/purchase.service.ts'
 import { applyPoPrices, assertPoLines } from './po-prices.ts'
 import { receiveStock, returnStock } from './stock-writes.ts'
+import { lockSupplierLedger, notifySupplierFinance, owns } from '../../common/ledger.ts'
 
 type In<K extends keyof typeof contract> = ParsedInput<(typeof contract)[K]>['body']
 function warehouseLog(row: { id: number; no: string }, action: string) {
@@ -35,6 +36,50 @@ export class PoReceiving {
     private readonly purchase: PurchaseService,
     private readonly clock: Clock,
   ) {}
+  void(viewer: Viewer, id: number, input: In<'voidPurchaseOrder'>) {
+    return this.writes.run(viewer, async (ctx) => {
+      const pointer = found(
+        (await ctx.tx.select().from(purchaseOrders).where(eq(purchaseOrders.id, id)))[0],
+      )
+      await lockSupplierLedger(ctx.tx, pointer.supplierId)
+      const po = await this.purchase.lock(ctx.tx, id)
+      const detail = await this.purchase.detail(ctx.tx, viewer, id)
+      if (!owns(viewer, po.receivedBy ?? po.createdBy)) throw appError.forbidden()
+      gateAction(detail, {
+        code: 'voidPo',
+        version: input.version,
+        missing: copy.rework.poVoidLocked,
+        stale: copy.rework.poStale,
+      })
+      await returnStock(
+        ctx,
+        { id, no: po.no, date: this.clock.today() },
+        detail.lines.map((line) => ({
+          materialId: Number(line.materialId),
+          name: line.name,
+          unit: line.unit,
+          qty: (line.receivedQty ?? 0) - line.returnedQty,
+        })),
+      )
+      await ctx.tx
+        .update(purchaseOrders)
+        .set({
+          status: 'voided',
+          voidReason: input.reason,
+          voidedBy: viewer.accountId,
+          voidedAt: this.clock.now(),
+          version: sql`${purchaseOrders.version}+1`,
+        })
+        .where(eq(purchaseOrders.id, id))
+      await ctx.log({
+        ...warehouseLog(po, copy.log.action.voidPurchaseOrder),
+        reason: input.reason,
+      })
+      this.purchase.notify(ctx, { ...po, version: po.version + 1 })
+      await notifySupplierFinance(ctx, po.supplierId)
+      return this.purchase.detail(ctx.tx, viewer, id)
+    })
+  }
   receive(viewer: Viewer, id: number, input: In<'receivePurchaseOrder'>) {
     return this.writes.run(viewer, async (ctx) => {
       const po = await this.purchase.lock(ctx.tx, id)
@@ -80,6 +125,7 @@ export class PoReceiving {
         },
       })
       this.purchase.notify(ctx, { ...po, version: po.version + 1 })
+      await notifySupplierFinance(ctx, po.supplierId)
       return this.purchase.detail(ctx.tx, viewer, id)
     })
   }
@@ -108,7 +154,9 @@ export class PoReceiving {
         code: 'reprice',
         version: input.version,
         stale: copy.finance.poStale,
-        missing: detail.paidBefore ? copy.finance.poRepricePaid : copy.finance.poAllReturned,
+        missing: detail.allocations.some((row) => row.status === 'valid')
+          ? copy.finance.poRepricePaid
+          : copy.finance.poAllReturned,
       })
       assertPoLines(detail, input.lines, false)
       const changes = await applyPoPrices(ctx, detail, input)
@@ -120,6 +168,7 @@ export class PoReceiving {
         after: { [copy.records.priceChange]: changes },
       })
       this.purchase.notify(ctx, { ...po, version: po.version + 1 })
+      await notifySupplierFinance(ctx, po.supplierId)
       return this.purchase.detail(ctx.tx, viewer, id)
     })
   }
@@ -131,7 +180,9 @@ export class PoReceiving {
         code: 'return',
         version: input.version,
         stale: copy.finance.poStale,
-        missing: detail.paidBefore ? copy.finance.poReturnPaid : copy.finance.poAllReturned,
+        missing: detail.allocations.some((row) => row.status === 'valid')
+          ? copy.finance.poReturnPaid
+          : copy.finance.poAllReturned,
       })
       assertPoLines(detail, input.lines, false)
       const lines = input.lines.map((line) => {
@@ -155,6 +206,7 @@ export class PoReceiving {
         after: { [copy.records.returns]: lines },
       })
       this.purchase.notify(ctx, { ...po, version: po.version + 1 })
+      await notifySupplierFinance(ctx, po.supplierId)
       return this.purchase.detail(ctx.tx, viewer, id)
     })
   }

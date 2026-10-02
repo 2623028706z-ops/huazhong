@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { OrderLifecycle, OrderLifecycleController } from './order-lifecycle.ts'
 import { AccountsModule } from '../accounts/accounts.module.ts'
 import { FilesModule } from '../files/files.module.ts'
 import { AfterReads } from './after-query.ts'
@@ -23,6 +24,7 @@ import { StoreWrites } from './stores.ts'
 @Module({
   imports: [AccountsModule, FilesModule],
   controllers: [
+    OrderLifecycleController,
     OrdersController,
     AftersController,
     CustomersController,
@@ -30,6 +32,7 @@ import { StoreWrites } from './stores.ts'
     CatalogController,
   ],
   providers: [
+    OrderLifecycle,
     OrderReads,
     SalesOrderWrites,
     StoreOrderWrites,

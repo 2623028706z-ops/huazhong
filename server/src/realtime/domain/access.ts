@@ -27,6 +27,7 @@ const staffModules: Partial<Record<string, readonly ModuleKey[]>> = {
   wh_doc: ['warehouse', 'finance'],
   wh_docs: ['warehouse', 'finance'],
   receipt: ['finance'],
+  payment: ['finance'],
   payable: ['finance'],
   ar: ['finance'],
   ap: ['finance'],

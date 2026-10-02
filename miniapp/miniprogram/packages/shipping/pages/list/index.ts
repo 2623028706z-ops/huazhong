@@ -1,12 +1,12 @@
 // H2 发货单（06 章 H2）：状态（待发货、已发货）+ 搜索（客户、门店）；待发货里也列出货日期以后的单。点开 → H3
-import { contract, copy, type OrderCard } from '@huazhong/shared'
+import { contract, copy, type ShippingCard } from '@huazhong/shared'
 import type { KeyEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { emptyFilter } from '../../../../core/filter'
 import type { PagedList } from '../../../../core/list'
 import { request } from '../../../../core/request'
 import { listHandlers, listOf, listQueryOf, showList } from '../../../../views/list'
-import { orderRowOf } from '../../../../views/order'
+import { shippingRowOf } from '../../../../views/order'
 
 type ShipStatus = 'to_ship' | 'shipped'
 const statuses: ShipStatus[] = ['to_ship', 'shipped']
@@ -25,7 +25,7 @@ Page({
     counts: {},
     searchPlaceholder: copy.screen.label.searchShipments,
     filter: emptyFilter,
-    rows: [] as ReturnType<typeof orderRowOf>[],
+    rows: [] as ReturnType<typeof shippingRowOf>[],
     loaded: false,
     skeleton: false,
     done: false,
@@ -33,7 +33,7 @@ Page({
     emptyObject: copy.screen.empty.shipments,
     allLoaded: copy.state.allLoaded,
   },
-  list: null as PagedList<OrderCard> | null,
+  list: null as PagedList<ShippingCard> | null,
   onLoad(query: Record<string, string | undefined>) {
     this.setData({ filter: { ...emptyFilter, status: statusOf(query.status ?? '') ?? '' } })
     this.list = listOf(
@@ -45,7 +45,7 @@ Page({
         if (result.ok) this.setData({ counts: result.data.counts })
         return result
       },
-      (order: OrderCard) => orderRowOf(order, false),
+      shippingRowOf,
     )
   },
   onShow() {

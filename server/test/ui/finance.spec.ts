@@ -1,91 +1,103 @@
-import type { PoDetail } from '@huazhong/shared'
+import type { PoDetail, PaymentDetail } from '@huazhong/shared'
 import type { CustomElement } from 'miniprogram-automator/out/Element.js'
 import { expect, test } from 'vitest'
 import { createPo, poOf, receiveInput } from '../support/purchase.ts'
 import { dataOf, TODAY } from '../support/sales.ts'
-import { asMini, enter, setupMiniSuite, snap, waitData, waitPage } from './mini.ts'
+import { asMini, enter, paymentInput, setupMiniSuite, snap, waitData, waitPage } from './mini.ts'
 
 const suite = setupMiniSuite()
 
-test('B16 H06 D08 付款弹层应付变化，付款和作废留在本页', async () => {
+test('B16 H06 D08 登记付款账本变化保留草稿，重核后再次提交', async () => {
   const { mini, server: s } = suite()
-  await asMini(mini, s, 'u6')
+  const finance = await asMini(mini, s, 'u6')
   const po = await poOf(s, 'PO-260928-004')
-  const page = await enter(mini, `/packages/finance/pages/payable/index?docType=po&id=${po.id}`)
+  const statement = await enter(mini, `/packages/finance/pages/supplier/index?id=${po.supplierId}`)
+  await waitData(statement, 'loaded', true)
+  await statement.callMethod('onAction', {
+    currentTarget: { dataset: { code: 'registerPayment' } },
+  })
+  const page = await waitPage(mini, 'packages/finance/pages/receive/index')
   await waitData(page, 'loaded', true)
-  await page.callMethod('onAction', { currentTarget: { dataset: { code: 'pay' } } })
-  await waitData(page, 'register', true)
   await page.callMethod('onDate', { detail: TODAY })
+  await page.callMethod('onAmount', { detail: '960' })
   await page.callMethod('onMethod', { detail: '微信' })
-  const wh = await s.as('u5')
+  await page.callMethod('onNote', { detail: '保留付款草稿' })
+  const warehouse = await s.as('u5')
   dataOf(
-    await wh.post(`/purchase-orders/${po.id}/reprice`, {
+    await warehouse.post(`/purchase-orders/${po.id}/reprice`, {
       version: po.version,
       reason: '让价',
       lines: [{ poLineId: po.lines[0]?.id, priceCents: 750 }],
     }),
   )
-  await waitData(page, 'amount', '¥900.00')
-  expect(await page.data('error')).toBe('应付已变为 ¥900.00，请核对后再付款')
+  await waitData(page, 'needsReview', true)
+  expect(await page.data('form.amountText')).toBe('960')
+  expect(await page.data('form.allocs.0.text')).toBe('960.00')
+  await page.callMethod('onReviewLedger')
+  await waitData(page, 'form.allocs.0.unpaidCents', 90000)
+  expect(await page.data('form.allocs.0.text')).toBe('')
   expect(await page.data('form.methodName')).toBe('微信')
+  expect(await page.data('form.note')).toBe('保留付款草稿')
   await snap(mini, 'finance-payment-review')
+  await page.callMethod('onFill', { currentTarget: { dataset: { index: 0 } } })
   await page.callMethod('onSubmit')
-  await waitData(page, 'hasPayment', true)
-  await page.callMethod('onViewPayment')
-  await waitData(page, 'paymentLayer', 'detail')
-  await waitData(page, 'paymentView.status', 'valid')
-  await page.callMethod('onVoidPayment')
-  await waitData(page, 'paymentLayer', 'void')
-  await page.callMethod('onSubmitPaymentVoid')
-  await waitData(page, 'paymentFields.reason', '请填写作废原因')
-  expect(await page.data('paymentError')).toBe('')
-  await page.callMethod('onPaymentReason', { detail: '付错供应商账户' })
-  await page.callMethod('onSubmitPaymentVoid')
-  await waitData(page, 'paymentLayer', 'detail')
-  await waitData(page, 'paymentView.status', 'voided')
-  expect((await mini.currentPage())?.path).toBe(page.path)
+  await waitPage(mini, 'packages/finance/pages/supplier/index')
+  const records = dataOf<{ items: PaymentDetail[] }>(
+    await finance.get('/finance/records?kind=payment'),
+  )
+  const payment = records.items[0]
+  if (!payment) throw new Error('no payment')
+  expect(payment.prepaidCents).toBe(6000)
+  const recordPage = await enter(mini, '/packages/finance/pages/records/index')
+  await waitData(recordPage, 'loaded', true)
+  await recordPage.callMethod('onKind', { detail: 'payment' })
+  await expect.poll(async () => recordPage.data('rows') as Promise<unknown>).toHaveLength(1)
+  await recordPage.callMethod('onOpen', { currentTarget: { dataset: { key: payment.id } } })
+  await waitData(recordPage, 'paymentLayer', 'detail')
+  await expect
+    .poll(async () => recordPage.data('paymentView.allocations') as Promise<unknown>)
+    .toHaveLength(1)
+  await recordPage.callMethod('onVoidPayment')
+  await recordPage.callMethod('onPaymentReason', { detail: '付错账户' })
+  await recordPage.callMethod('onSubmitPaymentVoid')
+  await waitData(recordPage, 'paymentView.status', 'voided')
+  expect(await recordPage.data('paymentView.allocations')).toHaveLength(1)
   await snap(mini, 'finance-payment-voided')
 })
 
-test('B17 全部退货后付款弹层关闭并显示整页状态', async () => {
+test('B17 全部退货后重核撤下核销，付款草稿可改为预付', async () => {
   const { mini, server: s } = suite()
-  const wh = await s.as('u5')
+  const warehouse = await s.as('u5')
   const created = await createPo(s)
   const po = dataOf<PoDetail>(
-    await wh.post(`/purchase-orders/${created.id}/receive`, receiveInput(created)),
+    await warehouse.post(`/purchase-orders/${created.id}/receive`, receiveInput(created)),
   )
   await asMini(mini, s, 'u6')
-  const page = await enter(mini, `/packages/finance/pages/payable/index?id=${po.id}`)
+  const page = await enter(
+    mini,
+    `/packages/finance/pages/receive/index?kind=payment&supplierId=${po.supplierId}`,
+  )
   await waitData(page, 'loaded', true)
-  await page.callMethod('onAction', { currentTarget: { dataset: { code: 'pay' } } })
+  await page.callMethod('onAmount', { detail: '210' })
   dataOf(
-    await wh.post(`/purchase-orders/${po.id}/returns`, {
+    await warehouse.post(`/purchase-orders/${po.id}/returns`, {
       version: po.version,
-      lines: po.lines.map((l) => ({ poLineId: l.id, qty: l.receivedQty })),
+      lines: po.lines.map((line) => ({ poLineId: line.id, qty: line.receivedQty })),
     }),
   )
-  await waitData(page, 'noPayment', true)
-  expect(await page.data('register')).toBe(false)
-  expect(await page.$('hz-action-bar')).toBeNull()
-  const state = (await page.$('#no-payment')) as CustomElement
-  expect(await state.data('message')).toBe('这张单已不需要付款')
-  await snap(mini, 'finance-no-payment')
+  await waitData(page, 'needsReview', true)
+  await page.callMethod('onReviewLedger')
+  await expect.poll(async () => page.data('allocRows') as Promise<unknown>).toEqual([])
+  expect(await page.data('form.amountText')).toBe('210')
+  expect(await page.data('summary')).toBe('本次核销 ¥0.00 / 转为预付 ¥210.00')
+  await snap(mini, 'finance-no-payable-prepaid-draft')
 })
 
 test('D09 收付款记录收款付款标签切换、独立状态数量和状态日期筛选', async () => {
   const { mini, server: s } = suite()
   const finance = await asMini(mini, s, 'u6')
   const po = await poOf(s, 'PO-260928-004')
-  dataOf(
-    await finance.post('/finance/payments', {
-      docType: 'po',
-      docId: po.id,
-      amountCents: po.payableCents,
-      payDate: TODAY,
-      methodName: '微信',
-      note: '',
-    }),
-  )
+  dataOf(await finance.post('/finance/payments', await paymentInput(s, po)))
   const page = await enter(mini, '/packages/finance/pages/records/index')
   await waitData(page, 'loaded', true)
   expect(await page.data('kind')).toBe('receipt')

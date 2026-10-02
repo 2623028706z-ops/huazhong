@@ -13,7 +13,9 @@ afterEach(async () => {
 })
 
 const detail = async (key: 'u2' | 's1' | 'u7', id: string) =>
-  dataOf<OrderDetail>(await (await s.as(key)).get(`/orders/${id}`))
+  dataOf<OrderDetail>(
+    await (await s.as(key)).get(key === 'u7' ? `/shipping/orders/${id}` : `/orders/${id}`),
+  )
 
 // 一个 200、一个 409
 function expectOneWins(results: readonly ApiResponse[]): void {

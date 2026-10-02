@@ -1,27 +1,12 @@
 <import src="/views/purchase.wxml" />
-<import src="/views/detail.wxml" />
 <import src="/views/payment-panel.wxml" />
 <hz-navbar title="{{title}}" back />
-<hz-state id="no-payment" wx:if="{{loaded && noPayment}}" message="{{texts.noPayment}}" />
-<view wx:else class="u-list">
-  <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
-  <hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
+<view class="u-list">
+  <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <hz-skeleton wx:if="{{!loaded}}" type="detail" />
   <template wx:elif="{{view}}" is="po-body" data="{{...view}}" />
-</view>
-<hz-action-bar wx:if="{{buttons.length || hasPayment}}">
-  <hz-button wx:if="{{hasPayment}}" kind="secondary" text="{{texts.viewPayment}}" bind:press="onViewPayment" />
-  <hz-button wx:for="{{buttons}}" wx:key="code" text="{{item.text}}" disabled="{{item.disabled}}" reason="{{item.reason}}" data-code="{{item.code}}" bind:press="onAction" />
-</hz-action-bar>
-<hz-sheet show="{{register}}" title="{{texts.pay}}" guard="{{changed}}" footer bind:close="onCloseRegister">
-  <view class="u-sheet-form">
-    <hz-error wx:if="{{error}}" message="{{error}}" />
-    <view class="u-sheet-row"><text>{{texts.amount}}</text><text class="u-serif-amount">{{amount}}</text></view>
-    <hz-picker label="{{texts.paymentDate}}" mode="date" value="{{form.payDate}}" end="{{today}}" error="{{fields.payDate}}" bind:change="onDate" />
-    <hz-picker label="{{texts.paymentMethod}}" options="{{options}}" value="{{form.methodName}}" error="{{fields.methodName}}" bind:change="onMethod" />
-    <hz-field label="{{texts.note}}" value="{{form.note}}" bind:change="onNote" />
+  <view wx:if="{{allocations.length}}" class="u-section"><text class="u-section__title">完整核销历史</text>
+    <view class="u-card u-info"><view wx:for="{{allocations}}" wx:key="id" class="u-info__line" data-key="{{item.key}}" bind:tap="onOpenPayment"><text>{{item.name}}</text><text>{{item.amount}}</text><text class="u-info__meta">{{item.sub}}</text></view></view>
   </view>
-  <hz-button slot="footer" text="{{texts.confirm}}" loading="{{busy === 'pay'}}" bind:press="onSubmit" />
-</hz-sheet>
-<template is="payment-panel" data="{{paymentLayer,paymentFields,paymentView,paymentError,paymentReason,paymentBusy,paymentTexts}}" />
-<hz-confirm id="hz-confirm" />
+</view>
+<template is="payment-panel" data="{{paymentLayer,paymentError,paymentFields,paymentReason,paymentBusy,paymentView,paymentTexts,refundForm,refundMethods}}" />
