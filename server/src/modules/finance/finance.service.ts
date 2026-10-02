@@ -7,13 +7,25 @@ import { receipts } from '../../../db/schema/index.ts'
 import { DB } from '../../common/db.ts'
 import { SalesService } from '../sales/sales.service.ts'
 import { loadLedgers } from './ledger.ts'
+import { ApReads } from './ap-reads.ts'
+import type { Viewer } from '../../common/domain/viewer.ts'
 
 @Injectable()
 export class FinanceService {
   constructor(
     @Inject(DB) private readonly db: Db,
     private readonly sales: SalesService,
+    private readonly ap: ApReads,
   ) {}
+
+  async todos(viewer: Viewer) {
+    const payables = await this.ap.todos(viewer)
+    const prepaid = await this.prepaidTodos()
+    return {
+      count: payables.count + prepaid.count,
+      items: [...payables.items, ...prepaid.items].slice(0, TODO_PREVIEW_COUNT),
+    }
+  }
 
   // 有预收的客户，按还有余额的最早一笔收款先后
   async prepaidTodos(): Promise<{ count: number; items: TodoItem[] }> {

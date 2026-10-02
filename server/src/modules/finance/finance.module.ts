@@ -5,12 +5,26 @@ import { FinanceController } from './finance.controller.ts'
 import { FinanceService } from './finance.service.ts'
 import { MethodService } from './methods.ts'
 import { ReceiptService } from './receipts.ts'
+import { ApReads } from './ap-reads.ts'
+import { PaymentWrites } from './payment-writes.ts'
+import { PurchaseModule } from '../purchase/purchase.module.ts'
+import { PaymentReads } from './payment-reads.ts'
+import { ApController } from './ap.controller.ts'
+import { PaymentsController } from './payments.controller.ts'
 
 // 财务收款部分：客户对账、门店对账、登记收款、核销预收、作废收款、收付款方式
 @Module({
-  imports: [SalesModule],
-  controllers: [FinanceController],
-  providers: [ArReads, ReceiptService, MethodService, FinanceService],
+  imports: [SalesModule, PurchaseModule],
+  controllers: [FinanceController, ApController, PaymentsController],
+  providers: [
+    ArReads,
+    ReceiptService,
+    MethodService,
+    FinanceService,
+    ApReads,
+    PaymentReads,
+    PaymentWrites,
+  ],
   exports: [FinanceService],
 })
 export class FinanceModule {}

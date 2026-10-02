@@ -101,7 +101,11 @@ describe('对账起点和待办', () => {
     const todos = dataOf<{ count: number; items: TodoItem[] }>(
       await (await s.as('u6')).get('/modules/finance/todos'),
     )
-    expect(todos.items).toEqual([
+    expect(todos.count).toBe(2)
+    expect(todos.items.find((item) => item.kind === 'payable')).toMatchObject({
+      payable: { no: 'PO-260928-004', unpaidCents: 96000, docType: 'po' },
+    })
+    expect(todos.items.filter((item) => item.kind === 'prepaid')).toEqual([
       {
         kind: 'prepaid',
         customerId: await idBy(s.t, 'customers.name', '拾光花店'),

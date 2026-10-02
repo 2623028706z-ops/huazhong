@@ -2,7 +2,7 @@
 <view class="u-list">
   <hz-filter-bar date-label="{{dateLabel}}" dimensions="{{dimensions}}" value="{{filter}}" bind:change="onFilter" />
   <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
-  <hz-error wx:elif="{{failure}}" message="{{failure.message}}" request-id="{{failure.requestId}}" retry bind:retry="onFailureAction" />
+  <hz-error wx:elif="{{failure}}" message="{{failure.message}}" request-id="{{failure.requestId}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <hz-skeleton wx:if="{{skeleton}}" type="list" />
   <hz-state wx:elif="{{loaded && groups.length === 0}}" object="{{emptyObject}}" />
   <block wx:for="{{groups}}" wx:key="day" wx:for-item="group">

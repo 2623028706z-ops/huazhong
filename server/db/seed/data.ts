@@ -58,9 +58,27 @@ export const seedStores = [
 ] as const
 
 export const seedSuppliers = [
-  { key: 'sp1', name: '春禾花材' },
-  { key: 'sp2', name: '云岭花卉' },
-  { key: 'sp3', name: '滇花源' },
+  {
+    key: 'sp1',
+    name: '春禾花材',
+    contact: '林先生',
+    phone: '13900139001',
+    address: '昆明市斗南花卉市场 A 区 12 号',
+  },
+  {
+    key: 'sp2',
+    name: '云岭花卉',
+    contact: '杨女士',
+    phone: '13900139002',
+    address: '昆明市呈贡区斗南街道 86 号',
+  },
+  {
+    key: 'sp3',
+    name: '滇花源',
+    contact: '段先生',
+    phone: '13900139003',
+    address: '玉溪市通海县花卉基地 3 号棚',
+  },
 ] as const
 
 // 07 章第 12.4 节：花材分类、花材、批次（阶段 2 为库存查询提前建）

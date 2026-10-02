@@ -30,7 +30,7 @@ export const methodKinds = ['receive', 'pay'] as const
 export const fileStatuses = ['pending', 'ok', 'rejected'] as const
 export const filePurposes = ['after_image', 'product_image'] as const
 // 只有这些模块有待办接口（采购、仓库的待办在阶段 4、5 加）
-export const todoModules = ['sales', 'shipping', 'finance'] as const
+export const todoModules = ['sales', 'shipping', 'purchase', 'warehouse', 'finance'] as const
 
 // 查询时算出来、不存库的状态
 export const payStatuses = ['unpaid', 'partial', 'paid'] as const

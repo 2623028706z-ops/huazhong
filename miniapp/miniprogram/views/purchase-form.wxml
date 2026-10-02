@@ -1,0 +1,35 @@
+<import src="purchase.wxml" />
+<import src="detail.wxml" />
+<import src="pick.wxml" />
+<template name="purchase-form">
+  <hz-navbar id="page-nav" title="{{title}}" back guard="{{changed}}" />
+  <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+  <view wx:else class="u-list">
+    <hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" />
+    <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
+    <hz-error wx:if="{{formError}}" message="{{formError}}" />
+    <hz-skeleton wx:if="{{!loaded}}" type="form" />
+    <template wx:elif="{{!editable && inviteView}}" is="invite-body" data="{{...inviteView}}" />
+    <template wx:elif="{{!editable && poView}}" is="po-body" data="{{...poView}}" />
+    <block wx:elif="{{editable}}">
+      <template wx:if="{{mode === 'supply'}}" is="info" data="{{...inviteView.info}}" />
+      <view wx:else class="u-card u-form-card">
+        <hz-picker id="supplier-picker" wx:if="{{mode === 'invite' ? !editing : canChangeSupplier}}" label="{{texts.supplier}}" placeholder="{{texts.supplierPlaceholder}}" value="{{form.supplierId}}" options="{{supplierOptions}}" error="{{fields.supplierId}}" bind:change="onSupplier" />
+        <view wx:else class="u-sheet-row"><text>{{texts.supplier}}</text><text>{{supplierName}}</text></view>
+        <hz-field wx:if="{{mode === 'po'}}" label="{{texts.note}}" value="{{form.note}}" bind:change="onNote" />
+      </view>
+      <view class="u-section">
+        <text class="u-section__title">{{texts.lines}}</text>
+        <hz-line-item lines="{{lineViews}}" mode="price" quantity-only="{{mode === 'invite'}}" removable bind:qty="onQty" bind:price="onPrice" bind:remove="onRemove" />
+        <hz-add-button text="{{texts.add}}" bind:press="onOpenPick" />
+      </view>
+      <view wx:if="{{mode !== 'invite' && (lineViews.length > 1 || (mode === 'po' && editing))}}" class="u-card u-form-card">
+        <view wx:if="{{lineViews.length > 1}}" class="u-sheet-row"><text>{{texts.total}}</text><text class="u-serif-amount">{{amount}}</text></view>
+        <hz-field wx:if="{{mode === 'po' && editing}}" label="{{texts.editReason}}" value="{{form.reason}}" error="{{fields.reason}}" bind:change="onReason" />
+      </view>
+    </block>
+  </view>
+  <hz-action-bar id="form-action" wx:if="{{editable && loaded}}"><hz-button text="{{submitText}}" loading="{{saving}}" bind:press="onSubmit" /></hz-action-bar>
+  <template is="pick-sheet" data="{{show:pickSheet,title:texts.pickTitle,picks,empty:texts.noPick}}" />
+  <hz-confirm id="hz-confirm" />
+</template>

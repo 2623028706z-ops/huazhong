@@ -207,6 +207,7 @@ describe('失败转成界面状态', () => {
       kind: 'inline',
       message: '后端的句子',
       requestId: 'r-9',
+      retry: true,
     })
     expect(viewOf(server('INTERNAL'), 'refresh')).toMatchObject({ kind: 'inline' })
   })
@@ -229,11 +230,13 @@ describe('失败转成界面状态', () => {
       kind: 'inline',
       message: copy.network.refreshFailed,
       requestId: null,
+      retry: true,
     })
     expect(viewOf(network, 'submit')).toEqual({
       kind: 'inline',
       message: copy.network.submitFailed,
       requestId: null,
+      retry: true,
     })
   })
 })

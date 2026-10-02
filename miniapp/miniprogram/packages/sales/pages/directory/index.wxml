@@ -5,7 +5,7 @@
 <block wx:else>
   <view class="u-list">
     <hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" />
-    <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+    <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   </view>
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="list" /></block>
   <hz-state wx:elif="{{side.length === 0}}" object="{{texts.noCustomers}}" />

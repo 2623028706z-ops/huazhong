@@ -38,7 +38,7 @@ export interface SeedIds {
   materials: Map<string, number>
 }
 
-function idOf<T>(ids: Map<string, T>, key: string): T {
+export function idOf<T>(ids: Map<string, T>, key: string): T {
   const id = ids.get(key)
   if (id === undefined) throw new Error(`unknown seed key ${key}`)
   return id
@@ -279,7 +279,7 @@ function parseDocNo(no: string): { prefix: string; day: string; last: number } {
   return { prefix, day: `20${yy}-${mm}-${dd}`, last: Number(seq) }
 }
 
-async function insertDocSequences(tx: Tx, nos: readonly string[]): Promise<void> {
+export async function insertDocSequences(tx: Tx, nos: readonly string[]): Promise<void> {
   const last = new Map<string, { prefix: string; day: string; last: number }>()
   for (const no of nos) {
     const parsed = parseDocNo(no)

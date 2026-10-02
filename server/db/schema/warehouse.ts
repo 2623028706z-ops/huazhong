@@ -2,7 +2,8 @@
 // 批次的来源单据列（source_type、source_id）在阶段 4、5 有了入库单据再加
 import { sql } from 'drizzle-orm'
 import { bigint, boolean, check, date, index, integer, pgTable, text } from 'drizzle-orm/pg-core'
-import { commonColumns, versionColumn } from './columns.ts'
+import { commonColumns, timestamptz, versionColumn } from './columns.ts'
+import { moveType } from './enums.ts'
 
 export const materialCategories = pgTable('material_categories', {
   ...commonColumns(),
@@ -32,14 +33,50 @@ export const stockBatches = pgTable(
       .notNull()
       .references(() => materials.id, { onDelete: 'restrict' }),
     inDate: date({ mode: 'string' }).notNull(),
+    sourceType: text().notNull().default('seed'),
+    sourceId: bigint({ mode: 'number' }),
     qty: integer().notNull(),
     leftQty: integer().notNull(),
   },
   (t) => [
     check('stock_batches_qty_positive', sql`${t.qty} > 0`),
     check('stock_batches_left_range', sql`${t.leftQty} >= 0 AND ${t.leftQty} <= ${t.qty}`),
+    check(
+      'stock_batches_source_link',
+      sql`(${t.sourceType} = 'seed' AND ${t.sourceId} IS NULL) OR (${t.sourceType} = 'po' AND ${t.sourceId} IS NOT NULL)`,
+    ),
     index('stock_batches_fifo')
       .on(t.materialId, t.inDate, t.id)
       .where(sql`${t.leftQty} > 0`),
+    index('stock_batches_source').on(t.sourceType, t.sourceId),
+  ],
+)
+
+export const stockMoves = pgTable(
+  'stock_moves',
+  {
+    ...commonColumns(),
+    movedAt: timestamptz().notNull().defaultNow(),
+    type: moveType().notNull(),
+    materialId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => materials.id, { onDelete: 'restrict' }),
+    batchId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => stockBatches.id, { onDelete: 'restrict' }),
+    qty: integer().notNull(),
+    docType: text().notNull(),
+    docId: bigint({ mode: 'number' }).notNull(),
+    docNo: text().notNull(),
+    reason: text().notNull().default(''),
+  },
+  (t) => [
+    index('stock_moves_material_time').on(t.materialId, t.movedAt.desc()),
+    index('stock_moves_doc').on(t.docType, t.docId),
+    index('stock_moves_type_time').on(t.type, t.movedAt.desc()),
+    check(
+      'stock_moves_qty_direction',
+      sql`(${t.type} IN ('po_in', 'manual_in', 'check_gain')) = (${t.qty} > 0) AND ${t.qty} <> 0`,
+    ),
   ],
 )

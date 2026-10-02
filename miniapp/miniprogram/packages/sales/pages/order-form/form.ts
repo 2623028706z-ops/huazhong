@@ -15,6 +15,7 @@ import {
 } from '@huazhong/shared'
 import { centsOfText, lineCents, sumCents, textOfCents } from '../../../../core/money'
 import { checkedOf, type Checked } from '../../../../core/form'
+import { formTotalOf } from '../../../../core/form'
 
 export type FormMode = 'create' | 'edit' | 'editAndConfirm'
 
@@ -107,8 +108,12 @@ export function lineViewsOf(lines: readonly FormLine[]) {
 }
 
 export function amountRowsOf(lines: readonly FormLine[]) {
+  if (lines.length <= 1) return []
   return [
-    { label: copy.screen.label.orderAmount, value: formatMoney(sumCents(lines, lineCentsOf)) },
+    {
+      label: copy.screen.label.total,
+      value: formTotalOf(sumCents(lines, lineCentsOf), [...lines]),
+    },
   ]
 }
 

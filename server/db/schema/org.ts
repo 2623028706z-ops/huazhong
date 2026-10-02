@@ -29,6 +29,10 @@ export const stores = pgTable(
 
 export const suppliers = pgTable('suppliers', {
   ...commonColumns(),
+  version: versionColumn(),
   name: text().notNull().unique(),
+  contact: text().notNull().default(''),
+  phone: text().notNull().default(''),
+  address: text().notNull().default(''),
   enabled: boolean().notNull().default(true),
 })

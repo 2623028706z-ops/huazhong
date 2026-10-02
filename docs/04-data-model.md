@@ -274,6 +274,10 @@
 
 供应商端账号在 `accounts`（`type='supplier'`），是否开通 = 有一条启用的供应商账号（原型的 `account`、`loginPhone`）。
 
+修改供应商账号登录手机号时，同一事务清空 `openid`、`bound_at` 并提升账号版本；供应商资料版本也提升（阶段 4 确认）。
+
+停用供应商或关闭供应商端账号时保留原账号及其 `openid`、`bound_at`，更新状态并提升账号和供应商版本；重新启用同一账号后原微信可继续使用。若同时修改登录手机号，仍清空微信绑定（阶段 4 确认）。
+
 ### 5.2 `purchase_orders` 采购单（有版本）
 
 | 字段 | 类型与约束 | 说明 | 原型字段 |
@@ -309,6 +313,8 @@
 
 ### 5.4 改单、改价、退货记录
 
+阶段 4 的 `price_changes` 只有非空 `po_id`；`wh_doc_id` 和单据二选一约束在阶段 5 随手工入库接入（阶段 4 确认）。
+
 | 表 | 字段 | 说明 | 原型字段 |
 |---|---|---|---|
 | `po_changes` | `po_id NOT NULL`、`actor_label`、`reason TEXT NOT NULL`、`items JSONB NOT NULL`（字符串数组，含换供应商） | 采购改单记录，三端可见，有记录即标「改单」 | `changes[]` |
@@ -331,6 +337,8 @@
 
 生成的采购单由 `purchase_orders.invite_id` 反查。索引：`(status, supplier_id)`。
 
+阶段 4 确认：停用花材不删除 `invite_lines` 需求快照。提交只校验实际提交行（邀请行和另报行）的花材启用状态；供应商删除停用行后直接提交，缺少的邀请行算「未供」，不写 `invite_supply_lines` / 采购单明细。`cancelled_at` 在详情返回 `cancelledAt`，用于手动 / 自动取消原因行。
+
 填报分享链接不另存表：路径带邀请号和 HMAC 签名（只签邀请 ID），不设有效期；邀请不是 `pending`（已提交、已取消）就失效，只有这家供应商的账号能打开。
 
 状态流转：`pending` → `submitted`（供应商提交，同一事务生成采购单）/ `cancelled`（采购取消，或停用供应商、关闭账号时自动取消）。
@@ -344,6 +352,8 @@
 
 ### 6.1 主数据
 
+阶段 4 只使用花材分类和花材；`out_categories` 随手工出库在阶段 5 接入（阶段 4 确认）。
+
 | 表 | 字段（类型与约束） | 说明 | 原型字段 |
 |---|---|---|---|
 | `material_categories` | `name TEXT NOT NULL UNIQUE`、`sort INTEGER NOT NULL DEFAULT 0` | 花材分类，可新增、改名（改名只改这一行，花材跟着变） | `cats[]` |
@@ -354,20 +364,22 @@
 
 ### 6.2 `stock_batches` 库存批次
 
-每次入库（采购收货、手工入库、盘点盘盈）生成一个批次。
+阶段 2 提前录入的开发批次来源为 `seed`，`source_id=NULL`，仅用于种子数据；阶段 4 新收货的批次必须是 `source_type=po`、`source_id=采购单ID`。数据库约束保证这两种来源与 ID 对应。
+
+每次入库（采购收货、手工入库、盘点盘盈）生成一个批次。阶段 4 只生成采购收货批次；手工入库、盘点盘盈在阶段 5 接入（阶段 4 确认）。
 
 | 字段 | 类型与约束 | 说明 | 原型字段 |
 |---|---|---|---|
 | material_id | `→ materials.id NOT NULL` | | `material` |
 | in_date | `DATE NOT NULL` | 入库日期，先进先出按 `(in_date, id)` | `date` |
-| source_type | `TEXT NOT NULL` | `purchase_orders` / `wh_docs` / `stocktakes` | 无 |
-| source_id | `BIGINT NOT NULL` | 来源单据；采购退货、入库作废先扣这张单的批次 | 无 |
+| source_type | `TEXT NOT NULL` | 阶段 4：`seed`（开发初始批次）/ `po`（采购收货）；手工入库、盘盈来源阶段 5 扩展 | 无 |
+| source_id | `BIGINT NULL` | 开发 `seed` 批次为空，`po` 批次必填采购单 ID（数据库 `CHECK`）；采购退货先扣这张单的批次 | 无 |
 | qty | `INTEGER NOT NULL CHECK (qty > 0)` | 入库数量 | `qty` |
 | left_qty | `INTEGER NOT NULL CHECK (left_qty >= 0 AND left_qty <= qty)` | 剩余，扣减时 `SELECT … FOR UPDATE` 后更新 | `left` |
 
 索引：`(material_id, in_date, id) WHERE left_qty > 0`（部分索引，只扫有剩余的批次）、`(source_type, source_id)`。
 
-批次在界面上只在出入库记录里显示为「MM-DD 入库」，不需要单号。
+阶段 4 在花材详情显示批次的入库日期和剩余数量；阶段 5 的出入库记录显示为「MM-DD 入库」。批次不需要单号（阶段 4 确认）。
 
 ### 6.3 `stock_moves` 出入库流水
 
@@ -387,6 +399,8 @@
 `CHECK ((type IN ('po_in','manual_in','check_gain')) = (qty > 0))`。索引：`(material_id, moved_at DESC)`、`(type, moved_at DESC)`、`(doc_type, doc_id)`。
 
 库存 = `SUM(stock_batches.left_qty)`，也等于 `SUM(stock_moves.qty)`；两者不一致说明有 bug，接口测试里要核对。
+
+开发种子数据例外：阶段 2 预置了初始库存及阶段 5 才接入的历史出库、报损余额，没有完整流水。阶段 4 测试按每次收退货前后核对「批次剩余数量变化 = 同次流水数量合计」；完整种子流水随阶段 5 补齐。正式业务的收退货始终在同一事务写批次和流水。
 
 ### 6.4 `wh_docs` 手工入库、手工出库、报损（有版本）
 
@@ -427,6 +441,8 @@
 
 ## 7. 财务
 
+阶段 4 确认：收付款记录「收款 / 付款」是页面标签，不是新增存储字段；`kind` 只选择 `receipts` 或 `payments` 查询。
+
 | 表 | 字段（类型与约束） | 说明 | 原型字段 |
 |---|---|---|---|
 | `payment_methods` | `kind method_kind NOT NULL`、`name TEXT NOT NULL`、`enabled`、`sort` | 收款方式、付款方式分两份；唯一 `(kind, name)`；每份至少一种启用（服务层校验） | `methods.receive/pay` |
@@ -462,6 +478,8 @@
 
 ### 7.3 `payments` 付款（有版本）
 
+阶段 4 只允许采购单付款（`docType=po`）；`wh_doc_id` 和 `docType=wh` 随手工入库在阶段 5 接入（阶段 4 确认）。
+
 | 字段 | 类型与约束 | 说明 | 原型字段 |
 |---|---|---|---|
 | no | `TEXT NOT NULL UNIQUE` | FK-… | `id` |
@@ -490,7 +508,7 @@
 | 可申请售后数量（`maxQty`） | `order_lines.shipped_qty`、`after_lines.qty`（所属售后 `status IN ('pending','processed')`） | 处理某张售后时排除这张本身 |
 | 门店售后申请期限 | `orders.shipped_at` | `shipped_at` 的上海日期 + `AFTER_APPLY_DAYS` ≥ 今天才在期限内；只限门店申请（`applyAfter`），销售新建不看 |
 | 对账按出货日期筛选 | `orders.ship_date` | `from`、`to` 只筛发货单和对账格里的发货金额、售后、已收、未收；预收按客户全部有效收款和核销算，不受筛选影响 |
-| 应付（`payableCents`）、`apStatus`、`allReturned` | `purchase_order_lines.received_qty`、`returned_qty`、`price_cents`；`wh_doc_lines.qty`、`price_cents`；`payments`（`status='valid'`） | 采购单只算 `received`；手工入库单 `voided` 为 0。`apStatus`：有有效付款 `paid`，应付 0 `no_pay`，否则 `to_pay`。`allReturned`：已收货且每行 `returned_qty = received_qty` |
+| 应付（`payableCents`）、`apStatus`、`allReturned` | `purchase_order_lines.received_qty`、`returned_qty`、`price_cents`；`wh_doc_lines.qty`、`price_cents`；`payments`（`status='valid'`） | 阶段 4 只算采购单；手工入库单阶段 5 接入。`apStatus`：有有效付款 `paid`，应付 0 `no_pay`，否则 `to_pay`。`allReturned`：已收货且每行 `returned_qty = received_qty`；全部退货后采购单不再有 `return` 或 `reprice` 操作（阶段 4 确认） |
 | 可退数量（`maxReturnQty`） | `received_qty − returned_qty`、这种花材的库存 | 取两者较小值 |
 | 库存（`stockQty`、`bookQty`） | `stock_batches.left_qty` | 和流水的核对见 6.3 |
 | 在途（`inTransitQty`）、需求（`needQty`）、余量（`leftQty`）、`invited` | `purchase_order_lines.qty`（采购单 `to_receive`）；`order_lines.qty × product_bom_lines.qty`（订单 `to_ship`、出货日期在区间内）；`invite_lines`（邀请 `pending`） | 按花材汇总，一条 SQL 算完 |

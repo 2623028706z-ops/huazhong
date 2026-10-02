@@ -1,4 +1,4 @@
-<view class="hz-stepper">
+<view class="hz-stepper {{error ? 'hz-stepper--error' : ''}}">
   <t-stepper
     value="{{value}}"
     min="{{min}}"

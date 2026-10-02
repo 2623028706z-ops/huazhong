@@ -10,11 +10,13 @@ import {
   pgTable,
   text,
   unique,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { accountRef, commonColumns, timestamptz, versionColumn } from './columns.ts'
 import { allocKind, methodKind, recordStatus } from './enums.ts'
-import { customers } from './org.ts'
+import { customers, suppliers } from './org.ts'
 import { orders } from './sales.ts'
+import { purchaseOrders } from './purchase.ts'
 
 // 收款方式、付款方式分两份；每份至少一种启用（服务层）
 export const paymentMethods = pgTable(
@@ -79,5 +81,37 @@ export const allocations = pgTable(
     index('allocations_receipt_live')
       .on(t.receiptId)
       .where(sql`${t.revokedAt} IS NULL`),
+  ],
+)
+
+export const payments = pgTable(
+  'payments',
+  {
+    ...commonColumns(),
+    version: versionColumn(),
+    no: text().notNull().unique(),
+    poId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => purchaseOrders.id, { onDelete: 'restrict' }),
+    supplierId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => suppliers.id, { onDelete: 'restrict' }),
+    payDate: date({ mode: 'string' }).notNull(),
+    amountCents: integer().notNull(),
+    methodName: text().notNull(),
+    note: text().notNull().default(''),
+    status: recordStatus().notNull().default('valid'),
+    voidReason: text(),
+    voidedBy: accountRef(),
+    voidedAt: timestamptz(),
+  },
+  (t) => [
+    check('payments_amount_positive', sql`${t.amountCents} > 0`),
+    check('payments_void_reason', sql`${t.status} <> 'voided' OR ${t.voidReason} IS NOT NULL`),
+    uniqueIndex('payments_po_live')
+      .on(t.poId)
+      .where(sql`${t.status} = 'valid'`),
+    index('payments_supplier_status').on(t.supplierId, t.status),
+    index('payments_date').on(t.payDate.desc()),
   ],
 )

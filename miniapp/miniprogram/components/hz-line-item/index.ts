@@ -25,8 +25,10 @@ Component({
     // 能不能删行由页面定：新建表单能删；只读和处理门店提交的售后不能删
     removable: { type: Boolean, value: false },
     min: { type: Number, value: 0 },
+    quantityOnly: { type: Boolean, value: false },
+    quantityReadonly: { type: Boolean, value: false },
   },
-  data: { yuan: copy.unit.yuan },
+  data: { yuan: copy.unit.yuan, maxQty: Number.MAX_SAFE_INTEGER },
   methods: {
     onQty(event: DetailEvent<number, { index: number }>) {
       this.triggerEvent('qty', { index: event.currentTarget.dataset.index, qty: event.detail })

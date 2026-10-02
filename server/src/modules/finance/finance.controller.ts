@@ -83,13 +83,6 @@ export class FinanceController {
     return this.receipts.void(viewer, Number(input.params.id), input.body)
   }
 
-  @Route(contract.listFinanceRecords)
-  records(
-    @Input() input: In<'listFinanceRecords'>,
-  ): Promise<OutputOf<typeof contract.listFinanceRecords>> {
-    return this.receipts.records(input.query)
-  }
-
   @Route(contract.listMethods)
   listMethods(@Input() input: In<'listMethods'>): Promise<OutputOf<typeof contract.listMethods>> {
     return this.methods.list(input.query.kind)

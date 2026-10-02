@@ -1,11 +1,12 @@
 // M4 我的（06 章 M4，门店、供应商共用这一页）：身份 → 按 menus 列入口 → 个人资料 → 退出登录。
 // 订阅 account:<id>：被停用、解绑、改了模块时重新取 /me
-import { copy, maskPhone, type Me } from '@huazhong/shared'
+import { contract, copy, maskPhone, type Me } from '@huazhong/shared'
 import type { DetailEvent } from '../../core/events'
 import type { FailureView } from '../../core/failure-view'
 import { confirmAsk } from '../../core/guard'
 import { unwatch, watch } from '../../core/live'
 import { failureOf, identityOf, isDevelop, loadMe, logout, tabsOf } from '../../core/session'
+import { request } from '../../core/request'
 
 const menuPages = {
   inventory: { icon: 'boxes', text: copy.title.inventory, url: '/pages/inventory/index' },
@@ -57,8 +58,17 @@ Page({
       return
     }
     const me = result.data
-    this.setData({ profile: profileOf(me), tabs: tabsOf(me), failure: null })
-    watch(this, [`account:${me.id}`], () => {
+    const invites =
+      me.type === 'supplier'
+        ? await request(contract.supplierInvites, { query: { status: 'pending' } })
+        : null
+    const count = invites?.ok ? (invites.data.counts.pending ?? 0) : 0
+    this.setData({ profile: profileOf(me), tabs: tabsOf(me, count), failure: null })
+    const topics =
+      me.type === 'supplier'
+        ? ([`account:${me.id}`, `supplier:${me.supplierId ?? ''}`] as const)
+        : ([`account:${me.id}`] as const)
+    watch(this, [...topics], () => {
       void this.load()
     })
   },

@@ -2,6 +2,7 @@
 // 原订单、客户门店 → 明细（数量上限 maxQty；单价默认发货单价）→ 售后金额合计 → 处理说明（选填）
 import { contract, copy, type AfterDetail, type OrderDetail } from '@huazhong/shared'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
+import { unplacedErrorOf } from '../../../../core/form'
 import type { FailureView } from '../../../../core/failure-view'
 import { markChanged, syncUnloadAlert } from '../../../../core/guard'
 import { newIdempotencyKey, request, type Result } from '../../../../core/request'
@@ -161,8 +162,11 @@ Page({
     this.setData({ pickSheet: false })
     if (line) this.setLines([...this.data.lines, createLineOf(line)])
   },
-  showFields(fields: Record<string, string>, message: string) {
-    this.setData({ lineErrors: lineErrorsOf(fields, this.data.lines.length), formError: message })
+  showFields(fields: Record<string, string>) {
+    this.setData({
+      lineErrors: lineErrorsOf(fields, this.data.lines.length),
+      formError: unplacedErrorOf(fields, ['lines.*.qty', 'lines.*.priceCents', 'lines.*.reason']),
+    })
   },
   async onSubmit(): Promise<void> {
     const { lines, note } = this.data
@@ -170,7 +174,7 @@ Page({
     if (after) {
       const checked = checkProcess(lines, note, after.version)
       if (!checked.ok) {
-        this.showFields(checked.fields, Object.values(checked.fields)[0] ?? '')
+        this.showFields(checked.fields)
         return
       }
       this.setData({ saving: true, formError: '' })
@@ -180,7 +184,7 @@ Page({
     }
     const checked = checkCreate(lines, note, this.orderId)
     if (!checked.ok) {
-      this.showFields(checked.fields, Object.values(checked.fields)[0] ?? '')
+      this.showFields(checked.fields)
       return
     }
     this.setData({ saving: true, formError: '' })
@@ -199,7 +203,7 @@ Page({
     }
     const view = failureOf(result.failure, 'submit')
     if (!view) return
-    if (view.kind === 'fields') this.showFields(view.fields, view.message)
+    if (view.kind === 'fields') this.showFields(view.fields)
     else if (view.kind === 'page') this.setData({ failure: view })
     else if (view.kind === 'stale') {
       this.showAfter(view.latest as AfterDetail)

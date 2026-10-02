@@ -4,6 +4,7 @@
 import { contract, copy, formatTime, type CustomerItem, type StoreItem } from '@huazhong/shared'
 import { findAction, hasAction } from '../../../../core/actions'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
+import { unplacedErrorOf } from '../../../../core/form'
 import type { FailureView } from '../../../../core/failure-view'
 import { confirmAsk, isChanged, syncUnloadAlert } from '../../../../core/guard'
 import { firstFailure, newIdempotencyKey, request, type Result } from '../../../../core/request'
@@ -230,7 +231,11 @@ Page({
     return request(contract.updateStore, { params: { id: store.id }, body: checked.body })
   },
   showFields(fields: Record<string, string>): null {
-    this.setData({ fields, formError: Object.values(fields)[0] ?? '', saving: false })
+    this.setData({
+      fields,
+      formError: unplacedErrorOf(fields, ['name', 'customerId', 'contact', 'loginPhone']),
+      saving: false,
+    })
     return null
   },
   afterSave(result: Result<unknown>, selectId: string) {
@@ -242,7 +247,7 @@ Page({
       return
     }
     const view = failureOf(result.failure, 'submit')
-    if (view?.kind === 'fields') this.setData({ fields: view.fields, formError: view.message })
+    if (view?.kind === 'fields') this.showFields(view.fields)
     else if (view?.kind === 'stale') {
       this.setData({ formError: view.message })
       void this.load()

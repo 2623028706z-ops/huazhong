@@ -4,7 +4,7 @@
   <hz-brand lead="{{title}}" />
   <view class="u-home__body">
     <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
-    <hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+    <hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
     <hz-profile
       wx:if="{{profile}}"
       name="{{profile.name}}"

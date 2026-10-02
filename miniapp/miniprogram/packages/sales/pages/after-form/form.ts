@@ -12,12 +12,13 @@ import {
   type OrderLine,
 } from '@huazhong/shared'
 import { centsOfText, lineCents, sumCents, textOfCents } from '../../../../core/money'
-import { checkedOf, type Checked } from '../../../../core/form'
+import { checkedOf, formTotalOf, type Checked } from '../../../../core/form'
 
 export interface FormLine {
   // 处理时是售后明细 id，新建时是订单明细 id
   id: string
   name: string
+  unit: string
   maxQty: number
   maxText: string
   qty: number
@@ -34,6 +35,7 @@ export function processLinesOf(after: AfterDetail): FormLine[] {
   return after.lines.map((line) => ({
     id: line.id,
     name: line.name,
+    unit: line.unit,
     maxQty: line.maxQty,
     maxText: copy.screen.maxQty(line.maxQty),
     qty: line.qty,
@@ -51,6 +53,7 @@ export function createLineOf(line: OrderLine): FormLine {
   return {
     id: line.id,
     name: line.name,
+    unit: line.unit,
     maxQty,
     maxText: copy.screen.maxQty(maxQty),
     qty: 1,
@@ -72,7 +75,9 @@ export function amountTextsOf(lines: readonly FormLine[]): string[] {
 }
 
 export function totalRowsOf(lines: readonly FormLine[]) {
-  return [{ label: copy.screen.label.afterAmount, value: formatMoney(sumCents(lines, centsOf)) }]
+  return lines.length > 1
+    ? [{ label: copy.screen.label.total, value: formTotalOf(sumCents(lines, centsOf), [...lines]) }]
+    : []
 }
 
 export interface LineErrors {

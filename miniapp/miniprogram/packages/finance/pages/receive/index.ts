@@ -3,6 +3,7 @@
 // 核销预收：客户 →「可用预收」→ 核销明细。保存后回 F3
 import { contract, copy, shanghaiDateOf, type ArCard } from '@huazhong/shared'
 import type { DetailEvent } from '../../../../core/events'
+import { unplacedErrorOf } from '../../../../core/form'
 import type { FailureView } from '../../../../core/failure-view'
 import { isChanged, markChanged, syncUnloadAlert } from '../../../../core/guard'
 import { unwatch, watch } from '../../../../core/live'
@@ -179,8 +180,17 @@ Page({
     const available = isAllocate ? prepaidCents : (centsOfText(form.amountText) ?? 0)
     this.setAlloc(index, fillText(form.allocs, index, available))
   },
-  showFields(fields: Record<string, string>, message: string) {
-    this.setData({ fields, formError: message, saving: false })
+  showFields(fields: Record<string, string>) {
+    this.setData({
+      fields,
+      formError: unplacedErrorOf(fields, [
+        'customerId',
+        'receiptDate',
+        'amountCents',
+        'methodName',
+      ]),
+      saving: false,
+    })
   },
   async onSubmit(): Promise<void> {
     const { form, customerId, isAllocate, today } = this.data
@@ -188,7 +198,7 @@ Page({
     if (isAllocate) {
       const checked = checkAllocate(form, customerId)
       if (!checked.ok) {
-        this.showFields(checked.fields, Object.values(checked.fields)[0] ?? '')
+        this.showFields(checked.fields)
         return
       }
       this.setData({ saving: true })
@@ -197,7 +207,7 @@ Page({
     }
     const checked = checkReceipt(form, customerId, today)
     if (!checked.ok) {
-      this.showFields(checked.fields, Object.values(checked.fields)[0] ?? '')
+      this.showFields(checked.fields)
       return
     }
     this.setData({ saving: true })
@@ -212,7 +222,7 @@ Page({
       return
     }
     const view = failureOf(result.failure, 'submit')
-    if (view?.kind === 'fields') this.showFields(view.fields, view.message)
+    if (view?.kind === 'fields') this.showFields(view.fields)
     else if (view?.kind === 'page') this.setData({ failure: view })
     else if (view) {
       this.setData({ formError: view.message })

@@ -21,6 +21,7 @@ export const WS_IDLE_TIMEOUT_SECONDS = 60
 // 「前缀-YYMMDD-三位序号」：{seq:3} 表示至少 3 位，超过 999 自然变 4 位
 export const DOC_NO_FORMAT = '{prefix}-{yymmdd}-{seq:3}'
 export const MATERIAL_CODE_PREFIX = 'HC-'
+export const MATERIAL_CODE_DIGITS = 4
 export const REQUEST_TIMEOUT_MS = 10_000
 export const READ_RETRY_COUNT = 1
 export const RECONNECT_DELAYS_SECONDS = [1, 2, 5, 10, 30] as const

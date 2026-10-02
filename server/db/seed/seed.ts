@@ -20,6 +20,7 @@ import {
   seedSuppliers,
 } from './data.ts'
 import { insertSales } from './seed-sales.ts'
+import { insertPurchase } from './seed-purchase.ts'
 
 async function insertMaterials(tx: Tx, createdBy: number): Promise<Map<string, number>> {
   const categoryIds = new Map<string, number>()
@@ -72,9 +73,12 @@ async function insertOrg(tx: Tx, createdBy: number) {
     if (row) storeIds.set(key, row.id)
   }
   const supplierIds = new Map<string, number>()
-  for (const s of seedSuppliers) {
-    const [row] = await tx.insert(suppliers).values({ name: s.name, createdBy }).returning()
-    if (row) supplierIds.set(s.key, row.id)
+  for (const { key, ...fields } of seedSuppliers) {
+    const [row] = await tx
+      .insert(suppliers)
+      .values({ ...fields, createdBy })
+      .returning()
+    if (row) supplierIds.set(key, row.id)
   }
   return { customerIds, storeIds, supplierIds }
 }
@@ -111,6 +115,12 @@ export async function seed(db: Db): Promise<void> {
       accounts: accountIds,
       customers: customerIds,
       stores: storeIds,
+      materials: materialIds,
+    })
+    await insertPurchase(tx, {
+      admin: adminId,
+      accounts: accountIds,
+      suppliers: supplierIds,
       materials: materialIds,
     })
   })

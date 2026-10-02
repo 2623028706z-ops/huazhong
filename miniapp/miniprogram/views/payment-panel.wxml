@@ -1,0 +1,13 @@
+<import src="detail.wxml" />
+<template name="payment-panel">
+  <hz-sheet show="{{paymentLayer !== ''}}" title="{{paymentLayer === 'void' ? paymentTexts.void : paymentTexts.title}}" back="{{paymentLayer === 'void'}}" guard="{{paymentReason !== ''}}" footer bind:close="onClosePayment" bind:back="onBackPayment">
+    <view class="u-sheet-form u-sheet-plain">
+      <hz-error wx:if="{{paymentError}}" message="{{paymentError}}" />
+      <hz-skeleton wx:if="{{!paymentView}}" type="detail" />
+      <template wx:else is="info" data="{{...paymentView}}" />
+      <hz-field wx:if="{{paymentLayer === 'void'}}" label="{{paymentTexts.reason}}" value="{{paymentReason}}" error="{{paymentFields.reason}}" bind:change="onPaymentReason" />
+    </view>
+    <hz-button wx:if="{{paymentLayer === 'void'}}" slot="footer" text="{{paymentTexts.confirm}}" loading="{{paymentBusy}}" bind:press="onSubmitPaymentVoid" />
+    <hz-button wx:elif="{{paymentView.canVoid}}" slot="footer" kind="secondary" text="{{paymentTexts.void}}" bind:press="onVoidPayment" />
+  </hz-sheet>
+</template>

@@ -2,7 +2,7 @@
 <hz-navbar title="{{title}}" back guard="{{note !== initialNote}}" />
 <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
 <view wx:else class="u-list">
-  <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+  <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <hz-error wx:if="{{formError}}" message="{{formError}}" />
   <hz-notice wx:if="{{notice}}" text="{{notice}}" />
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
@@ -14,7 +14,7 @@
     <view class="u-section">
       <text class="u-section__title">{{texts.lines}}</text>
       <hz-line-item lines="{{rows}}" mode="qty" removable bind:qty="onQty" bind:remove="onRemove" />
-      <template is="info-card" data="{{rows: amountRows}}" />
+      <template wx:if="{{amountRows.length}}" is="info-card" data="{{rows: amountRows}}" />
     </view>
   </block>
 </view>

@@ -1,4 +1,5 @@
 // 成功响应统一包成 { ok: true, data }；测试环境按契约的响应结构校验出参（05 章第 1.1 节）
+import { isDeepStrictEqual } from 'node:util'
 import {
   Inject,
   Injectable,
@@ -36,7 +37,7 @@ export class ResponseInterceptor implements NestInterceptor {
         `response does not match contract ${endpoint.method} ${endpoint.path}: ${result.error.message}`,
       )
     }
-    if (JSON.stringify(result.data) !== JSON.stringify(data)) {
+    if (!isDeepStrictEqual(result.data, data)) {
       throw new Error(`response has fields outside contract ${endpoint.method} ${endpoint.path}`)
     }
   }

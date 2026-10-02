@@ -3,7 +3,7 @@
 <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
 <view wx:else class="u-list">
   <hz-realtime-bar text="{{realtime}}" />
-  <hz-error wx:if="{{failure}}" message="{{failure.message}}" request-id="{{failure.requestId}}" retry bind:retry="onFailureAction" />
+  <hz-error wx:if="{{failure}}" message="{{failure.message}}" request-id="{{failure.requestId}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="detail" /></block>
   <block wx:elif="{{view}}">
     <hz-notice wx:if="{{view.notice}}" text="{{view.notice}}" />

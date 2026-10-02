@@ -13,6 +13,7 @@ import { LogsModule } from './modules/logs/logs.module.ts'
 import { SalesModule } from './modules/sales/sales.module.ts'
 import { TodosModule } from './modules/todos/todos.module.ts'
 import { WarehouseModule } from './modules/warehouse/warehouse.module.ts'
+import { PurchaseModule } from './modules/purchase/purchase.module.ts'
 import { RealtimeModule } from './realtime/realtime.module.ts'
 
 @Module({})
@@ -27,6 +28,7 @@ export class AppModule {
         AccountsModule,
         LogsModule,
         WarehouseModule,
+        PurchaseModule,
         FilesModule,
         SalesModule,
         FinanceModule,

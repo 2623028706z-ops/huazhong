@@ -1,7 +1,7 @@
 // 界面文案：每句只在这里定义一次，前后端引用同一个键（00 章第 10 节）。
 // 出处：02 章第 5 节（通用状态）、05 章（接口返回的句子）、06 章（各页文案）。
 
-import { screen } from './copy-screen.ts'
+import { screen, financeCopy } from './copy-screen.ts'
 
 // 同一行里并列的几项之间（身份行、卡片第 3 行）
 const SEPARATOR = ' · '
@@ -68,6 +68,11 @@ export const copy = {
       catalog: '订货目录',
       receipt: '收款',
       method: '收付款方式',
+      purchaseOrder: '采购单',
+      invite: '填报邀请',
+      supplier: '供应商',
+      payment: '付款',
+      material: '花材',
     },
     action: {
       createOrder: '新建订单',
@@ -104,6 +109,25 @@ export const copy = {
       createMethod: '新增收付款方式',
       enableMethod: '启用收付款方式',
       disableMethod: '停用收付款方式',
+      createPurchaseOrder: '新建采购单',
+      updatePurchaseOrder: '修改采购单',
+      cancelPurchaseOrder: '取消采购单',
+      createInvite: '发出填报邀请',
+      updateInvite: '修改填报邀请',
+      cancelInvite: '取消填报邀请',
+      shareInvite: '复制填报链接',
+      submitSupply: '提交填报',
+      receivePurchaseOrder: '确认收货',
+      rejectPurchaseOrder: '拒收采购单',
+      returnPurchaseOrder: '退货',
+      repricePurchaseOrder: '改单价',
+      registerPayment: '登记付款',
+      voidPayment: '作废付款',
+      createSupplier: '新增供应商',
+      updateSupplier: '修改供应商',
+      disableSupplier: '停用供应商',
+      createMaterial: '新增花材',
+      updateMaterial: '修改花材',
     },
   },
   // 账号字段名：员工弹层、个人资料、日志的修改前后共用
@@ -124,6 +148,7 @@ export const copy = {
     note: '备注',
     category: '分类',
     unit: '单位',
+    code: '编码',
     bom: '配方',
     listPrice: '订货价',
     catalogCategory: '订货分类',
@@ -266,26 +291,7 @@ export const copy = {
   },
   // 财务收款部分（03 章第 4、8.4 节，05 章第 10 节）
   finance: {
-    amountRequired: '请填写收款金额',
-    methodRequired: '请选择收款方式',
-    receiptDateRequired: '请选择收款日期',
-    duplicateOrder: '同一张发货单只能填一行',
-    methodDisabled: '这种收款方式已停用，请换一种',
-    receiptDateFuture: '收款日期不能晚于今天',
-    payDateFuture: '付款日期不能晚于今天',
-    allocOver: (no: string, max: string) => `${no} 最多核销 ${max}`,
-    allocTotalOver: '核销合计不能超过收款金额',
-    prepaidOver: (max: string) => `可用预收只有 ${max}`,
-    allocRequired: '请填写核销金额',
-    voidReasonRequired: '请填写作废原因',
-    receiptVoidedNotice: '已作废，核销已撤回。',
-    receiptStale: '这笔收款刚被作废，已刷新',
-    methodNameRequired: '请填写名称',
-    methodNameTaken: '已有同名方式',
-    lastMethod: '至少要保留一种启用的方式',
-    received: '已收款',
-    allocated: '已核销',
-    receiptVoided: '收款已作废',
+    ...financeCopy,
   },
   // 门店邀请下单（03 章第 8.1 节，05 章第 2、4 节）
   invite: {

@@ -114,6 +114,13 @@ describe('状态标签行', () => {
   it('状态表里没有的码不出标签', () => {
     expect(tabsOf('orderStatus', ['nope'], {})).toHaveLength(1)
   })
+  it('收付款记录可显示全部状态的独立计数，其他列表规则不变', () => {
+    expect(tabsOf('recordStatus', ['valid', 'voided'], { valid: 3, voided: 2 }, true)).toEqual([
+      { code: '', text: '全部', count: 0 },
+      { code: 'valid', text: '有效', count: 3 },
+      { code: 'voided', text: '已作废', count: 2 },
+    ])
+  })
 })
 
 describe('筛选弹层', () => {

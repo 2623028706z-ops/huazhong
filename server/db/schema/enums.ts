@@ -9,8 +9,11 @@ import {
   fileStatuses,
   methodKinds,
   moduleKeys,
+  inviteStatuses,
   orderOrigins,
   orderStatuses,
+  poStatuses,
+  moveTypes,
   recordStatuses,
   storeInviteStatuses,
 } from '@huazhong/shared'
@@ -29,3 +32,6 @@ export const allocKind = pgEnum('alloc_kind', allocKinds)
 export const methodKind = pgEnum('method_kind', methodKinds)
 export const fileStatus = pgEnum('file_status', fileStatuses)
 export const filePurpose = pgEnum('file_purpose', filePurposes)
+export const inviteStatus = pgEnum('invite_status', inviteStatuses)
+export const poStatus = pgEnum('po_status', poStatuses)
+export const moveType = pgEnum('move_type', moveTypes)

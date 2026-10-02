@@ -39,9 +39,21 @@ interface Tab {
 
 // 「首页」就是登录落点；门店多一个「购物车」，角标是本机购物车件数（06 章第 4 节）。
 // 供应商的「填报」在阶段 4 加（08 章）
-export function tabsOf(me: Me): Tab[] {
+export function tabsOf(me: Me, supplyCount = 0): Tab[] {
   const home = { key: 'home', icon: 'house', text: copy.tab.home, url: landingUrl(me), badge: 0 }
   const my = { key: 'my', icon: 'user-round', text: copy.tab.my, url: MY_URL, badge: 0 }
+  if (me.type === 'supplier')
+    return [
+      home,
+      {
+        key: 'supply',
+        icon: 'clipboard-pen',
+        text: copy.screen.tab.supply,
+        url: '/packages/supplier/pages/invites/index',
+        badge: supplyCount,
+      },
+      my,
+    ]
   if (me.type !== 'store') return [home, my]
   const cart = {
     key: 'cart',

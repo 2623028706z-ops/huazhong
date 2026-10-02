@@ -17,13 +17,20 @@
 .hz-line-item__head {
   display: flex;
   gap: 8px;
-  align-items: flex-start;
+  align-items: center;
   line-height: 1.5;
   font-size: var(--hz-font-md);
 }
 
 .hz-line-item__name {
   min-width: 0;
+  flex-shrink: 1;
+}
+
+.hz-line-item__meta {
+  flex: none;
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
 }
 
 .hz-line-item__amount {

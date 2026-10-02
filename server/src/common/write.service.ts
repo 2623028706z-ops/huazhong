@@ -27,7 +27,7 @@ interface LogEntry {
   // null = 公共（账号类操作，只有管理员能看）
   module: ModuleKey | null
   // 操作人和请求的账号不同时给：绑定微信时请求还没有账号，操作人是被绑定的账号本人
-  actor?: Viewer
+  actor?: Viewer | null
   kind: string
   action: string
   targetType: string
@@ -63,7 +63,7 @@ class TxContext implements WriteContext {
   ) {}
 
   async log({ actor, ...entry }: LogEntry): Promise<void> {
-    const by = actor ?? this.viewer
+    const by = actor === undefined ? this.viewer : actor
     await this.tx.insert(operationLogs).values({
       ...entry,
       reason: entry.reason ?? '',

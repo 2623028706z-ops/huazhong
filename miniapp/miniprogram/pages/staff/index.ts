@@ -9,6 +9,7 @@ import {
   type StaffItem,
 } from '@huazhong/shared'
 import type { DetailEvent, KeyEvent } from '../../core/events'
+import { unplacedErrorOf } from '../../core/form'
 import type { FailureView } from '../../core/failure-view'
 import { confirmAsk, isChanged, syncUnloadAlert } from '../../core/guard'
 import { PagedList } from '../../core/list'
@@ -153,7 +154,7 @@ Page({
     this.update({ enabled: event.detail }, 'enabled')
   },
   showFields(fields: Record<string, string>) {
-    this.setData({ fields, formError: Object.values(fields)[0] ?? '' })
+    this.setData({ fields, formError: unplacedErrorOf(fields, ['name', 'phone', 'modules']) })
   },
   async send(work: () => Promise<Result<StaffItem>>) {
     this.setData({ saving: true, formError: '', requestId: '' })
@@ -188,7 +189,7 @@ Page({
     }
     const view = failureOf(result.failure, 'submit')
     if (!view) return
-    if (view.kind === 'fields') this.setData({ fields: view.fields, formError: view.message })
+    if (view.kind === 'fields') this.showFields(view.fields)
     else if (view.kind === 'stale') {
       const latest = view.latest as StaffItem
       this.setData({

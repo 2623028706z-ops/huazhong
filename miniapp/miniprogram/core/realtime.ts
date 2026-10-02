@@ -34,6 +34,7 @@ export class Realtime {
   private isRunning = false
   private hasConnected = false
   private attempt = 0
+  private connectionVersion = 0
   private pingTimer: ReturnType<typeof setInterval> | undefined
   private reconnectTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -49,8 +50,12 @@ export class Realtime {
   // 切到后台：断开，不重连
   stop(): void {
     this.isRunning = false
+    this.connectionVersion += 1
+    this.isOpen = false
     clearTimeout(this.reconnectTimer)
+    clearInterval(this.pingTimer)
     this.socket?.close({})
+    this.socket = null
   }
 
   // 同一主题多个页面订阅时只发一次 subscribe，最后一个退订时才发 unsubscribe
@@ -71,26 +76,32 @@ export class Realtime {
   }
 
   private connect(): void {
+    const version = ++this.connectionVersion
     const target = cloudTarget()
     wx.cloud.connectContainer({
       config: { env: target.env },
       service: target.service,
       path: WS_PATH,
       success: ({ socketTask }) => {
+        if (version !== this.connectionVersion) {
+          socketTask.close({})
+          return
+        }
         this.socket = socketTask
         socketTask.onOpen(() => {
-          this.handleOpen()
+          if (version === this.connectionVersion) this.handleOpen()
         })
         socketTask.onClose(({ code }) => {
-          this.handleClose(code)
+          if (version === this.connectionVersion) this.handleClose(code)
         })
         socketTask.onMessage(({ data }) => {
-          if (typeof data === 'string') this.dispatch(JSON.parse(data) as ServerMessage)
+          if (version === this.connectionVersion && typeof data === 'string')
+            this.dispatch(JSON.parse(data) as ServerMessage)
         })
       },
       // 连不上（断网等）：和断开一样按重连间隔再试
       fail: () => {
-        this.handleClose(0)
+        if (version === this.connectionVersion) this.handleClose(0)
       },
     })
   }

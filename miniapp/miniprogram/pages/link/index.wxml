@@ -4,7 +4,7 @@
   <hz-brand lead="{{texts.invite}}" person="{{storeLabel}}" />
   <view class="u-home__body">
     <hz-state wx:if="{{phase === 'failure'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
-    <hz-state wx:elif="{{phase === 'invalid'}}" kind="linkInvalid" detail="{{invalidDetail}}" />
+    <block wx:elif="{{phase === 'invalid'}}"><hz-state kind="linkInvalid" detail="{{invalidDetail}}" /><hz-button wx:if="{{canView}}" kind="secondary" text="{{texts.view}}" bind:press="onViewSupply" /></block>
     <block wx:elif="{{phase === 'other'}}">
       <hz-state kind="empty" message="{{otherText}}" />
       <hz-button kind="secondary" text="{{texts.goMy}}" bind:press="onGoMy" />

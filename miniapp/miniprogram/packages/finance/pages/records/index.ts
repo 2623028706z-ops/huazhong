@@ -6,28 +6,43 @@ import {
   recordStatuses,
   type ReceiptCard,
   type ReceiptDetail,
+  type PaymentDetail,
   type RecordStatus,
 } from '@huazhong/shared'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { emptyFilter } from '../../../../core/filter'
+import type { FilterValue } from '../../../../core/filter'
+import { watch } from '../../../../core/live'
 import type { PagedList } from '../../../../core/list'
 import { request } from '../../../../core/request'
 import { failureOf, messageOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
 import { listHandlers, listOf, listQueryOf } from '../../../../views/list'
-import { receiptRowOf, receiptViewOf } from '../../receipt-view'
+import { recordRowOf, receiptViewOf } from '../../receipt-view'
+import {
+  PaymentPanel,
+  paymentPanelData,
+  paymentPanelHandlers,
+} from '../../../../views/payment-panel'
 
 Page({
   ...listHandlers,
+  ...paymentPanelHandlers,
   data: {
+    ...paymentPanelData,
     title: copy.screen.title.records,
     statusKind: 'recordStatus',
     statuses: [...recordStatuses],
     counts: {},
+    kind: 'receipt',
+    kindTabs: [
+      { key: 'receipt', text: copy.log.kind.receipt },
+      { key: 'payment', text: copy.log.kind.payment },
+    ],
     dateLabel: copy.screen.label.date,
     filter: emptyFilter,
-    rows: [] as ReturnType<typeof receiptRowOf>[],
+    rows: [] as ReturnType<typeof recordRowOf>[],
     loaded: false,
     skeleton: false,
     done: false,
@@ -46,25 +61,49 @@ Page({
       confirmVoid: copy.screen.action.confirmVoid,
     },
   },
-  list: null as PagedList<ReceiptCard> | null,
+  list: null as PagedList<ReceiptCard | PaymentDetail> | null,
   receipt: null as ReceiptDetail | null,
+  panel: null as PaymentPanel | null,
   onLoad() {
+    this.panel = new PaymentPanel(this, () => void this.list?.refresh())
     this.list = listOf(
       this,
       async (cursor) => {
         const { status, from, to } = listQueryOf<RecordStatus>(this.data.filter)
-        const query = { status, from, to, cursor }
-        const result = await request(contract.listFinanceRecords, { query })
-        if (result.ok) this.setData({ counts: result.data.counts })
+        const kind: 'receipt' | 'payment' = this.data.kind === 'payment' ? 'payment' : 'receipt'
+        const result = await request(contract.listFinanceRecords, {
+          query: { kind, status, from, to, cursor },
+        })
+        if (result.ok && kind === this.data.kind) this.setData({ counts: result.data.counts })
         return result
       },
-      receiptRowOf,
+      recordRowOf,
     )
   },
   onShow() {
     void this.list?.refresh()
+    watch(this, ['ap:*', 'ar:*'], () => {
+      void this.list?.refresh()
+      if (this.data.paymentLayer) void this.panel?.refresh()
+    })
+  },
+  onFilter(event: DetailEvent<FilterValue>) {
+    this.setData({ filter: event.detail })
+    void this.list?.refresh()
+  },
+  onKind(event: DetailEvent<'receipt' | 'payment'>) {
+    this.setData({ kind: event.detail, filter: emptyFilter, counts: {}, rows: [] })
+    void this.list?.refresh()
   },
   async onOpen(event: KeyEvent): Promise<void> {
+    const row = this.list
+    const id = event.currentTarget.dataset.key
+    const item = this.data.rows.find((item) => item.id === id)
+    if (item && item.kind === 'payment') {
+      await this.panel?.open(id)
+      return
+    }
+    if (!row) return
     this.setData({ sheet: true, receiptSheet: null, sheetError: '' })
     const result = await request(contract.getReceipt, {
       params: { id: event.currentTarget.dataset.key },

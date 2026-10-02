@@ -65,7 +65,8 @@ export const appError = {
     new AppError({ code: 'UNAUTHENTICATED', message: copy.error.unauthenticated }),
   accountDisabled: (message: string = copy.error.accountDisabled) =>
     new AppError({ code: 'ACCOUNT_DISABLED', message }),
-  forbidden: () => new AppError({ code: 'FORBIDDEN', message: copy.error.forbidden }),
+  forbidden: (message: string = copy.error.forbidden) =>
+    new AppError({ code: 'FORBIDDEN', message }),
   notFound: () => new AppError({ code: 'NOT_FOUND', message: copy.error.notFound }),
   validation: (fields: Record<string, string>) =>
     new AppError({

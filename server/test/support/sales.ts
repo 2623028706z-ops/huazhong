@@ -63,7 +63,17 @@ export async function startSales(): Promise<SalesApp> {
 }
 
 type Lookup =
-  'orders.no' | 'afters.no' | 'receipts.no' | 'customers.name' | 'stores.name' | 'products.name'
+  | 'orders.no'
+  | 'afters.no'
+  | 'receipts.no'
+  | 'customers.name'
+  | 'stores.name'
+  | 'products.name'
+  | 'purchase_orders.no'
+  | 'invites.no'
+  | 'suppliers.name'
+  | 'materials.name'
+  | 'materials.code'
 
 export async function idBy(t: TestApp, lookup: Lookup, value: string): Promise<string> {
   const [table, column] = lookup.split('.')

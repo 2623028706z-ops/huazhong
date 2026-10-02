@@ -1,0 +1,2 @@
+<import src="/views/po-list.wxml" />
+<template is="po-list" data="{{title, kind, statusKind, statuses, counts, dimensions, dateLabel, filter, failure, skeleton, loaded, rows, emptyObject, done, allLoaded, canCreate, createText, sheet, sheetError, view}}" />

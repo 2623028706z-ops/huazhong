@@ -14,6 +14,7 @@ import {
   versionSchema,
 } from '../rules.ts'
 import { actionSchema } from './actions.ts'
+import { paymentSchema } from './payments.ts'
 import type { Endpoint } from './endpoint.ts'
 import { allocationSchema } from './finance.ts'
 import {
@@ -135,14 +136,18 @@ export const voidReceipt = {
   errors: ['NOT_FOUND', 'STALE'],
 } as const satisfies Endpoint
 
-// 收付款记录：阶段 3 只有收款，付款在阶段 4 加
+// 按类型分页：收款默认选中，与阶段 3 的入口一致。
 export const listFinanceRecords = {
   method: 'GET',
   path: '/finance/records',
   grants: ['finance'],
   query: pageQuerySchema
-    .extend({ status: z.enum(recordStatuses).optional(), ...dateRangeShape })
+    .extend({
+      kind: z.enum(['receipt', 'payment']).default('receipt'),
+      status: z.enum(recordStatuses).optional(),
+      ...dateRangeShape,
+    })
     .superRefine(checkDateRange),
-  response: countedPageSchema(receiptCardSchema, recordStatuses),
+  response: countedPageSchema(z.union([receiptCardSchema, paymentSchema]), recordStatuses),
   errors: [],
 } as const satisfies Endpoint

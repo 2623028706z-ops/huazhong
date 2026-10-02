@@ -1,0 +1,20 @@
+.hz-tabs {
+  display: flex;
+  gap: var(--hz-gap-controls);
+  border-bottom: 1px solid var(--hz-rule);
+}
+
+.hz-tabs__item {
+  display: flex;
+  align-items: center;
+  min-height: var(--hz-tap);
+  font-size: var(--hz-font-md);
+  color: var(--hz-muted);
+  border-bottom: 2px solid transparent;
+}
+
+.hz-tabs__item--on {
+  font-weight: 600;
+  color: var(--hz-ink);
+  border-bottom-color: var(--hz-brand);
+}

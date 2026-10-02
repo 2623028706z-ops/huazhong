@@ -11,8 +11,8 @@
       <view wx:for="{{categories}}" wx:key="id" class="u-sheet-form__row">
         <text class="u-rows__name hz-category-sheet__name" data-key="{{item.id}}" bindtap="onRename">{{item.name}}</text>
         <view class="u-sheet-form__value">
-          <hz-button wx:if="{{index > 0}}" kind="text" text="{{texts.up}}" data-index="{{index}}" bind:press="onUp" />
-          <view class="u-tap" data-key="{{item.id}}" bindtap="onRemove">
+          <hz-button wx:if="{{sortable && index > 0}}" kind="text" text="{{texts.up}}" data-index="{{index}}" bind:press="onUp" />
+          <view wx:if="{{removable}}" class="u-tap" data-key="{{item.id}}" bindtap="onRemove">
             <text class="hz-icon hz-icon--trash-2"></text>
           </view>
         </view>

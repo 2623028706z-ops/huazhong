@@ -4,7 +4,6 @@ import {
   contract,
   copy,
   fieldsOf,
-  formatMoney,
   shanghaiDateOf,
   storeOrderCreateSchema,
   storeOrderUpdateSchema,
@@ -13,6 +12,7 @@ import {
 import { withQty, type CartLine } from '../../../../core/cart'
 import type { DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
+import { formTotalOf } from '../../../../core/form'
 import { isChanged, syncUnloadAlert } from '../../../../core/guard'
 import { lineCents, sumCents } from '../../../../core/money'
 import { newIdempotencyKey, request, type Result } from '../../../../core/request'
@@ -100,12 +100,18 @@ Page({
     this.lines = lines
     this.setData({
       rows: cartLinesOf(lines, this.data.isEdit),
-      amountRows: [
-        {
-          label: copy.screen.label.orderAmount,
-          value: formatMoney(sumCents(lines, (line) => lineCents(line.qty, line.priceCents))),
-        },
-      ],
+      amountRows:
+        lines.length > 1
+          ? [
+              {
+                label: copy.screen.label.total,
+                value: formTotalOf(
+                  sumCents(lines, (line) => lineCents(line.qty, line.priceCents)),
+                  lines,
+                ),
+              },
+            ]
+          : [],
     })
   },
   change(lines: CartLine[]) {

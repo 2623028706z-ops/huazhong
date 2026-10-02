@@ -188,7 +188,7 @@ export default tseslint.config(
     files: [
       'shared/src/config.ts',
       'shared/src/copy.ts',
-      'shared/src/copy-screen.ts',
+      'shared/src/copy-*.ts',
       'shared/src/labels.ts',
       'shared/src/errors.ts',
       'shared/src/format.ts',

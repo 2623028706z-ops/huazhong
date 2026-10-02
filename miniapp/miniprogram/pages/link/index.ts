@@ -7,11 +7,13 @@ import type { FailureView } from '../../core/failure-view'
 import { realtime } from '../../core/live'
 import { request } from '../../core/request'
 import { failureOf } from '../../core/session'
+import { viewOf } from '../../core/failure-view'
 
 const SHOP_URL = '/packages/store/pages/shop/index'
 const MY_URL = '/pages/my/index'
 // 同意隐私保护指引和手机号快速验证在一次点击里完成（同 M1）
 const PHONE_OPEN_TYPE = 'getPhoneNumber|agreePrivacyAuthorization'
+const INVITE_TITLE: string = copy.invite.storeTitle
 
 type Phase = 'checking' | 'invalid' | 'other' | 'login' | 'failure'
 
@@ -33,19 +35,33 @@ Page({
     remind: 0,
     openType: '',
     busy: false,
+    canView: false,
     error: '',
     texts: {
-      invite: copy.invite.storeTitle,
+      invite: INVITE_TITLE,
       button: copy.auth.loginButton,
       goMy: copy.invite.goMy,
+      view: copy.screen.action.viewSupply,
     },
   },
   token: '',
+  inviteId: '',
+  sig: '',
+  kind: '',
   onLoad(query: Record<string, string | undefined>) {
+    this.kind = query.t ?? ''
+    this.inviteId = query.id ?? ''
+    this.sig = query.sig ?? ''
     this.token = query.t === 'store' ? (query.token ?? '') : ''
+    if (this.kind === 'invite')
+      this.setData({ texts: { ...this.data.texts, invite: copy.finance.inviteShareTitle } })
     void this.check()
   },
   async check(): Promise<void> {
+    if (this.kind === 'invite') {
+      await this.checkInvite()
+      return
+    }
     if (!this.token) {
       this.setData({ phase: 'invalid', invalidDetail: copy.invite.invalid })
       return
@@ -59,6 +75,47 @@ Page({
       return
     }
     this.show(result.data)
+  },
+  async checkInvite() {
+    const result = await request(contract.resolveSupplierInvite, {
+      body: { id: this.inviteId, sig: this.sig },
+    })
+    if (result.ok) {
+      this.enterSupply(result.data.inviteId)
+      return
+    }
+    const view = viewOf(result.failure, 'load')
+    if (view.kind === 'login') {
+      this.setData({ phase: 'login' })
+      return
+    }
+    const failure = result.failure
+    if (failure.kind === 'server' && failure.message === copy.finance.inviteLinkExpired) {
+      const invite = await request(contract.supplierInvite, { params: { id: this.inviteId } })
+      this.setData({
+        phase: 'invalid',
+        invalidDetail: failure.message,
+        canView: invite.ok && invite.data.status === 'submitted',
+      })
+      return
+    }
+    if (
+      failure.kind === 'server' &&
+      (failure.code === 'BUSINESS_RULE' ||
+        failure.code === 'FORBIDDEN' ||
+        failure.code === 'NOT_FOUND')
+    ) {
+      this.setData({ phase: 'invalid', invalidDetail: failure.message })
+      return
+    }
+    this.setData({ phase: 'failure', failure: view })
+  },
+  enterSupply(id: string) {
+    realtime.start()
+    void wx.reLaunch({ url: `/packages/supplier/pages/supply/index?id=${id}` })
+  },
+  onViewSupply() {
+    this.enterSupply(this.inviteId)
   },
   show(invite: StoreInviteView) {
     if (invite.binding === 'self') {
@@ -89,12 +146,19 @@ Page({
     const code = event.detail
     if (!code) return
     this.setData({ busy: true, error: '' })
-    const result = await request(contract.useStoreInvite, {
-      params: { token: this.token },
-      body: { code },
-    })
+    const result =
+      this.kind === 'invite'
+        ? await request(contract.bindPhone, { body: { code } })
+        : await request(contract.useStoreInvite, {
+            params: { token: this.token },
+            body: { code },
+          })
     this.setData({ busy: false })
     if (result.ok) {
+      if (this.kind === 'invite') {
+        await this.checkInvite()
+        return
+      }
       enterShop()
       return
     }

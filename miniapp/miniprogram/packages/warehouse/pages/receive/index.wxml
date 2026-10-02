@@ -1,0 +1,2 @@
+<import src="/views/po-detail.wxml" />
+<template is="po-detail" data="{{title, kind, changed, loaded, failure, realtime, view, buttons, busy, cancelSheet, cancelRequired, error, fields, lines, lineViews, receiving, recvNote, reason, amount, sheet, sheetTitle, texts}}" />

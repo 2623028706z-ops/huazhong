@@ -7,6 +7,7 @@ Component({
     value: { type: Number, value: 0 },
     min: { type: Number, value: 0 },
     max: { type: Number, value: Number.MAX_SAFE_INTEGER },
+    error: { type: Boolean, value: false },
   },
   methods: {
     onChange(event: DetailEvent<{ value: number | string }>) {

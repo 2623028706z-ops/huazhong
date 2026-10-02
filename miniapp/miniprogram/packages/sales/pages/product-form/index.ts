@@ -2,6 +2,7 @@
 // 保存后回 X9
 import { contract, copy, type InventoryItem, type ProductItem } from '@huazhong/shared'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
+import { unplacedErrorOf } from '../../../../core/form'
 import type { FailureView } from '../../../../core/failure-view'
 import { isChanged, markChanged, syncUnloadAlert } from '../../../../core/guard'
 import { firstFailure, newIdempotencyKey, request, type Result } from '../../../../core/request'
@@ -144,8 +145,12 @@ Page({
     const bom = addMaterial(this.materials, this.data.form.bom, event.currentTarget.dataset.key)
     this.update({ bom }, 'bom')
   },
-  showFields(fields: Record<string, string>, message: string) {
-    this.setData({ fields, formError: message, saving: false })
+  showFields(fields: Record<string, string>) {
+    this.setData({
+      fields,
+      formError: unplacedErrorOf(fields, ['name', 'categoryId', 'unit', 'bom']),
+      saving: false,
+    })
   },
   async onSave(): Promise<void> {
     const product = this.product
@@ -153,7 +158,7 @@ Page({
     if (product) {
       const checked = checkUpdate(form, product.version)
       if (!checked.ok) {
-        this.showFields(checked.fields, Object.values(checked.fields)[0] ?? '')
+        this.showFields(checked.fields)
         return
       }
       this.setData({ saving: true })
@@ -163,7 +168,7 @@ Page({
     }
     const checked = checkCreate(form)
     if (!checked.ok) {
-      this.showFields(checked.fields, Object.values(checked.fields)[0] ?? '')
+      this.showFields(checked.fields)
       return
     }
     this.setData({ saving: true })
@@ -180,7 +185,7 @@ Page({
     }
     const view = failureOf(result.failure, 'submit')
     if (!view) return
-    if (view.kind === 'fields') this.showFields(view.fields, view.message)
+    if (view.kind === 'fields') this.showFields(view.fields)
     else if (view.kind === 'page') this.setData({ failure: view })
     else if (view.kind === 'stale') {
       this.product = view.latest as ProductItem

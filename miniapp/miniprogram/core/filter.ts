@@ -136,12 +136,17 @@ export interface StatusTab {
 }
 
 // 状态标签行：「全部」+ 各状态；数量来自列表接口的 counts（只含等待类）
-export function tabsOf(kind: string, codes: string[], counts: Record<string, number>): StatusTab[] {
+export function tabsOf(
+  kind: string,
+  codes: string[],
+  counts: Record<string, number>,
+  countAll = false,
+): StatusTab[] {
   const tabs: StatusTab[] = [{ code: '', text: copy.filter.all, count: 0 }]
   for (const code of codes) {
     const status = statusOf(kind, code)
     if (!status) continue
-    const count = status.tone === 'wait' ? (counts[code] ?? 0) : 0
+    const count = countAll || status.tone === 'wait' ? (counts[code] ?? 0) : 0
     tabs.push({ code, text: status.text, count })
   }
   return tabs
@@ -179,7 +184,10 @@ export function optionRowsOf(
   const word = keyword.trim()
   const all = { id: '', name: copy.filter.allOf(dimension.label) }
   const matched = dimension.options.filter((option) => option.name.includes(word))
-  return [all, ...matched].map((option) => ({ ...option, picked: option.id === pickedId }))
+  return [all, ...matched].map((option) => ({
+    ...option,
+    picked: option.id === pickedId,
+  }))
 }
 
 export function queryOf(value: FilterValue, today: string): FilterQuery {

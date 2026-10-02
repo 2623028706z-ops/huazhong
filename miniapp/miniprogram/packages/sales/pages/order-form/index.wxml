@@ -4,7 +4,7 @@
 <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
 <view wx:else class="u-list">
   <hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" />
-  <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+  <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <hz-error wx:if="{{formError}}" message="{{formError}}" />
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
   <block wx:else>
@@ -25,7 +25,7 @@
       <text class="u-section__title">{{texts.lines}}</text>
       <hz-line-item lines="{{lineViews}}" mode="price" removable min="{{1}}" bind:qty="onQty" bind:price="onPrice" bind:remove="onRemove" />
       <hz-add-button text="{{texts.add}}" bind:press="onOpenPick" />
-      <template is="info-card" data="{{rows: amountRows}}" />
+      <template wx:if="{{amountRows.length}}" is="info-card" data="{{rows: amountRows}}" />
     </view>
     <view wx:if="{{mode !== 'create'}}" class="u-card u-form-card">
       <hz-field label="{{texts.reason}}" type="textarea" value="{{form.reason}}" error="{{fields.reason}}" bind:change="onReason" />

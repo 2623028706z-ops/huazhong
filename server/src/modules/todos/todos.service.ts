@@ -4,12 +4,14 @@ import { Injectable } from '@nestjs/common'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import { FinanceService } from '../finance/finance.service.ts'
 import { SalesService } from '../sales/sales.service.ts'
+import { PurchaseService } from '../purchase/purchase.service.ts'
 
 @Injectable()
 export class TodosService {
   constructor(
     private readonly sales: SalesService,
     private readonly finance: FinanceService,
+    private readonly purchase: PurchaseService,
   ) {}
 
   todos(viewer: Viewer, key: TodoModule): Promise<OutputOf<typeof contract.moduleTodos>> {
@@ -20,7 +22,11 @@ export class TodosService {
       case 'shipping':
         return this.sales.shippingTodos(viewer)
       case 'finance':
-        return this.finance.prepaidTodos()
+        return this.finance.todos(viewer)
+      case 'purchase':
+        return this.purchase.purchaseTodos(viewer)
+      case 'warehouse':
+        return this.purchase.warehouseTodos(viewer)
     }
   }
 }

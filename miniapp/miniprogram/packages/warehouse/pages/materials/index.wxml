@@ -1,0 +1,21 @@
+<import src="/views/list.wxml" />
+<hz-navbar title="{{title}}" back />
+<view class="u-list">
+  <hz-filter-bar search-placeholder="{{texts.search}}" dimensions="{{dimensions}}" value="{{filter}}" bind:change="onFilter" />
+  <template is="list-state" data="{{failure,skeleton,loaded,rows,emptyObject}}" />
+  <template is="cards" data="{{rows,done,allLoaded}}" />
+</view>
+<hz-action-bar><hz-button wx:if="{{canManage}}" kind="secondary" text="{{texts.manage}}" bind:press="onCategories" /><hz-button wx:if="{{canCreate}}" text="{{texts.create}}" bind:press="onCreate" /></hz-action-bar>
+<hz-sheet id="form-sheet" show="{{sheet}}" title="{{sheetTitle}}" guard="{{changed}}" footer bind:close="onClose">
+  <view class="u-sheet-form">
+    <hz-error wx:if="{{error}}" message="{{error}}" />
+    <hz-field label="{{texts.code}}" value="{{form.code}}" error="{{fields.code}}" data-field="code" bind:change="onText" />
+    <hz-field label="{{texts.name}}" value="{{form.name}}" error="{{fields.name}}" data-field="name" bind:change="onText" />
+    <hz-field label="{{texts.unit}}" value="{{form.unit}}" error="{{fields.unit}}" data-field="unit" bind:change="onText" />
+    <hz-picker label="{{texts.category}}" value="{{form.categoryId}}" options="{{categories}}" error="{{fields.categoryId}}" bind:change="onCategory" />
+    <hz-switch label="{{texts.enabled}}" value="{{form.enabled}}" bind:change="onEnabled" />
+  </view>
+  <hz-button slot="footer" text="{{texts.save}}" loading="{{saving}}" bind:press="onSave" />
+</hz-sheet>
+<hz-category-sheet show="{{categorySheet}}" title="{{texts.manage}}" categories="{{categories}}" sortable="{{false}}" removable="{{false}}" error="{{categoryError}}" loading="{{categorySaving}}" bind:save="onSaveCategory" bind:close="onCloseCategories" />
+<hz-confirm id="hz-confirm" />

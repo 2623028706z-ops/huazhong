@@ -13,8 +13,51 @@ interface Entry {
 const SALES = '/packages/sales/pages'
 const SHIPPING = '/packages/shipping/pages'
 const FINANCE = '/packages/finance/pages'
+const PURCHASE = '/packages/purchase/pages'
+const WAREHOUSE = '/packages/warehouse/pages'
 
 export const entriesOf: Partial<Record<ModuleKey, Entry[]>> = {
+  purchase: [
+    {
+      key: 'demand',
+      icon: 'clipboard-list',
+      text: copy.screen.title.demand,
+      url: `${PURCHASE}/demand/index`,
+    },
+    {
+      key: 'orders',
+      icon: 'file-text',
+      text: copy.screen.title.purchaseOrders,
+      url: `${PURCHASE}/orders/index`,
+    },
+    {
+      key: 'invites',
+      icon: 'clipboard-pen',
+      text: copy.screen.title.invites,
+      url: `${PURCHASE}/invites/index`,
+    },
+    {
+      key: 'suppliers',
+      icon: 'users-round',
+      text: copy.screen.title.suppliers,
+      url: `${PURCHASE}/suppliers/index`,
+    },
+  ],
+  warehouse: [
+    {
+      key: 'pending',
+      icon: 'truck',
+      text: copy.screen.title.pendingReceive,
+      url: `${WAREHOUSE}/pending/index`,
+    },
+    { key: 'stock', icon: 'boxes', text: copy.screen.title.stock, url: `${WAREHOUSE}/stock/index` },
+    {
+      key: 'materials',
+      icon: 'flower-2',
+      text: copy.screen.title.materials,
+      url: `${WAREHOUSE}/materials/index`,
+    },
+  ],
   sales: [
     {
       key: 'orders',
@@ -49,6 +92,12 @@ export const entriesOf: Partial<Record<ModuleKey, Entry[]>> = {
   ],
   finance: [
     {
+      key: 'suppliers',
+      icon: 'notebook-text',
+      text: copy.screen.title.apSuppliers,
+      url: `${FINANCE}/suppliers/index`,
+    },
+    {
       key: 'customers',
       icon: 'notebook-text',
       text: copy.screen.title.arCustomers,
@@ -78,6 +127,16 @@ interface TodoSpec {
 }
 
 export const todoSpecs: Partial<Record<ModuleKey, TodoSpec>> = {
+  purchase: {
+    empty: copy.screen.empty.invites,
+    all: `${PURCHASE}/invites/index?status=pending`,
+    idle: null,
+  },
+  warehouse: {
+    empty: copy.screen.empty.purchaseOrders,
+    all: `${WAREHOUSE}/pending/index`,
+    idle: null,
+  },
   sales: {
     empty: copy.screen.empty.todos,
     all: `${SALES}/orders/index?status=pending_confirm`,
@@ -88,11 +147,11 @@ export const todoSpecs: Partial<Record<ModuleKey, TodoSpec>> = {
     all: `${SHIPPING}/list/index?status=to_ship`,
     idle: { text: copy.screen.action.shipRecords, url: `${SHIPPING}/list/index?status=shipped` },
   },
-  finance: { empty: copy.screen.empty.todos, all: `${FINANCE}/customers/index`, idle: null },
+  finance: { empty: copy.screen.empty.todos, all: `${FINANCE}/suppliers/index`, idle: null },
 }
 
-// 一条待办的卡片和点开去哪
-export function todoRowOf(item: TodoItem, key: ModuleKey) {
+type TodoOf<K extends TodoItem['kind']> = Extract<TodoItem, { kind: K }>
+function salesTodo(item: TodoOf<'order'> | TodoOf<'after'>, key: ModuleKey) {
   if (item.kind === 'order') {
     const url =
       key === 'shipping'
@@ -100,9 +159,59 @@ export function todoRowOf(item: TodoItem, key: ModuleKey) {
         : `${SALES}/order-detail/index?id=${item.order.id}`
     return { ...orderRowOf(item.order, false), statusKind: 'orderStatus', amountText: '', url }
   }
-  if (item.kind === 'after') {
-    const url = `${SALES}/after-detail/index?id=${item.after.id}`
-    return { ...afterRowOf(item.after, false), statusKind: 'afterStatus', tags: [], url }
+  return {
+    ...afterRowOf(item.after, false),
+    statusKind: 'afterStatus',
+    tags: [],
+    url: `${SALES}/after-detail/index?id=${item.after.id}`,
+  }
+}
+function purchaseTodo(item: TodoOf<'invite'> | TodoOf<'purchaseOrder'>) {
+  if (item.kind === 'invite') {
+    return {
+      id: item.invite.id,
+      date: item.invite.inviteDate,
+      status: item.invite.status,
+      statusKind: 'inviteStatus',
+      title: item.invite.supplierName,
+      total: '',
+      meta: item.invite.no,
+      amount: null,
+      amountText: '',
+      tags: [],
+      url: `${PURCHASE}/invites/index?id=${item.invite.id}`,
+    }
+  }
+  return {
+    id: item.purchaseOrder.id,
+    date: item.purchaseOrder.orderDate,
+    status: item.purchaseOrder.status,
+    statusKind: 'poStatus',
+    title: item.purchaseOrder.supplierName,
+    total: '',
+    meta: item.purchaseOrder.no,
+    amount: item.purchaseOrder.amountCents,
+    amountText: '',
+    tags: [],
+    url: `${WAREHOUSE}/receive/index?id=${item.purchaseOrder.id}`,
+  }
+}
+function financeTodo(item: TodoOf<'payable'> | TodoOf<'prepaid'>) {
+  if (item.kind === 'payable') {
+    const po = item.payable
+    return {
+      id: `payable-${po.id}`,
+      date: po.orderDate,
+      status: po.apStatus,
+      statusKind: 'apStatus',
+      title: po.supplierName,
+      total: '',
+      meta: po.no,
+      amount: po.unpaidCents,
+      amountText: '',
+      tags: [],
+      url: `${FINANCE}/payable/index?docType=po&id=${po.id}`,
+    }
   }
   return {
     id: `prepaid-${item.customerId}`,
@@ -117,4 +226,10 @@ export function todoRowOf(item: TodoItem, key: ModuleKey) {
     tags: [],
     url: `${FINANCE}/customer/index?id=${item.customerId}`,
   }
+}
+// 一条待办的卡片和点开去哪
+export function todoRowOf(item: TodoItem, key: ModuleKey) {
+  if (item.kind === 'order' || item.kind === 'after') return salesTodo(item, key)
+  if (item.kind === 'invite' || item.kind === 'purchaseOrder') return purchaseTodo(item)
+  return financeTodo(item)
 }

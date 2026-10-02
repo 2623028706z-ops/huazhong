@@ -16,6 +16,8 @@ Component({
     categories: { type: Array, value: [] as Category[] },
     error: { type: String, value: '' },
     loading: { type: Boolean, value: false },
+    sortable: { type: Boolean, value: true },
+    removable: { type: Boolean, value: true },
   },
   data: {
     editing: false,

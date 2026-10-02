@@ -10,7 +10,7 @@ import {
 } from '@huazhong/shared'
 import type { DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
-import { checkedOf } from '../../../../core/form'
+import { checkedOf, unplacedErrorOf } from '../../../../core/form'
 import { syncUnloadAlert } from '../../../../core/guard'
 import { newIdempotencyKey, request } from '../../../../core/request'
 import { failureOf, messageOf } from '../../../../core/session'
@@ -105,7 +105,7 @@ Page({
       contract.createMethod.body.safeParse({ kind, name: this.data.newName }),
     )
     if (!checked.ok) {
-      this.setData({ fields: checked.fields, formError: Object.values(checked.fields)[0] ?? '' })
+      this.setData({ fields: checked.fields, formError: unplacedErrorOf(checked.fields, ['name']) })
       return
     }
     this.setData({ saving: true })
@@ -126,7 +126,7 @@ Page({
       this.onCloseAdd()
       this.setData({ failure: view })
     } else if (view?.kind === 'fields') {
-      this.setData({ fields: view.fields, formError: view.message })
+      this.setData({ fields: view.fields, formError: unplacedErrorOf(view.fields, ['name']) })
     } else if (view) this.setData({ formError: messageOf(view) })
   },
   async onEnabled(event: KindEvent<boolean>): Promise<void> {

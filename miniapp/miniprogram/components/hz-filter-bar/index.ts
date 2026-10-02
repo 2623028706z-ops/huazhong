@@ -26,6 +26,7 @@ Component({
     statusKind: { type: String, value: '' },
     statuses: { type: Array, value: [] as string[] },
     counts: { type: Object, value: {} },
+    countAll: { type: Boolean, value: false },
     // 有值才出搜索框
     searchPlaceholder: { type: String, value: '' },
     // 有值才有日期筛选，例如「下单日期」
@@ -58,12 +59,13 @@ Component({
     toLabel: copy.filter.dateTo,
   },
   observers: {
-    'statusKind, statuses, counts'(
+    'statusKind, statuses, counts, countAll'(
       kind: string,
       statuses: string[],
       counts: Record<string, number>,
+      countAll: boolean,
     ) {
-      this.setData({ tabs: tabsOf(kind, statuses, counts) })
+      this.setData({ tabs: tabsOf(kind, statuses, counts, countAll) })
     },
     'value, dimensions, dateLabel'() {
       this.refresh()

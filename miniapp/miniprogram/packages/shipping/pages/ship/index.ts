@@ -1,17 +1,11 @@
 // H3 发货（06 章 H3）：actions 含 ship 时是表单：状态区 → 客户门店、出货日期、备注 → 明细（订单数量、实发，
 // 默认等于订单数量）→ 发货金额 → 发货备注 → 变更记录。出货日期还没到时按钮禁用、写 disabledReason，实发和备注不能填。
 // 否则只读。确认后回进来的列表
-import {
-  contract,
-  copy,
-  formatMoney,
-  orderShipSchema,
-  fieldsOf,
-  type OrderDetail,
-} from '@huazhong/shared'
+import { contract, copy, orderShipSchema, fieldsOf, type OrderDetail } from '@huazhong/shared'
 import { canDo, findAction } from '../../../../core/actions'
 import type { DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
+import { formTotalOf } from '../../../../core/form'
 import { markChanged, syncUnloadAlert } from '../../../../core/guard'
 import { unwatch, watchNewer } from '../../../../core/live'
 import { lineCents, sumCents } from '../../../../core/money'
@@ -45,10 +39,8 @@ function lineViewsOf(lines: readonly ShipLine[]) {
   return lines.map((line) => ({
     key: line.id,
     name: line.name,
-    tags:
-      line.shippedQty < line.qty
-        ? [{ text: copy.screen.tag.short, warn: true }]
-        : [{ text: `${copy.screen.label.orderQty} ${line.qty}`, warn: false }],
+    tags: line.shippedQty < line.qty ? [{ text: copy.screen.tag.short, warn: true }] : [],
+    meta: `${copy.screen.label.orderQty} ${line.qty} ${line.unit}`,
     amountCents: lineCents(line.shippedQty, line.priceCents),
     qty: line.shippedQty,
     unit: line.unit,
@@ -147,7 +139,18 @@ Page({
     this.setData({
       lines,
       lineViews: lineViewsOf(lines),
-      amountRows: [{ label: copy.screen.label.shipAmount, value: formatMoney(total) }],
+      amountRows:
+        lines.length > 1
+          ? [
+              {
+                label: copy.screen.label.total,
+                value: formTotalOf(
+                  total,
+                  lines.map((line) => ({ unit: line.unit, qty: line.shippedQty })),
+                ),
+              },
+            ]
+          : [],
       formError: '',
     })
     markChanged(this, changed)

@@ -4,8 +4,8 @@
   <hz-brand lead="{{lead}}" person="{{person}}" />
   <view class="u-home__body">
     <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
-    <hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
-    <hz-hub wx:else hero="{{hero}}" minis="{{minis}}" />
+    <hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
+    <hz-hub wx:else hero="{{hero}}" minis="{{minis}}" bind:select="onSelect" />
   </view>
 </view>
 <hz-tabbar tabs="{{tabs}}" current="home" />

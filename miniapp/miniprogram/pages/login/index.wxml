@@ -3,11 +3,11 @@
 <view class="hz-login">
   <image class="hz-login__logo" src="/assets/logo.png" mode="heightFix" />
   <view wx:if="{{phase === 'failure'}}" class="hz-login__panel">
-    <hz-state kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
+    <hz-state id="login-state" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
   </view>
   <view wx:elif="{{phase === 'login'}}" class="hz-login__panel">
-    <hz-privacy agreed="{{agreed}}" remind="{{remind}}" bind:toggle="onToggleAgree" />
+    <hz-privacy id="login-privacy" agreed="{{agreed}}" remind="{{remind}}" bind:toggle="onToggleAgree" />
     <hz-error wx:if="{{error}}" message="{{error}}" request-id="{{requestId}}" />
-    <hz-button text="{{texts.button}}" open-type="{{openType}}" loading="{{busy}}" bind:press="onPress" bind:phone="onPhone" />
+    <hz-button id="login-button" text="{{texts.button}}" open-type="{{openType}}" loading="{{busy}}" bind:press="onPress" bind:phone="onPhone" />
   </view>
 </view>

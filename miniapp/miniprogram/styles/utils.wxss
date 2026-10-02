@@ -219,6 +219,13 @@
   color: var(--hz-muted);
 }
 
+.u-sheet-buttons {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: var(--hz-line-gap);
+}
+
 /* 小标题：弹层里的「下单日期」、组件总览的分组说明 */
 .u-caption {
   margin-bottom: 8px;

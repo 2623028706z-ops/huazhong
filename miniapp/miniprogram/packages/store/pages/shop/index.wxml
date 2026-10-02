@@ -3,7 +3,7 @@
 <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
 <block wx:else>
   <view class="hz-shop__top">
-    <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+    <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
     <hz-error wx:if="{{catalogError}}" message="{{catalogError}}" />
     <view class="hz-shop__head">
       <text class="u-info__title">{{head}}</text>

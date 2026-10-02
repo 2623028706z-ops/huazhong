@@ -25,7 +25,7 @@ function likePattern(text: string): string {
   return `%${text.replace(/[\\%_]/g, (char) => `\\${char}`)}%`
 }
 
-function searchFilter(q: string | undefined): SQL | undefined {
+export function materialSearch(q: string | undefined): SQL | undefined {
   if (!q) return undefined
   const pattern = likePattern(q)
   return or(ilike(materials.name, pattern), ilike(materials.code, pattern))
@@ -61,7 +61,7 @@ export class WarehouseService {
       .innerJoin(materialCategories, eq(materialCategories.id, materials.categoryId))
       .where(
         and(
-          searchFilter(query.q),
+          materialSearch(query.q),
           query.categoryId === undefined
             ? undefined
             : eq(materials.categoryId, Number(query.categoryId)),

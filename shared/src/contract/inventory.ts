@@ -37,7 +37,7 @@ export const listInventory = {
   errors: [],
 } as const satisfies Endpoint
 
-// 写入（新增、改名）在阶段 5 加，只给仓库
+// 写入（新增、改名）在阶段 4 加，只给仓库
 export const listMaterialCategories = {
   method: 'GET',
   path: '/material-categories',

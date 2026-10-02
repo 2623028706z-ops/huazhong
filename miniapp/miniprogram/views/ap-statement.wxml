@@ -1,0 +1,14 @@
+<import src="list.wxml" />
+<import src="purchase.wxml" />
+<template name="ap-statement">
+  <hz-navbar title="{{title}}" back />
+  <view class="u-list">
+    <hz-filter-bar status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" date-label="{{dateLabel}}" value="{{filter}}" bind:change="onFilter" />
+    <hz-statement wx:if="{{loaded}}" cells="{{cells}}" />
+    <template is="list-state" data="{{failure,skeleton,loaded,rows,emptyObject}}" />
+    <template is="cards" data="{{rows,statusKind,done,allLoaded}}" />
+  </view>
+  <hz-sheet show="{{sheet}}" title="{{title}}" bind:close="onCloseSheet">
+    <view class="u-sheet-form u-sheet-plain"><hz-error wx:if="{{sheetError}}" message="{{sheetError}}" /><hz-skeleton wx:elif="{{!view}}" type="detail" /><template wx:else is="po-body" data="{{...view}}" /></view>
+  </hz-sheet>
+</template>

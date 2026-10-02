@@ -7,6 +7,7 @@ import {
   type Allocation,
   type ReceiptCard,
   type ReceiptDetail,
+  type PaymentDetail,
 } from '@huazhong/shared'
 import { findAction } from '../../core/actions'
 import { rowsOf } from '../../views/order'
@@ -53,7 +54,7 @@ export function receiptViewOf(receipt: ReceiptDetail) {
 }
 
 // 收付款记录卡片：日期 + 状态；客户 + 方式；单号 + 金额
-export function receiptRowOf(receipt: ReceiptCard) {
+function receiptRowOf(receipt: ReceiptCard) {
   return {
     id: receipt.id,
     date: receipt.receiptDate,
@@ -62,6 +63,22 @@ export function receiptRowOf(receipt: ReceiptCard) {
     total: receipt.methodName,
     meta: receipt.no,
     amount: receipt.amountCents,
+    amountText: '',
+    tags: [],
+  }
+}
+
+export function recordRowOf(record: ReceiptCard | PaymentDetail) {
+  if ('receiptDate' in record) return { ...receiptRowOf(record), kind: 'receipt' as const }
+  return {
+    kind: 'payment' as const,
+    id: record.id,
+    date: record.payDate,
+    status: record.status,
+    title: record.supplierName,
+    total: record.methodName,
+    meta: record.no,
+    amount: record.amountCents,
     amountText: '',
     tags: [],
   }

@@ -2,6 +2,7 @@
 // 提交后进 S7，并打开这张售后的详情弹层
 import { contract, copy, type OrderDetail } from '@huazhong/shared'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
+import { unplacedErrorOf } from '../../../../core/form'
 import type { FailureView } from '../../../../core/failure-view'
 import { syncUnloadAlert } from '../../../../core/guard'
 import { newIdempotencyKey, request } from '../../../../core/request'
@@ -121,13 +122,21 @@ Page({
     this.setData({ pickSheet: false })
     if (line) this.setLines([...this.data.lines, formLineOf(line)])
   },
-  showFields(fields: Record<string, string>, message: string) {
-    this.setData({ lineErrors: lineErrorsOf(fields, this.data.lines.length), formError: message })
+  showFields(fields: Record<string, string>) {
+    this.setData({
+      lineErrors: lineErrorsOf(fields, this.data.lines.length),
+      formError: unplacedErrorOf(fields, [
+        'lines.*.qty',
+        'lines.*.reason',
+        'lines.*.description',
+        'lines.*.imageFileIds',
+      ]),
+    })
   },
   async onSubmit(): Promise<void> {
     const checked = checkForm(this.orderId, this.data.lines)
     if (!checked.ok) {
-      this.showFields(checked.fields, Object.values(checked.fields)[0] ?? '')
+      this.showFields(checked.fields)
       return
     }
     this.setData({ saving: true, formError: '' })
@@ -140,7 +149,7 @@ Page({
       return
     }
     const view = failureOf(result.failure, 'submit')
-    if (view?.kind === 'fields') this.showFields(view.fields, view.message)
+    if (view?.kind === 'fields') this.showFields(view.fields)
     else if (view?.kind === 'page') this.setData({ failure: view })
     else if (view) this.setData({ formError: view.message })
   },

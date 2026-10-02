@@ -8,5 +8,5 @@
     "customConditions": ["source"],
     "types": ["node"]
   },
-  "include": ["src", "db", "test", "vitest.config.ts", "drizzle.config.ts"]
+  "include": ["src", "db", "test", "vitest.config.ts", "vitest.ui.config.ts", "drizzle.config.ts"]
 }

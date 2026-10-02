@@ -16,8 +16,7 @@ export type FailureView =
       requestId?: string | null
     }
   // 页面或弹层里的 hz-error；INTERNAL 另显示请求编号
-  | { kind: 'inline'; message: string; requestId: string | null }
-  // 按字段标红，顶部 hz-error 写第一条
+  | { kind: 'inline'; message: string; requestId: string | null; retry?: boolean }
   | { kind: 'fields'; message: string; fields: Record<string, string> }
   // 用 latest 刷新成最新内容，并写后端给的状态句
   | { kind: 'stale'; message: string; latest: unknown }
@@ -33,13 +32,13 @@ const serverViews: Record<ErrorCode, (failure: ServerFailure) => FailureView> = 
   VALIDATION_FAILED: ({ message, fields }) => ({ kind: 'fields', message, fields: fields ?? {} }),
   STALE: ({ message, latest }) => ({ kind: 'stale', message, latest }),
   BUSINESS_RULE: ({ message }) => ({ kind: 'inline', message, requestId: null }),
-  INTERNAL: ({ message, requestId }) => ({ kind: 'inline', message, requestId }),
+  INTERNAL: ({ message, requestId }) => ({ kind: 'inline', message, requestId, retry: true }),
 }
 
 function networkView(phase: Phase): FailureView {
   if (phase === 'load') return { kind: 'page', state: 'network', message: copy.network.loadFailed }
   const message = phase === 'refresh' ? copy.network.refreshFailed : copy.network.submitFailed
-  return { kind: 'inline', message, requestId: null }
+  return { kind: 'inline', message, requestId: null, retry: true }
 }
 
 export function viewOf(failure: Failure, phase: Phase): FailureView {
