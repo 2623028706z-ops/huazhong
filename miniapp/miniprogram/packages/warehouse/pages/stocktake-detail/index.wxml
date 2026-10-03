@@ -1,0 +1,3 @@
+<import src="/views/detail.wxml" />
+<hz-navbar title="{{title}}" back />
+<view class="u-list"><hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" /><hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" /><hz-skeleton wx:if="{{!loaded}}" type="detail" /><block wx:else><template is="info" data="{{...info}}" /><view class="u-section"><hz-line-item lines="{{lines}}" quantity-only /></view><view wx:if="{{reason}}" class="u-card u-info"><text class="u-info__meta">{{texts.diffReason}}</text><text>{{reason}}</text></view></block></view>

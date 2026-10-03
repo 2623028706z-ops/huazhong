@@ -90,8 +90,8 @@ export class FinanceController {
   }
 
   @Route(contract.listMethods)
-  listMethods(@Input() input: In<'listMethods'>): Promise<OutputOf<typeof contract.listMethods>> {
-    return this.methods.list(input.query.kind)
+  listMethods(): Promise<OutputOf<typeof contract.listMethods>> {
+    return this.methods.list()
   }
 
   @Route(contract.createMethod)

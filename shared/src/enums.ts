@@ -40,10 +40,11 @@ export const moveTypes = [
   'loss',
   'check_gain',
   'check_loss',
+  // 阶段 5 追加：作废已收货采购单（enum 只能在末尾追加，04 章第 1 节）
+  'po_void',
 ] as const
 export const accountTypes = ['admin', 'staff', 'store', 'supplier'] as const
 export const moduleKeys = ['sales', 'shipping', 'purchase', 'warehouse', 'finance'] as const
-export const methodKinds = ['receive', 'pay'] as const
 export const fileStatuses = ['pending', 'ok', 'rejected'] as const
 export const filePurposes = ['after_image', 'product_image', 'loss_image'] as const
 // 只有这些模块有待办接口（采购、仓库的待办在阶段 4、5 加）
@@ -76,9 +77,10 @@ export type PayStatus = (typeof payStatuses)[number]
 export type RecordStatus = (typeof recordStatuses)[number]
 export type AllocKind = (typeof allocKinds)[number]
 export type AllocationStatus = (typeof allocationStatuses)[number]
-export type MethodKind = (typeof methodKinds)[number]
 export type FilePurpose = (typeof filePurposes)[number]
 export type TodoModule = (typeof todoModules)[number]
 export type AccountType = (typeof accountTypes)[number]
 export type ModuleKey = (typeof moduleKeys)[number]
 export type DocPrefix = (typeof docPrefixes)[number]
+export type MoveType = (typeof moveTypes)[number]
+export type WhDocKind = (typeof whDocKinds)[number]

@@ -63,7 +63,6 @@
 | `move_type` | `po_in` 采购入库、`po_return` 采购退货、`po_void` 采购单作废、`manual_in` 手工入库、`in_void` 入库作废、`manual_out` 手工出库、`out_void` 出库作废、`loss` 报损、`loss_void` 报损作废、`check_gain` 盘点盘盈、`check_loss` 盘点盘亏 |
 | `account_type` | `admin` 管理员、`staff` 员工、`store` 门店、`supplier` 供应商 |
 | `module_key` | `sales` 销售、`shipping` 发货、`purchase` 采购、`warehouse` 仓库、`finance` 财务 |
-| `method_kind` | `receive` 收款方式、`pay` 付款方式 |
 | `file_status` | `pending` 待检测、`ok` 通过、`rejected` 不通过 |
 
 算出来、不存库的状态（接口里以英文码返回，中文名同样在 `shared`）：
@@ -471,7 +470,7 @@
 
 | 表 | 字段（类型与约束） | 说明 | 原型字段 |
 |---|---|---|---|
-| `payment_methods` | `kind method_kind NOT NULL`、`name TEXT NOT NULL`、`enabled`、`sort` | 收款方式、付款方式分两份；唯一 `(kind, name)`；每份至少一种启用（服务层校验） | `methods.receive/pay` |
+| `payment_methods` | `name TEXT NOT NULL`、`enabled`、`sort` | 收付款方式一份列表，收款、付款、退款通用；唯一 `name`；至少一种启用（服务层校验）。2026-10-03 确认：收付款方式合并成一份，去掉 `kind` 列和 `method_kind` 枚举，迁移 0009 先把同名行合并（留 id 最小的行，任一启用则启用，顺序取最小）再加唯一约束 | `methods.receive/pay` |
 
 ### 7.1 `receipts` 收款（有版本）
 
@@ -481,7 +480,7 @@
 | receipt_date | `DATE NOT NULL` | 不晚于今天（服务层） | `date` |
 | customer_id | `→ customers.id NOT NULL` | 按客户登记 | `customer` |
 | amount_cents | `INTEGER NOT NULL CHECK (amount_cents > 0)` | | `amount` |
-| method_name | `TEXT NOT NULL` | 快照；登记时必须是启用的收款方式 | `method` |
+| method_name | `TEXT NOT NULL` | 快照；登记时必须是启用的收付款方式 | `method` |
 | note | `TEXT NOT NULL DEFAULT ''` | | `note` |
 | status | `record_status NOT NULL DEFAULT 'valid'` | | `status` |
 | void_reason / voided_by / voided_at | `NULL` | `CHECK (status <> 'voided' OR void_reason IS NOT NULL)` | `voidReason`、`voidAt` |
@@ -546,7 +545,7 @@
 | payment_id | `→ payments.id NULL` | 预付退款：从哪笔付款退 |
 | refund_date | `DATE NOT NULL` | 不晚于今天（服务层） |
 | amount_cents | `INTEGER NOT NULL CHECK (amount_cents > 0)` | 不超过登记时这笔的预收、预付（服务层，锁住这笔收付款） |
-| method_name / note | `TEXT` | 快照；预收退款用付款方式，预付退款用收款方式 |
+| method_name / note | `TEXT` | 快照；登记时必须是启用的收付款方式（2026-10-03 确认：收付款方式合并成一份） |
 | status | `record_status NOT NULL DEFAULT 'valid'` | |
 | void_reason / voided_by / voided_at | `NULL` | |
 

@@ -4,7 +4,7 @@ import { type refunds, type paymentAllocations } from '../../db/schema/index.ts'
 import type { Viewer } from './domain/viewer.ts'
 import { found } from './scope.ts'
 import { actor, actors, ownActions } from './ledger.ts'
-import { type loadPaymentLedger } from './payment-ledger.ts'
+import { allocationKey, type loadPaymentLedger } from './payment-ledger.ts'
 export async function refundView(
   executor: Db | Tx,
   row: typeof refunds.$inferSelect,
@@ -66,6 +66,6 @@ export async function paymentHistory(
     paymentNo: ledger.money.find((money) => money.id === row.paymentId)?.no ?? '',
     docType: row.poId === null ? ('wh' as const) : ('po' as const),
     docId: String(row.poId ?? row.whDocId),
-    docNo: ledger.docs.find((doc) => doc.id === row.poId)?.no ?? '',
+    docNo: ledger.docNo(allocationKey(row)),
   }))
 }

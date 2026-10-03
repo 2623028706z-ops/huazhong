@@ -1,0 +1,19 @@
+<import src="/views/pick.wxml" />
+<hz-navbar title="{{title}}" back guard="{{changed}}" />
+<view class="u-list">
+  <hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" />
+  <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+  <hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
+  <hz-error wx:if="{{formError}}" message="{{formError}}" />
+  <hz-skeleton wx:if="{{!loaded}}" type="form" />
+  <block wx:else>
+    <view wx:if="{{kind === 'in'}}" class="u-card u-form-card"><hz-picker id="doc-supplier" label="{{texts.supplier}}" options="{{supplierOptions}}" value="{{form.supplierId}}" error="{{fields.supplierId}}" bind:change="onSupplier" /></view>
+    <view wx:if="{{kind === 'out'}}" class="u-card u-form-card"><hz-picker id="doc-category" label="{{texts.outCategory}}" options="{{categoryOptions}}" value="{{form.outCategoryId}}" error="{{fields.outCategoryId}}" bind:change="onCategory" /><hz-button kind="text" text="{{texts.manage}}" bind:press="onManageCategories" /></view>
+    <view class="u-section"><text class="u-section__title">{{texts.materials}}</text><hz-line-item lines="{{lines}}" mode="price" quantity-only="{{kind !== 'in'}}" min="1" removable bind:qty="onQty" bind:price="onPrice" bind:remove="onRemove" /><hz-add-button id="add-material" text="{{texts.add}}" bind:press="onOpenPick" /><text wx:if="{{fields.lines}}" class="u-field__error">{{fields.lines}}</text></view>
+    <view class="u-card u-form-card"><view wx:if="{{kind === 'in' && lines.length > 1}}" class="u-sheet-row"><text class="u-serif-amount">{{amount}}</text></view><hz-field id="doc-reason" label="{{kind === 'loss' ? texts.lossReason : texts.reason}}" value="{{form.reason}}" type="textarea" error="{{fields.reason}}" bind:change="onReason" /></view>
+    <view wx:if="{{kind === 'loss'}}" class="u-section"><text class="u-section__title">{{texts.images}}</text><hz-upload files="{{form.images}}" bind:add="onAddImages" bind:remove="onRemoveImage" /><text wx:if="{{fields.imageFileIds}}" class="u-field__error">{{fields.imageFileIds}}</text></view>
+  </block>
+</view>
+<hz-action-bar wx:if="{{loaded}}"><hz-button text="{{submitText}}" loading="{{saving || uploading}}" bind:press="onSubmit" /></hz-action-bar>
+<template is="pick-sheet" data="{{show:pickSheet,title:texts.pick,picks,empty:texts.noPick,error:pickError}}" />
+<hz-confirm id="hz-confirm" />

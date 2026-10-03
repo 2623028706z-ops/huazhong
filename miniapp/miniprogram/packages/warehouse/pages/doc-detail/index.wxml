@@ -1,0 +1,10 @@
+<import src="/views/stock.wxml" />
+<import src="/views/detail.wxml" />
+<hz-navbar title="{{title}}" back guard="{{changed}}" />
+<view class="u-list"><hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" /><hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" /><hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" /><hz-skeleton wx:if="{{!loaded}}" type="detail" /><template wx:elif="{{view}}" is="stock-body" data="{{...view}}" /></view>
+<template is="buttons" data="{{buttons}}" />
+<hz-sheet show="{{!!sheet}}" title="{{sheetTitle}}" footer bind:close="onCloseSheet">
+  <view class="u-sheet-form u-sheet-plain"><hz-error wx:if="{{error}}" message="{{error}}" /><hz-line-item wx:if="{{sheet === 'reprice'}}" lines="{{lines}}" mode="price" quantity-readonly bind:price="onPrice" /><hz-field label="{{sheet === 'reprice' ? texts.repriceReason : texts.reason}}" type="textarea" value="{{form.reason}}" error="{{fields.reason}}" bind:change="onReason" /></view>
+  <hz-button slot="footer" text="{{confirmText}}" loading="{{saving}}" bind:press="onSave" />
+</hz-sheet>
+<hz-confirm id="hz-confirm" />

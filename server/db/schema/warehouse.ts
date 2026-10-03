@@ -1,5 +1,4 @@
-// 花材分类、花材、库存批次（04 章第 6.1、6.2 节）。阶段 2 为库存查询提前建（08 章），
-// 批次的来源单据列（source_type、source_id）在阶段 4、5 有了入库单据再加
+// 花材分类、花材、库存批次、出入库流水、手工出入库单、盘点（04 章第 6 节）
 import { sql } from 'drizzle-orm'
 import {
   bigint,
@@ -8,18 +7,20 @@ import {
   date,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   unique,
 } from 'drizzle-orm/pg-core'
 import { accountRef, commonColumns, timestamptz, versionColumn } from './columns.ts'
-import { moveType, whDocKind, whDocStatus } from './enums.ts'
+import { moveType, stocktakeStatus, whDocKind, whDocStatus } from './enums.ts'
 import { suppliers } from './org.ts'
 import { files } from './files.ts'
 
 export const outCategories = pgTable('out_categories', {
   ...commonColumns(),
   name: text().notNull().unique(),
+  enabled: boolean().notNull().default(true),
   sort: integer().notNull().default(0),
 })
 export const whDocs = pgTable(
@@ -53,6 +54,7 @@ export const whDocs = pgTable(
       sql`${table.status} <> 'voided' OR ${table.voidReason} IS NOT NULL`,
     ),
     index('wh_docs_kind_date').on(table.kind, table.docDate.desc()),
+    index('wh_docs_out_category').on(table.kind, table.outCategoryId, table.docDate.desc()),
     index('wh_docs_supplier').on(table.kind, table.supplierId, table.status),
   ],
 )
@@ -131,7 +133,7 @@ export const stockBatches = pgTable(
     check('stock_batches_left_range', sql`${t.leftQty} >= 0 AND ${t.leftQty} <= ${t.qty}`),
     check(
       'stock_batches_source_link',
-      sql`(${t.sourceType} = 'seed' AND ${t.sourceId} IS NULL) OR (${t.sourceType} = 'po' AND ${t.sourceId} IS NOT NULL)`,
+      sql`(${t.sourceType} = 'seed' AND ${t.sourceId} IS NULL) OR (${t.sourceType} IN ('po', 'wh', 'stocktake') AND ${t.sourceId} IS NOT NULL)`,
     ),
     index('stock_batches_fifo')
       .on(t.materialId, t.inDate, t.id)
@@ -166,5 +168,38 @@ export const stockMoves = pgTable(
       'stock_moves_qty_direction',
       sql`(${t.type} IN ('po_in', 'manual_in', 'check_gain', 'out_void', 'loss_void')) = (${t.qty} > 0) AND ${t.qty} <> 0`,
     ),
+  ],
+)
+
+export const stocktakes = pgTable('stocktakes', {
+  ...commonColumns(),
+  no: text().notNull().unique(),
+  checkDate: date({ mode: 'string' }).notNull(),
+  status: stocktakeStatus().notNull().default('done'),
+  // 盘点时选的花材分类名称快照
+  categories: jsonb().$type<string[]>().notNull(),
+  reason: text().notNull().default(''),
+})
+export const stocktakeLines = pgTable(
+  'stocktake_lines',
+  {
+    ...commonColumns(),
+    stocktakeId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => stocktakes.id, { onDelete: 'cascade' }),
+    materialId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => materials.id, { onDelete: 'restrict' }),
+    name: text().notNull(),
+    unit: text().notNull(),
+    bookQty: integer().notNull(),
+    actualQty: integer().notNull(),
+    diffQty: integer().generatedAlwaysAs(sql`actual_qty - book_qty`),
+    sort: integer().notNull(),
+  },
+  (t) => [
+    unique().on(t.stocktakeId, t.materialId),
+    check('stocktake_lines_book', sql`${t.bookQty} >= 0`),
+    check('stocktake_lines_actual', sql`${t.actualQty} >= 0`),
   ],
 )

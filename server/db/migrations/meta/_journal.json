@@ -57,6 +57,20 @@
       "when": 1790961544286,
       "tag": "0007_lively_brood",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790972497910,
+      "tag": "0008_stage5_warehouse",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790972933703,
+      "tag": "0009_merge_payment_methods",
+      "breakpoints": true
     }
   ]
 }

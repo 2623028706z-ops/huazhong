@@ -31,17 +31,8 @@ export class RefundService {
     const [method] = await ctx.tx
       .select()
       .from(paymentMethods)
-      .where(
-        and(
-          eq(paymentMethods.kind, input.kind === 'receipt' ? 'receive' : 'pay'),
-          eq(paymentMethods.name, input.methodName),
-          eq(paymentMethods.enabled, true),
-        ),
-      )
-    if (!method)
-      throw appError.businessRule(
-        input.kind === 'receipt' ? copy.finance.methodDisabled : copy.finance.paymentMethodDisabled,
-      )
+      .where(and(eq(paymentMethods.name, input.methodName), eq(paymentMethods.enabled, true)))
+    if (!method) throw appError.businessRule(copy.finance.methodDisabled)
   }
   create(
     viewer: Viewer,

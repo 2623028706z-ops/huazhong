@@ -60,7 +60,7 @@ describe('K06: actual empty-database migrations and committed enum boundaries', 
       await runMigrations(createDb(pool))
       const journal = (await pool.query('SELECT * FROM drizzle.__drizzle_migrations ORDER BY id'))
         .rows
-      expect(journal).toHaveLength(8)
+      expect(journal).toHaveLength(10)
       const types = await pool.query<{ enumlabel: string }>(
         "SELECT enumlabel FROM pg_enum JOIN pg_type ON pg_type.oid=enumtypid WHERE typname='move_type' ORDER BY enumsortorder",
       )
@@ -110,7 +110,32 @@ describe('K06: actual empty-database migrations and committed enum boundaries', 
         await observer.end()
       }
       await runMigrations(createDb(pool))
-      expect((await pool.query('SELECT * FROM drizzle.__drizzle_migrations')).rows).toHaveLength(8)
+      expect((await pool.query('SELECT * FROM drizzle.__drizzle_migrations')).rows).toHaveLength(10)
+    })
+  })
+
+  it('0009 merges same-name receive/pay methods into one row before the unique name constraint', async () => {
+    await withEmptyDatabase(async (pool) => {
+      await runMigrations(createDb(pool), 8)
+      await pool.query(
+        "INSERT INTO accounts (id,created_by,type,name,phone) OVERRIDING SYSTEM VALUE VALUES (1,1,'admin','管理员','13700000001')",
+      )
+      await pool.query(`INSERT INTO payment_methods (kind,name,enabled,sort,created_by) VALUES
+        ('receive','微信',false,1,1),('pay','微信',true,3,1),
+        ('receive','现金',false,0,1),('pay','现金',false,2,1),
+        ('pay','转账',true,4,1)`)
+      await runMigrations(createDb(pool))
+      const rows = await pool.query<{ name: string; enabled: boolean; sort: number }>(
+        'SELECT name,enabled,sort FROM payment_methods ORDER BY id',
+      )
+      expect(rows.rows).toEqual([
+        { name: '微信', enabled: true, sort: 1 },
+        { name: '现金', enabled: false, sort: 0 },
+        { name: '转账', enabled: true, sort: 4 },
+      ])
+      await expect(
+        pool.query("INSERT INTO payment_methods (name,created_by) VALUES ('微信',1)"),
+      ).rejects.toMatchObject({ code: '23505', constraint: 'payment_methods_name_unique' })
     })
   })
 })

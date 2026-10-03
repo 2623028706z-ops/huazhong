@@ -9,3 +9,4 @@
     <view class="u-section"><text class="u-section__title">{{texts.batches}}</text><view class="u-card u-info"><view wx:for="{{batches}}" wx:key="id" class="u-sheet-row"><text>{{item.date}}</text><text>{{item.qty}}</text></view></view></view>
   </block>
 </view>
+<template is="buttons" data="{{buttons}}" />

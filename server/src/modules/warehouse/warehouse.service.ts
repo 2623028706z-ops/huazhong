@@ -7,7 +7,10 @@ import {
 } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
 import { and, asc, eq, ilike, or, sql, type SQL } from 'drizzle-orm'
-import type { Db } from '../../../db/client.ts'
+import type { Db, Tx } from '../../../db/client.ts'
+import type { Viewer } from '../../common/domain/viewer.ts'
+import type { PaymentLedger } from '../../common/payment-ledger.ts'
+import { WhDocReads } from './wh-doc-reads.ts'
 import { materialCategories, materials, stockBatches } from '../../../db/schema/index.ts'
 import { DB } from '../../common/db.ts'
 import { pageOf } from '../../common/domain/cursor.ts'
@@ -33,7 +36,17 @@ export function materialSearch(q: string | undefined): SQL | undefined {
 
 @Injectable()
 export class WarehouseService {
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(
+    @Inject(DB) private readonly db: Db,
+    private readonly docs: WhDocReads,
+  ) {}
+
+  docCards(executor: Db | Tx, viewer: Viewer, ids: number[], ledger?: PaymentLedger) {
+    return this.docs.cardsOf(executor, viewer, ids, ledger)
+  }
+  docDetail(executor: Db | Tx, viewer: Viewer, id: number) {
+    return this.docs.detail(executor, viewer, id)
+  }
 
   // 一种花材的当前库存（相关子查询，放在以 materials 为主表的查询里）
   private stockQtyOf(): SQL<number> {

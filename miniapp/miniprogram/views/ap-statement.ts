@@ -11,9 +11,20 @@ import { poRowOf, poViewOf } from './purchase'
 import { buttonsOf, type ButtonView } from '../core/actions'
 import { PaymentPanel, paymentPanelData, paymentPanelHandlers } from './payment-panel'
 import { textOfCents } from '../core/money'
+import { stockRowOf, stockViewOf } from './stock'
 
 function rowOf(ap: ApCard) {
-  return { ...poRowOf(ap), status: ap.apStatus, amount: ap.payableCents }
+  return {
+    ...(ap.docType === 'po' ? poRowOf(ap) : stockRowOf(ap)),
+    id: `${ap.docType}:${ap.docId}`,
+    docType: ap.docType,
+    docId: ap.docId,
+    date: ap.apDate,
+    status: ap.apStatus,
+    amount: ap.payableCents,
+    title:
+      ap.docType === 'po' ? ap.supplierName : `${ap.supplierName} · ${copy.stock.screen.stockIn}`,
+  }
 }
 function cellsOf(
   ap: Pick<
@@ -40,7 +51,7 @@ const data = {
   statuses: [...apStatuses],
   counts: {},
   filter: emptyFilter,
-  dateLabel: copy.screen.label.orderDate,
+  dateLabel: copy.screen.label.date,
   rows: [] as ReturnType<typeof rowOf>[],
   cells: [] as ReturnType<typeof cellsOf>,
   loaded: false,
@@ -52,6 +63,7 @@ const data = {
   sheet: false,
   sheetError: '',
   view: null as ReturnType<typeof poViewOf> | null,
+  stockView: null as ReturnType<typeof stockViewOf> | null,
   buttons: [] as ButtonView[],
   refunds: [] as {
     no: string
@@ -121,15 +133,25 @@ const methods = {
     })
   },
   async onOpen(this: Host, event: KeyEvent) {
-    const id = event.currentTarget.dataset.key
+    const row = this.data.rows.find((item) => item.id === event.currentTarget.dataset.key)
+    if (!row) return
+    const id = row.docId
     if (!this.data.own) {
-      void wx.navigateTo({ url: `/packages/finance/pages/payable/index?docType=po&id=${id}` })
+      void wx.navigateTo({
+        url: `/packages/finance/pages/payable/index?docType=${row.docType}&id=${id}`,
+      })
       return
     }
-    this.setData({ sheet: true, view: null, sheetError: '' })
-    const result = await request(contract.supplierPurchaseOrder, { params: { id } })
-    if (result.ok) this.setData({ view: poViewOf(result.data, true) })
-    else this.setData({ sheetError: failureOf(result.failure, 'refresh')?.message ?? '' })
+    this.setData({ sheet: true, view: null, stockView: null, sheetError: '' })
+    if (row.docType === 'wh') {
+      const result = await request(contract.getSupplierStockIn, { params: { id } })
+      if (result.ok) this.setData({ stockView: stockViewOf(result.data) })
+      else this.setData({ sheetError: failureOf(result.failure, 'refresh')?.message ?? '' })
+    } else {
+      const result = await request(contract.supplierPurchaseOrder, { params: { id } })
+      if (result.ok) this.setData({ view: poViewOf(result.data, true) })
+      else this.setData({ sheetError: failureOf(result.failure, 'refresh')?.message ?? '' })
+    }
   },
   onCloseSheet(this: Host) {
     this.setData({ sheet: false })

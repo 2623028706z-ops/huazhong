@@ -51,7 +51,15 @@
         "pages/receive/index",
         "pages/stock/index",
         "pages/material/index",
-        "pages/materials/index"
+        "pages/materials/index",
+        "pages/docs/index",
+        "pages/doc-form/index",
+        "pages/doc-detail/index",
+        "pages/out-categories/index",
+        "pages/stocktakes/index",
+        "pages/stocktake-form/index",
+        "pages/stocktake-detail/index",
+        "pages/moves/index"
       ]
     },
     {

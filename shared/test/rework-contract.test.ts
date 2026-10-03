@@ -109,6 +109,32 @@ describe('review rework contracts', () => {
     expect(paymentCreateSchema.safeParse(missing).success).toBe(false)
     expect(ledgerToken).toBeTruthy()
   })
+  it('supplier payments and prepaid allocations distinguish same-ID purchase and manual documents, but reject actual duplicates', () => {
+    const refs = [
+      { docType: 'po', docId: '1' },
+      { docType: 'wh', docId: '1' },
+    ]
+    const source = {
+      supplierId: '1',
+      ledgerToken: 'test-snapshot',
+      payDate: '2026-10-02',
+      methodName: '现金',
+      amountCents: 200,
+      note: '',
+      expected: refs.map((row) => ({ ...row, version: 1, unpaidCents: 100 })),
+      allocs: refs.map((row) => ({ ...row, amountCents: 100 })),
+    }
+    for (const schema of [paymentCreateSchema, contract.allocatePaymentPrepaid.body]) {
+      expect(schema.safeParse(source).success).toBe(true)
+      expect(
+        schema.safeParse({ ...source, allocs: [source.allocs[0], source.allocs[0]] }).success,
+      ).toBe(false)
+      expect(
+        schema.safeParse({ ...source, expected: [source.expected[0], source.expected[0]] }).success,
+      ).toBe(false)
+    }
+    expect(() => structuredClone(copy.stock.screen)).not.toThrow()
+  })
   it('shipping schemas do not expose amount or price fields and reject accidental leaks', () => {
     expect('amountCents' in shippingCardSchema.shape).toBe(false)
     expect('priceCents' in shippingLineSchema.shape).toBe(false)

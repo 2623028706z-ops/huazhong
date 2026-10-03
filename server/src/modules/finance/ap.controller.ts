@@ -39,7 +39,7 @@ export class ApController {
     @CurrentViewer() viewer: Viewer,
     @Input() input: In<'getApDocument'>,
   ): Promise<OutputOf<typeof contract.getApDocument>> {
-    return this.ap.payable(viewer, Number(input.params.id))
+    return this.ap.payable(viewer, input.params.docType, Number(input.params.id))
   }
   @Route(contract.listUnpaidDocuments)
   unpaid(@CurrentViewer() viewer: Viewer, @Input() input: In<'listUnpaidDocuments'>) {

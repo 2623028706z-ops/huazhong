@@ -12,23 +12,22 @@ import {
   unique,
 } from 'drizzle-orm/pg-core'
 import { accountRef, commonColumns, timestamptz, versionColumn } from './columns.ts'
-import { allocKind, methodKind, recordStatus, refundKind } from './enums.ts'
+import { allocKind, recordStatus, refundKind } from './enums.ts'
 import { customers, suppliers } from './org.ts'
 import { orders } from './sales.ts'
 import { purchaseOrders } from './purchase.ts'
 import { whDocs } from './warehouse.ts'
 
-// 收款方式、付款方式分两份；每份至少一种启用（服务层）
+// 收付款方式一份列表（2026-10-03 确认合并）；至少一种启用（服务层）
 export const paymentMethods = pgTable(
   'payment_methods',
   {
     ...commonColumns(),
-    kind: methodKind().notNull(),
     name: text().notNull(),
     enabled: boolean().notNull().default(true),
     sort: integer().notNull().default(0),
   },
-  (t) => [unique().on(t.kind, t.name)],
+  (t) => [unique().on(t.name)],
 )
 
 export const receipts = pgTable(

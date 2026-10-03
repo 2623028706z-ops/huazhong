@@ -13,6 +13,15 @@ const ROOT = path.resolve(import.meta.dirname, '../../..')
 const BASE = 'b04a3ce242033c82e283bdf95f0e9073ec910a9f'
 export const OLD_PAYMENT_KEY = 'ec991f07-6500-4907-bdb0-dce1c1ef0001'
 let legacy: string
+// 旧结构还在用已从 shared 删掉的 methodKinds（0009 合并收付款方式）：旧文件里自带一份
+function legacySource(file: string, source: Buffer): Buffer {
+  if (!file.endsWith('db/schema/enums.ts') && !file.endsWith('db/seed/seed-sales.ts')) return source
+  const text = source
+    .toString()
+    .replace(/^\s*methodKinds,\n/m, '')
+    .replace(/^import \{ methodKinds \} from '@huazhong\/shared'\n/m, '')
+  return Buffer.from(`const methodKinds = ['receive', 'pay'] as const\n${text}`)
+}
 const databases: string[] = []
 export async function snapshotOldDatabase(url: string): Promise<string> {
   const source = new URL(url)
@@ -61,7 +70,10 @@ beforeAll(async () => {
   for (const file of files) {
     const target = path.join(legacy, file)
     await mkdir(path.dirname(target), { recursive: true })
-    await writeFile(target, execFileSync('git', ['show', `${BASE}:${file}`], { cwd: ROOT }))
+    await writeFile(
+      target,
+      legacySource(file, execFileSync('git', ['show', `${BASE}:${file}`], { cwd: ROOT })),
+    )
   }
   await symlink(path.join(ROOT, 'server/node_modules'), path.join(legacy, 'server/node_modules'))
 }, 120_000)

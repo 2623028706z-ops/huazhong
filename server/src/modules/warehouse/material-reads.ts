@@ -1,5 +1,6 @@
 import {
   contract,
+  copy,
   MATERIAL_CODE_DIGITS,
   MATERIAL_CODE_PREFIX,
   type Material,
@@ -10,7 +11,7 @@ import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm'
 import type { Db, Tx } from '../../../db/client.ts'
 import { materialCategories, materials, stockBatches } from '../../../db/schema/index.ts'
 import { DB } from '../../common/db.ts'
-import { enabledAction } from '../../common/domain/actions.ts'
+import { actionOf, enabledAction } from '../../common/domain/actions.ts'
 import { pageOf } from '../../common/domain/cursor.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import type { ParsedInput } from '../../common/endpoint.ts'
@@ -70,13 +71,19 @@ export class MaterialReads {
   async item(executor: Executor, id: number) {
     return toMaterial(found((await materialRows(executor, eq(materials.id, id)))[0]))
   }
-  async detail(id: number): Promise<OutputOf<typeof contract.getMaterial>> {
+  async detail(id: number, viewer: Viewer): Promise<OutputOf<typeof contract.getMaterial>> {
     const item = await this.item(this.db, id)
     const batches = await batchesOf(this.db, [id])
     return {
       ...item,
       stockQty: batches.reduce((sum, row) => sum + row.leftQty, 0),
       batches: batches.map(batchView),
+      actions: viewer.modules.includes('warehouse')
+        ? [
+            actionOf('stockIn', item.enabled ? null : copy.stock.materialDisabled(item.name), null),
+            enabledAction('stockOut', null),
+          ]
+        : [],
     }
   }
   async list(

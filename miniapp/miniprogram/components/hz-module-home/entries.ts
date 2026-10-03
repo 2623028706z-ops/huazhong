@@ -45,6 +45,42 @@ export const entriesOf: Partial<Record<ModuleKey, Entry[]>> = {
   ],
   warehouse: [
     {
+      key: 'stock-in',
+      icon: 'file-text',
+      text: copy.stock.screen.titles.in,
+      url: `${WAREHOUSE}/docs/index?kind=in`,
+    },
+    {
+      key: 'stock-out',
+      icon: 'file-text',
+      text: copy.stock.screen.titles.out,
+      url: `${WAREHOUSE}/docs/index?kind=out`,
+    },
+    {
+      key: 'loss',
+      icon: 'rotate-ccw',
+      text: copy.stock.screen.titles.loss,
+      url: `${WAREHOUSE}/docs/index?kind=loss`,
+    },
+    {
+      key: 'stocktakes',
+      icon: 'clipboard-list',
+      text: copy.stock.screen.titles.stocktakes,
+      url: `${WAREHOUSE}/stocktakes/index`,
+    },
+    {
+      key: 'moves',
+      icon: 'scroll-text',
+      text: copy.stock.screen.titles.moves,
+      url: `${WAREHOUSE}/moves/index`,
+    },
+    {
+      key: 'out-categories',
+      icon: 'notebook-text',
+      text: copy.stock.screen.titles.categories,
+      url: `${WAREHOUSE}/out-categories/index`,
+    },
+    {
       key: 'pending',
       icon: 'truck',
       text: copy.screen.title.pendingReceive,
@@ -200,13 +236,16 @@ function financeTodo(item: TodoOf<'payable'> | TodoOf<'prepaid'>) {
   if (item.kind === 'payable') {
     const po = item.payable
     return {
-      id: `payable-${po.id}`,
-      date: po.orderDate,
+      id: `payable-${po.docType}-${po.id}`,
+      date: po.apDate,
       status: po.apStatus,
       statusKind: 'apStatus',
       title: po.supplierName,
       total: '',
-      meta: po.no,
+      meta: [
+        po.docType === 'wh' ? copy.stock.screen.stockIn : copy.screen.title.purchaseOrders,
+        po.no,
+      ].join(copy.separator),
       amount: po.unpaidCents,
       amountText: '',
       tags: [],

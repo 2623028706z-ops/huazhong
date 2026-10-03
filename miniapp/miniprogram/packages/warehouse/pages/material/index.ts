@@ -3,6 +3,8 @@ import type { FailureView } from '../../../../core/failure-view'
 import { unwatchOnLeave, watch } from '../../../../core/live'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
+import { buttonsOf, canDo } from '../../../../core/actions'
+import type { CodeEvent } from '../../../../core/events'
 Page({
   ...unwatchOnLeave,
   data: {
@@ -12,6 +14,7 @@ Page({
     material: null as OutputOf<typeof contract.getMaterial> | null,
     rows: [] as { label: string; value: string }[],
     batches: [] as { id: string; date: string; qty: string }[],
+    buttons: [] as ReturnType<typeof buttonsOf>,
     texts: { stock: copy.screen.title.stock, batches: copy.screen.section.batches },
   },
   id: '',
@@ -33,6 +36,7 @@ Page({
       loaded: true,
       failure: null,
       material: m,
+      buttons: buttonsOf(m.actions, [{ code: 'stockIn', secondary: true }, { code: 'stockOut' }]),
       rows: [
         { label: copy.field.code, value: m.code },
         { label: copy.field.category, value: m.categoryName },
@@ -52,5 +56,17 @@ Page({
   },
   onFailureAction() {
     void this.load()
+  },
+  onAction(event: CodeEvent) {
+    const code = event.currentTarget.dataset.code
+    if (
+      (code !== 'stockIn' && code !== 'stockOut') ||
+      !this.data.material ||
+      !canDo(this.data.material.actions, code)
+    )
+      return
+    void wx.navigateTo({
+      url: `/packages/warehouse/pages/doc-form/index?kind=${code === 'stockIn' ? 'in' : 'out'}&materialId=${this.id}`,
+    })
   },
 })

@@ -1,2 +1,2 @@
 <import src="/views/ap-statement.wxml" />
-<template is="ap-statement" data="{{title, own, statusKind, statuses, counts, dateLabel, filter, failure, skeleton, loaded, rows, cells, emptyObject, done, allLoaded, sheet, sheetError, view, buttons, refunds}}" />
+<template is="ap-statement" data="{{title, own, statusKind, statuses, counts, dateLabel, filter, failure, skeleton, loaded, rows, cells, emptyObject, done, allLoaded, sheet, sheetError, view, stockView, buttons, refunds}}" />

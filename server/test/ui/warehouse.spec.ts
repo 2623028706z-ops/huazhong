@@ -132,7 +132,7 @@ test('阶段 4 供应商端对账显示单据应付金额，付款后金额保�
     { amountCents: 0 },
   ])
   await snap(mini, 'supplier-statement')
-  await page.callMethod('onOpen', { currentTarget: { dataset: { key: po.id } } })
+  await page.callMethod('onOpen', { currentTarget: { dataset: { key: `po:${po.id}` } } })
   await waitData(page, 'view.info.title', po.no)
   await snap(mini, 'supplier-statement-detail')
   await asMini(mini, s, 'u6')

@@ -126,6 +126,22 @@ import { createRefund, voidRefund, revokeAllocation, revokePaymentAllocation } f
 import { reviewPurchase } from './purchase-review.ts'
 import { getFinanceAfter } from './afters.ts'
 import { supplierUpdatePurchaseOrder, supplierCancelPurchaseOrder } from './purchase.ts'
+import {
+  createOutCategory,
+  createStocktake,
+  createWhDoc,
+  getStocktake,
+  getStocktakeDraft,
+  getSupplierStockIn,
+  getWhDoc,
+  listOutCategories,
+  listStockMoves,
+  listStocktakes,
+  listWhDocs,
+  repriceWhDoc,
+  updateOutCategory,
+  voidWhDoc,
+} from './stock.ts'
 
 export const contract = {
   getFinanceAfter,
@@ -264,6 +280,21 @@ export const contract = {
   createPayment,
   getPayment,
   voidPayment,
+  // 阶段 5：手工入库、手工出库、报损、出库分类、盘点、出入库记录
+  listWhDocs,
+  getWhDoc,
+  createWhDoc,
+  repriceWhDoc,
+  voidWhDoc,
+  getSupplierStockIn,
+  listOutCategories,
+  createOutCategory,
+  updateOutCategory,
+  listStocktakes,
+  getStocktakeDraft,
+  getStocktake,
+  createStocktake,
+  listStockMoves,
   // 图片上传
   requestUploadTicket,
   completeUpload,

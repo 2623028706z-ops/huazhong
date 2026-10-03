@@ -294,23 +294,25 @@ describe('售后和应收', () => {
 })
 
 describe('收付款方式', () => {
-  test('D11 停用的收款方式不能再用；每份至少保留一种启用', async () => {
+  test('D11 停用的方式不能再收款；至少保留一种启用；名称不能重复', async () => {
     const finance = await s.as('u6')
-    const methods = dataOf<{ items: { id: string; kind: string; name: string }[] }>(
+    const methods = dataOf<{ items: { id: string; name: string }[] }>(
       await finance.get('/finance/methods'),
     )
-    const idOf = (kind: string, name: string) =>
-      methods.items.find((m) => m.kind === kind && m.name === name)?.id
-    dataOf(await finance.patch(`/finance/methods/${idOf('receive', '微信')}`, { enabled: false }))
+    expect(methods.items.map((m) => m.name)).toEqual(['转账', '微信', '支付宝', '现金'])
+    const idOf = (name: string) => methods.items.find((m) => m.name === name)?.id
+    const dup = await finance.post('/finance/methods', { name: '微信' })
+    expect(dup.body.error?.fields).toEqual({ name: '已有同名方式' })
+    dataOf(await finance.patch(`/finance/methods/${idOf('微信')}`, { enabled: false }))
     const res = await finance.post('/finance/receipts', receipt(10000, [], { methodName: '微信' }))
-    expect(res.body.error?.fields).toEqual({ methodName: '这种收款方式已停用，请换一种' })
-    for (const name of ['转账', '微信', '支付宝']) {
-      dataOf(await finance.patch(`/finance/methods/${idOf('pay', name)}`, { enabled: false }))
+    expect(res.body.error?.fields).toEqual({ methodName: '这种方式已停用，请换一种' })
+    for (const name of ['转账', '支付宝']) {
+      dataOf(await finance.patch(`/finance/methods/${idOf(name)}`, { enabled: false }))
     }
-    const last = await finance.patch(`/finance/methods/${idOf('pay', '现金')}`, { enabled: false })
+    const last = await finance.patch(`/finance/methods/${idOf('现金')}`, { enabled: false })
     expect(last.body.error).toMatchObject({
       code: 'BUSINESS_RULE',
-      message: '至少要保留一种启用的方式',
+      message: '至少要保留一种启用的收付款方式',
     })
   })
 })

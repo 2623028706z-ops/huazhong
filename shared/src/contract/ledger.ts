@@ -61,7 +61,7 @@ export const receiptExpectedSchema = z.object({
   unpaidCents: centsSchema,
 })
 export const paymentExpectedSchema = z.object({
-  docType: z.literal('po'),
+  docType: z.enum(['po', 'wh']),
   docId: idSchema,
   version: versionSchema,
   unpaidCents: centsSchema,

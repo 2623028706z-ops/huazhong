@@ -21,6 +21,8 @@ export interface AllocLine {
   text: string
   version: number
   notice?: string | null
+  docType?: 'po' | 'wh'
+  docId?: string
 }
 
 export interface ReceiveForm {
@@ -55,8 +57,12 @@ export function fillText(
     lines.filter((_, i) => i !== index),
     allocCents,
   )
-  const unpaid = lines[index]?.unpaidCents ?? 0
-  return textOfCents(Math.max(0, Math.min(unpaid, availableCents - others)))
+  const line = lines[index]
+  const unpaid = line?.unpaidCents ?? 0
+  const amount = Math.max(0, Math.min(unpaid, availableCents - others))
+  // 手工入库单只整单付款：钱不够付满就不填
+  if (line?.docType === 'wh' && amount < unpaid) return ''
+  return textOfCents(amount)
 }
 
 export function allocRowsOf(lines: readonly AllocLine[]) {
@@ -127,7 +133,8 @@ function expectedOf(lines: readonly AllocLine[]) {
 export function autoFillAll(lines: readonly AllocLine[], availableCents: number): AllocLine[] {
   let remaining = availableCents
   return lines.map((line) => {
-    const amount = Math.max(0, Math.min(line.unpaidCents, remaining))
+    const fit = Math.max(0, Math.min(line.unpaidCents, remaining))
+    const amount = line.docType === 'wh' && fit < line.unpaidCents ? 0 : fit
     remaining -= amount
     return { ...line, text: amount ? textOfCents(amount) : '' }
   })
@@ -152,8 +159,13 @@ export function paymentLinesOf(
   cards: OutputOf<typeof contract.listUnpaidDocuments>['items'],
 ): AllocLine[] {
   return cards.map((card) => ({
-    orderId: card.id,
-    orderNo: card.no,
+    orderId: `${card.docType}:${card.docId}`,
+    docType: card.docType,
+    docId: card.docId,
+    orderNo:
+      card.docType === 'wh'
+        ? [copy.stock.screen.paymentStockIn, card.no].join(copy.separator)
+        : card.no,
     version: card.version,
     unpaidCents: card.unpaidCents,
     text: '',
@@ -171,16 +183,18 @@ export function checkPayment(
     supplierId,
     ledgerToken,
     expected: form.allocs.map((line) => ({
-      docType: 'po',
-      docId: line.orderId,
+      docType: line.docType,
+      docId: line.docId,
       version: line.version,
       unpaidCents: line.unpaidCents,
     })),
-    allocs: bodyAllocsOf(form.allocs).map((allocation) => ({
-      docType: 'po',
-      docId: allocation.orderId,
-      amountCents: allocation.amountCents,
-    })),
+    allocs: form.allocs
+      .filter((line) => line.text.trim() !== '')
+      .map((line) => ({
+        docType: line.docType,
+        docId: line.docId,
+        amountCents: centsOfText(line.text),
+      })),
   }
   return checkedOf<unknown>(
     isAllocate

@@ -3,6 +3,9 @@
 import { copy, type Action, type ActionCode } from '@huazhong/shared'
 
 const labels: Partial<Record<ActionCode, string>> = {
+  stockIn: copy.stock.screen.stockIn,
+  stockOut: copy.stock.screen.stockOut,
+  void: copy.stock.screen.void,
   requestCancel: copy.rework.requestCancel,
   withdrawCancel: copy.rework.withdrawCancel,
   approveCancel: copy.rework.approveCancel,

@@ -1,12 +1,13 @@
 <wxs src="../../core/format.wxs" module="format" />
 <view class="u-card hz-card" bindtap="onTap">
-  <view wx:if="{{date || status}}" class="hz-card__row hz-card__row--head">
+  <view wx:if="{{date || status || headText}}" class="hz-card__row hz-card__row--head">
     <text wx:if="{{date && today}}">{{format.formatCardDate(date, today)}}</text>
-    <hz-status kind="{{statusKind}}" code="{{status}}" />
+    <text wx:if="{{headText}}">{{headText}}</text>
+    <hz-status wx:else kind="{{statusKind}}" code="{{status}}" />
   </view>
   <view class="hz-card__row">
     <text class="hz-card__title u-ellipsis">{{title}}</text>
-    <text class="hz-card__total {{keyTotal ? 'hz-card__total--key' : ''}}">{{total}}</text>
+    <text class="hz-card__total {{keyTotal ? 'hz-card__total--key' : ''}} {{totalTone === 'gain' ? 'hz-card__total--gain' : totalTone === 'loss' ? 'hz-card__total--loss' : ''}}">{{total}}</text>
   </view>
   <view class="hz-card__row hz-card__row--foot">
     <hz-tag wx:for="{{tags}}" wx:key="text" text="{{item.text}}" warn="{{item.warn}}" />

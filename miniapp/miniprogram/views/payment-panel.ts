@@ -233,9 +233,7 @@ export class PaymentPanel {
       !canDo(this.payment.actions, this.kind === 'payment' ? 'refundPayment' : 'refundReceipt')
     )
       return
-    const result = await request(contract.listMethods, {
-      query: { kind: this.kind === 'payment' ? 'receive' : 'pay' },
-    })
+    const result = await request(contract.listMethods)
     if (!result.ok) {
       this.host.setData({ paymentError: failureOf(result.failure, 'refresh')?.message ?? '' })
       return

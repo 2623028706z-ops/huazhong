@@ -12,7 +12,6 @@ import type {
   apStatuses,
   fileStatuses,
   inviteStatuses,
-  methodKinds,
   moduleKeys,
   moveTypes,
   orderOrigins,
@@ -100,6 +99,7 @@ export const labels = {
     loss: '报损',
     check_gain: '盘点盘盈',
     check_loss: '盘点盘亏',
+    po_void: '采购单作废',
   } satisfies Labels<typeof moveTypes>,
   accountType: {
     admin: '管理员',
@@ -114,7 +114,6 @@ export const labels = {
     warehouse: '仓库',
     finance: '财务',
   } satisfies Labels<typeof moduleKeys>,
-  methodKind: { receive: '收款方式', pay: '付款方式' } satisfies Labels<typeof methodKinds>,
   fileStatus: { pending: '待检测', ok: '通过', rejected: '不通过' } satisfies Labels<
     typeof fileStatuses
   >,

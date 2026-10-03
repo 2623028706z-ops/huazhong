@@ -1,5 +1,4 @@
 // 写入阶段 3 的示例数据（sales-data.ts）：产品、订货目录、订单、售后、收款、收付款方式、发号起点
-import { methodKinds } from '@huazhong/shared'
 import type { Tx } from '../client.ts'
 import {
   afterLines,
@@ -235,9 +234,7 @@ async function insertAfters(tx: Tx, ids: SeedIds, refs: Map<string, OrderRef>): 
 }
 async function insertReceipts(tx: Tx, ids: SeedIds, refs: Map<string, OrderRef>): Promise<void> {
   const createdBy = ids.admin
-  const methods = methodKinds.flatMap((kind) =>
-    seedMethodNames.map((name, sort) => ({ kind, name, sort, createdBy })),
-  )
+  const methods = seedMethodNames.map((name, sort) => ({ name, sort, createdBy }))
   await tx.insert(paymentMethods).values(methods)
   const cashier = idOf(ids.accounts, seedCashier)
   for (const r of seedReceipts) {

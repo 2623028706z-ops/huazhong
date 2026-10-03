@@ -47,7 +47,7 @@ export const paymentSchema = z.object({
 export type PaymentDetail = z.infer<typeof paymentSchema>
 export const paymentAllocsSchema = z.array(
   z.object({
-    docType: z.literal('po'),
+    docType: z.enum(['po', 'wh']),
     docId: idSchema,
     amountCents: positiveIntSchema(copy.finance.allocRequired),
   }),
@@ -59,19 +59,35 @@ const snapshotShape = {
   allocs: paymentAllocsSchema,
 }
 function checkAllocs(
-  value: { allocs: { docId: string }[]; expected: { docId: string }[] },
+  value: {
+    allocs: { docType: 'po' | 'wh'; docId: string; amountCents: number }[]
+    expected: { docType: 'po' | 'wh'; docId: string; unpaidCents: number }[]
+  },
   ctx: z.RefinementCtx,
 ) {
+  // 手工入库单只整单付款（2026-10-03 确认）：核销金额等于提交时看到的待付
+  value.allocs.forEach((allocation, index) => {
+    if (allocation.docType !== 'wh') return
+    const seen = value.expected.find(
+      (row) => row.docType === 'wh' && row.docId === allocation.docId,
+    )
+    if (seen && allocation.amountCents !== seen.unpaidCents)
+      ctx.addIssue({
+        code: 'custom',
+        message: copy.stock.stockInPayWhole,
+        path: ['allocs', index, 'amountCents'],
+      })
+  })
   checkDistinct(ctx, {
     items: value.allocs,
-    keyOf: (allocation) => allocation.docId,
-    message: copy.finance.duplicateOrder,
+    keyOf: (allocation) => `${allocation.docType}:${allocation.docId}`,
+    message: copy.stock.duplicatePaymentDoc,
     path: ['allocs', 'docId'],
   })
   checkDistinct(ctx, {
     items: value.expected,
-    keyOf: (item) => item.docId,
-    message: copy.finance.duplicateOrder,
+    keyOf: (item) => `${item.docType}:${item.docId}`,
+    message: copy.stock.duplicatePaymentDoc,
     path: ['expected', 'docId'],
   })
 }

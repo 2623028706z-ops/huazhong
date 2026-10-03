@@ -13,10 +13,11 @@ import { ApController } from './ap.controller.ts'
 import { PaymentsController } from './payments.controller.ts'
 import { RefundService, RefundController } from './refunds.ts'
 import { RefundSources } from './refund-sources.ts'
+import { WarehouseModule } from '../warehouse/warehouse.module.ts'
 
 // 财务收款部分：客户对账、门店对账、登记收款、核销预收、作废收款、收付款方式
 @Module({
-  imports: [SalesModule, PurchaseModule],
+  imports: [SalesModule, PurchaseModule, WarehouseModule],
   controllers: [FinanceController, ApController, PaymentsController, RefundController],
   providers: [
     ArReads,

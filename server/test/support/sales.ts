@@ -84,7 +84,14 @@ async function moneyInput(
   if (!result.body.ok) return input
   const snapshot = result.body.data as {
     ledgerToken: string
-    items: { id?: string; orderId?: string; version: number; unpaidCents: number }[]
+    items: {
+      id?: string
+      docType?: 'po' | 'wh'
+      docId?: string
+      orderId?: string
+      version: number
+      unpaidCents: number
+    }[]
   }
   return {
     ...input,
@@ -92,7 +99,12 @@ async function moneyInput(
     expected: snapshot.items.map((row) =>
       receipt
         ? { orderId: row.orderId, version: row.version, unpaidCents: row.unpaidCents }
-        : { docType: 'po', docId: row.id, version: row.version, unpaidCents: row.unpaidCents },
+        : {
+            docType: row.docType,
+            docId: row.docId,
+            version: row.version,
+            unpaidCents: row.unpaidCents,
+          },
     ),
   }
 }
@@ -127,6 +139,9 @@ export async function startSales(): Promise<SalesApp> {
 }
 
 type Lookup =
+  | 'out_categories.name'
+  | 'material_categories.name'
+  | 'accounts.phone'
   | 'orders.no'
   | 'afters.no'
   | 'receipts.no'

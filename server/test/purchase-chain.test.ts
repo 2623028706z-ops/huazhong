@@ -160,12 +160,12 @@ test('B02–B09 完整采购、少收链路三家应付和模块日志一致', a
   )
 })
 
-test('D10 D11 付款方式停用不改历史记录、不能再付款，付款日志可见', async () => {
+test('D10 D11 收付款方式停用后不改历史记录、不能再付款，付款日志可见', async () => {
   const finance = await s.as('u6'),
     po = await poOf(s, 'PO-260928-004')
   const payment = dataOf<PaymentDetail>(await finance.post('/finance/payments', payInput(po)))
   const methods = dataOf<OutputOf<typeof contract.listMethods>>(
-    await finance.get('/finance/methods?kind=pay'),
+    await finance.get('/finance/methods'),
   )
   const method = methods.items.find((m) => m.name === '微信')
   dataOf(await finance.patch(`/finance/methods/${method?.id}`, { enabled: false }))
@@ -180,7 +180,7 @@ test('D10 D11 付款方式停用不改历史记录、不能再付款，付款日
   )
   expect((await finance.post('/finance/payments', payInput(po))).body.error).toMatchObject({
     code: 'BUSINESS_RULE',
-    message: copy.finance.paymentMethodDisabled,
+    message: copy.finance.methodDisabled,
   })
   const logs = dataOf<OutputOf<typeof contract.listLogs>>(await finance.get('/logs?module=finance'))
   expect(logs.items.map((l) => l.action)).toEqual(

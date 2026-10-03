@@ -11,7 +11,6 @@ import {
   allocKinds,
   filePurposes,
   fileStatuses,
-  methodKinds,
   moduleKeys,
   inviteStatuses,
   orderOrigins,
@@ -20,6 +19,7 @@ import {
   moveTypes,
   recordStatuses,
   storeInviteStatuses,
+  stocktakeStatuses,
 } from '@huazhong/shared'
 import { pgEnum } from 'drizzle-orm/pg-core'
 
@@ -37,9 +37,9 @@ export const cancelRequestStatus = pgEnum('cancel_request_status', cancelRequest
 export const refundKind = pgEnum('refund_kind', refundKinds)
 export const whDocKind = pgEnum('wh_doc_kind', whDocKinds)
 export const whDocStatus = pgEnum('wh_doc_status', whDocStatuses)
-export const methodKind = pgEnum('method_kind', methodKinds)
 export const fileStatus = pgEnum('file_status', fileStatuses)
 export const filePurpose = pgEnum('file_purpose', filePurposes)
 export const inviteStatus = pgEnum('invite_status', inviteStatuses)
 export const poStatus = pgEnum('po_status', poStatuses)
 export const moveType = pgEnum('move_type', moveTypes)
+export const stocktakeStatus = pgEnum('stocktake_status', stocktakeStatuses)

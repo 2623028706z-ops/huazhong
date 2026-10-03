@@ -21,8 +21,11 @@ export class MaterialsController {
     return this.reads.list(viewer, input.query)
   }
   @Route(contract.getMaterial)
-  detail(@Input() input: In<'getMaterial'>): Promise<OutputOf<typeof contract.getMaterial>> {
-    return this.reads.detail(Number(input.params.id))
+  detail(
+    @CurrentViewer() viewer: Viewer,
+    @Input() input: In<'getMaterial'>,
+  ): Promise<OutputOf<typeof contract.getMaterial>> {
+    return this.reads.detail(Number(input.params.id), viewer)
   }
   @Route(contract.createMaterial)
   create(

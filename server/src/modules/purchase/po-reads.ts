@@ -30,7 +30,7 @@ import type { ParsedInput } from '../../common/endpoint.ts'
 import { beforeCursor, dateBetween } from '../../common/page.ts'
 import { found } from '../../common/scope.ts'
 import { poExtras } from './po-detail.ts'
-import { loadPaymentLedger } from '../../common/payment-ledger.ts'
+import { apKey, loadPaymentLedger } from '../../common/payment-ledger.ts'
 import { paymentHistory } from '../../common/finance-history.ts'
 import { owns } from '../../common/ledger.ts'
 
@@ -103,7 +103,7 @@ async function cardOf(
   executor: Executor,
 ): Promise<PoCard> {
   const ledger = await loadPaymentLedger(executor, row.po.supplierId)
-  const paidCents = ledger.replay.received.get(row.po.id) ?? 0
+  const paidCents = ledger.replay.received.get(apKey('po', row.po.id)) ?? 0
   const unpaidCents = Math.max(row.payableCents - paidCents, 0)
   const { po } = row
   return {

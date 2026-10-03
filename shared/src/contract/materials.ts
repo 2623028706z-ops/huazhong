@@ -44,6 +44,8 @@ export const getMaterial = {
   response: materialSchema.extend({
     stockQty: z.number().int().nonnegative(),
     batches: z.array(materialBatchSchema),
+    // 仓库：stockIn、stockOut（阶段 5，花材详情直接新建并带上这种花材）
+    actions: z.array(actionSchema),
   }),
   errors: ['NOT_FOUND'],
 } as const satisfies Endpoint

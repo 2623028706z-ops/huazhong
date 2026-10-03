@@ -14,7 +14,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import { accountRef, commonColumns, timestamptz, versionColumn } from './columns.ts'
 import { inviteStatus, poStatus } from './enums.ts'
-import { materials } from './warehouse.ts'
+import { materials, whDocs } from './warehouse.ts'
 import { suppliers } from './org.ts'
 
 export const purchaseOrders = pgTable(
@@ -185,14 +185,17 @@ export const priceChanges = pgTable(
   'price_changes',
   {
     ...commonColumns(),
-    poId: bigint({ mode: 'number' })
-      .notNull()
-      .references(() => purchaseOrders.id, { onDelete: 'restrict' }),
+    poId: bigint({ mode: 'number' }).references(() => purchaseOrders.id, { onDelete: 'restrict' }),
+    whDocId: bigint({ mode: 'number' }).references(() => whDocs.id, { onDelete: 'restrict' }),
     actorLabel: text().notNull(),
     reason: text().notNull(),
     items: jsonb().$type<{ name: string; fromCents: number; toCents: number }[]>().notNull(),
   },
-  (t) => [index('price_changes_po_time').on(t.poId, t.createdAt)],
+  (t) => [
+    index('price_changes_po_time').on(t.poId, t.createdAt),
+    index('price_changes_wh_time').on(t.whDocId, t.createdAt),
+    check('price_changes_doc', sql`num_nonnulls(${t.poId}, ${t.whDocId}) = 1`),
+  ],
 )
 
 export const purchaseReturns = pgTable(

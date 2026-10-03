@@ -8,10 +8,35 @@ import { PoReceiving } from './po-receiving.ts'
 import { PurchaseWarehouseController } from './purchase-warehouse.controller.ts'
 import { WarehouseController } from './warehouse.controller.ts'
 import { WarehouseService } from './warehouse.service.ts'
+import { FilesModule } from '../files/files.module.ts'
+import { WhDocReads } from './wh-doc-reads.ts'
+import { WhDocWrites } from './wh-doc-writes.ts'
+import { StockController, StockInventoryController } from './stock.controller.ts'
+import { Stocktakes } from './stocktakes.ts'
+import { OutCategories } from './out-categories.ts'
+import { StockMoves } from './stock-moves.ts'
 
 @Module({
-  imports: [PurchaseModule],
-  controllers: [WarehouseController, MaterialsController, PurchaseWarehouseController],
-  providers: [WarehouseService, MaterialReads, MaterialWrites, MaterialCategories, PoReceiving],
+  imports: [PurchaseModule, FilesModule],
+  controllers: [
+    WarehouseController,
+    MaterialsController,
+    PurchaseWarehouseController,
+    StockController,
+    StockInventoryController,
+  ],
+  providers: [
+    WarehouseService,
+    MaterialReads,
+    MaterialWrites,
+    MaterialCategories,
+    PoReceiving,
+    WhDocReads,
+    WhDocWrites,
+    Stocktakes,
+    OutCategories,
+    StockMoves,
+  ],
+  exports: [WarehouseService],
 })
 export class WarehouseModule {}

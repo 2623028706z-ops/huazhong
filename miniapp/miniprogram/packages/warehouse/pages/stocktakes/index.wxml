@@ -1,0 +1,5 @@
+<import src="/views/list.wxml" />
+<hz-navbar title="{{title}}" back />
+<view class="u-list"><template is="list-state" data="{{failure,skeleton,loaded,rows,emptyObject}}" /><template is="cards" data="{{rows,statusKind,done,allLoaded}}" /></view>
+<hz-action-bar wx:if="{{canCreate}}"><hz-button text="{{texts.create}}" bind:press="onCreate" /></hz-action-bar>
+<hz-sheet show="{{sheet}}" title="{{texts.select}}" footer bind:close="onClose"><view class="u-sheet-form"><hz-error wx:if="{{categoryError}}" message="{{categoryError}}" /><hz-switch wx:for="{{categories}}" wx:key="id" label="{{item.name}}" value="{{item.selected}}" data-key="{{item.id}}" bind:change="onCategory" /></view><hz-button slot="footer" text="{{texts.start}}" bind:press="onStart" /></hz-sheet>

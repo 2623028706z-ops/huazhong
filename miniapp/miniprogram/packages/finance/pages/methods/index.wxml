@@ -3,16 +3,15 @@
 <view wx:else class="u-list">
   <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
-  <view wx:for="{{sections}}" wx:key="kind" wx:for-item="section" class="u-section">
-    <text class="u-section__title">{{section.title}}</text>
-    <view wx:if="{{section.rows.length > 0 || section.error}}" class="u-card u-form-card">
-      <hz-error wx:if="{{section.error}}" message="{{section.error}}" />
-      <hz-switch wx:for="{{section.rows}}" wx:key="id" label="{{item.name}}" value="{{item.enabled}}" data-kind="{{section.kind}}" data-id="{{item.id}}" bind:change="onEnabled" />
+  <view class="u-section">
+    <view wx:if="{{rows.length > 0 || listError}}" class="u-card u-form-card">
+      <hz-error wx:if="{{listError}}" message="{{listError}}" />
+      <hz-switch wx:for="{{rows}}" wx:key="id" label="{{item.name}}" value="{{item.enabled}}" data-id="{{item.id}}" bind:change="onEnabled" />
     </view>
-    <hz-add-button text="{{section.addTitle}}" data-kind="{{section.kind}}" bind:press="onOpenAdd" />
+    <hz-add-button text="{{addTitle}}" bind:press="onOpenAdd" />
   </view>
 </view>
-<hz-sheet show="{{adding !== ''}}" title="{{addTitle}}" guard="{{newName !== ''}}" footer bind:close="onCloseAdd">
+<hz-sheet show="{{adding}}" title="{{addTitle}}" guard="{{newName !== ''}}" footer bind:close="onCloseAdd">
   <view class="u-sheet-form">
     <hz-error wx:if="{{formError}}" message="{{formError}}" />
     <hz-field label="{{texts.name}}" value="{{newName}}" error="{{fields.name}}" bind:change="onNewName" />

@@ -4,12 +4,14 @@
 import { screen, financeCopy } from './copy-screen.ts'
 import { reworkCopy, recordsCopy } from './copy-rework.ts'
 import { logCopy } from './copy-log.ts'
+import { stockCopy } from './copy-stock.ts'
 
 // 同一行里并列的几项之间（身份行、卡片第 3 行）
 const SEPARATOR = ' · '
 
 export const copy = {
   rework: reworkCopy,
+  stock: stockCopy,
   separator: SEPARATOR,
   error: {
     unauthenticated: '没有绑定账号',

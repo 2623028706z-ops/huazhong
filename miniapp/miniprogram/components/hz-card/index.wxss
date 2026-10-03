@@ -35,6 +35,14 @@
   color: var(--hz-ink);
 }
 
+.hz-card__total--gain {
+  color: var(--hz-green);
+}
+
+.hz-card__total--loss {
+  color: var(--hz-danger);
+}
+
 .hz-card__row--foot {
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);

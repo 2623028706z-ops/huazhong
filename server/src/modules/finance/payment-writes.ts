@@ -15,7 +15,7 @@ import {
   notifySupplierFinance,
   owns,
 } from '../../common/ledger.ts'
-import { loadPaymentLedger } from '../../common/payment-ledger.ts'
+import { apKey, loadPaymentLedger } from '../../common/payment-ledger.ts'
 import { PaymentReads } from './payment-reads.ts'
 type In<K extends keyof typeof contract> = ParsedInput<(typeof contract)[K]>['body']
 @Injectable()
@@ -32,21 +32,26 @@ export class PaymentWrites {
     const supplierId = Number(input.supplierId)
     await lockSupplierLedger(ctx.tx, supplierId)
     const ledger = await loadPaymentLedger(ctx.tx, supplierId)
-    if (
-      input.allocs.some((allocation) => !ledger.cards.some((card) => card.id === allocation.docId))
-    )
+    if (input.allocs.some((allocation) => !ledger.card(allocation.docType, allocation.docId)))
       throw appError.notFound()
     assertSnapshot(
-      { ledgerToken: ledger.token, items: ledger.cards.filter((row) => row.unpaidCents > 0) },
+      {
+        ledgerToken: ledger.token,
+        items: ledger.cards
+          .filter((row) => row.unpaidCents > 0)
+          .map((row) => ({ ...row, id: row.key })),
+      },
       input,
-      input.allocs.map((row) => row.docId),
-      input.expected.map((row) => row.docId),
+      input.allocs.map((row) => apKey(row.docType, row.docId)),
+      input.expected.map((row) => apKey(row.docType, row.docId)),
     )
     for (const allocation of input.allocs) {
-      const doc = ledger.cards.find((row) => row.id === allocation.docId)
+      const doc = ledger.card(allocation.docType, allocation.docId)
       if (!doc) throw appError.notFound()
       if (allocation.amountCents > doc.unpaidCents)
         throw appError.businessRule(copy.rework.paymentAllocOver)
+      if (allocation.docType === 'wh' && allocation.amountCents !== doc.unpaidCents)
+        throw appError.businessRule(copy.stock.stockInPayWhole)
     }
     return ledger
   }
@@ -59,14 +64,8 @@ export class PaymentWrites {
     const [method] = await ctx.tx
       .select()
       .from(paymentMethods)
-      .where(
-        and(
-          eq(paymentMethods.kind, 'pay'),
-          eq(paymentMethods.name, input.methodName),
-          eq(paymentMethods.enabled, true),
-        ),
-      )
-    if (!method) throw appError.businessRule(copy.finance.paymentMethodDisabled)
+      .where(and(eq(paymentMethods.name, input.methodName), eq(paymentMethods.enabled, true)))
+    if (!method) throw appError.businessRule(copy.finance.methodDisabled)
   }
   create(
     viewer: Viewer,
@@ -98,7 +97,8 @@ export class PaymentWrites {
           await ctx.tx.insert(paymentAllocations).values(
             input.allocs.map((allocation) => ({
               paymentId: row.id,
-              poId: Number(allocation.docId),
+              poId: allocation.docType === 'po' ? Number(allocation.docId) : null,
+              whDocId: allocation.docType === 'wh' ? Number(allocation.docId) : null,
               amountCents: allocation.amountCents,
               kind: 'direct' as const,
               createdBy: viewer.accountId,
@@ -145,12 +145,16 @@ export class PaymentWrites {
         const draws = drawPrepaid(
           ledger.money.map((row) => ({ ...row, receiptDate: row.payDate })),
           ledger.replay.left,
-          input.allocs.map((row) => ({ orderId: Number(row.docId), amountCents: row.amountCents })),
+          input.allocs.map((row) => ({
+            orderId: apKey(row.docType, row.docId),
+            amountCents: row.amountCents,
+          })),
         )
         await ctx.tx.insert(paymentAllocations).values(
           draws.map((row) => ({
             paymentId: row.receiptId,
-            poId: row.orderId,
+            poId: row.orderId.startsWith('po:') ? Number(row.orderId.split(':')[1]) : null,
+            whDocId: row.orderId.startsWith('wh:') ? Number(row.orderId.split(':')[1]) : null,
             amountCents: row.amountCents,
             kind: 'prepaid' as const,
             createdBy: viewer.accountId,

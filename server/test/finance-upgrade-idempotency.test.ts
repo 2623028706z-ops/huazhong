@@ -101,7 +101,7 @@ describe('K07: upgraded old payment idempotency identity through actual HTTP', (
       ).rows[0]
       const method = (
         await pool.query<{ name: string }>(
-          "SELECT name FROM payment_methods WHERE kind='pay' AND enabled=true ORDER BY id LIMIT 1",
+          'SELECT name FROM payment_methods WHERE enabled=true ORDER BY id LIMIT 1',
         )
       ).rows[0]
       if (!payment || !method) throw new Error('Missing old payment or enabled method')

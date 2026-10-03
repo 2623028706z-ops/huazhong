@@ -2,6 +2,7 @@
 <import src="purchase.wxml" />
 <import src="detail.wxml" />
 <import src="payment-panel.wxml" />
+<import src="stock.wxml" />
 <template name="ap-statement">
   <hz-navbar title="{{title}}" back />
   <view class="u-list">
@@ -12,8 +13,8 @@
     <view wx:if="{{refunds.length}}" class="u-section"><text class="u-section__title">退款记录</text><view class="u-card u-info"><view wx:for="{{refunds}}" wx:key="no" class="u-info__line" data-key="{{item.paymentId}}" bind:tap="onOpenRefund">{{item.no}} · {{item.date}} · ¥{{item.amount}} · {{item.status}}</view></view></view>
   </view>
   <template is="buttons" data="{{buttons}}" />
-  <hz-sheet show="{{sheet}}" title="{{title}}" bind:close="onCloseSheet">
-    <view class="u-sheet-form u-sheet-plain"><hz-error wx:if="{{sheetError}}" message="{{sheetError}}" /><hz-skeleton wx:elif="{{!view}}" type="detail" /><template wx:else is="po-body" data="{{...view}}" /></view>
+  <hz-sheet id="ap-document-sheet" show="{{sheet}}" title="{{stockView.heading || title}}" bind:close="onCloseSheet">
+    <view class="u-sheet-form u-sheet-plain"><hz-error wx:if="{{sheetError}}" message="{{sheetError}}" /><template wx:elif="{{stockView}}" is="stock-body" data="{{...stockView}}" /><hz-skeleton wx:elif="{{!view}}" type="detail" /><template wx:else is="po-body" data="{{...view}}" /></view>
   </hz-sheet>
   <template wx:if="{{!own}}" is="payment-panel" data="{{paymentLayer,paymentFields,paymentView,paymentError,paymentReason,paymentBusy,paymentTexts,refundForm,refundMethods}}" />
 </template>

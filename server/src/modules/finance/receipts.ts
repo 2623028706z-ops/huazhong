@@ -191,13 +191,7 @@ export class ReceiptService {
     const [method] = await ctx.tx
       .select({ id: paymentMethods.id })
       .from(paymentMethods)
-      .where(
-        and(
-          eq(paymentMethods.kind, 'receive'),
-          eq(paymentMethods.name, input.methodName),
-          eq(paymentMethods.enabled, true),
-        ),
-      )
+      .where(and(eq(paymentMethods.name, input.methodName), eq(paymentMethods.enabled, true)))
     if (!method) throw appError.validation({ methodName: copy.finance.methodDisabled })
   }
 

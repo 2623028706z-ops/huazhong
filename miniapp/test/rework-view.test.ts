@@ -14,6 +14,7 @@ import { shippingRowOf, shippingViewOf } from '../miniprogram/views/order'
 import {
   autoFillAll,
   checkAllocate,
+  fillText,
   checkPayment,
   checkReceipt,
   type ReceiveForm,
@@ -221,7 +222,11 @@ describe('账本凭据和多单核销', () => {
     expect(checkAllocate(form, '1', 'ledger-a').ok).toBe(true)
   })
   it('F7按供应商登记、多单核销、剩余转预付；不发送旧docId/poId付款语义', () => {
-    const checked = checkPayment(form, '9', 'ledger-b', false)
+    const paymentForm = {
+      ...form,
+      allocs: form.allocs.map((line) => ({ ...line, docType: 'po' as const, docId: line.orderId })),
+    }
+    const checked = checkPayment(paymentForm, '9', 'ledger-b', false)
     expect(checked.ok).toBe(true)
     if (checked.ok) {
       expect(checked.body).toMatchObject({
@@ -242,6 +247,37 @@ describe('账本凭据和多单核销', () => {
   it('按候选单据顺序默认填入，剩余可形成预付/预收', () => {
     expect(autoFillAll(form.allocs, 1800).map((line) => line.text)).toEqual(['10.00', '8.00'])
     expect(autoFillAll(form.allocs, 3000).map((line) => line.text)).toEqual(['10.00', '15.00'])
+  })
+  it('手工入库单只整单付款：钱不够付满就不填，少填提交前报错', () => {
+    const stockIn = {
+      orderId: 'wh:1',
+      docType: 'wh' as const,
+      docId: '1',
+      orderNo: 'RK-1',
+      version: 1,
+      unpaidCents: 1000,
+      text: '',
+    }
+    const lines = [
+      stockIn,
+      {
+        orderId: 'po:2',
+        docType: 'po' as const,
+        docId: '2',
+        orderNo: 'PO-2',
+        version: 1,
+        unpaidCents: 1500,
+        text: '',
+      },
+    ]
+    expect(autoFillAll(lines, 800).map((line) => line.text)).toEqual(['', '8.00'])
+    expect(autoFillAll(lines, 1200).map((line) => line.text)).toEqual(['10.00', '2.00'])
+    expect(fillText(lines, 0, 800)).toBe('')
+    expect(fillText(lines, 0, 1000)).toBe('10.00')
+    const partial = { ...form, amountText: '5.00', allocs: [{ ...stockIn, text: '5.00' }] }
+    const checked = checkPayment(partial, '9', 'ledger-b', false)
+    expect(checked.ok).toBe(false)
+    expect(JSON.stringify(checked)).toContain(copy.stock.stockInPayWhole)
   })
 })
 

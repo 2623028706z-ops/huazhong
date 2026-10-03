@@ -1,6 +1,6 @@
 import * as z from 'zod'
 import { apStatuses } from '../enums.ts'
-import { centsSchema, idSchema } from '../rules.ts'
+import { businessDateSchema, centsSchema, idSchema } from '../rules.ts'
 import type { Endpoint } from './endpoint.ts'
 import {
   checkDateRange,
@@ -11,6 +11,7 @@ import {
   pageSchema,
 } from './page.ts'
 import { poCardSchema, poDetailSchema } from './purchase.ts'
+import { whDocCardSchema, whDocDetailSchema } from './stock.ts'
 import {
   paymentAllocationSchema,
   ledgerTokenSchema,
@@ -18,12 +19,28 @@ import {
   externalAllocationSchema,
 } from './ledger.ts'
 
-export const apCardSchema = poCardSchema.extend({
-  docType: z.literal('po'),
+// 应付单据：采购单、手工入库单（阶段 5）。apDate 是收货日期 / 入库日期，对账筛选和核销排序都用它
+const apShape = {
   docId: idSchema,
+  apDate: businessDateSchema,
   paidCents: centsSchema,
   unpaidCents: centsSchema,
+}
+const poApCardSchema = poCardSchema.extend({ ...apShape, docType: z.literal('po') })
+const whApCardSchema = whDocCardSchema.extend({
+  ...apShape,
+  docType: z.literal('wh'),
+  amountCents: centsSchema,
+  payableCents: centsSchema,
+  apStatus: z.enum(apStatuses),
 })
+function apCardWith<T extends z.ZodRawShape>(extra: T) {
+  return z.discriminatedUnion('docType', [
+    poApCardSchema.extend(extra),
+    whApCardSchema.extend(extra),
+  ])
+}
+export const apCardSchema = apCardWith({})
 export type ApCard = z.infer<typeof apCardSchema>
 const totals = {
   payableCents: centsSchema,
@@ -76,7 +93,7 @@ export const supplierStatement = {
   grants: ['supplier'],
   query: statementQuery,
   response: statement.omit({ refunds: true }).extend({
-    items: z.array(apCardSchema.extend({ allocations: z.array(externalAllocationSchema) })),
+    items: z.array(apCardWith({ allocations: z.array(externalAllocationSchema) })),
     refunds: z.array(
       z.object({
         no: z.string(),
@@ -92,8 +109,14 @@ export const getApDocument = {
   method: 'GET',
   path: '/finance/ap-documents/:docType/:id',
   grants: ['finance'],
-  params: z.object({ docType: z.literal('po'), id: idSchema }),
-  response: poDetailSchema.extend({ allocations: z.array(paymentAllocationSchema) }),
+  params: z.object({ docType: z.enum(['po', 'wh']), id: idSchema }),
+  response: z.discriminatedUnion('docType', [
+    poDetailSchema.extend({
+      docType: z.literal('po'),
+      allocations: z.array(paymentAllocationSchema),
+    }),
+    whDocDetailSchema.extend({ docType: z.literal('wh') }),
+  ]),
   errors: ['NOT_FOUND'],
 } as const satisfies Endpoint
 export const listUnpaidDocuments = {
@@ -104,7 +127,7 @@ export const listUnpaidDocuments = {
   response: z.object({
     ledgerToken: ledgerTokenSchema,
     prepaidCents: centsSchema,
-    items: z.array(apCardSchema.extend({ notice: z.string().nullable() })),
+    items: z.array(apCardWith({ notice: z.string().nullable() })),
   }),
   errors: ['NOT_FOUND'],
 } as const satisfies Endpoint

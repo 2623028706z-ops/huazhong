@@ -7,6 +7,7 @@ import {
   customers,
   materialCategories,
   materials,
+  outCategories,
   stockBatches,
   stores,
   suppliers,
@@ -43,6 +44,14 @@ async function insertMaterials(tx: Tx, createdBy: number): Promise<Map<string, n
       .values(m.batches.map((b) => ({ ...b, materialId: row.id, createdBy })))
   }
   return materialIds
+}
+
+async function insertOutCategories(tx: Tx, createdBy: number) {
+  await tx
+    .insert(outCategories)
+    .values(
+      ['生产领用', '门店零售', '样品', '其他'].map((name, sort) => ({ name, sort, createdBy })),
+    )
 }
 
 type Admin = (typeof seedAccounts)[0]
@@ -123,5 +132,6 @@ export async function seed(db: Db): Promise<void> {
       suppliers: supplierIds,
       materials: materialIds,
     })
+    await insertOutCategories(tx, adminId)
   })
 }

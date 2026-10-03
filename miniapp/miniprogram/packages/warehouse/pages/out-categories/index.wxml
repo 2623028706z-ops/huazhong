@@ -1,0 +1,5 @@
+<hz-navbar id="category-navbar" title="{{title}}" back />
+<view class="u-list"><hz-error wx:if="{{error}}" message="{{error}}" retry bind:retry="onFailureAction" /><hz-skeleton wx:if="{{!loaded}}" type="list" /><view wx:else class="u-card u-info"><view wx:for="{{items}}" wx:key="id" class="u-sheet-row u-tap" data-key="{{item.id}}" bindtap="onEdit"><text>{{item.name}}</text><text class="u-info__meta">{{item.enabled ? texts.enabled : texts.disabled}}</text></view></view></view>
+<hz-action-bar wx:if="{{canCreate}}"><hz-button text="{{texts.add}}" bind:press="onAdd" /></hz-action-bar>
+<hz-sheet show="{{sheet}}" title="{{sheetTitle}}" footer bind:close="onClose"><view class="u-sheet-form"><hz-error wx:if="{{sheetError}}" message="{{sheetError}}" /><hz-field id="category-name" label="{{texts.name}}" value="{{form.name}}" error="{{fields.name}}" bind:change="onName" /><hz-switch label="{{texts.enabled}}" value="{{form.enabled}}" bind:change="onEnabled" /></view><hz-button slot="footer" text="{{texts.save}}" loading="{{saving}}" bind:press="onSave" /></hz-sheet>
+<hz-confirm id="hz-confirm" />

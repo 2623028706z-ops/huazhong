@@ -18,16 +18,10 @@ import type { ParsedInput } from '../../common/endpoint.ts'
 import { found } from '../../common/scope.ts'
 import { PurchaseService } from '../purchase/purchase.service.ts'
 import { loadPaymentLedger } from '../../common/payment-ledger.ts'
+import { allocationKey, apKey } from '../../common/payment-ledger.ts'
+import { WarehouseService } from '../warehouse/warehouse.service.ts'
 import { refundView } from '../../common/finance-history.ts'
 type Query = ParsedInput<typeof contract.getFinanceSupplier>['query']
-function documentDates(docs: Awaited<ReturnType<typeof loadPaymentLedger>>['docs']) {
-  return new Map(
-    docs.map((doc) => [
-      String(doc.id),
-      doc.receivedAt ? shanghaiDateOf(doc.receivedAt.getTime()) : doc.orderDate,
-    ]),
-  )
-}
 function totals(cards: readonly ApCard[], prepaidCents: number) {
   return {
     payableCents: cards.reduce((sum, row) => sum + row.payableCents, 0),
@@ -36,38 +30,40 @@ function totals(cards: readonly ApCard[], prepaidCents: number) {
     prepaidCents,
   }
 }
-function pageCards(cards: ApCard[], query: Query, dates: Map<string, string> = new Map()) {
-  const dateOf = (row: ApCard) => dates.get(row.id) ?? row.orderDate
-  const sorted = [...cards].sort(
-    (a, b) => dateOf(b).localeCompare(dateOf(a)) || Number(b.id) - Number(a.id),
-  )
+function pageCards(cards: ApCard[], query: Query) {
+  const dateOf = (row: ApCard) => row.apDate
+  const rank = (row: ApCard) => Number(row.id) * 2 + (row.docType === 'wh' ? 1 : 0)
+  const sorted = [...cards].sort((a, b) => dateOf(b).localeCompare(dateOf(a)) || rank(b) - rank(a))
   const cursor = query.cursor ? decodeCursor(query.cursor) : null
   const rest = sorted.filter(
     (row) =>
       !cursor ||
       dateOf(row) < String(cursor[0]) ||
-      (dateOf(row) === String(cursor[0]) && Number(row.id) < cursor[1]),
+      (dateOf(row) === String(cursor[0]) && rank(row) < cursor[1]),
   )
-  return pageOf(rest, query.limit, (row) => [dateOf(row), Number(row.id)])
+  return pageOf(rest, query.limit, (row) => [dateOf(row), rank(row)])
 }
 @Injectable()
 export class ApReads {
   constructor(
     @Inject(DB) private readonly db: Db,
     private readonly purchase: PurchaseService,
+    private readonly warehouse: WarehouseService,
   ) {}
   private async cards(tx: Db | Tx, viewer: Viewer, id: number): Promise<ApCard[]> {
     const ledger = await loadPaymentLedger(tx, id)
-    const cards = await this.purchase.cards(tx, viewer, eq(purchaseOrders.supplierId, id))
-    return cards
+    const poCards = await this.purchase.cards(tx, viewer, eq(purchaseOrders.supplierId, id))
+    const po: ApCard[] = poCards
       .filter((card) => card.status === 'received')
       .map((card) => {
-        const amounts = found(ledger.cards.find((row) => row.id === card.id))
+        const amounts = found(ledger.card('po', card.id))
         return {
           ...card,
-          ...amounts,
           docType: 'po',
           docId: card.id,
+          apDate: amounts.apDate,
+          paidCents: amounts.paidCents,
+          unpaidCents: amounts.unpaidCents,
           apStatus:
             amounts.payableCents === 0
               ? 'no_pay'
@@ -78,6 +74,27 @@ export class ApReads {
                   : 'unpaid',
         }
       })
+    const whCards = await this.warehouse.docCards(
+      tx,
+      viewer,
+      ledger.cards.filter((row) => row.docType === 'wh').map((row) => row.id),
+      ledger,
+    )
+    const wh: ApCard[] = whCards.map((card) => {
+      const amounts = found(ledger.card('wh', card.id))
+      return {
+        ...card,
+        docType: 'wh',
+        docId: card.id,
+        apDate: amounts.apDate,
+        amountCents: amounts.payableCents,
+        payableCents: amounts.payableCents,
+        paidCents: amounts.paidCents,
+        unpaidCents: amounts.unpaidCents,
+        apStatus: amounts.unpaidCents === 0 ? 'paid' : amounts.paidCents > 0 ? 'partial' : 'unpaid',
+      }
+    })
+    return [...po, ...wh].filter((card) => card.payableCents > 0)
   }
   async payables(
     viewer: Viewer,
@@ -153,15 +170,13 @@ export class ApReads {
     const supplier = found((await tx.select().from(suppliers).where(eq(suppliers.id, id)))[0])
     const ledger = await loadPaymentLedger(tx, id)
     const all = await this.cards(tx, viewer, id)
-    const dates = documentDates(ledger.docs)
     const ranged = all.filter((row) => {
-      const date = dates.get(row.id) ?? row.orderDate
+      const date = row.apDate
       return (!query.from || date >= query.from) && (!query.to || date <= query.to)
     })
     const page = pageCards(
       ranged.filter((row) => !query.status || row.apStatus === query.status),
       query,
-      dates,
     )
     return {
       items: page.items,
@@ -199,7 +214,7 @@ export class ApReads {
             allocations: ledger.allocations
               .filter(
                 (row) =>
-                  row.poId === Number(item.id) &&
+                  allocationKey(row) === apKey(item.docType, item.docId) &&
                   row.revokedAt === null &&
                   (ledger.replay.effective.get(row.id) ?? 0) > 0,
               )
@@ -229,18 +244,33 @@ export class ApReads {
           prepaidCents: ledger.prepaidCents,
           items: (await this.cards(tx, viewer, id))
             .filter((row) => row.unpaidCents > 0)
-            .sort((a, b) => a.orderDate.localeCompare(b.orderDate) || Number(a.id) - Number(b.id))
+            .sort(
+              (a, b) =>
+                a.apDate.localeCompare(b.apDate) ||
+                Number(a.id) - Number(b.id) ||
+                a.docType.localeCompare(b.docType),
+            )
             .map((row) => ({ ...row, notice: row.repriced ? copy.rework.apRepriceNotice : null })),
         }
       },
       { isolationLevel: 'repeatable read', accessMode: 'read only' },
     )
   }
-  async payable(viewer: Viewer, id: number): Promise<OutputOf<typeof contract.getApDocument>> {
-    return this.db.transaction((tx) => this.purchase.detail(tx, viewer, id), {
-      isolationLevel: 'repeatable read',
-      accessMode: 'read only',
-    })
+  async payable(
+    viewer: Viewer,
+    docType: 'po' | 'wh',
+    id: number,
+  ): Promise<OutputOf<typeof contract.getApDocument>> {
+    return this.db.transaction(
+      async (tx) =>
+        docType === 'po'
+          ? { ...(await this.purchase.detail(tx, viewer, id)), docType: 'po' as const }
+          : { ...(await this.warehouse.docDetail(tx, viewer, id)), docType: 'wh' as const },
+      {
+        isolationLevel: 'repeatable read',
+        accessMode: 'read only',
+      },
+    )
   }
   async todos(viewer: Viewer): Promise<OutputOf<typeof contract.moduleTodos>> {
     const page = await this.payables(viewer, { limit: TODO_PREVIEW_COUNT })

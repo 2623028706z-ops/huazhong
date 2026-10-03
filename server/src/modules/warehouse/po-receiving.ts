@@ -60,6 +60,7 @@ export class PoReceiving {
           unit: line.unit,
           qty: (line.receivedQty ?? 0) - line.returnedQty,
         })),
+        'po_void',
       )
       await ctx.tx
         .update(purchaseOrders)

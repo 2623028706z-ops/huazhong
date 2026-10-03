@@ -46,8 +46,8 @@ export async function paymentInput(
     supplierId: document.supplierId,
     ledgerToken: ledger.ledgerToken,
     expected: ledger.items.map((item) => ({
-      docType: 'po',
-      docId: item.id,
+      docType: item.docType,
+      docId: item.docId,
       version: item.version,
       unpaidCents: item.unpaidCents,
     })),

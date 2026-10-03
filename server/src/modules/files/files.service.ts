@@ -31,11 +31,13 @@ interface TicketInput {
   sizeBytes: number
 }
 
-// 门店只传售后图片，产品图只有销售传
+// 门店只传售后图片；售后图、产品图是销售传，报损图是仓库传（05 章第 11 节）
 function canUpload(viewer: Viewer, purpose: FilePurpose): boolean {
   if (viewer.type === 'store') return purpose === 'after_image'
-  return viewer.modules.includes('sales')
+  return viewer.modules.includes(purpose === 'loss_image' ? 'warehouse' : 'sales')
 }
+// 售后图、报损图只能用本人上传的
+const OWN_ONLY: readonly FilePurpose[] = ['after_image', 'loss_image']
 
 @Injectable()
 export class FilesService {
@@ -78,7 +80,7 @@ export class FilesService {
     return { status: 'ok', ...this.urlOf(row.cosKey, row.cosKey) }
   }
 
-  // 表单里带的图片：必须是这个用途、已通过检测；售后图片还必须是本人上传的
+  // 表单里带的图片：必须是这个用途、已通过检测、不重复；售后、报损图片还必须是本人上传的
   async assertUsable(
     tx: Tx,
     viewer: Viewer,
@@ -93,8 +95,8 @@ export class FilesService {
     const usable = (row: (typeof rows)[number]) =>
       row.status === 'ok' &&
       row.purpose === purpose &&
-      (purpose !== 'after_image' || row.createdBy === viewer.accountId)
-    if (rows.length !== new Set(ids).size || !rows.every(usable)) {
+      (!OWN_ONLY.includes(purpose) || row.createdBy === viewer.accountId)
+    if (rows.length !== ids.length || !rows.every(usable)) {
       throw appError.businessRule(copy.file.missing)
     }
   }

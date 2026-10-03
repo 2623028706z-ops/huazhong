@@ -8,6 +8,7 @@ import {
   orders,
   payments,
   purchaseOrders,
+  whDocs,
 } from '../../db/schema/index.ts'
 import { enabledAction } from './domain/actions.ts'
 import { hashToken } from './domain/token.ts'
@@ -43,6 +44,10 @@ export async function notifySupplierFinance(ctx: WriteContext, supplierId: numbe
     .select({ id: purchaseOrders.id })
     .from(purchaseOrders)
     .where(eq(purchaseOrders.supplierId, supplierId))
+  const stockIns = await ctx.tx
+    .select({ id: whDocs.id })
+    .from(whDocs)
+    .where(eq(whDocs.supplierId, supplierId))
   ctx.notify(
     [
       { topic: `ap:${supplierId}`, version: null },
@@ -53,6 +58,10 @@ export async function notifySupplierFinance(ctx: WriteContext, supplierId: numbe
       ...docs.flatMap((row) => [
         { topic: `po:${row.id}` as const, version: null },
         { topic: `payable:po:${row.id}` as const, version: null },
+      ]),
+      ...stockIns.flatMap((row) => [
+        { topic: `wh_doc:${row.id}` as const, version: null },
+        { topic: `payable:wh:${row.id}` as const, version: null },
       ]),
     ],
     { supplierIds: [String(supplierId)] },

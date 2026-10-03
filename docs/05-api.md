@@ -120,9 +120,9 @@
 | `supplierCancelPo` | 取消采购单 | 采购单 | 供应商 | 同上 | — | `true` | 同上 |
 | `receive` | 确认收货 | 采购单 | 仓库 | 待收货 | — | `false` | — |
 | `return` | 退货 | 采购单 | 仓库 | 已收货、没全部退货 | — | `false` | 全部退货：「已全部退货」 |
-| `reprice` | 改单价 | 采购单、手工入库单 | 仓库 | 采购单已收货且未全部退货、手工入库单已入库 | — | `true` | 全部退货：「已全部退货」；已作废：「已作废，不能再改单价」 |
+| `reprice` | 改单价 | 采购单、手工入库单 | 仓库 | 采购单已收货且未全部退货、手工入库单已入库且未付款 | 手工入库已付（`paidCents > 0`，核销实际抵 0 元不算）：同 `voidPo`（2026-10-03 确认） | `true` | 全部退货：「已全部退货」；已作废：「已作废，不能再改单价」 |
 | `voidPo` | 作废采购单 | 采购单 | 仓库 | 已收货 | 不是收货人：同 `cancel`；有有效核销：「已有付款核销，请先由财务撤回」 | `true` | — |
-| `void` | 作废 | 手工入库单、手工出库、报损 | 仓库 | 已入库、已出库、已报损 | 不是录的人：同 `cancel`；手工入库有有效核销：同 `voidPo` | `true` | 已作废：「已作废」 |
+| `void` | 作废 | 手工入库单、手工出库、报损 | 仓库 | 已入库、已出库、已报损 | 不是录的人：同 `cancel`；手工入库已付（`paidCents > 0`）：同 `voidPo` | `true` | 已作废：「已作废」 |
 | `voidPayment` | 作废付款 | 付款 | 财务 | 有效 | 同 `voidReceipt` | `true` | — |
 | `editInvite` | 修改邀请 | 填报邀请 | 采购 | 待填报 | — | `false` | — |
 | `cancelInvite` | 取消邀请 | 填报邀请 | 采购 | 待填报 | 不是发邀请的人：同 `cancel`（管理员除外） | `false` | — |
@@ -353,8 +353,8 @@
 | `GET /warehouse/docs?kind=out` | 仓库 | `?kind=out&outCategoryId=&from=&to=&cursor=` → 手工出库列表（按出库分类、出库日期筛选，出库日期降序分页） | `to` 早于 `from` → `VALIDATION_FAILED` | 订阅 `wh_docs` |
 | `GET /warehouse/docs/:id` | 仓库、财务（手工入库） | 阶段 5 接入：→ 明细、改价记录、报损图片、作废原因、`amountCents`、`apStatus`（手工入库：`unpaid` / `partial` / `paid` / `no_pay`；出库、报损为 `null`）、付款核销记录；`actions` ⊆ 仓库 `reprice`（只对手工入库）、`void`，财务 `[]` | | 订阅 `wh_doc:<id>` |
 | `POST /warehouse/docs` | 仓库 | `{ kind, supplierId?, outCategoryId?, reason, imageFileIds?[], lines[{materialId, qty, priceCents?}] }` + 幂等键 | 入库：供应商启用、花材启用、每行有单价；出库：分类启用、库存够；报损：原因必填、库存够，图片选填（≤ `AFTER_IMAGE_MAX_COUNT` 张、`status=ok`） | 发号 RK/CK/BS；入库生成批次 + `manual_in`；出库、报损批次扣减 + 流水；日志「手工入库 / 手工出库 / 报损」；推送 `wh_docs`、`stock`、`demand`；入库金额 > 0 另推 `todo:finance`、`ap:<supplierId>` |
-| `POST /warehouse/docs/:id/reprice` | 仓库 | `{ version, reason, lines[{lineId, priceCents}] }` | 手工入库、`stocked_in`；原因必填 | 行锁供应商 + 单据；写 `price_changes`；已付超出的部分重算回到预付；日志「改单价」；推送 `wh_doc:<id>`、`ap:<supplierId>` |
-| `POST /warehouse/docs/:id/void` | 仓库（录的人） | `{ version, reason }` | 原因必填。手工入库：`stocked_in`、没有有效核销（否则 `BUSINESS_RULE`「已有付款核销，请先由财务撤回」）、库存够扣回（否则「库存不够，不能作废」）；手工出库、报损：`stocked_out`、`lost` | 入库先锁供应商，再锁单据；出库、报损先锁单据；随后锁花材和批次；入库：批次扣减（先扣本单批次）、`in_void` 流水；出库、报损：按原流水的批次加回、`out_void` / `loss_void` 流水；日志「作废入库单 / 出库单 / 报损单」；推送 `wh_doc:<id>`、`wh_docs`、`stock`、`demand`，入库另推 `ap:<supplierId>`、`todo:finance` |
+| `POST /warehouse/docs/:id/reprice` | 仓库 | `{ version, reason, lines[{lineId, priceCents}] }` | 手工入库、`stocked_in`；未付款，即 `paidCents = 0`（否则 `BUSINESS_RULE`「已有付款核销，请先由财务撤回」，2026-10-03 确认）；原因必填 | 行锁供应商 + 单据；写 `price_changes`；日志「改单价」；推送 `wh_doc:<id>`、`ap:<supplierId>` |
+| `POST /warehouse/docs/:id/void` | 仓库（录的人） | `{ version, reason }` | 原因必填。手工入库：`stocked_in`、未付款即 `paidCents = 0`（否则 `BUSINESS_RULE`「已有付款核销，请先由财务撤回」）、库存够扣回（否则「库存不够，不能作废」）；手工出库、报损：`stocked_out`、`lost` | 入库先锁供应商，再锁单据；出库、报损先锁单据；随后锁花材和批次；入库：批次扣减（先扣本单批次）、`in_void` 流水；出库、报损：按原流水的批次加回、`out_void` / `loss_void` 流水；日志「作废入库单 / 出库单 / 报损单」；推送 `wh_doc:<id>`、`wh_docs`、`stock`、`demand`，入库另推 `ap:<supplierId>`、`todo:finance` |
 | `GET /warehouse/moves` | 仓库 | `?type=&materialId=&from=&to=&cursor=` → 流水（批次显示「MM-DD 入库」） | | — |
 | `GET /warehouse/stock` | 仓库 | `?q=&categoryId=` → 库存（含批次明细） | | 订阅 `stock` |
 | `GET/POST/PATCH /materials` | 仓库（采购、销售只读） | `{ version?, code, name, categoryId, unit, enabled }` | 编码不重复；新建默认 `MATERIAL_CODE_PREFIX` + 下一个序号 | 日志「新增 / 修改花材」（改单位记前后） |
@@ -382,15 +382,15 @@
 | `GET /finance/suppliers` | 财务 | `?q=` → 每家 `{ payableCents, paidCents, unpaidCents, prepaidCents }` | 规则同供应商端对账 | 订阅 `ap:*` |
 | `GET /finance/suppliers/:id` | 财务 | `?status=unpaid|partial|paid&from=&to=&cursor=`（收货日期，默认全部）→ 汇总 + 有效正应付单据卡片 + `refunds[财务退款详情]`；已付单保留；预付按完整账本算；actions ⊆ registerPayment、allocatePrepaid | 收货日期为 received_at 的上海日期，阶段 5 入库取 doc_date；退款范围见 10.1 | 订阅 `ap:<id>` |
 | `GET /finance/suppliers/:id/unpaid-docs` | 财务 | → `{ ledgerToken,prepaidCents,items[全部待付单据：version、unpaidCents、退货 / 改价记录、notice] }`；按收货日期、docType、id 升序，不分页；改价 notice「单价改过，请核对」 | 登记付款、核销预付的快照来源 | 订阅 `ap:<id>` |
-| `POST /finance/payments` | 财务 | `{ supplierId,payDate,amountCents,methodName,note,ledgerToken,expected[{docType,docId,version,unpaidCents}],allocs[{docType,docId,amountCents}] }` + 幂等键；阶段 4 docType=po | 金额>0；日期不晚于今天，否则 fields.payDate「付款日期不能晚于今天」；方式启用；快照变化 → STALE「应付有变化，已刷新，请核对后再付」，整笔不写；每条 ≤ 待付、合计 ≤ 付款 | 锁供应商并按 10.1 复核；发号 FK、写 direct 核销，剩余预付；日志「登记付款」；按 10.2 通知 |
-| `POST /finance/prepaid-payment-allocations` | 财务 | `{ supplierId,ledgerToken,expected[],allocs[] }` + 幂等键 | 同付款复核；合计 ≤ 当前预付，否则「可用预付只有 ¥…」 | 锁供应商；按付款 `(created_at,id)` 扣余额，写 prepaid 核销；日志「核销预付」；按 10.2 通知 |
+| `POST /finance/payments` | 财务 | `{ supplierId,payDate,amountCents,methodName,note,ledgerToken,expected[{docType,docId,version,unpaidCents}],allocs[{docType,docId,amountCents}] }` + 幂等键；阶段 4 docType=po | 金额>0；日期不晚于今天，否则 fields.payDate「付款日期不能晚于今天」；方式启用；快照变化 → STALE「应付有变化，已刷新，请核对后再付」，整笔不写；每条 ≤ 待付、合计 ≤ 付款；手工入库单（docType=wh）的核销金额必须等于 `expected` 里和当前的待付，否则「手工入库单要整单付款，请按待付金额核销」（2026-10-03 确认：手工入库单只整单付款） | 锁供应商并按 10.1 复核；发号 FK、写 direct 核销，剩余预付；日志「登记付款」；按 10.2 通知 |
+| `POST /finance/prepaid-payment-allocations` | 财务 | `{ supplierId,ledgerToken,expected[],allocs[] }` + 幂等键 | 同付款复核（含手工入库单整单核销）；合计 ≤ 当前预付，否则「可用预付只有 ¥…」 | 锁供应商；按付款 `(created_at,id)` 扣余额，写 prepaid 核销；日志「核销预付」；按 10.2 通知 |
 | `GET /finance/payments/:id` | 财务 | → 付款详情、`allocations[全部核销历史]`、prepaidCents、`refunds[财务退款详情]`；每条带登记 / 生效金额、撤回信息和 actions；付款 actions ⊆ voidPayment、refundPayment | 同收款详情；不再绑定一张 docId | 订阅 `payment:<id>` |
 | `POST /finance/payments/:id/void` | 财务（登记人、管理员） | `{ version,reason }` | 同作废收款 | 锁供应商 → 付款；条件更新、版本+1、尚有效核销撤回；日志「作废付款」；按 10.2 通知 |
 | `POST /finance/payment-allocations/:id/revoke` | 财务（核销登记人、管理员） | `{ reason }` | 同收款核销撤回 | 锁供应商 → 付款 → 核销，写 revoked_*；日志「撤回核销」；按 10.2 通知 |
-| `POST /finance/refunds` | 财务 | `{ kind:receipt|payment,receiptId?,paymentId?,refundDate,amountCents,methodName,note }` + 幂等键 → 财务退款详情 | kind 与唯一来源匹配、来源有效、金额>0 且不超本笔余额，否则「这笔最多可退 ¥…」；日期不晚于今天；方式启用（预收退款用付款方式，预付退款用收款方式） | 锁客户 / 供应商 → 资金来源；当前余额复查；发号 TK、日志「登记退款」；按 10.2 通知 |
+| `POST /finance/refunds` | 财务 | `{ kind:receipt|payment,receiptId?,paymentId?,refundDate,amountCents,methodName,note }` + 幂等键 → 财务退款详情 | kind 与唯一来源匹配、来源有效、金额>0 且不超本笔余额，否则「这笔最多可退 ¥…」；日期不晚于今天；方式存在且启用（收付款方式一份通用，2026-10-03 确认） | 锁客户 / 供应商 → 资金来源；当前余额复查；发号 TK、日志「登记退款」；按 10.2 通知 |
 | `POST /finance/refunds/:id/void` | 财务（退款登记人、管理员） | `{ version,reason }` → 财务退款详情 | 有效、版本一致、原因必填；非归属人 FORBIDDEN | 锁客户 / 供应商 → 来源 → 退款；条件更新、version+1；日志「作废退款」；按 10.2 通知 |
 | `GET /finance/records` | 财务 | `?kind=receipt|payment&status=&from=&to=&cursor=` → 收付款记录；`counts` 恒为 `{}`（没有等待类状态，见第 1.3 节） | `kind` 由顶部收款 / 付款标签决定，不是筛选维度，默认 `receipt`（阶段 4 确认） | — |
-| `GET/POST/PATCH /finance/methods` | 财务（登记时各端只读启用的） | `{ kind, name, enabled }` | `(kind, name)` 不重复；每类至少一种启用 | 日志「新增 / 停用收付款方式」 |
+| `GET/POST/PATCH /finance/methods` | 财务（登记时各端只读启用的） | 列表无查询参数；新增 `{ name }`，返回 `{ id, name, enabled, sort }`；PATCH `{ enabled }` | `name` 不重复，否则「已有同名方式」；至少一种启用，否则「至少要保留一种启用的收付款方式」。2026-10-03 确认：收付款方式合并成一份，不再有 `kind` | 日志「新增 / 停用收付款方式」，对象只写名称 |
 
 收款侧和付款侧用同一套核销计算函数（04 第 8 节），只换表；`expected` 复核、撤回、退款的校验也共用。财务不能作废售后（2026-10-02 梳理确认）。
 

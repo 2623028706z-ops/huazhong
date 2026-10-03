@@ -2,9 +2,12 @@
 // 作废售后、作废收款后不改核销表，重算即可：同一笔钱不会算两次，预收不会是负数
 import type { ArCard, PayStatus, UnitTotal } from '@huazhong/shared'
 
-export interface LedgerOrder {
+// 单据键：收款侧是发货单 id；付款侧是 'po:<id>' / 'wh:<id>'，采购单和手工入库单各自编号
+export type DocKey = number | string
+
+export interface LedgerOrder<K extends DocKey = number> {
   version?: number
-  orderId: number
+  orderId: K
   orderNo: string
   storeId: number
   storeName: string
@@ -24,16 +27,16 @@ export interface LedgerReceipt {
 }
 
 // 没撤回的核销（所属收款有效），按 (created_at, id) 先后
-export interface LedgerAllocation {
+export interface LedgerAllocation<K extends DocKey = number> {
   id: number
   receiptId: number
-  orderId: number
+  orderId: K
   amountCents: number
 }
 
-export interface Replay {
+export interface Replay<K extends DocKey = number> {
   // 每张发货单已收
-  received: Map<number, number>
+  received: Map<K, number>
   // 每笔收款还没核销掉的（预收）
   left: Map<number, number>
   // 每条核销的生效金额（≤ 0 的不在里面）
@@ -46,14 +49,14 @@ function receivableOf(order: Pick<LedgerOrder, 'shippedCents' | 'afterCents'>): 
 }
 
 // 逐条算生效金额 = min(登记金额, 发货单剩余应收, 这笔收款剩余)，≤ 0 跳过
-export function replayLedger(
-  orders: readonly LedgerOrder[],
+export function replayLedger<K extends DocKey = number>(
+  orders: readonly Pick<LedgerOrder<K>, 'orderId' | 'shippedCents' | 'afterCents'>[],
   receipts: readonly LedgerReceipt[],
-  allocations: readonly LedgerAllocation[],
+  allocations: readonly LedgerAllocation<K>[],
   refunds: readonly { receiptId: number; amountCents: number }[] = [],
-): Replay {
+): Replay<K> {
   const receivable = new Map(orders.map((order) => [order.orderId, receivableOf(order)]))
-  const received = new Map(orders.map((order) => [order.orderId, 0]))
+  const received = new Map<K, number>(orders.map((order) => [order.orderId, 0]))
   const left = new Map(receipts.map((receipt) => [receipt.id, receipt.amountCents]))
   for (const refund of refunds)
     left.set(refund.receiptId, Math.max((left.get(refund.receiptId) ?? 0) - refund.amountCents, 0))
@@ -97,23 +100,23 @@ export function toArCard(order: LedgerOrder, receivedCents: number): ArCard {
   }
 }
 
-export interface Draw {
+export interface Draw<K extends DocKey = number> {
   receiptId: number
-  orderId: number
+  orderId: K
   amountCents: number
 }
 
 // 核销预收：每条按收款先后从有余额的收款里扣；调用前已核对合计 ≤ 预收
-export function drawPrepaid(
+export function drawPrepaid<K extends DocKey = number>(
   receipts: readonly LedgerReceipt[],
   left: ReadonlyMap<number, number>,
-  requests: readonly { orderId: number; amountCents: number }[],
-): Draw[] {
+  requests: readonly { orderId: K; amountCents: number }[],
+): Draw<K>[] {
   const ordered = [...receipts].sort(
     (a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0) || a.id - b.id,
   )
   const rest = new Map(left)
-  const draws: Draw[] = []
+  const draws: Draw<K>[] = []
   for (const request of requests) {
     let need = request.amountCents
     for (const receipt of ordered) {

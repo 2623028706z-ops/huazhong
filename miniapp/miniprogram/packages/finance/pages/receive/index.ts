@@ -143,7 +143,7 @@ Page({
   async loadOptions(): Promise<void> {
     const [customers, methods] = await Promise.all([
       this.data.isPayment ? loadSuppliers() : loadCustomers(),
-      request(contract.listMethods, { query: { kind: this.data.isPayment ? 'pay' : 'receive' } }),
+      request(contract.listMethods),
     ])
     if (!customers.ok || !methods.ok) {
       const failure = firstFailure([customers, methods])
@@ -374,11 +374,15 @@ Page({
     this.setData({ formError: copy.rework.ledgerReviewed })
   },
   onOpenDocument(event: DetailEvent<unknown, { key: string }>) {
-    if (this.data.isPayment)
+    if (this.data.isPayment) {
+      const line = this.data.form.allocs.find(
+        (row) => row.orderId === event.currentTarget.dataset.key,
+      )
+      if (!line?.docType || !line.docId) return
       void wx.navigateTo({
-        url: `/packages/finance/pages/payable/index?id=${event.currentTarget.dataset.key}`,
+        url: `/packages/finance/pages/payable/index?docType=${line.docType}&id=${line.docId}`,
       })
-    else
+    } else
       void wx.navigateTo({
         url: `/packages/finance/pages/customer/index?id=${this.data.customerId}&orderId=${event.currentTarget.dataset.key}`,
       })

@@ -22,6 +22,11 @@ function isOldResponse(next: PoDetail, current: PoDetail | null) {
   const version = current?.version ?? 0
   return next.version < version
 }
+function skipsResponse(next: PoDetail, current: PoDetail | null, pushed: boolean) {
+  return (
+    isOldResponse(next, current) || (pushed && JSON.stringify(next) === JSON.stringify(current))
+  )
+}
 
 const data = {
   kind: 'purchase' as 'purchase' | 'warehouse',
@@ -100,9 +105,8 @@ const methods = {
       return
     }
     const po = result.data
-    if (isOldResponse(po, this.order)) return
     // version: null 的派生通知（如自己改价引起的全账重算）重读后内容没变，不提示
-    if (pushed && JSON.stringify(po) === JSON.stringify(this.order)) return
+    if (skipsResponse(po, this.order, pushed)) return
     if (!replace && this.preserve(po)) return
     this.show(po, replace ? this.data.recvNote : '')
     if (pushed) this.setData({ realtime: copy.screen.realtime.refreshed })

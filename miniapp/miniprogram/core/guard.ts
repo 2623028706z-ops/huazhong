@@ -1,6 +1,7 @@
 // 放弃修改（02 章第 5.4 节）：只从这里走（00 章第 6 节）。
 // 页面内返回、弹层关闭用花众确认框；右滑返回和安卓返回键用 wx.enableAlertBeforeUnload（01 章第 3.1 节）。
 import { copy } from '@huazhong/shared'
+import { unwatch } from './live'
 
 // 改回原值不算修改：按内容比较，不按「动过没有」
 export function isChanged(initial: unknown, current: unknown): boolean {
@@ -11,6 +12,17 @@ export function isChanged(initial: unknown, current: unknown): boolean {
 export function syncUnloadAlert(changed: boolean): void {
   if (changed) wx.enableAlertBeforeUnload({ message: copy.confirm.discardTitle })
   else wx.disableAlertBeforeUnload()
+}
+
+export const formOnLeave = {
+  onHide(this: object) {
+    unwatch(this)
+    syncUnloadAlert(false)
+  },
+  onUnload(this: object) {
+    unwatch(this)
+    syncUnloadAlert(false)
+  },
 }
 
 interface ConfirmHost {

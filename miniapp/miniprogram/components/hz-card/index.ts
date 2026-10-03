@@ -12,9 +12,11 @@ Component({
     date: { type: String, value: '' },
     statusKind: { type: String, value: '' },
     status: { type: String, value: '' },
+    headText: { type: String, value: '' },
     title: { type: String, value: '' },
     // 第 2 行右边，例如「共 32 束」
     total: { type: String, value: '' },
+    totalTone: { type: String, value: '' },
     // 没有金额的列表（库存）：第 2 行的总数是关键数字，墨色加粗（02 章第 4 节）
     keyTotal: { type: Boolean, value: false },
     // 第 3 行左边：单号 / 出货日期 / 采购员

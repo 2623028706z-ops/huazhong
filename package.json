@@ -16,6 +16,7 @@
     "dup": "jscpd",
     "test": "vitest run",
     "test:ui:stage4": "vitest run --config server/vitest.ui.config.ts",
+    "test:ui:stage5": "vitest run --config server/vitest.ui.config.ts test/ui/warehouse-stage5.spec.ts",
     "test:coverage": "vitest run --coverage",
     "gen": "pnpm --filter @huazhong/scripts gen",
     "gen:check": "pnpm --filter @huazhong/scripts gen:check",
