@@ -25,22 +25,10 @@ const order = async (id: string): Promise<OrderDetail> =>
   dataOf(await (await s.as('u2')).get(`/orders/${id}`))
 
 describe('统一确认与批量操作', () => {
-  test('仅改备注无需原因；产品数量变化必须说明，首次出货日期不记改单', async () => {
+  test('仅改备注无需原因；首次出货日期不记改单', async () => {
     const id = await idBy(s.t, 'orders.no', 'SO-260929-018')
     const sales = await s.as('u2')
     const before = await order(id)
-    const changed = before.lines.map((line) => ({
-      productId: line.productId,
-      qty: line.qty + 1,
-      priceCents: line.priceCents,
-    }))
-    const rejected = await sales.post(`/orders/${id}/confirm`, {
-      version: before.version,
-      shipDate: TOMORROW,
-      lines: changed,
-    })
-    expect(rejected.body.error?.fields).toEqual({ reason: '请填写修改原因' })
-    expect((await order(id)).version).toBe(before.version)
     const confirmed = dataOf<OrderDetail>(
       await sales.post(`/orders/${id}/confirm`, {
         version: before.version,
@@ -136,23 +124,35 @@ describe('统一确认与批量操作', () => {
   })
 })
 
-test('四种门店售后每行说明和图片必填；本人合法图片可提交', async () => {
+test('门店售后：问题说明选填；除「数量不符」外每行至少一张图片；本人合法图片可提交', async () => {
   const id = await idBy(s.t, 'orders.no', 'SO-260927-021')
   const before = await order(id)
   const store = await s.as('s1')
   const line = before.lines.find((item) => item.maxQty && item.maxQty > 0)
   if (!line) throw new Error('expected claimable line')
   for (const reason of ['damaged', 'quality', 'qty_mismatch', 'other']) {
+    if (reason === 'qty_mismatch') continue
     const missing = await store.post('/store/afters', {
       orderId: id,
       lines: [{ orderLineId: line.id, qty: 1, reason, description: '', imageFileIds: [] }],
     })
     expect(missing.status).toBe(422)
-    expect(missing.body.error?.fields).toMatchObject({
-      'lines.0.description': '请填写每项产品的问题说明',
+    expect(missing.body.error?.fields).toEqual({
       'lines.0.imageFileIds': '请至少上传 1 张图片',
     })
   }
+  const noImage = dataOf(
+    await store.post('/store/afters', {
+      orderId: id,
+      lines: [
+        { orderLineId: line.id, qty: 1, reason: 'qty_mismatch', description: '', imageFileIds: [] },
+      ],
+    }),
+  )
+  expect(noImage).toMatchObject({ status: 'pending' })
+  const again = await order(id)
+  const next = again.lines.find((item) => item.id === line.id)
+  if (!next?.maxQty) throw new Error('expected remaining claimable quantity')
   const image = await uploadAfterImage(s, store)
   const saved = dataOf(
     await store.post('/store/afters', {

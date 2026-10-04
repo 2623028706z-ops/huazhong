@@ -5,14 +5,14 @@
 /* 两列并排（订单、发货单信息卡）：字段名 4 字宽、值紧跟，wide 占整行 */
 .hz-info-rows__grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  gap: 2px 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, auto);
+  gap: 2px 8px;
 }
 
 .hz-info-rows__cell {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--hz-line-gap);
   min-width: 0;
   font-size: var(--hz-font-row);
   line-height: 26px;
@@ -37,4 +37,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   overflow-wrap: anywhere;
+}
+
+/* 次要字段（单号、日期、经办人、来源、编码、备注，02 章第 6 节）：小一号、次要色 */
+.hz-info-rows__minor {
+  font-size: var(--hz-font-sm);
+}
+
+.hz-info-rows__minor .hz-info-rows__value,
+.hz-info-rows__minor .u-sheet-row__value {
+  color: var(--hz-muted);
 }

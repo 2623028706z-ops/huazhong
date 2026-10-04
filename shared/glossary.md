@@ -30,7 +30,7 @@
 | 应收                       | receivable（ar）        |                                                |
 | 应付                       | payable（ap）           |                                                |
 | 已收、已付                 | received、paid          |                                                |
-| 未收、待付                 | unpaid                  | 门店端「待付」和财务「未收」是同一个值         |
+| 未收、未付                 | unpaid                  | 门店端「未付」和财务「未收」是同一个值（站在各自一边的叫法）         |
 | 发货金额                   | shipped amount          |                                                |
 | 单号                       | doc no（`no`）          |                                                |
 | 发号                       | doc sequence            |                                                |

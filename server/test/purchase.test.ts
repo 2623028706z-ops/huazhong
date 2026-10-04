@@ -86,9 +86,6 @@ describe('采购单', () => {
     ).toBe('没有修改内容')
     const body = poInput(po)
     body.lines = body.lines.map((line) => ({ ...line, qty: 180 }))
-    expect((await purchase.put(`/purchase-orders/${po.id}`, body)).body.error?.fields).toEqual({
-      reason: '请填写原因',
-    })
     const edited = dataOf<PoDetail>(
       await purchase.put(`/purchase-orders/${po.id}`, { ...body, reason: '供应商只能供 180 枝' }),
     )
@@ -130,12 +127,9 @@ describe('采购单', () => {
     const body = poInput(manual)
     body.supplierId = supplied.supplierId
     body.lines = body.lines.map((line, index) => ({ ...line, qty: index === 0 ? 120 : line.qty }))
-    expect((await purchase.put(`/purchase-orders/${manual.id}`, body)).body.error?.fields).toEqual({
-      reason: '请填写原因',
-    })
-    const edited = dataOf<PoDetail>(
-      await purchase.put(`/purchase-orders/${manual.id}`, { ...body, reason: '云岭缺货，改春禾' }),
-    )
+    // 修改原因选填：不填也能保存
+    const edited = dataOf<PoDetail>(await purchase.put(`/purchase-orders/${manual.id}`, body))
+    expect(edited.changes[0]?.reason).toBe('')
     expect(edited.changes[0]?.items).toEqual(
       expect.arrayContaining(['供应商 云岭花卉 → 春禾花材', '白玫瑰 数量 150 → 120']),
     )

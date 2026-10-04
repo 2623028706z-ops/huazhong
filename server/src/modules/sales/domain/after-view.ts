@@ -69,7 +69,7 @@ export function afterRolesOf(viewer: Viewer): AfterRoles {
 function afterActionsOf(roles: AfterRoles, status: AfterStatus): Action[] {
   const actions: Action[] = []
   if (roles.sales && status === 'pending') {
-    actions.push(actionOf('closeAfter', null, true), actionOf('processAfter', null, false))
+    actions.push(actionOf('closeAfter', null, false), actionOf('processAfter', null, false))
   }
   if (roles.sales && status === 'processed') {
     actions.push(actionOf('voidAfter', null, true))

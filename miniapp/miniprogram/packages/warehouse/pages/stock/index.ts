@@ -6,6 +6,7 @@ import type { PagedList } from '../../../../core/list'
 import { request } from '../../../../core/request'
 import { failureOf, loadMe, tabsOf } from '../../../../core/session'
 import { listHandlers, listOf, showList } from '../../../../views/list'
+import { pullToRefresh } from '../../../../core/live'
 type Stock = OutputOf<typeof contract.warehouseStock>['items'][number]
 function rowOf(m: Stock) {
   return {
@@ -46,6 +47,7 @@ function groupsOf(rows: Row[]) {
   ].filter((group) => group.rows.length)
 }
 Page({
+  ...pullToRefresh,
   ...listHandlers,
   data: {
     title: copy.screen.title.stock,

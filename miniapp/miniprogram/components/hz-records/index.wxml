@@ -1,7 +1,10 @@
 <wxs src="../../core/format.wxs" module="format" />
 <view class="u-section">
-  <text class="u-section__title">{{title}}</text>
-  <view class="u-card hz-records">
+  <view class="hz-records__toggle" bindtap="onToggle">
+    <text class="u-section__title">{{title}}</text>
+    <text class="hz-records__count">{{countText}}<text class="hz-icon hz-icon--chevron-right hz-records__arrow {{open ? 'hz-records__arrow--open' : ''}}"></text></text>
+  </view>
+  <view wx:if="{{open}}" class="u-card hz-records">
     <view wx:for="{{rows}}" wx:key="id" class="hz-records__row">
       <view class="hz-records__who">
         <view class="u-info__line"><text>{{timeLabel}}</text><text>{{format.formatTime(item.at)}}</text></view>

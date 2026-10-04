@@ -91,7 +91,11 @@ export function addableOf(catalog: readonly CatalogItem[], lines: readonly FormL
   const added = new Set(lines.map((line) => line.productId))
   return catalog
     .filter((item) => item.enabled && item.productEnabled && !added.has(item.productId))
-    .map((item) => ({ id: item.productId, name: item.name, sub: formatMoney(item.listPriceCents) }))
+    .map((item) => ({
+      id: item.productId,
+      name: item.name,
+      sub: `${copy.field.listPrice} ${formatMoney(item.listPriceCents)}`,
+    }))
 }
 
 function lineCentsOf(line: FormLine): number {
@@ -137,13 +141,11 @@ export function linesChanged(form: OrderForm, initial: OrderForm): boolean {
     bodyLinesOf(value.lines).sort((a, b) => a.productId.localeCompare(b.productId))
   return JSON.stringify(snapshot(form)) !== JSON.stringify(snapshot(initial))
 }
+// 改了产品、数量、单价时修改原因选填，不写也能确认
 export function checkConfirm(
   form: OrderForm,
-  initial: OrderForm,
   version: number,
 ): Checked<InputOf<typeof contract.confirmOrder>['body']> {
-  if (linesChanged(form, initial) && !form.reason.trim())
-    return { ok: false, fields: { reason: copy.order.editReasonRequired } }
   return checkedOf(
     contract.confirmOrder.body.safeParse({
       version,

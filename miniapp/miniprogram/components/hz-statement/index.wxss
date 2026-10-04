@@ -41,13 +41,23 @@
 .hz-statement__row {
   display: flex;
   gap: var(--hz-line-gap);
-  align-items: center;
+  align-items: baseline;
   padding: var(--hz-row-pad) var(--hz-card-pad);
-  font-size: var(--hz-font-sm);
+  font-size: var(--hz-font);
   border-top: 1px solid var(--hz-line);
+}
+
+.hz-statement__row .hz-statement__label {
+  font-size: var(--hz-font);
 }
 
 .hz-statement__value {
   flex: 1;
   text-align: right;
+}
+
+/* 行里的金额（多收、多付、期初欠款）和上面格子里的金额同字号 */
+.hz-statement__value.u-serif-amount {
+  font-size: var(--hz-font-md);
+  color: var(--hz-ink);
 }

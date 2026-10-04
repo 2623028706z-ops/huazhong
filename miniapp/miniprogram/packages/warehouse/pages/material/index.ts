@@ -9,12 +9,13 @@ import {
 import { moveDocUrl, moveRowOf } from '../../../../views/stock'
 import type { KeyEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
-import { unwatchOnLeave, watch } from '../../../../core/live'
+import { unwatchOnLeave, watch, pullToRefresh } from '../../../../core/live'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
 import { canDo } from '../../../../core/actions'
 const RECENT_MOVES = 3
 Page({
+  ...pullToRefresh,
   ...unwatchOnLeave,
   data: {
     title: copy.screen.title.material,

@@ -44,7 +44,7 @@ describe('操作日志按天分组', () => {
       id: '9',
       title: '修改员工　　李敏',
       total: '公共',
-      meta: '2026-10-03 09:12　　周总',
+      meta: '操作时间 2026-10-03 09:12　　操作人 周总',
     })
   })
   it('不是今年的组头写全', () => {
@@ -71,7 +71,7 @@ describe('日志详情', () => {
     const view = detailOf(detail(null, null))
     expect([view.title, view.meta, view.reason]).toEqual([
       '修改员工　　李敏',
-      '2026-10-03 09:12　　周总　　公共',
+      '操作时间 2026-10-03 09:12　　操作人 周总　　模块 公共',
       '同时解绑微信',
     ])
     expect(view.sections).toEqual([])

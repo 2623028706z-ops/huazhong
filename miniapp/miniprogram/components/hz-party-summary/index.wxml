@@ -1,0 +1,12 @@
+<wxs src="../../core/format.wxs" module="format" />
+<view class="u-card hz-party-summary">
+  <view class="hz-party-summary__head">
+    <text class="hz-party-summary__label">{{label}}</text>
+    <text wx:if="{{edit}}" class="hz-party-summary__edit" data-key="{{editKey}}" bindtap="onAction">{{edit}}</text>
+  </view>
+  <text class="hz-party-summary__amount u-serif-amount">{{format.formatMoney(amountCents)}}</text>
+  <view wx:for="{{lines}}" wx:key="key" class="hz-party-summary__line">
+    <text>{{item.text}}</text>
+    <text wx:if="{{item.action}}" class="hz-party-summary__edit" data-key="{{item.key}}" bindtap="onAction">{{item.action}}</text>
+  </view>
+</view>

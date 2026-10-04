@@ -88,7 +88,6 @@
       "pages": [
         "pages/shop/index",
         "pages/orders/index",
-        "pages/checkout/index",
         "pages/order-detail/index",
         "pages/afters/index",
         "pages/after-form/index",
@@ -111,8 +110,25 @@
   ],
   "window": {
     "navigationStyle": "custom",
-    "navigationBarTextStyle": "black"
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f6ebdf",
+    "backgroundTextStyle": "dark"
   },
+  "preloadRule": {
+    "pages/login/index": {
+      "network": "all",
+      "packages": [
+        "packages/sales",
+        "packages/shipping",
+        "packages/purchase",
+        "packages/warehouse",
+        "packages/finance",
+        "packages/store",
+        "packages/supplier"
+      ]
+    }
+  },
+  "sitemapLocation": "sitemap.json",
   "lazyCodeLoading": "requiredComponents",
   "style": "v2",
   "usingComponents": {

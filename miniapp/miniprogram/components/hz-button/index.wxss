@@ -78,10 +78,29 @@
 
 /* 页底灰字（第三个操作、少用的危险操作）：灰色、不加粗、无下划线 */
 .hz-button__text--quiet {
-  font-size: var(--hz-font-row);
-  font-weight: 400;
+  font-size: var(--hz-font);
+  font-weight: 500;
+  color: var(--hz-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--hz-rule);
+}
+
+/* 明确可点：文字后接 ›，和灰掉的停用样子分开 */
+.hz-button__text--quiet::after {
+  margin-left: 2px;
+  content: '›';
+}
+
+/* 停用的文字操作：灰、无下划线、无箭头 */
+.hz-button__text--off,
+.hz-button__text--quiet.hz-button__text--off {
   color: var(--hz-muted);
   text-decoration: none;
+  opacity: 0.6;
+}
+
+.hz-button__text--quiet.hz-button__text--off::after {
+  content: '';
 }
 
 /* 订货结算条上的主按钮（定稿 .cb .go）：红色胶囊，停用时深底上的灰褐色 */

@@ -1,5 +1,11 @@
 // 模块首页待办（05 章第 3 节）：各模块从自己的 service 取，这里只按模块分发、查权限
-import { appError, type OutputOf, type TodoModule, type contract } from '@huazhong/shared'
+import {
+  appError,
+  todoModules,
+  type OutputOf,
+  type TodoModule,
+  type contract,
+} from '@huazhong/shared'
 import { Injectable } from '@nestjs/common'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import { FinanceService } from '../finance/finance.service.ts'
@@ -28,5 +34,14 @@ export class TodosService {
       case 'warehouse':
         return this.purchase.warehouseTodos(viewer)
     }
+  }
+
+  // 首页角标：只算账号有权限的模块，数字和各模块首页待办的 count 同一口径
+  async counts(viewer: Viewer): Promise<OutputOf<typeof contract.moduleTodoCounts>> {
+    const keys = todoModules.filter((key) => viewer.modules.includes(key))
+    const counts = await Promise.all(
+      keys.map(async (key) => ({ key, count: (await this.todos(viewer, key)).count })),
+    )
+    return { counts }
   }
 }

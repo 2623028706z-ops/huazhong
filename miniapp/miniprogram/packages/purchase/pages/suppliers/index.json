@@ -8,5 +8,6 @@
     "hz-error": "/components/hz-error/index",
     "hz-action-bar": "/components/hz-action-bar/index",
     "hz-button": "/components/hz-button/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

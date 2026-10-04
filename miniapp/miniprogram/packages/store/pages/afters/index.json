@@ -22,5 +22,6 @@
     "hz-brand": "/components/hz-brand/index",
     "hz-cover": "/components/hz-cover/index",
     "hz-progress": "/components/hz-progress/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

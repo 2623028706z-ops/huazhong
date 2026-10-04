@@ -33,9 +33,13 @@ Component({
     quantityOnly: { type: Boolean, value: false },
     quantityReadonly: { type: Boolean, value: false },
     title: { type: String, value: '' },
+    // 明细是花材（采购、入库、配方）：编码写「花材编码」；默认是产品，写「客户产品编码」
+    material: { type: Boolean, value: false },
     picking: { type: Boolean, value: false },
     // 有值就在合计上面放一行「+ 添加产品」，点了发 add
     addText: { type: String, value: '' },
+    // 有值就在行编辑窗口放「拒收此行」：实收置 0 并关窗
+    rejectText: { type: String, value: '' },
   },
   data: {
     showEditor: false,
@@ -59,7 +63,8 @@ Component({
       unit: redesignCopy.unit,
       price: redesignCopy.price,
       subtotal: redesignCopy.subtotal,
-      code: redesignCopy.code,
+      customerCode: redesignCopy.customerCode,
+      materialCode: redesignCopy.materialCode,
       totalQty: redesignCopy.totalQty,
       totalAmount: redesignCopy.totalAmount,
       remove: copy.screen.action.delete,
@@ -141,6 +146,10 @@ Component({
       this.triggerEvent('qty', { index: activeIndex, qty: draftQty })
       if (mode === 'price' && !quantityOnly)
         this.triggerEvent('price', { index: activeIndex, text: draftPrice })
+      this.setData({ showEditor: false })
+    },
+    onRejectLine() {
+      this.triggerEvent('qty', { index: this.data.activeIndex, qty: 0 })
       this.setData({ showEditor: false })
     },
     onRemoveRead(event: IndexEvent) {

@@ -8,6 +8,12 @@ vi.mock('../miniprogram/core/request', () => ({
   request: mocks.request,
   newIdempotencyKey: () => 'test-key',
 }))
+// 订货页现在带购物车弹层和改单提交，实时订阅不是这里要测的
+vi.mock('../miniprogram/core/live', () => ({
+  unwatch: vi.fn(),
+  watch: vi.fn(),
+  pullToRefresh: {},
+}))
 
 interface TestPage {
   data: Record<string, unknown>
@@ -20,7 +26,8 @@ let catalogEnabled: boolean
 let customerEnabled: boolean
 
 function responseOf(endpoint: Endpoint) {
-  if (endpoint.path === contract.me.path) return { ok: true, data: { id: '9', orgLabel: '门店' } }
+  if (endpoint.path === contract.me.path)
+    return { ok: true, data: { id: '9', orgLabel: '门店', type: 'store', landing: 'store_shop' } }
   if (endpoint.path === contract.storeCatalog.path)
     return {
       ok: true,
@@ -92,7 +99,7 @@ async function editingPage() {
   })
   const cart = await import('../miniprogram/packages/store/cart-source')
   cart.startEdit({ ...latest, version: 1 })
-  await import('../miniprogram/packages/store/pages/checkout/index')
+  await import('../miniprogram/packages/store/pages/shop/index')
   if (!captured) throw new Error('Page not registered')
   await invoke(captured, 'onLoad', { mode: 'edit' })
   await invoke(captured, 'load')
@@ -119,7 +126,7 @@ test('STALE 保留草稿；重载不偷换版本；显式重核更新价格和�
   expect(updates()).toHaveLength(1)
   expect(page.data.needsReview).toBe(false)
   expect(page.data.note).toBe('保留备注')
-  expect(page.data.rows).toMatchObject([{ qty: 3, priceCents: 200 }])
+  expect(page.data.cartRows).toMatchObject([{ qty: 3, priceCents: 200 }])
   expect(cart.editDraft()?.version).toBe(2)
   await invoke(page, 'onSubmit')
   expect(updates()).toHaveLength(2)
@@ -153,7 +160,7 @@ test('重核发现产品停用时保留行并标停用，不悄悄移除数量',
   const { page } = await editingPage()
   catalogEnabled = false
   await invoke(page, 'onSubmit')
-  expect(page.data.rows).toMatchObject([
+  expect(page.data.cartRows).toMatchObject([
     { qty: 3, tags: [{ text: copy.screen.tag.discontinued, warn: true }] },
   ])
   expect(updates()).toHaveLength(1)

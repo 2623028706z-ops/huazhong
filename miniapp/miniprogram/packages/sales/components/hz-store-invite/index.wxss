@@ -1,0 +1,17 @@
+/* 邀请订货弹层（X2）：按客户分组的门店列表。其余样式沿用共享类 */
+.hz-store-invite__group {
+  padding-top: var(--hz-line-gap);
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+.hz-store-invite__off {
+  opacity: 0.45;
+}
+
+.hz-store-invite__chosen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--hz-row-pad);
+}

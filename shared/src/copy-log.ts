@@ -13,7 +13,7 @@ export const logCopy = {
   changes: '改动',
   // 改动「旧 → 新」里旧值后面接的箭头
   arrow: ' → ',
-  date: '操作日期',
+  date: '操作时间',
   // 阶段 3 的对象类别和动作（04 章第 3.3 节 kind、action）
   kind: {
     order: '订单',
@@ -77,7 +77,7 @@ export const logCopy = {
     createInvite: '发出填报邀请',
     updateInvite: '修改填报邀请',
     cancelInvite: '取消填报邀请',
-    shareInvite: '复制填报链接',
+    shareInvite: '生成填报链接',
     submitSupply: '提交填报',
     receivePurchaseOrder: '确认收货',
     rejectPurchaseOrder: '拒收采购单',

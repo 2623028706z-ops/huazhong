@@ -3,31 +3,29 @@ import {
   contract,
   copy,
   redesignCopy,
-  addDays,
-  shanghaiDateOf,
   formatMoney,
-  formatTime,
   labels,
   type CustomerItem,
   type OrderCard,
   type OrderStatus,
+  type StoreItem,
 } from '@huazhong/shared'
-import { findAction, hasAction, canDo } from '../../../../core/actions'
+import { hasAction, canDo } from '../../../../core/actions'
 import type { KeyEvent, DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { emptyFilter, type FilterDimension, type FilterValue } from '../../../../core/filter'
 import type { PagedList } from '../../../../core/list'
-import { failureOf } from '../../../../core/session'
-import { newIdempotencyKey, request } from '../../../../core/request'
+import { request } from '../../../../core/request'
 import { loadCustomers } from '../../../../views/customers'
 import { listHandlers, listOf, listQueryOf, showList } from '../../../../views/list'
 import { orderRowOf } from '../../../../views/order'
+import { pullToRefresh } from '../../../../core/live'
 
 const CUSTOMER = 'customer'
 const PAGES = '/packages/sales/pages'
 
-const BATCH_PREVIEW_COUNT = 3
 Page({
+  ...pullToRefresh,
   ...listHandlers,
   data: {
     title: copy.screen.title.salesOrders,
@@ -48,36 +46,22 @@ Page({
     canCreate: false,
     selected: [] as { id: string; version: number; no: string }[],
     batchSheet: false,
-    batchDate: '',
-    batchError: '',
-    batchBusy: false,
-    batchRows: [] as { id: string; title: string; no: string }[],
-    batchMore: '',
-    batchTitle: '',
+    batchOrders: [] as { id: string; version: number; no: string; title: string }[],
     inviteSheet: false,
-    inviteOptions: [] as { id: string; name: string }[],
-    inviteStoreId: '',
-    invited: null as { path: string; title: string; expiresText: string } | null,
-    inviteError: '',
-    inviteBusy: false,
+    inviteCustomers: [] as CustomerItem[],
     batchOverdue: [] as string[],
     batchText: redesignCopy.confirmMany(0),
     texts: {
       allSelected: redesignCopy.allSelected,
-      confirmOrders: redesignCopy.confirmOrders,
-      shipDate: redesignCopy.shipDate,
       invite: copy.screen.action.inviteStore,
-      back: copy.action.back,
-      note: redesignCopy.confirmSheetNote,
-      inviteTitle: redesignCopy.inviteSheetTitle,
-      inviteStore: redesignCopy.inviteStorePick,
-      noInvite: redesignCopy.inviteNoStore,
-      share: copy.screen.action.shareInvite,
     },
     createText: copy.screen.action.createOrder,
   },
   cards: [] as OrderCard[],
   customers: [] as CustomerItem[],
+  sharing: null as { path: string; title: string } | null,
+  dimensionsReady: false,
+  dimensionsBusy: false,
   list: null as PagedList<OrderCard> | null,
   onLoad(query: Record<string, string | undefined>) {
     // 模块首页「查看全部」带状态进来
@@ -119,14 +103,19 @@ Page({
       },
       (order: OrderCard) => this.rowOf(order),
     )
-    void this.loadDimensions()
   },
   onShow() {
     showList(this, ['orders'])
+    // 客户选项失败后不重试会一直缺：回到页面时补拉一次
+    void this.loadDimensions()
   },
   async loadDimensions(): Promise<void> {
+    if (this.dimensionsReady || this.dimensionsBusy) return
+    this.dimensionsBusy = true
     const result = await loadCustomers()
+    this.dimensionsBusy = false
     if (!result.ok) return
+    this.dimensionsReady = true
     this.customers = result.data
     const options = result.data.map(({ id, name }) => ({ id, name }))
     this.setData({
@@ -183,6 +172,7 @@ Page({
   },
   onOpenBatch() {
     if (!this.data.selected.length) return
+    const picked = this.data.selected
     this.setData({
       batchOverdue: this.customers
         .filter(
@@ -190,8 +180,7 @@ Page({
             customer.overdue &&
             this.cards.some(
               (order) =>
-                order.customerId === customer.id &&
-                this.data.selected.some((row) => row.id === order.id),
+                order.customerId === customer.id && picked.some((row) => row.id === order.id),
             ),
         )
         .map((customer) =>
@@ -201,92 +190,49 @@ Page({
             customer.overdue?.days ?? 0,
           ),
         ),
-      batchSheet: true,
-      batchDate: addDays(shanghaiDateOf(Date.now()), 1),
-      batchError: '',
-      batchTitle: redesignCopy.confirmSheetTitle(this.data.selected.length),
-      batchRows: this.data.selected.slice(0, BATCH_PREVIEW_COUNT).map((row) => {
+      batchOrders: picked.map((row) => {
         const order = this.cards.find((card) => card.id === row.id)
         return {
-          id: row.id,
+          ...row,
           title: order ? copy.org.store(order.customerName, order.storeName) : '',
-          no: row.no,
         }
       }),
-      batchMore:
-        this.data.selected.length > BATCH_PREVIEW_COUNT
-          ? redesignCopy.moreOrders(this.data.selected.length)
-          : '',
+      batchSheet: true,
     })
-  },
-  onBatchDate(event: DetailEvent<string>) {
-    this.setData({ batchDate: event.detail, batchError: '' })
   },
   onCloseBatch() {
-    if (!this.data.batchBusy) this.setData({ batchSheet: false })
+    this.setData({ batchSheet: false })
   },
-  async onConfirmBatch() {
-    if (this.data.batchBusy) return
-    this.setData({ batchBusy: true, batchError: '' })
-    const result = await request(contract.batchConfirmOrders, {
-      body: {
-        orders: this.data.selected.map(({ id, version }) => ({ id, version })),
-        shipDate: this.data.batchDate,
-      },
-    })
-    this.setData({ batchBusy: false })
-    if (!result.ok) {
-      this.setData({ batchError: failureOf(result.failure, 'submit')?.message ?? '' })
-      return
-    }
-    const message = result.data.failed.length
-      ? redesignCopy.confirmationResult(
-          result.data.failed.length,
-          [...new Set(result.data.failed.map((row) => row.reason))].join(copy.separator),
-        )
-      : redesignCopy.confirmedMany(result.data.succeeded.length)
+  // 弹层里确认完：清掉勾选、刷新列表，提示成功几单、失败几单
+  async onBatchDone(event: DetailEvent<{ message: string }>) {
     this.setData({ selected: [], batchSheet: false })
     await this.list?.refresh()
-    void wx.showToast({ title: message, icon: 'none' })
+    void wx.showToast({ title: event.detail.message, icon: 'none' })
   },
-  // 邀请订货：只列启用、有登录手机号、还没绑定微信的门店；选好就生成邀请，再点「发送给门店」分享
-  onInvite() {
-    const options = this.customers.flatMap((customer) =>
-      customer.stores
-        .filter((store) => findAction(store.actions, 'inviteStore')?.enabled)
-        .map((store) => ({ id: store.id, name: copy.org.store(customer.name, store.name) })),
-    )
-    this.setData({
-      inviteSheet: true,
-      inviteOptions: options,
-      inviteStoreId: '',
-      invited: null,
-      inviteError: '',
-    })
+  // 邀请订货：弹层（hz-store-invite）里选门店、必要时填登录手机号，生成邀请后点「发给门店」直接转发小程序卡片
+  async onInvite(): Promise<void> {
+    this.sharing = null
+    // 绑定、手机号状态随时会变：每次打开重新取，取不到再用缓存
+    const result = await loadCustomers()
+    if (result.ok) this.customers = result.data
+    this.setData({ inviteSheet: true, inviteCustomers: this.customers })
   },
   onCloseInvite() {
     this.setData({ inviteSheet: false })
   },
-  async onInviteStore(event: DetailEvent<string>): Promise<void> {
-    const id = event.detail
-    this.setData({ inviteStoreId: id, invited: null, inviteError: '', inviteBusy: true })
-    const result = await request(
-      contract.createStoreInvite,
-      { params: { id } },
-      { idempotencyKey: newIdempotencyKey() },
-    )
-    this.setData({ inviteBusy: false })
-    if (!result.ok) {
-      this.setData({ inviteError: failureOf(result.failure, 'submit')?.message ?? '' })
-      return
-    }
-    const { path, title, expiresAt } = result.data
-    this.setData({
-      invited: { path, title, expiresText: copy.screen.inviteExpires(formatTime(expiresAt)) },
-    })
+  onInvited(event: DetailEvent<{ path: string; title: string } | null>) {
+    this.sharing = event.detail
+  },
+  // 弹层里补了登录手机号：同步页面缓存的门店，下次打开不用重新取
+  onStoreUpdated(event: DetailEvent<StoreItem>) {
+    const store = event.detail
+    this.customers = this.customers.map((customer) => ({
+      ...customer,
+      stores: customer.stores.map((s) => (s.id === store.id ? store : s)),
+    }))
   },
   onShareAppMessage(): WechatMiniprogram.Page.ICustomShareContent {
-    const invited = this.data.invited
+    const invited = this.sharing
     return invited
       ? { title: invited.title, path: invited.path, imageUrl: '/assets/backdrop.jpg' }
       : { title: copy.invite.storeTitle }

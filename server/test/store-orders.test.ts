@@ -63,7 +63,7 @@ describe('门店下单和取消', () => {
 })
 
 describe('门店申请售后', () => {
-  test('E08 不加产品、数量超过可申请数、不写问题说明都拦；写了说明提交成功', async () => {
+  test('E08 不加产品、数量超过可申请数都拦；问题说明选填，不写也提交成功', async () => {
     const o021 = await idBy(s.t, 'orders.no', 'SO-260927-021')
     const store = await s.as('s1')
     const line = (await storeDetail(o021)).lines.find((l) => l.name === '粉玫瑰日常花束')
@@ -87,12 +87,9 @@ describe('门店申请售后', () => {
     expect((await apply(16, '两束花头折了')).body.error?.fields).toEqual({
       'lines.0.qty': '售后数量须大于 0，且不超过实发数量减去已申请的售后',
     })
-    expect((await apply(2, '')).body.error?.fields).toEqual({
-      'lines.0.description': '请填写每项产品的问题说明',
-    })
-    const saved = dataOf<AfterDetail>(await apply(2, '两束花头折了'))
+    const saved = dataOf<AfterDetail>(await apply(2, ''))
     expect(saved).toMatchObject({ status: 'pending', origin: 'store' })
-    expect(saved.lines[0]).toMatchObject({ requestedQty: 2, description: '两束花头折了' })
+    expect(saved.lines[0]).toMatchObject({ requestedQty: 2, description: '' })
   })
 })
 

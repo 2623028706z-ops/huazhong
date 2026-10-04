@@ -1,20 +1,19 @@
 import {
-  contract,
+  type contract,
   copy,
   redesignCopy,
-  labels,
   type InviteDetail,
   type PoDetail,
   type OutputOf,
 } from '@huazhong/shared'
-import type { DetailEvent, KeyEvent } from '../core/events'
+import type { DetailEvent } from '../core/events'
 import type { FailureView } from '../core/failure-view'
 import { isChanged, syncUnloadAlert } from '../core/guard'
 import { unwatch, watch, watchNewer } from '../core/live'
-import { newIdempotencyKey, request, type Failure } from '../core/request'
+import { newIdempotencyKey, type Failure } from '../core/request'
 import { failureOf, messageOf } from '../core/session'
 import { showSuccess } from '../core/toast'
-import { materialPickOf, type poViewOf } from './purchase'
+import type { poViewOf } from './purchase'
 import {
   reviewDraft,
   purchaseReviewData,
@@ -23,6 +22,8 @@ import {
 } from './purchase-review'
 import { submitPurchase } from './purchase-submit'
 import { purchaseFormDetails } from './purchase-form-detail'
+import { purchaseFormPick } from './purchase-form-pick'
+import type { pickOpen } from './pick'
 import type { Checked } from '../core/form'
 import type { inviteViewOf } from './invite-detail'
 import {
@@ -36,7 +37,6 @@ import {
 import {
   blankPurchaseForm,
   checkPurchaseForm,
-  purchaseLineOf,
   purchaseLineViews,
   purchaseErrorOf,
   purchaseSuccessOf,
@@ -46,6 +46,8 @@ import {
   type PurchaseForm,
   type PurchaseMode,
 } from './purchase-form-data'
+
+const INVITE_DETAIL = '/packages/purchase/pages/invite-detail/index'
 
 const data = {
   mode: 'po' as PurchaseMode,
@@ -72,7 +74,10 @@ const data = {
   lockedReason: '',
   pickSheet: false,
   editKey: '',
-  picks: [] as ReturnType<typeof materialPickOf>[],
+  picks: [] as ReturnType<typeof pickOpen>['picks'],
+  pickIds: [] as string[],
+  pickCount: 0,
+  pickConfirm: '',
   inviteView: null as ReturnType<typeof inviteViewOf> | null,
   poView: null as ReturnType<typeof poViewOf> | null,
   texts: {
@@ -119,13 +124,14 @@ export interface PurchaseFormHost {
   fail(failure: Failure): Promise<void>
   save(body: unknown): Promise<void>
   prepare(): Promise<Checked<unknown> | null>
-  saveSupply(body: unknown): Promise<void>
   reviewResolve: ((confirmed: boolean) => void) | null
+  saveSupply(body: unknown): Promise<void>
   confirmReview(review: OutputOf<typeof contract.reviewPurchase>): Promise<boolean>
 }
 type Host = PurchaseFormHost
 const methods = {
   ...purchaseFormDetails,
+  ...purchaseFormPick,
   ...purchaseReviewMethods,
   id: '',
   key: '',
@@ -293,25 +299,6 @@ const methods = {
   onRemove(this: Host, event: DetailEvent<number>) {
     this.update({ lines: this.data.form.lines.filter((_, i) => i !== event.detail) })
   },
-  onOpenPick(this: Host) {
-    const added = new Set(this.data.form.lines.map((l) => l.id))
-    this.setData({
-      editKey: '',
-      pickSheet: true,
-      picks: this.materials.filter((m) => !added.has(m.id)).map(materialPickOf),
-    })
-  },
-  onClosePick(this: Host) {
-    this.setData({ pickSheet: false })
-  },
-  onPick(this: Host, event: KeyEvent) {
-    const material = this.materials.find((m) => m.id === event.currentTarget.dataset.key)
-    this.setData({ pickSheet: false })
-    if (material) {
-      this.update({ lines: [...this.data.form.lines, purchaseLineOf(material)] })
-      this.setData({ editKey: material.id })
-    }
-  },
   async prepare(this: Host): Promise<Checked<unknown> | null> {
     const version = this.po?.version ?? this.invite?.version ?? null
     const options = {
@@ -363,24 +350,12 @@ const methods = {
     showSuccess(purchaseSuccessOf(this.data.mode, !!this.id, this.data.supplierName))
     if (this.data.mode === 'invite') {
       this.getOpenerEventChannel().emit?.('saved', { id: result.data.id })
-      void wx.navigateBack()
+      // 新建：换到填报详情，那里一点「发给供应商」直接转发；返回就是需求页。修改：照旧返回详情
+      if (this.id) void wx.navigateBack()
+      else void wx.redirectTo({ url: `${INVITE_DETAIL}?id=${result.data.id}` })
       return
     }
     void wx.navigateBack()
-  },
-  async saveSupply(this: Host, body: unknown) {
-    const result = await request(
-      contract.submitSupplierInvite,
-      { params: { id: this.id }, body: contract.submitSupplierInvite.body.parse(body) },
-      { idempotencyKey: this.key },
-    )
-    if (!result.ok) {
-      await this.fail(result.failure)
-      return
-    }
-    this.invite = result.data.invite
-    await this.load()
-    showSuccess(labels.inviteStatus.submitted)
   },
   async fail(this: Host, failure: Failure) {
     const view = failureOf(failure, 'submit')

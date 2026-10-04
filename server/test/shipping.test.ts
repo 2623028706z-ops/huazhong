@@ -1,5 +1,5 @@
 // 确认发货、新建订单、出货日期（07 章 A08、A09、A20、A23、A36、I04）
-import { copy, type OrderDetail, type TodoRow } from '@huazhong/shared'
+import { type OrderDetail, type TodoRow } from '@huazhong/shared'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { dataOf, idBy, startSales, TODAY, TOMORROW, type SalesApp } from './support/sales.ts'
 
@@ -87,7 +87,7 @@ describe('确认发货', () => {
     expect((await detail('u2', id)).status).toBe('cancelled')
   })
 
-  test('A23 少发要写发货备注；全 0 不能发；写了备注按实发算', async () => {
+  test('A23 全 0 不能发；少发、多发的发货备注选填，不写也能发，按实发算', async () => {
     const id = await idBy(s.t, 'orders.no', 'SO-260929-016')
     const ship = await s.as('u7')
     const opened = await detail('u7', id)
@@ -97,23 +97,15 @@ describe('确认发货', () => {
       shipNote: '',
       lines: [{ orderLineId: lineId, shippedQty: 18 }],
     }
-    expect((await ship.post(`/orders/${id}/ship`, short)).body.error?.fields).toEqual({
-      shipNote: copy.rework.shipDifferenceNoteRequired,
-    })
     const none = { ...short, lines: [{ orderLineId: lineId, shippedQty: 0 }] }
     expect((await ship.post(`/orders/${id}/ship`, none)).body.error).toMatchObject({
       code: 'BUSINESS_RULE',
       message: '至少发出一项产品；整单不发请联系销售取消订单',
     })
-    const over = { ...short, lines: [{ orderLineId: lineId, shippedQty: 21 }] }
-    expect((await ship.post(`/orders/${id}/ship`, over)).body.error?.fields).toEqual({
-      shipNote: copy.rework.shipDifferenceNoteRequired,
-    })
-    const done = dataOf<OrderDetail>(
-      await ship.post(`/orders/${id}/ship`, { ...short, shipNote: '白绿清新缺货' }),
-    )
+    const done = dataOf<OrderDetail>(await ship.post(`/orders/${id}/ship`, short))
     expect(done.lines[0]).toMatchObject({ shippedQty: 18, short: true })
-    expect(done).toMatchObject({ status: 'shipped', shipNote: '白绿清新缺货', shippedBy: '赵磊' })
+    expect(done).toMatchObject({ status: 'shipped', shippedBy: '赵磊' })
+    expect(done.shipNote ?? '').toBe('')
   })
 
   test('I04 已发货的订单不能再改、不能再发', async () => {

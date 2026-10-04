@@ -1,11 +1,4 @@
-import {
-  contract,
-  copy,
-  formatQty,
-  type InventoryItem,
-  type OutCategory,
-  type WhDocKind,
-} from '@huazhong/shared'
+import { contract, copy, formatQty, type InventoryItem, type WhDocKind } from '@huazhong/shared'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { checkedOf, unplacedErrorOf } from '../../../../core/form'
@@ -16,6 +9,7 @@ import { newIdempotencyKey, request } from '../../../../core/request'
 import { failureOf, messageOf, type ShownFailure } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
 import { uploadImage, type LocalImage, type UploadedImage } from '../../../../core/upload'
+import { pickOpen, pickPatch, toggled } from '../../../../views/pick'
 import { loadInventory, loadSuppliers } from '../../../../views/purchase-load'
 
 interface Line {
@@ -70,11 +64,10 @@ Page({
     categoryOptions: [] as { id: string; name: string }[],
     categoryName: '',
     categoryPick: false,
-    categories: [] as OutCategory[],
-    categorySheet: false,
-    categoryError: '',
-    categorySaving: false,
-    picks: [] as { id: string; name: string; sub: string }[],
+    picks: [] as ReturnType<typeof pickOpen>['picks'],
+    pickIds: [] as string[],
+    pickCount: 0,
+    pickConfirm: '',
     pickSheet: false,
     editKey: '',
     pickError: '',
@@ -83,6 +76,7 @@ Page({
     texts: {
       ...copy.stock.screen,
       supplier: copy.screen.label.supplier,
+      optional: copy.placeholder.optional,
       materials: copy.screen.section.materials,
       add: copy.screen.action.addMaterial,
       pick: copy.screen.title.pickMaterial,
@@ -95,7 +89,6 @@ Page({
   inventory: [] as InventoryItem[],
   materialId: '',
   key: '',
-  categoryKey: '',
   onLoad(query: Record<string, string | undefined>) {
     const kind = kindOf(query.kind)
     this.materialId = query.materialId ?? ''
@@ -124,6 +117,8 @@ Page({
     if (!(await this.loadOptions())) return
     const form = {
       ...this.data.form,
+      // 选中的分类刚在出库分类页被停用：清掉，提交时提示重新选
+      outCategoryId: this.validCategoryId(),
       lines: this.data.form.lines.map((line) => ({
         ...line,
         stockQty: this.inventory.find((row) => row.id === line.materialId)?.stockQty ?? 0,
@@ -136,6 +131,10 @@ Page({
     if (!this.data.loaded) this.setData({ initial: form })
     this.setData({ loaded: true, failure: null })
     this.render(form)
+  },
+  validCategoryId() {
+    const id = this.data.form.outCategoryId
+    return this.data.categoryOptions.some((option) => option.id === id) ? id : ''
   },
   async loadOptions() {
     if (this.data.kind === 'in') {
@@ -155,7 +154,6 @@ Page({
         return false
       }
       this.setData({
-        categories: categories.data.items,
         categoryOptions: categories.data.items
           .filter((row) => row.enabled)
           .map((row) => ({ id: row.id, name: row.name })),
@@ -233,60 +231,41 @@ Page({
     this.setData({
       editKey: '',
       pickSheet: true,
-      picks: this.inventory
-        .filter((row) => !selected.has(row.id) && (this.data.kind !== 'in' || row.enabled))
-        .map((row) => ({
-          id: row.id,
-          name: row.name,
-          sub: copy.stock.available(formatQty(row.stockQty, row.unit)),
-        })),
+      ...pickOpen(
+        this.inventory
+          .filter((row) => !selected.has(row.id) && (this.data.kind !== 'in' || row.enabled))
+          .map((row) => ({
+            id: row.id,
+            name: row.name,
+            sub: copy.stock.available(formatQty(row.stockQty, row.unit)),
+          })),
+      ),
     })
   },
   onPick(event: KeyEvent) {
-    const item = this.inventory.find((row) => row.id === event.currentTarget.dataset.key)
-    if (!item || this.data.form.lines.some((line) => line.materialId === item.id)) return
-    this.render({ ...this.data.form, lines: [...this.data.form.lines, this.lineOf(item)] }, {})
-    this.setData({ pickSheet: false, editKey: item.id })
+    this.setData(
+      pickPatch(this.data.picks, toggled(this.data.pickIds, event.currentTarget.dataset.key)),
+    )
+  },
+  // 勾选的花材一次加入，数量、单价默认同单项添加
+  onPickConfirm() {
+    const selected = new Set(this.data.form.lines.map((line) => line.materialId))
+    const added = this.data.pickIds.flatMap((id) => {
+      const item = this.inventory.find((row) => row.id === id)
+      return item && !selected.has(item.id) ? [this.lineOf(item)] : []
+    })
+    this.setData({ pickSheet: false })
+    if (!added.length) return
+    this.render({ ...this.data.form, lines: [...this.data.form.lines, ...added] }, {})
+    this.setData({ editKey: added[added.length - 1]?.materialId ?? '' })
   },
   onClosePick() {
     this.setData({ pickSheet: false })
   },
-  // 管理分类在弹层里做，维护完回到表单，草稿还在（06 章 W5）
+  // 分类的新增、改名、停用在「出库分类」页做；回来后 onShow 重读，草稿还在
   onManageCategories() {
-    this.categoryKey = newIdempotencyKey()
-    this.setData({ categorySheet: true, categoryError: '' })
-  },
-  onCloseCategories() {
-    if (!this.data.categorySaving) this.setData({ categorySheet: false })
-  },
-  async onSaveCategory(event: DetailEvent<{ id: string; name: string; enabled: boolean }>) {
-    if (this.data.categorySaving) return
-    const { id, name, enabled } = event.detail
-    const checked = checkedOf(contract.createOutCategory.body.safeParse({ name, enabled }))
-    if (!checked.ok) {
-      this.setData({ categoryError: Object.values(checked.fields)[0] ?? '' })
-      return
-    }
-    this.setData({ categorySaving: true, categoryError: '' })
-    const result = id
-      ? await request(contract.updateOutCategory, { params: { id }, body: checked.body })
-      : await request(
-          contract.createOutCategory,
-          { body: checked.body },
-          { idempotencyKey: this.categoryKey },
-        )
-    this.setData({ categorySaving: false })
-    if (!result.ok) {
-      const failure = failureOf(result.failure, 'submit')
-      if (failure) this.setData({ categoryError: messageOf(failure) })
-      return
-    }
-    this.categoryKey = newIdempotencyKey()
-    if (!(await this.loadOptions())) return
-    // 选中的分类刚被停用：清掉，提交时提示重新选
-    const selected = this.data.form.outCategoryId
-    if (selected && !this.data.categoryOptions.some((option) => option.id === selected))
-      this.render({ ...this.data.form, outCategoryId: '' })
+    this.setData({ categoryPick: false })
+    void wx.navigateTo({ url: '/packages/warehouse/pages/out-categories/index' })
   },
   async onAddImages(event: DetailEvent<LocalImage[]>) {
     if (this.data.uploading || this.data.saving) return

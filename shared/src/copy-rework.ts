@@ -12,7 +12,6 @@ export const reworkCopy = {
   cancelRequests: '取消申请记录',
   cancelReason: '取消原因',
   rejectReason: '拒绝原因',
-  rejectReasonRequired: '请填写拒绝原因',
   voidOrder: '作废订单',
   voidPurchaseOrder: '作废采购单',
   voidedBy: '作废人',
@@ -22,7 +21,6 @@ export const reworkCopy = {
   poStale: '采购单已变化，请刷新后重试',
   cancelRequestReason: (reason: string) =>
     reason.trim() ? `门店申请取消：${reason.trim()}` : '门店申请取消',
-  shipDifferenceNoteRequired: '实发和订单数量不一致，请写发货备注',
   overShipped: '多发',
   shipDifference: '发货差异',
   refundHistory: '退款历史',
@@ -51,6 +49,7 @@ export const reworkCopy = {
   copySource: '复制来源',
   copyPreview: '复制预览',
   copyConfirm: '确认复制',
+  copyRePreview: '重新预览',
   noCopyableCatalog: '没有可复制的目录项',
   catalogChanged: '目录已变化，请重新预览',
   refundOver: '退款金额超过多收 / 多付余额',
@@ -98,4 +97,6 @@ export const recordsCopy = {
   priceChange: '改价记录',
   returns: '退货记录',
   reason: (text: string) => `原因：${text}`,
+  // 默认收起：「变更记录 3 条 ›」，点开展开
+  count: (count: number) => `${count} 条`,
 } as const

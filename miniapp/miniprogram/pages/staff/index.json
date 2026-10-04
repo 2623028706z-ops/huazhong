@@ -13,5 +13,6 @@
     "hz-skeleton": "/components/hz-skeleton/index",
     "hz-state": "/components/hz-state/index",
     "hz-error": "/components/hz-error/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

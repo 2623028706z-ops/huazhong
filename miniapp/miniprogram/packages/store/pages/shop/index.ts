@@ -1,21 +1,30 @@
 // S1 订货（06 章 S1）：顶部客户门店、下单日期、可订款数、搜索（跨分类）→ 左侧分类 + 右侧产品 → 购物车条。
-// 从订单详情「修改订单」进来是改单模式（?mode=edit）：用单独一份购物车，返回后原购物车不变
+// 「去下单」打开购物车弹层：改数量、备注、提交都在弹层里，订货一页完成（不再有单独的结算页）。
+// 从订单详情「修改订单」进来是改单模式（?mode=edit）：用单独一份购物车，保存后直接回订单详情，原购物车不变
 import {
+  contract,
   copy,
+  fieldsOf,
   financeCopy,
   redesignCopy,
   formatUnitTotals,
   formatMoney,
   shanghaiDateOf,
+  storeOrderCreateSchema,
+  storeOrderUpdateSchema,
+  type OrderDetail,
   type StoreCatalog,
   type StoreCatalogItem,
 } from '@huazhong/shared'
+import { findAction } from '../../../../core/actions'
 import { countOf, qtyOf, withQty, type CartLine } from '../../../../core/cart'
 import type { DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
-import { unwatch, watch } from '../../../../core/live'
+import { unwatch, watch, pullToRefresh } from '../../../../core/live'
 import { lineCents, sumCents } from '../../../../core/money'
-import { confirmAsk } from '../../../../core/guard'
+import { confirmAsk, isChanged, syncUnloadAlert } from '../../../../core/guard'
+import { newIdempotencyKey, request, type Result } from '../../../../core/request'
+import { showSuccess } from '../../../../core/toast'
 import { tabsOf } from '../../../../core/session'
 import { failureOf } from '../../../../core/session'
 import {
@@ -23,10 +32,13 @@ import {
   cartSourceOf,
   editDraft,
   endEdit,
+  reviewEdit,
   syncWithCatalog,
   type CartSource,
 } from '../../cart-source'
 import { loadShop, type ShopData } from '../../shop-data'
+
+const DETAIL_URL = '/packages/store/pages/order-detail/index'
 
 function productRowsOf(
   catalog: StoreCatalog,
@@ -43,7 +55,7 @@ function productRowsOf(
     name: item.name,
     code: item.customerCode,
     // 带图目录卡统一「¥68.00/束」（02 章第 6 节第 6 条）
-    priceText: copy.screen.pricePer(formatMoney(item.listPriceCents), item.unit),
+    priceText: copy.screen.listPriceText(formatMoney(item.listPriceCents), item.unit),
     thumbUrl: item.thumbUrl ?? '',
     qty: qtyOf(lines, item.productId),
     unit: item.unit,
@@ -67,6 +79,7 @@ function headerDateOf(isEdit: boolean) {
   return (isEdit ? editDraft()?.orderDate : undefined) ?? shanghaiDateOf(Date.now())
 }
 Page({
+  ...pullToRefresh,
   data: {
     title: copy.screen.title.shop,
     headerCollapsed: false,
@@ -87,12 +100,25 @@ Page({
     cartTotal: 0,
     cartText: '',
     cartSheet: false,
+    note: '',
+    initialNote: '',
+    formError: '',
+    reviewNotice: '',
+    saving: false,
+    needsReview: false,
     pickedTitle: copy.screen.title.pickedWith(0),
     cartRows: [] as ReturnType<typeof cartLinesOf>,
     tabs: [] as ReturnType<typeof tabsOf>,
     notice: '',
     texts: {
+      code: copy.field.customerCode,
       checkout: copy.screen.action.toCheckout,
+      note: copy.field.note,
+      optional: copy.placeholder.optional,
+      orderAmount: copy.screen.label.orderAmount,
+      submit: copy.screen.action.submitOrder,
+      confirmEdit: financeCopy.saveChanges,
+      recheck: copy.rework.recheck,
       clear: copy.screen.action.clear,
       picked: copy.screen.title.picked,
     },
@@ -100,8 +126,12 @@ Page({
   source: null as CartSource | null,
   catalog: null as StoreCatalog | null,
   lines: [] as CartLine[],
+  idempotencyKey: '',
   onLoad(query: Record<string, string | undefined>) {
-    this.setData({ isEdit: query.mode === 'edit' })
+    const isEdit = query.mode === 'edit'
+    const note = isEdit ? (editDraft()?.note ?? '') : ''
+    this.idempotencyKey = newIdempotencyKey()
+    this.setData({ isEdit, note, initialNote: note })
   },
   onShow() {
     void this.load()
@@ -111,6 +141,7 @@ Page({
   },
   onUnload() {
     unwatch(this)
+    syncUnloadAlert(false)
     if (this.data.isEdit) endEdit()
   },
   async load() {
@@ -233,10 +264,109 @@ Page({
       this.setData({ cartSheet: false })
     }
   },
+  // 去下单：打开购物车弹层，备注和提交都在里面
   onCheckout() {
     if (!this.lines.length || this.data.notice) return
-    const mode = this.data.isEdit ? '?mode=edit' : ''
-    void wx.navigateTo({ url: `/packages/store/pages/checkout/index${mode}` })
+    this.setData({ cartSheet: true, formError: '' })
+  },
+  // 放弃修改只看备注：购物车改了照常保存在购物车里
+  onNote(event: DetailEvent<string>) {
+    this.setData({ note: event.detail, formError: '' })
+    if (this.data.isEdit) syncUnloadAlert(isChanged(this.data.initialNote, event.detail))
+  },
+  async onSubmit(): Promise<void> {
+    if (this.data.saving) return
+    if (this.data.needsReview) {
+      await this.onReview()
+      return
+    }
+    const lines = this.lines.map(({ productId, qty }) => ({ productId, qty }))
+    const draft = this.data.isEdit ? editDraft() : null
+    const parsed = draft
+      ? storeOrderUpdateSchema.safeParse({ version: draft.version, note: this.data.note, lines })
+      : storeOrderCreateSchema.safeParse({ note: this.data.note, lines })
+    if (!parsed.success) {
+      this.setData({ formError: Object.values(fieldsOf(parsed.error))[0] ?? '' })
+      return
+    }
+    this.setData({ saving: true, formError: '' })
+    const result = draft
+      ? await request(contract.updateStoreOrder, {
+          params: { id: draft.orderId },
+          body: { version: draft.version, note: this.data.note, lines },
+        })
+      : await request(
+          contract.createStoreOrder,
+          { body: { note: this.data.note, lines } },
+          { idempotencyKey: this.idempotencyKey },
+        )
+    this.setData({ saving: false })
+    this.afterSubmit(result)
+  },
+  afterSubmit(result: Result<OrderDetail>) {
+    if (!result.ok) {
+      const view = failureOf(result.failure, 'submit')
+      if (view?.kind === 'stale') this.setData({ needsReview: true })
+      if (view?.kind === 'page') this.setData({ cartSheet: false, failure: view })
+      else if (view) this.setData({ formError: view.message })
+      return
+    }
+    syncUnloadAlert(false)
+    showSuccess(copy.action.saved)
+    this.setData({ cartSheet: false })
+    if (this.data.isEdit) {
+      // 改单：订货页直接保存，回到订单详情，原购物车不变
+      endEdit()
+      void wx.navigateBack()
+      return
+    }
+    this.source?.save([])
+    void wx.redirectTo({ url: `${DETAIL_URL}?id=${result.data.id}` })
+  },
+  // 改单提交时订单已被销售改过：重新核对订单和目录，保留已填的数量、备注，再次点才提交
+  async onReview(): Promise<void> {
+    const draft = editDraft()
+    if (!draft) return
+    this.setData({ saving: true })
+    const result = await request(contract.getOrder, { params: { id: draft.orderId } })
+    if (!result.ok) {
+      this.setData({ saving: false })
+      this.afterSubmit(result)
+      return
+    }
+    const action = findAction(result.data.actions, 'storeEdit')
+    if (!action?.enabled) {
+      this.setData({
+        saving: false,
+        formError:
+          action?.disabledReason ?? result.data.lockedReason ?? copy.rework.orderOperationLocked,
+      })
+      return
+    }
+    const shop = await loadShop()
+    this.setData({ saving: false })
+    if (!shop.ok) {
+      this.setData({ failure: failureOf(shop.failure, 'refresh') })
+      return
+    }
+    this.applyReview(result.data, shop.data)
+  },
+  applyReview(order: OrderDetail, shop: ShopData) {
+    if (shop.home.lockedReason) {
+      this.setData({ formError: shop.home.lockedReason })
+      return
+    }
+    this.source?.save(this.lines)
+    const catalog = shop.catalog?.items ?? null
+    reviewEdit(order, catalog)
+    this.catalog = shop.catalog
+    if (this.source) this.showLines(syncWithCatalog(this.source, catalog, true))
+    this.setData({
+      needsReview: false,
+      failure: null,
+      formError: '',
+      reviewNotice: copy.rework.orderReviewed,
+    })
   },
   onFailureAction() {
     void this.load()

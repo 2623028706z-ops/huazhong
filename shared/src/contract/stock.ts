@@ -144,7 +144,7 @@ export const whDocCreateSchema = z
     }),
     z.object({
       kind: z.literal('loss'),
-      reason: requiredTextSchema(copy.stock.lossReasonRequired),
+      reason: z.string().trim(),
       imageFileIds: z
         .array(idSchema)
         .max(AFTER_IMAGE_MAX_COUNT, { error: copy.stock.imagesTooMany(AFTER_IMAGE_MAX_COUNT) })
@@ -170,7 +170,7 @@ export const repriceWhDoc = {
   body: z
     .object({
       version: versionSchema,
-      reason: requiredTextSchema(copy.finance.repriceReason),
+      reason: z.string().trim().default(''),
       lines: z
         .array(
           z.object({ lineId: idSchema, priceCents: centsInputSchema(copy.stock.priceRequired) }),
@@ -344,11 +344,7 @@ export const createStocktake = {
         }),
       ),
     })
-    .superRefine((value, ctx) => {
-      distinctMaterials(value, ctx)
-      if (value.reason === '' && value.lines.some((line) => line.actualQty !== line.bookQty))
-        ctx.addIssue({ code: 'custom', message: copy.stock.diffReasonRequired, path: ['reason'] })
-    }),
+    .superRefine(distinctMaterials),
   response: stocktakeDetailSchema,
   errors: ['NOT_FOUND', 'STALE'],
   idempotent: true,

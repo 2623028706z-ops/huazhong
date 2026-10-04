@@ -1,5 +1,5 @@
 // 订单：改单、确认、编辑后确认、取消（07 章 A06、A07、A10–A16、A31、J17、J25）
-import type { OrderDetail } from '@huazhong/shared'
+import { orderUpdateSchema, type OrderDetail } from '@huazhong/shared'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { codesOf, dataOf, idBy, startSales, TOMORROW, type SalesApp } from './support/sales.ts'
 
@@ -107,15 +107,14 @@ describe('销售修改订单', () => {
     expect((await detail('u2', o012)).changes).toHaveLength(1)
   })
 
-  test('A15 编辑后确认不写原因报「请填写修改原因」', async () => {
-    const res = await (
-      await s.as('u2')
-    ).post(
-      `/orders/${o018}/confirm`,
-      salesEdit(await detail('u2', o018), { 粉玫瑰日常花束: 25 }, ''),
-    )
-    expect(res.status).toBe(422)
-    expect(res.body.error?.fields?.['reason']).toBe('请填写修改原因')
+  test('A15 修改原因选填：改单接口不写原因也通过校验', () => {
+    const body = {
+      version: 1,
+      shipDate: TOMORROW,
+      note: '',
+      lines: [{ productId: '1', qty: 1, priceCents: 100 }],
+    }
+    expect(orderUpdateSchema.safeParse(body).success).toBe(true)
   })
 
   test('A16 编辑后确认途中门店改单 → STALE 带最新数量；再保存变成待发货、变更记录 2 条', async () => {

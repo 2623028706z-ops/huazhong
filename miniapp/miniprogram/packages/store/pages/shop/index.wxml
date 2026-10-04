@@ -1,7 +1,7 @@
 <wxs src="../../../../core/format.wxs" module="format" />
 <hz-cover mode="full" />
 <!-- 订货页定稿不写页名，抬头就是字标和门店名；改单模式有返回、写页名 -->
-<hz-navbar title="{{isEdit ? title : ''}}" back="{{isEdit}}" />
+<hz-navbar title="{{isEdit ? title : ''}}" back="{{isEdit}}" guard="{{isEdit && note !== initialNote}}" />
 <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
 <block wx:else>
   <view class="hz-shop__top">
@@ -28,7 +28,7 @@
         <view class="hz-shop__info">
           <view class="hz-shop__title">
             <text class="u-info__title">{{item.name}}</text>
-            <text wx:if="{{item.code}}" class="u-info__meta">{{item.code ? '编码 ' + item.code : ''}}</text>
+            <text wx:if="{{item.code}}" class="u-info__meta">{{texts.code}} {{item.code}}</text>
           </view>
           <view class="hz-shop__buy">
             <text class="u-serif-amount u-ellipsis hz-shop__price">{{item.priceText}}</text>
@@ -47,15 +47,20 @@
         <text wx:if="{{cartText}}" class="u-bar-total__meta">{{cartText}}</text>
       </view>
     </view>
-    <hz-button kind="round" text="{{texts.checkout}}" disabled="{{cartCount === 0 || notice}}" reason="{{notice}}" bind:press="onCheckout" />
+    <hz-button kind="round" text="{{isEdit ? texts.confirmEdit : texts.checkout}}" disabled="{{cartCount === 0 || notice}}" reason="{{notice}}" bind:press="onCheckout" />
   </hz-action-bar>
 </block>
 <hz-sheet show="{{cartSheet}}" title="{{pickedTitle}}" footer bind:close="onCloseCart">
   <view class="u-sheet-form">
+    <hz-error wx:if="{{formError}}" message="{{formError}}" />
+    <hz-notice wx:if="{{notice}}" text="{{notice}}" />
+    <hz-notice wx:if="{{reviewNotice}}" text="{{reviewNotice}}" />
     <view class="hz-shop__clear"><hz-button kind="quiet" text="{{texts.clear}}" bind:press="onClear" /></view>
     <hz-line-item lines="{{cartRows}}" mode="qty" removable bind:qty="onCartQty" bind:remove="onCartRemove" />
+    <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{note}}" bind:change="onNote" />
+    <view class="u-sheet-row"><text>{{texts.orderAmount}}</text><view class="u-bar-total"><text class="u-bar-total__amount">{{format.formatMoney(cartTotal)}}</text><text wx:if="{{cartText}}" class="u-bar-total__meta">{{cartText}}</text></view></view>
   </view>
-  <hz-button slot="footer" text="{{texts.checkout}}" disabled="{{cartCount === 0 || notice}}" reason="{{notice}}" bind:press="onCheckout" />
+  <hz-button slot="footer" text="{{needsReview ? texts.recheck : isEdit ? texts.confirmEdit : texts.submit}}" loading="{{saving}}" disabled="{{(cartRows.length === 0 && !isEdit) || notice}}" reason="{{notice}}" bind:press="onSubmit" />
 </hz-sheet>
 
 <hz-tabbar wx:if="{{!isEdit}}" tabs="{{tabs}}" current="shop" />

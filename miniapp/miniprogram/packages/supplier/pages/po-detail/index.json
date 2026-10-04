@@ -23,5 +23,6 @@
     "hz-cover": "/components/hz-cover/index",
     "hz-progress": "/components/hz-progress/index",
     "hz-records": "/components/hz-records/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

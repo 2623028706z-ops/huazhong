@@ -55,6 +55,25 @@ test('A 取消申请阻止改单、拒绝不再申请、发货使申请失效；
   expect(done).not.toHaveProperty('amountCents')
 })
 
+test('A2 拒绝取消申请的原因选填：不填也能拒绝，申请记空原因', async () => {
+  const store = await s.as('s1'),
+    sales = await s.as('u2')
+  const id = await idBy(s.t, 'orders.no', 'SO-260929-018')
+  const pending = dataOf<OrderDetail>(await store.get(`/orders/${id}`))
+  dataOf(await sales.post(`/orders/${id}/confirm`, { version: pending.version, shipDate: TODAY }))
+  const initial = dataOf<OrderDetail>(await store.get(`/orders/${id}`))
+  const requested = dataOf<OrderDetail>(
+    await store.post(`/store/orders/${id}/cancel-request`, {
+      version: initial.version,
+      reason: '',
+    }),
+  )
+  const rejected = dataOf<OrderDetail>(
+    await sales.post(`/orders/${id}/cancel-request/reject`, { version: requested.version }),
+  )
+  expect(rejected.cancelRequests[0]).toMatchObject({ status: 'rejected', rejectReason: '' })
+})
+
 test('B reviewToken不限制超缺口，首次提交后相同复核令牌不能再次建采购单', async () => {
   const purchase = await s.as('u4')
   const supplierId = await idBy(s.t, 'suppliers.name', '云岭花卉')

@@ -247,14 +247,12 @@ describe('K06: actual empty-database migrations and committed enum boundaries', 
         const party = table === 'receipts' ? 'customer_id' : 'supplier_id',
           from = table === 'receipts' ? 'customers' : 'suppliers',
           date = table === 'receipts' ? 'receipt_date' : 'pay_date'
+        // 优惠原因选填（0013 已删除约束）：不填原因也能写入
         await expect(
           pool.query(`INSERT INTO ${table}
           (no,${party},${date},amount_cents,discount_cents,method_name,created_by)
           SELECT 'FUND-MIGRATION',id,'2026-09-29',100,1,'微信',created_by FROM ${from} ORDER BY id LIMIT 1`),
-        ).rejects.toMatchObject({
-          code: '23514',
-          constraint: `${table}_discount_reason`,
-        })
+        ).resolves.toMatchObject({ rowCount: 1 })
       }
     })
   })

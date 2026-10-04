@@ -22,12 +22,12 @@
     </view>
     <view class="u-card u-form-card">
       <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{form.note}}" bind:change="onNote" />
-      <hz-field wx:if="{{mode === 'edit' || (mode === 'confirm' && linesChanged)}}" label="{{texts.reason}}" type="textarea" placeholder="{{texts.reasonHint}}" value="{{form.reason}}" error="{{fields.reason}}" bind:change="onReason" />
+      <hz-field wx:if="{{mode === 'edit' || (mode === 'confirm' && linesChanged)}}" label="{{texts.reason}}" type="textarea" placeholder="{{texts.optional}}" value="{{form.reason}}" error="{{fields.reason}}" bind:change="onReason" />
     </view>
   </block>
 </view>
 <hz-action-bar>
   <hz-button text="{{submitText}}" loading="{{saving}}" bind:press="onSubmit" />
 </hz-action-bar>
-<template is="pick-sheet" data="{{show: pickSheet, title: texts.pickTitle, picks, empty: texts.noPick}}" />
+<template is="pick-sheet" data="{{show: pickSheet, title: texts.pickTitle, picks, empty: texts.noPick, multi: true, count: pickCount, confirm: pickConfirm}}" />
 <hz-confirm id="hz-confirm" />

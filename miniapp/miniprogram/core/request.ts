@@ -110,6 +110,23 @@ function parseResponse<T>(response: RawResponse | null): Result<T> {
   return { ok: false, failure: { kind: 'server', requestId, ...body } }
 }
 
+// 还没回来的读请求个数：下拉刷新等它们都回来再收起（02 章第 5.1 节）
+let readsInFlight = 0
+let readWaiters: (() => void)[] = []
+
+export function readsSettled(): Promise<void> {
+  if (readsInFlight === 0) return Promise.resolve()
+  return new Promise((resolve) => readWaiters.push(resolve))
+}
+
+function readDone(): void {
+  readsInFlight -= 1
+  if (readsInFlight > 0) return
+  const waiters = readWaiters
+  readWaiters = []
+  for (const resolve of waiters) resolve()
+}
+
 async function send<T>(
   method: string,
   path: string,
@@ -117,9 +134,14 @@ async function send<T>(
   header: Record<string, string>,
 ) {
   const attempts = method === 'GET' ? READ_RETRY_COUNT + 1 : 1
+  if (method === 'GET') readsInFlight += 1
   let response: RawResponse | null = null
-  for (let attempt = 0; attempt < attempts && !response; attempt += 1) {
-    response = await callOnce(method, path, body, header)
+  try {
+    for (let attempt = 0; attempt < attempts && !response; attempt += 1) {
+      response = await callOnce(method, path, body, header)
+    }
+  } finally {
+    if (method === 'GET') readDone()
   }
   return parseResponse<T>(response)
 }

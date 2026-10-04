@@ -1,0 +1,33 @@
+<hz-sheet show="{{show}}" title="{{texts.title}}" footer="{{!!storeId}}" bind:close="onClose">
+  <view class="u-sheet-form">
+    <hz-error wx:if="{{error}}" message="{{error}}" />
+    <block wx:if="{{!storeId}}">
+      <text wx:if="{{total === 0}}" class="u-info__meta">{{texts.empty}}</text>
+      <block wx:else>
+        <hz-search wx:if="{{searchable}}" paper placeholder="{{texts.search}}" bind:search="onSearch" />
+        <text wx:if="{{groups.length === 0}}" class="u-info__meta">{{texts.noMatch}}</text>
+        <view wx:for="{{groups}}" wx:key="id" wx:for-item="group">
+          <text class="hz-store-invite__group">{{group.name}}</text>
+          <view wx:for="{{group.stores}}" wx:key="id" class="u-choice {{item.bound ? 'hz-store-invite__off' : ''}}" data-key="{{item.id}}" bindtap="onPick">
+            <view class="u-choice__main"><text>{{item.name}}</text><text wx:if="{{item.sub}}" class="u-choice__sub">{{item.sub}}</text></view>
+            <hz-tag wx:if="{{item.bound}}" text="{{texts.bound}}" />
+          </view>
+        </view>
+      </block>
+    </block>
+    <block wx:else>
+      <view class="hz-store-invite__chosen u-sheet-row"><text>{{storeName}}</text><text class="u-info__meta u-tap" bindtap="onRepick">{{texts.repick}}</text></view>
+      <text wx:if="{{!canEdit && needPhone}}" class="u-info__meta">{{texts.noRight}}</text>
+      <block wx:if="{{canEdit && needPhone}}">
+        <hz-field wx:if="{{needContact}}" label="{{texts.contact}}" value="{{contact}}" error="{{fields.contact}}" bind:change="onContact" />
+        <hz-field label="{{texts.loginPhone}}" type="number" value="{{phone}}" placeholder="{{texts.phoneHint}}" error="{{fields.loginPhone}}" bind:change="onPhone" />
+        <text wx:if="{{needContact}}" class="u-info__meta">{{texts.contactHint}}</text>
+      </block>
+      <text wx:if="{{busy}}" class="u-info__meta">{{texts.saving}}</text>
+      <text wx:if="{{invited}}" class="u-info__meta">{{invited.expiresText}}</text>
+      <text wx:if="{{invited}}" class="u-info__meta">{{texts.ready}}</text>
+    </block>
+  </view>
+  <hz-button wx:if="{{canEdit && needPhone && !invited}}" slot="footer" text="{{texts.saveInvite}}" loading="{{busy}}" bind:press="onSaveInvite" />
+  <hz-button wx:else slot="footer" text="{{texts.share}}" open-type="share" disabled="{{!invited || busy}}" />
+</hz-sheet>

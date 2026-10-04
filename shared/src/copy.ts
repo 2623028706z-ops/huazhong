@@ -53,6 +53,8 @@ export const copy = {
   // 账号字段名：员工弹层、个人资料、日志的修改前后共用
   field: {
     name: '名字',
+    // 客户、门店、产品、分类、花材、供应商等非人名对象的名称
+    objectName: '名称',
     phone: '登录手机号',
     role: '岗位',
     status: '状态',
@@ -62,7 +64,7 @@ export const copy = {
     wechat: '微信',
     // 阶段 3：客户、门店、产品、订单、收款的修改前后
     contact: '联系人',
-    storePhone: '电话',
+    storePhone: '联系电话',
     address: '地址',
     shipDate: '出货日期',
     note: '备注',
@@ -95,7 +97,6 @@ export const copy = {
   order: {
     shipDatePending: '待定',
     shipDateRequired: '请选择出货日期',
-    editReasonRequired: '请填写修改原因',
     linesRequired: '请添加产品并填写有效数量',
     storeLinesRequired: '请先选择产品',
     qtyInvalid: '数量须为大于 0 的整数',
@@ -126,7 +127,6 @@ export const copy = {
     shipCancelled: '销售已取消这张订单，不能发货',
     shipChanged: '销售修改了这张订单，已刷新成最新内容，请核对后再确认发货',
     shipNotDue: '出货日期还没到，不能发货',
-    shipNoteRequired: reworkCopy.shipDifferenceNoteRequired,
     shipNothing: '至少发出一项产品；整单不发请联系销售取消订单',
     allAftered: '这张订单的产品都已申请过售后',
     afterExpired: '已超过售后申请时间，请联系花众销售',
@@ -150,17 +150,15 @@ export const copy = {
     linesRequired: '请添加售后产品',
     salesLinesRequired: '请添加售后产品并填写有效数量',
     reasonRequired: '请选择售后原因',
-    descriptionRequired: '请填写每项产品的问题说明',
     storeQtyInvalid: '售后数量须大于 0，且不超过实发数量减去已申请的售后',
     qtyOverMax: '售后数量不能超过实发数量减去已申请的售后',
     processQtyInvalid: '售后数量须为 0 或正整数，不给的填 0',
-    allZero: '数量都是 0，整张不处理请关闭售后并写原因',
+    allZero: '数量都是 0，整张不处理请关闭售后',
     priceOverShip: (name: string, price: string) => `${name}的售后单价不能高于发货单价 ${price}`,
     linesLocked: '门店提交的售后只能改数量和单价',
     orderNotShipped: '订单还没发货，不能申请售后',
     processedNotice: '售后金额将计入下一张对账单',
-    pendingAmount: '待确认',
-    closeReasonRequired: '请填写关闭原因',
+    pendingAmount: '待处理',
     voidReasonRequired: '请填写作废原因',
     stale: '售后刚被处理过，已刷新成最新内容',
     imagesTooMany: (max: number) => `每项产品最多 ${max} 张图片`,

@@ -18,6 +18,7 @@ import { newIdempotencyKey, request, type Result } from '../../../../core/reques
 import { failureOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
 import { loadCustomers } from '../../../../views/customers'
+import { pickOpen, pickPatch, toggled } from '../../../../views/pick'
 import {
   addableOf,
   blankForm,
@@ -75,7 +76,10 @@ Page({
     lineViews: [] as ReturnType<typeof lineViewsOf>,
     pickSheet: false,
     editKey: '',
-    picks: [] as ReturnType<typeof addableOf>,
+    picks: [] as ReturnType<typeof pickOpen>['picks'],
+    pickIds: [] as string[],
+    pickCount: 0,
+    pickConfirm: '',
     saving: false,
     texts: {
       lines: copy.screen.section.lines,
@@ -86,7 +90,6 @@ Page({
       note: copy.field.note,
       reason: copy.screen.label.editReason,
       optional: copy.placeholder.optional,
-      reasonHint: redesignCopy.reasonHint,
       add: copy.screen.action.addProduct,
       pickTitle: copy.screen.title.pickProduct,
       noPick: copy.state.empty(copy.screen.empty.addableProducts),
@@ -189,9 +192,13 @@ Page({
   },
   async onCustomer(event: DetailEvent<string>): Promise<void> {
     const customerId = event.detail
-    this.setData({ storeOptions: storeOptionsOf(this.customers, customerId) })
-    // 换了客户：门店和明细都跟着这个客户的目录重来
-    this.update({ customerId, storeId: '', lines: [] }, 'customerId')
+    const stores = storeOptionsOf(this.customers, customerId)
+    this.setData({ storeOptions: stores })
+    // 换了客户：门店和明细都跟着这个客户的目录重来；只有一个启用门店的自动选上
+    this.update(
+      { customerId, storeId: stores.length === 1 ? (stores[0]?.id ?? '') : '', lines: [] },
+      'customerId',
+    )
     const customer = this.customers.find((row) => row.id === customerId)
     this.setData({
       overdue: customer?.overdue
@@ -235,19 +242,27 @@ Page({
     this.setData({
       editKey: '',
       pickSheet: true,
-      picks: addableOf(this.catalog, this.data.form.lines),
+      ...pickOpen(addableOf(this.catalog, this.data.form.lines)),
     })
   },
   onClosePick() {
     this.setData({ pickSheet: false })
   },
   onPick(event: KeyEvent) {
-    const item = this.catalog.find((entry) => entry.productId === event.currentTarget.dataset.key)
+    this.setData(
+      pickPatch(this.data.picks, toggled(this.data.pickIds, event.currentTarget.dataset.key)),
+    )
+  },
+  // 勾选的产品一次加入，数量默认 1、单价默认目录价；滚到最后加的一行
+  onPickConfirm() {
+    const added = this.data.pickIds.flatMap((id) => {
+      const item = this.catalog.find((entry) => entry.productId === id)
+      return item ? [lineOfCatalog(item)] : []
+    })
     this.setData({ pickSheet: false })
-    if (item) {
-      this.update({ lines: [...this.data.form.lines, lineOfCatalog(item)] }, 'lines')
-      this.setData({ editKey: item.productId })
-    }
+    if (!added.length) return
+    this.update({ lines: [...this.data.form.lines, ...added] }, 'lines')
+    this.setData({ editKey: added[added.length - 1]?.productId ?? '' })
   },
   showFields(fields: Record<string, string>) {
     this.setData({
@@ -280,7 +295,7 @@ Page({
   async submitUpdate(order: OrderDetail): Promise<void> {
     const checked =
       this.data.mode === 'confirm'
-        ? checkConfirm(this.data.form, this.data.initial, order.version)
+        ? checkConfirm(this.data.form, order.version)
         : checkUpdate(this.data.form, order.version)
     if (!checked.ok) {
       this.showFields(checked.fields)
@@ -300,7 +315,10 @@ Page({
     if (result.ok) {
       markChanged(this, false)
       showSuccess(copy.action.saved)
-      void wx.navigateBack()
+      // 新建的：直接看这张订单的详情；修改、确认的：回到原来的详情
+      if (this.data.mode === 'create')
+        void wx.redirectTo({ url: `/packages/sales/pages/order-detail/index?id=${result.data.id}` })
+      else void wx.navigateBack()
       return
     }
     const view = failureOf(result.failure, 'submit')

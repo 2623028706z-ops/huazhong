@@ -26,6 +26,7 @@ import {
   toModules,
   type StaffForm,
 } from './form'
+import { pullToRefresh } from '../../core/live'
 
 function rowOf(item: StaffItem) {
   return {
@@ -44,6 +45,7 @@ function canUnbindOf(item: StaffItem | null): boolean {
 }
 
 Page({
+  ...pullToRefresh,
   data: {
     title: copy.title.staff,
     emptyObject: copy.object.staff,

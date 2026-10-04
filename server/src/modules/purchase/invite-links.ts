@@ -1,8 +1,8 @@
 import { appError, contract, copy } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import type { Db } from '../../../db/client.ts'
-import { invites } from '../../../db/schema/index.ts'
+import { invites, operationLogs } from '../../../db/schema/index.ts'
 import { DB } from '../../common/db.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import type { ParsedInput } from '../../common/endpoint.ts'
@@ -22,7 +22,20 @@ export class InviteLinks {
     return this.writes.run(viewer, async (ctx) => {
       const invite = await lockInvite(ctx.tx, viewer, id)
       if (invite.status !== 'pending') throw appError.businessRule(copy.finance.inviteLinkExpired)
-      await ctx.log(inviteLog(invite, copy.log.action.shareInvite))
+      // 进页面就取卡片参数：同一邀请只在第一次生成时记一条日志（邀请行已加锁，不会并发重复）
+      const [logged] = await ctx.tx
+        .select({ id: operationLogs.id })
+        .from(operationLogs)
+        .where(
+          and(
+            eq(operationLogs.targetType, 'invites'),
+            eq(operationLogs.targetId, id),
+            eq(operationLogs.action, copy.log.action.shareInvite),
+          ),
+        )
+        .limit(1)
+      if (logged) ctx.unchanged()
+      else await ctx.log(inviteLog(invite, copy.log.action.shareInvite))
       return {
         path: `pages/link/index?t=invite&id=${id}&sig=${this.signing.sign(String(id))}`,
         title: copy.finance.inviteShareTitle,

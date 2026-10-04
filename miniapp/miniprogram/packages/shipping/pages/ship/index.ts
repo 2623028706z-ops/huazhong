@@ -194,7 +194,6 @@ Page({
     if (this.data.saving) return
     const order = this.order
     if (!order) return
-    if (!this.validateDifference()) return
     const lines = this.data.lines.map((line) => ({
       orderLineId: line.id,
       shippedQty: line.shippedQty,
@@ -222,12 +221,6 @@ Page({
       return
     }
     this.showShipFailure(result.failure)
-  },
-  validateDifference() {
-    if (!this.data.lines.some((line) => line.shippedQty !== line.qty) || this.data.shipNote.trim())
-      return true
-    this.setData({ formError: copy.rework.shipDifferenceNoteRequired })
-    return false
   },
   showShipFailure(failure: Parameters<typeof failureOf>[0]) {
     const view = failureOf(failure, 'submit')

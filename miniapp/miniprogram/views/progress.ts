@@ -1,4 +1,5 @@
 import {
+  copy,
   labels,
   redesignCopy,
   shanghaiDayOf,
@@ -30,7 +31,7 @@ function dayOf(value: string | null): string {
 }
 export function statementText(statement: StatementRef | null): string {
   return statement
-    ? `${statement.no} · ${labels.statementStatus[statement.status]}`
+    ? `${statement.no}${copy.separator}${labels.statementStatus[statement.status]}`
     : redesignCopy.unstatemented
 }
 function appendVoid(steps: ProgressStep[], voidedAt: string | null): ProgressStep[] {

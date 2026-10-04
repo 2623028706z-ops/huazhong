@@ -80,7 +80,7 @@ import { createReceipt, getReceipt, listFinanceRecords, voidReceipt } from './re
 import { createStaff, listStaff, unbindStaffWechat, updateStaff } from './staff.ts'
 import { getStoreInvite, useStoreInvite } from './store-invites.ts'
 import { cancelStoreOrder, createStoreOrder, storeCatalog, updateStoreOrder } from './store.ts'
-import { moduleTodos } from './todos.ts'
+import { moduleTodoCounts, moduleTodos } from './todos.ts'
 import {
   createMaterial,
   createMaterialCategory,
@@ -206,6 +206,7 @@ export const contract = {
   listInventory,
   listMaterialCategories,
   moduleTodos,
+  moduleTodoCounts,
   // 销售：主数据
   listCustomers,
   createCustomer,

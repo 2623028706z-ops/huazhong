@@ -12,5 +12,6 @@
     "hz-reason-sheet": "/components/hz-reason-sheet/index",
     "hz-line-item": "/components/hz-line-item/index",
     "hz-records": "/components/hz-records/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

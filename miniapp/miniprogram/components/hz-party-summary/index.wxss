@@ -1,0 +1,35 @@
+.hz-party-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-line-gap);
+}
+
+.hz-party-summary__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.hz-party-summary__label {
+  font-size: var(--hz-font);
+  color: var(--hz-muted);
+}
+
+.hz-party-summary__edit {
+  margin-left: var(--hz-line-gap);
+  font-size: var(--hz-font-sm);
+  color: var(--hz-brand);
+}
+
+.hz-party-summary__amount {
+  font-size: var(--hz-font-hero);
+  color: var(--hz-brand);
+}
+
+.hz-party-summary__line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}

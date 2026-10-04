@@ -46,17 +46,11 @@ Page({
     rows: [] as ReturnType<typeof rowsOf>,
     categories: '',
     realtime: '',
-    editor: false,
-    editIndex: -1,
-    draftActual: '',
-    draftName: '',
-    draftUnit: '',
     texts: {
       ...copy.stock.screen,
       materials: redesignCopy.materialLines,
       disabled: copy.statusValue.disabled,
       unit: copy.field.unit,
-      confirm: redesignCopy.confirm,
     },
   },
   categoryIds: [] as string[],
@@ -110,30 +104,11 @@ Page({
     })
     markChanged(this, isChanged(normalize(this.data.initial), normalize(form)))
   },
-  onEdit(event: DetailEvent<unknown, { index: number }>) {
-    const index = event.currentTarget.dataset.index
-    const line = this.data.form.lines[index]
-    if (line)
-      this.setData({
-        editor: true,
-        editIndex: index,
-        draftActual: line.actualText,
-        draftName: line.name,
-        draftUnit: line.unit,
-      })
-  },
-  onDraftActual(event: DetailEvent<string>) {
-    this.setData({ draftActual: event.detail })
-  },
-  onCloseEditor() {
-    this.setData({ editor: false })
-  },
-  onConfirmEditor() {
+  onActualInput(event: DetailEvent<{ value: string }, { index: number }>) {
     this.onActual({
-      detail: this.data.draftActual,
-      currentTarget: { dataset: { index: this.data.editIndex } },
+      detail: event.detail.value,
+      currentTarget: event.currentTarget,
     } as DetailEvent<string, { index: number }>)
-    this.setData({ editor: false })
   },
   onActual(event: DetailEvent<string, { index: number }>) {
     this.setData({ fields: {}, formError: '' })

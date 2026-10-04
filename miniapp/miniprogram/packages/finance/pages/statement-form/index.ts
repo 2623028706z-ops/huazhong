@@ -3,7 +3,6 @@ import {
   financeCopy as f,
   financeTexts,
   shanghaiDateOf,
-  monthStartOf,
   addDays,
   formatMoney,
   type StatementDraft,
@@ -39,7 +38,8 @@ Page({
     partyId: '',
     partyName: '',
     today: shanghaiDateOf(Date.now()),
-    periodFrom: monthStartOf(shanghaiDateOf(Date.now())),
+    // 空 = 让服务端给默认起点（上一张对账单截止日次日 / 最早一笔未对账单据日期），可改
+    periodFrom: '',
     periodTo: shanghaiDateOf(Date.now()),
     note: '',
     dueDate: '',
@@ -96,7 +96,7 @@ Page({
       query: {
         kind: this.data.kind,
         partyId: this.data.partyId,
-        from: this.data.periodFrom,
+        ...(this.data.periodFrom ? { from: this.data.periodFrom } : {}),
         to: this.data.periodTo,
       },
     })
@@ -130,6 +130,8 @@ Page({
       loaded: true,
       failure: null,
       partyName: result.data.partyName,
+      periodFrom: result.data.periodFrom,
+      periodTo: result.data.periodTo,
       selected,
       changes,
     })

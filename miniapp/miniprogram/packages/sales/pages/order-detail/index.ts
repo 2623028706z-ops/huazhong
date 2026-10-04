@@ -1,12 +1,13 @@
 // X3 订单详情（06 章 X3）：状态区 → 单号、状态、来源 → 客户门店、下单日期、出货日期、备注 → 明细 → 金额 →
-// 发货信息 → 变更记录 → 原因行。确认订单弹层选出货日期（默认今天往后 SHIP_DATE_DEFAULT_OFFSET_DAYS 天）；
+// 发货信息 → 变更记录 → 原因行。「确认」弹层（hz-order-confirm，和 X2 批量确认共用）只选出货日期，确认后留在详情；
+// 要改数量、单价的走底部灰字「修改后确认」进 X4 确认模式；
 // 取消按 cancel 的 reasonRequired，弹层开着时被确认返回 STALE，按 latest 换成原因框
-import { contract, copy, redesignCopy, type OrderDetail } from '@huazhong/shared'
+import { contract, copy, formatMoney, redesignCopy, type OrderDetail } from '@huazhong/shared'
 import { buttonsOf, isReasonRequired, type ButtonView } from '../../../../core/actions'
 import type { CodeEvent, DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { confirmAsk } from '../../../../core/guard'
-import { unwatchOnLeave, watchNewer } from '../../../../core/live'
+import { unwatchOnLeave, watchNewer, pullToRefresh } from '../../../../core/live'
 import { request, type Result } from '../../../../core/request'
 import { failureOf, messageOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
@@ -42,11 +43,23 @@ const confirmTexts: Record<ReasonCode, string> = {
   rejectCancel: copy.rework.rejectCancel,
   voidOrder: copy.screen.action.confirmVoid,
 }
+const subjectOfCustomer = (order: OrderDetail): string =>
+  copy.org.store(order.customerName, order.storeName)
+// 「确认」旁边多一个底部灰字「修改后确认」：要改数量、单价时进 X4 确认模式；可用状态和「确认」一致
+function buttonsWithEdit(buttons: ButtonView[]): ButtonView[] {
+  const confirm = buttons.find((button) => button.code === 'confirm')
+  if (!confirm) return buttons
+  return [
+    ...buttons,
+    { ...confirm, code: 'confirmEdit', text: redesignCopy.confirmWithEdit, kind: 'text' },
+  ]
+}
 function isReasonAction(code: string): code is ReasonCode {
-  return Object.hasOwn(reasonTitles, code)
+  return Object.prototype.hasOwnProperty.call(reasonTitles, code)
 }
 
 Page({
+  ...pullToRefresh,
   ...unwatchOnLeave,
   data: {
     title: copy.screen.title.orderDetail,
@@ -57,8 +70,12 @@ Page({
     buttons: [] as ButtonView[],
     busy: '',
     ...sheetDefaults,
+    confirmSheet: false,
+    confirmTargets: [] as { id: string; version: number; no: string; title: string }[],
+    confirmOverdue: [] as string[],
     cancelSheet: false,
     cancelRequired: false,
+    cancelOptional: false,
     cancelError: '',
     texts: {
       cancelTitle: reasonTitles.cancel,
@@ -102,7 +119,7 @@ Page({
       loaded: true,
       failure: null,
       view: orderViewOf(order, false, this.financeScope),
-      buttons: this.readonlyScope ? [] : buttonsOf(order.actions, buttonSpecs),
+      buttons: this.readonlyScope ? [] : buttonsWithEdit(buttonsOf(order.actions, buttonSpecs)),
     })
   },
   async onAction(event: CodeEvent) {
@@ -110,38 +127,74 @@ Page({
     if (!order) return
     const { code } = event.currentTarget.dataset
     if (code === 'confirm') {
+      this.openConfirm(order)
+    } else if (code === 'confirmEdit') {
       void wx.navigateTo({ url: `${PAGES}/order-form/index?mode=confirm&id=${order.id}` })
     } else if (isReasonAction(code)) {
-      const cancelRequired = isReasonRequired(order.actions, code)
-      const title = reasonTitles[code]
-      this.setData({
-        cancelSheet: cancelRequired,
-        cancelRequired,
-        cancelError: '',
-        cancelMode: code,
-        texts: {
-          ...this.data.texts,
-          cancelTitle: title,
-          confirmCancel: confirmTexts[code],
-          cancelBody: redesignCopy.orderAction[code].body,
-          cancelSubject: subjectOf(order),
-        },
-      })
-      if (
-        !cancelRequired &&
-        (await confirmAsk(this, {
-          title,
-          body: `${subjectOf(order)}\n${redesignCopy.orderAction[code].body}`,
-          cancel: copy.confirm.cancel,
-          confirm: confirmTexts[code],
-        }))
-      )
-        await this.submitCancel('')
+      await this.openReason(order, code)
     } else if (code === 'edit') {
       void wx.navigateTo({ url: `${PAGES}/order-form/index?mode=${code}&id=${order.id}` })
     } else if (code === 'createAfter') {
       void wx.navigateTo({ url: `${PAGES}/after-form/index?orderId=${order.id}` })
     }
+  },
+  async openReason(order: OrderDetail, code: ReasonCode): Promise<void> {
+    const cancelRequired = isReasonRequired(order.actions, code)
+    // 拒绝取消申请：原因选填，也要弹原因框
+    const optional = code === 'rejectCancel'
+    const title = reasonTitles[code]
+    this.setData({
+      cancelSheet: cancelRequired || optional,
+      cancelRequired,
+      cancelOptional: optional,
+      cancelError: '',
+      cancelMode: code,
+      texts: {
+        ...this.data.texts,
+        cancelTitle: title,
+        confirmCancel: confirmTexts[code],
+        cancelBody: redesignCopy.orderAction[code].body,
+        cancelSubject: subjectOf(order),
+      },
+    })
+    if (
+      !cancelRequired &&
+      !optional &&
+      (await confirmAsk(this, {
+        title,
+        body: `${subjectOf(order)}\n${redesignCopy.orderAction[code].body}`,
+        cancel: copy.confirm.cancel,
+        confirm: confirmTexts[code],
+      }))
+    )
+      await this.submitCancel('')
+  },
+  // 确认订单弹层：只放出货日期，欠款黄条只提醒
+  openConfirm(order: OrderDetail) {
+    this.setData({
+      confirmSheet: true,
+      confirmTargets: [
+        { id: order.id, version: order.version, no: order.no, title: subjectOfCustomer(order) },
+      ],
+      confirmOverdue: order.overdue
+        ? [
+            redesignCopy.overdueNotice(
+              order.customerName,
+              formatMoney(order.overdue.amountCents),
+              order.overdue.days,
+            ),
+          ]
+        : [],
+    })
+  },
+  onCloseConfirm() {
+    this.setData({ confirmSheet: false })
+  },
+  // 弹层里确认完：留在详情，刷新成最新状态
+  async onConfirmDone(event: DetailEvent<{ message: string }>) {
+    this.setData({ confirmSheet: false })
+    await this.load()
+    void wx.showToast({ title: event.detail.message, icon: 'none' })
   },
   onCloseCancel() {
     this.setData({ cancelSheet: false })
@@ -161,7 +214,8 @@ Page({
       const latest = view.latest as OrderDetail
       this.show(latest)
       const cancelRequired = isReasonRequired(latest.actions, this.data.cancelMode)
-      this.setData({ cancelRequired, cancelSheet: cancelRequired })
+      const optional = this.data.cancelMode === 'rejectCancel'
+      this.setData({ cancelRequired, cancelSheet: cancelRequired || optional })
     }
     const message = messageOf(view)
     this.setData({ cancelError: message, ...(!this.data.cancelSheet ? { failure: view } : {}) })

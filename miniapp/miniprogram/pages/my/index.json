@@ -7,5 +7,6 @@
     "hz-state": "/components/hz-state/index",
     "hz-error": "/components/hz-error/index",
     "hz-tabbar": "/components/hz-tabbar/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

@@ -30,5 +30,5 @@
 <hz-action-bar>
   <hz-button text="{{texts.save}}" loading="{{saving}}" disabled="{{uploading}}" bind:press="onSave" />
 </hz-action-bar>
-<template is="pick-sheet" data="{{show: pickSheet, title: texts.pickTitle, picks, empty: texts.noPick}}" />
+<template is="pick-sheet" data="{{show: pickSheet, title: texts.pickTitle, picks, empty: texts.noPick, multi: true, count: pickCount, confirm: pickConfirm}}" />
 <hz-confirm id="hz-confirm" />

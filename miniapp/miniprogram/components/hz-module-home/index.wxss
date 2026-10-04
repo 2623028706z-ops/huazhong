@@ -1,15 +1,20 @@
 .hz-module-home {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 14px var(--hz-gap-page);
+  gap: var(--hz-card-gap);
+  padding: var(--hz-row-pad) var(--hz-gap-page);
+}
+
+/* 区块标题和卡片左边缘对齐（不再缩进 4px），和「我的」页一致 */
+.hz-module-home .u-section__title {
+  padding: 0;
 }
 
 /* 待办小卡：三列，大数字在上、名称在下，右上小箭头 */
 .hz-module-home__todos {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--hz-card-gap);
 }
 
 .hz-module-home__todo {
@@ -18,7 +23,7 @@
   flex-direction: column;
   gap: 4px;
   min-width: 0;
-  padding: 14px 12px 12px;
+  padding: 14px var(--hz-row-pad) 12px var(--hz-card-pad);
 }
 
 .hz-module-home__arrow {

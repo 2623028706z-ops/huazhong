@@ -28,7 +28,7 @@ function rowOf(item: CatalogItem) {
     name: item.name,
     tags,
     code: item.customerCode,
-    priceText: copy.screen.pricePer(formatMoney(item.listPriceCents), item.unit),
+    priceText: copy.screen.listPriceText(formatMoney(item.listPriceCents), item.unit),
   }
 }
 
@@ -114,5 +114,9 @@ export function addableOf(products: readonly ProductItem[], catalog: Catalog) {
   const added = new Set(catalog.items.map((item) => item.productId))
   return products
     .filter((product) => product.enabled && !added.has(product.id))
-    .map((product) => ({ id: product.id, name: product.name, sub: product.categoryName }))
+    .map((product) => ({
+      id: product.id,
+      name: product.name,
+      sub: `${copy.field.category} ${product.categoryName}`,
+    }))
 }

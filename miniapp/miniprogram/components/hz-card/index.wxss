@@ -1,5 +1,5 @@
 .hz-card {
-  padding: 14px var(--hz-card-pad);
+  padding: var(--hz-card-pad-y) var(--hz-card-pad);
 }
 
 .hz-card__head {
@@ -28,15 +28,15 @@
    左列放单号、日期，比右列宽（定稿 164px : 其余，约 1.25 : 1），值不换行（定稿 .kv nowrap），太长省略 */
 .hz-card__fields {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  gap: 2px 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, auto);
+  gap: 2px 8px;
   margin-top: 8px;
 }
 
 .hz-card__field {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--hz-line-gap);
   min-width: 0;
   font-size: var(--hz-font-row);
   line-height: 26px;
@@ -67,13 +67,14 @@
 }
 
 .hz-card__amount {
-  font-size: var(--hz-font);
-  font-weight: 700;
+  font-size: var(--hz-font-md);
+  font-weight: 600;
   color: var(--hz-ink);
 }
 
 .hz-card__tags {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
 }
@@ -90,4 +91,12 @@
 
 .hz-card__value--good {
   color: var(--hz-green);
+}
+
+.hz-card__field--minor {
+  font-size: var(--hz-font-sm);
+}
+
+.hz-card__field--minor .hz-card__value {
+  color: var(--hz-muted);
 }

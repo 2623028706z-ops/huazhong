@@ -85,7 +85,7 @@ export const repricePurchaseOrder = {
   body: z
     .object({
       version: versionSchema,
-      reason: requiredTextSchema(copy.finance.repriceReason),
+      reason: z.string().trim().default(''),
       lines: z
         .array(
           z.object({

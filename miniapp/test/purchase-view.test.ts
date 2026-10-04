@@ -77,7 +77,7 @@ describe('邀请详情展示', () => {
     })
     const supplier = inviteViewOf(invite, true).info.rows
     expect(supplier).toContainEqual({
-      label: '采购',
+      label: '采购员',
       value: invite.buyerName,
       phone: invite.buyerPhone,
     })
@@ -86,7 +86,7 @@ describe('邀请详情展示', () => {
       url: '/packages/supplier/pages/po-detail/index?id=7',
     })
     const staff = inviteViewOf(invite).info.rows
-    expect(staff.find((row) => row.label === '采购')).not.toHaveProperty('phone')
+    expect(staff.find((row) => row.label === '采购员')).not.toHaveProperty('phone')
     expect(staff.at(-1)).toMatchObject({
       label: '采购单',
       url: '/packages/purchase/pages/order-detail/index?id=7',

@@ -3,7 +3,7 @@ import { contract, copy, type InventoryItem } from '@huazhong/shared'
 import type { DetailEvent } from '../../core/events'
 import type { FailureView } from '../../core/failure-view'
 import { emptyFilter, type FilterDimension, type FilterValue } from '../../core/filter'
-import { unwatch, watch } from '../../core/live'
+import { unwatch, watch, pullToRefresh } from '../../core/live'
 import { PagedList } from '../../core/list'
 import type { PagerView } from '../../core/pager'
 import { request } from '../../core/request'
@@ -30,6 +30,7 @@ function rowOf(item: InventoryItem) {
 }
 
 Page({
+  ...pullToRefresh,
   data: {
     title: copy.title.inventory,
     searchPlaceholder: copy.screen.materialSearch,

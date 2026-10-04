@@ -80,12 +80,6 @@ export function checkFundInput(
   value: { discountCents: number; discountReason: string; statements: { id: string }[] },
   ctx: z.RefinementCtx,
 ) {
-  if (value.discountCents > 0 && !value.discountReason)
-    ctx.addIssue({
-      code: 'custom',
-      path: ['discountReason'],
-      message: financeCopy.discountReasonRequired,
-    })
   if (!value.statements.length && value.discountCents)
     ctx.addIssue({
       code: 'custom',

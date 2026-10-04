@@ -10,7 +10,7 @@ import type { DetailEvent } from '../core/events'
 import type { FailureView } from '../core/failure-view'
 import { request } from '../core/request'
 import { failureOf } from '../core/session'
-import { watch, unwatchOnLeave } from '../core/live'
+import { watch, unwatchOnLeave, pullToRefresh } from '../core/live'
 import { stockViewOf } from './stock'
 import { periodTextOf, settlementListRowsOf, statementSectionsOf } from './statement'
 type Detail =
@@ -115,6 +115,7 @@ async function supplierSource(host: ExternalStatementHost, source: StatementSour
 }
 const methods = {
   ...unwatchOnLeave,
+  ...pullToRefresh,
   id: '',
   detail: null as Detail | null,
   onLoad(this: ExternalStatementHost, query: Record<string, string | undefined>) {

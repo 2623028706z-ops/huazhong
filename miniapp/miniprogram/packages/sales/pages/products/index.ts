@@ -14,6 +14,7 @@ import type { FailureView } from '../../../../core/failure-view'
 import { confirmAsk } from '../../../../core/guard'
 import { firstFailure, newIdempotencyKey, request, type Result } from '../../../../core/request'
 import { failureOf, messageOf } from '../../../../core/session'
+import { pullToRefresh } from '../../../../core/live'
 
 const FORM_URL = '/packages/sales/pages/product-form/index'
 
@@ -38,6 +39,7 @@ function groupsOf(categories: readonly ProductCategory[], products: readonly Pro
 }
 
 Page({
+  ...pullToRefresh,
   data: {
     title: copy.screen.title.products,
     loaded: false,
@@ -131,6 +133,7 @@ Page({
     if (previous === undefined || current === undefined) return
     ids[index - 1] = current
     ids[index] = previous
+    this.setData({ saving: true })
     await this.settle(await request(contract.orderProductCategories, { body: { ids } }))
   },
   async onDelete(event: DetailEvent<string>): Promise<void> {
@@ -141,6 +144,7 @@ Page({
       confirm: copy.screen.action.delete,
     })
     if (!confirmed) return
+    this.setData({ saving: true })
     await this.settle(
       await request(contract.deleteProductCategory, { params: { id: event.detail } }),
     )

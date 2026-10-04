@@ -1,0 +1,1 @@
+ALTER TABLE "wh_docs" DROP CONSTRAINT "wh_docs_loss_reason";

@@ -70,7 +70,7 @@
     <hz-picker inline label="来源客户" options="{{copyOptions}}" value="{{copySourceId}}" bind:change="onCopySource" />
     <hz-error wx:if="{{copyError}}" message="{{copyError}}" />
     <view wx:if="{{copyPreview}}" class="u-info__meta">可复制 {{copyPreview.copyCount}} 项，跳过 {{copyPreview.skipCount}} 项。目标空分类按名称复用；不会覆盖现有目录项。</view>
-    <hz-button kind="secondary" text="重新预览" disabled="{{!copySourceId}}" loading="{{copyBusy}}" bind:press="onPreviewCopy" />
+    <hz-button kind="secondary" text="{{texts.rePreview}}" disabled="{{!copySourceId}}" loading="{{copyBusy}}" bind:press="onPreviewCopy" />
   </view>
-  <hz-button slot="footer" text="确认复制" disabled="{{!copyPreview.copyCount}}" loading="{{copyBusy}}" bind:press="onCopyCatalog" />
+  <hz-button slot="footer" text="{{texts.confirmCopy}}" disabled="{{!copyPreview.copyCount}}" loading="{{copyBusy}}" bind:press="onCopyCatalog" />
 </hz-sheet>

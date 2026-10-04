@@ -5,7 +5,7 @@ import { contract, copy, type AfterDetail } from '@huazhong/shared'
 import { buttonsOf, isReasonRequired, type ButtonView } from '../../../../core/actions'
 import type { CodeEvent, DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
-import { unwatchOnLeave, watchNewer } from '../../../../core/live'
+import { unwatchOnLeave, watchNewer, pullToRefresh } from '../../../../core/live'
 import { request } from '../../../../core/request'
 import { failureOf, messageOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
@@ -53,6 +53,7 @@ function viewOf(after: AfterDetail) {
 }
 
 Page({
+  ...pullToRefresh,
   ...unwatchOnLeave,
   data: {
     title: copy.screen.title.afterDetail,

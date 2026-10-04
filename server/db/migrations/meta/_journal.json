@@ -92,6 +92,20 @@
       "when": 1791093589376,
       "tag": "0012_statement_source_parent",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791148330862,
+      "tag": "0013_discount_reason_optional",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791149533721,
+      "tag": "0014_loss_reason_optional",
+      "breakpoints": true
     }
   ]
 }

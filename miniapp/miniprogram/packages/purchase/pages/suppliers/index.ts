@@ -6,6 +6,7 @@ import { emptyFilter } from '../../../../core/filter'
 import type { PagedList } from '../../../../core/list'
 import { request } from '../../../../core/request'
 import { listHandlers, listOf, showList } from '../../../../views/list'
+import { pullToRefresh } from '../../../../core/live'
 
 function rowOf(s: Supplier) {
   return {
@@ -24,6 +25,7 @@ function rowOf(s: Supplier) {
   }
 }
 Page({
+  ...pullToRefresh,
   ...listHandlers,
   data: {
     title: copy.screen.title.suppliers,

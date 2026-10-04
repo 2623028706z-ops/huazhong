@@ -36,12 +36,15 @@ export function groupsOf(items: LogItem[], today: string): LogGroup[] {
       id: item.id,
       fields: [
         { label: copy.object.module, value: moduleLabelOf(item) },
-        { label: copy.field.name, value: item.actorLabel },
+        { label: copy.records.actor, value: item.actorLabel },
         { label: copy.log.date, value: formatTime(item.createdAt) },
       ],
       title: [item.action, item.targetLabel].join(copy.separator),
       total: moduleLabelOf(item),
-      meta: [formatTime(item.createdAt), item.actorLabel].join(copy.separator),
+      meta: [
+        `${copy.log.date} ${formatTime(item.createdAt)}`,
+        `${copy.records.actor} ${item.actorLabel}`,
+      ].join(copy.separator),
     }
     const last = groups[groups.length - 1]
     if (last?.day === day) last.rows.push(row)
@@ -86,9 +89,11 @@ function sectionsOf(before: View, after: View): { title: string; rows: DetailRow
 export function detailOf(detail: LogDetail) {
   return {
     title: [detail.action, detail.targetLabel].join(copy.separator),
-    meta: [formatTime(detail.createdAt), detail.actorLabel, moduleLabelOf(detail)].join(
-      copy.separator,
-    ),
+    meta: [
+      `${copy.log.date} ${formatTime(detail.createdAt)}`,
+      `${copy.records.actor} ${detail.actorLabel}`,
+      `${copy.object.module} ${moduleLabelOf(detail)}`,
+    ].join(copy.separator),
     reason: detail.reason,
     sections: sectionsOf(detail.before, detail.after),
   }

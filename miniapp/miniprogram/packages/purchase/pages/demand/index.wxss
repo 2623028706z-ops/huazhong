@@ -1,0 +1,12 @@
+.hz-demand-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hz-demand-bar__all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--hz-font-sm);
+}

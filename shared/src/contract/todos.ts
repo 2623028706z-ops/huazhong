@@ -18,3 +18,14 @@ export const moduleTodos = {
   response: z.object({ count: z.number().int().nonnegative(), rows: z.array(todoRowSchema) }),
   errors: [],
 } as const satisfies Endpoint
+
+// 花众首页（M3）模块格子角标：当前账号有权限的模块各一项，没权限的模块不出现
+export const moduleTodoCounts = {
+  method: 'GET',
+  path: '/modules/todos',
+  grants: ['staff'],
+  response: z.object({
+    counts: z.array(z.object({ key: z.enum(todoModules), count: z.number().int().nonnegative() })),
+  }),
+  errors: [],
+} as const satisfies Endpoint

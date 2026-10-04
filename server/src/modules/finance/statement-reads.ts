@@ -1,4 +1,4 @@
-import { PAGE_SIZE, monthStartOf, type StatementKind } from '@huazhong/shared'
+import { PAGE_SIZE, addDays, type StatementKind } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
 import { and, desc, eq } from 'drizzle-orm'
 import type { Db, Tx } from '../../../db/client.ts'
@@ -93,11 +93,18 @@ export class StatementReads {
     period: { from?: string | undefined; to?: string | undefined } = {},
   ) {
     const party = await partyOf(tx, kind, id),
-      periodTo = period.to ?? this.clock.today(),
-      periodFrom = period.from ?? monthStartOf(periodTo)
+      periodTo = period.to ?? this.clock.today()
     const rows = await this.rows(tx, kind, id),
-      openingDebtCents = rows.some((r) => r.status !== 'voided') ? 0 : party.openingDebtCents
-    const sources = await sourcesOf(tx, { kind, partyId: id, from: periodFrom, to: periodTo }),
+      active = rows.filter((r) => r.status !== 'voided'),
+      openingDebtCents = active.length ? 0 : party.openingDebtCents
+    const all = await sourcesOf(tx, { kind, partyId: id, from: periodTo, to: periodTo })
+    // 默认起点：上一张对账单截止日的次日；第一次对账从最早一笔未对账单据日期开始；都没有就是截止日当天
+    const lastTo = active.map((r) => r.periodTo).reduce((a, b) => (b > a ? b : a), ''),
+      earliest = all.map((s) => s.sourceDate).reduce((a, b) => (b < a ? b : a), periodTo),
+      periodFrom =
+        period.from ??
+        (lastTo ? (addDays(lastTo, 1) < periodTo ? addDays(lastTo, 1) : periodTo) : earliest)
+    const sources = all.map((s) => ({ ...s, previousPeriod: s.sourceDate < periodFrom })),
       creditCents = sumOf(await creditSources(tx, kind, id), (s) => s.balance)
     const grossCents = sumOf(
         sources.filter((s) => s.carriesAmount),

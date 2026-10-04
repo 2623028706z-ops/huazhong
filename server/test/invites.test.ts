@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import type { InviteDetail, PoDetail, contract, OutputOf } from '@huazhong/shared'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, expect, test } from 'vitest'
-import { materials } from '../db/schema/index.ts'
+import { materials, operationLogs } from '../db/schema/index.ts'
 import { call } from './support/http.ts'
 import { inviteOf, receiveInput } from './support/purchase.ts'
 import { dataOf, idBy, startSales, type SalesApp } from './support/sales.ts'
@@ -116,21 +116,16 @@ test('B27 B28 B29 填报生成采购单、快照、幂等及收货改价', async
   ).toHaveLength(2)
   const body = receiveInput(result.purchaseOrder)
   body.lines = body.lines.map((line) => ({ ...line, priceCents: 320 }))
-  expect(
-    (await wh.post(`/purchase-orders/${result.purchaseOrder.id}/receive`, body)).body.error?.fields,
-  ).toEqual({ reason: '改了单价，请填写改价原因' })
+  // 改价原因选填：不填也能收货
   const received = dataOf<PoDetail>(
-    await wh.post(`/purchase-orders/${result.purchaseOrder.id}/receive`, {
-      ...body,
-      reason: '供应商让价',
-    }),
+    await wh.post(`/purchase-orders/${result.purchaseOrder.id}/receive`, body),
   )
   expect(received).toMatchObject({
     status: 'received',
     repriced: true,
     amountCents: 22400,
     lines: [{ orderPriceCents: 350, priceCents: 320 }],
-    priceChanges: [{ reason: '供应商让价' }],
+    priceChanges: [{ reason: '' }],
   })
   expect((await inviteOf(s)).supply[0]?.priceCents).toBe(350)
 })
@@ -195,6 +190,12 @@ test('B32 J24 分享卡片签名、归属和失效', async () => {
   const share = dataOf<OutputOf<typeof contract.shareInvite>>(
     await purchase.post(`/invites/${invite.id}/share`),
   )
+  dataOf(await purchase.post(`/invites/${invite.id}/share`))
+  const shareLogs = await s.t.db
+    .select()
+    .from(operationLogs)
+    .where(and(eq(operationLogs.targetType, 'invites'), eq(operationLogs.action, '生成填报链接')))
+  expect(shareLogs).toHaveLength(1)
   const params = new URL(share.path, 'https://x.invalid').searchParams
   expect(params.get('t')).toBe('invite')
   expect(share.title).toBe('花众采购邀请你填报供货')

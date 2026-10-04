@@ -10,11 +10,13 @@ import { request } from '../../../../core/request'
 import { afterRowOf } from '../../../../views/after'
 import { loadCustomers } from '../../../../views/customers'
 import { listHandlers, listOf, listQueryOf, showList } from '../../../../views/list'
+import { pullToRefresh } from '../../../../core/live'
 
 const CUSTOMER = 'customer'
 const PAGES = '/packages/sales/pages'
 
 Page({
+  ...pullToRefresh,
   ...listHandlers,
   data: {
     title: copy.screen.title.salesAfters,
@@ -40,6 +42,8 @@ Page({
     },
   },
   list: null as PagedList<AfterCard> | null,
+  dimensionsReady: false,
+  dimensionsBusy: false,
   onLoad(query: Record<string, string | undefined>) {
     this.setData({ filter: { ...emptyFilter, status: query.status ?? '' } })
     this.list = listOf(
@@ -68,14 +72,19 @@ Page({
       },
       (after: AfterCard) => afterRowOf(after, false),
     )
-    void this.loadDimensions()
   },
   onShow() {
     showList(this, ['afters'])
+    // 客户选项失败后不重试会一直缺：回到页面时补拉一次
+    void this.loadDimensions()
   },
   async loadDimensions(): Promise<void> {
+    if (this.dimensionsReady || this.dimensionsBusy) return
+    this.dimensionsBusy = true
     const result = await loadCustomers()
+    this.dimensionsBusy = false
     if (!result.ok) return
+    this.dimensionsReady = true
     const options = result.data.map(({ id, name }) => ({ id, name }))
     this.setData({
       dimensions: [

@@ -23,6 +23,9 @@ export interface UploadedImage {
 export type UploadResult =
   { ok: true; image: UploadedImage } | { ok: false; message: string; failure: Failure | null }
 
+const HTTP_OK_MIN = 200
+const HTTP_OK_END = 300
+
 function extensionOf(path: string): string {
   return path.slice(path.lastIndexOf('.') + 1).toLowerCase()
 }
@@ -34,8 +37,8 @@ function put(url: string, filePath: string, formData: Record<string, string>): P
       filePath,
       name: 'file',
       formData,
-      success: () => {
-        resolve(true)
+      success: (res) => {
+        resolve(res.statusCode >= HTTP_OK_MIN && res.statusCode < HTTP_OK_END)
       },
       fail: () => {
         resolve(false)

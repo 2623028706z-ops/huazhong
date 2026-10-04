@@ -1,7 +1,7 @@
 <import src="list.wxml" />
 <template name="party-ledger">
 <hz-navbar title="{{title}}" back /><view class="u-list"><text class="u-serif hz-party-title">{{partyName}}</text>
-<hz-statement cells="{{cells}}" rows="{{totalRows}}" bind:action="onTotalAction" />
+<hz-party-summary label="{{summary.label}}" amount-cents="{{summary.amountCents}}" lines="{{summary.lines}}" edit="{{summary.edit}}" bind:action="onTotalAction" />
 <hz-tabs items="{{ledgerTabs}}" value="{{ledgerTab}}" bind:change="onLedgerTab" />
 <template wx:if="{{ledgerTab === 'statements'}}" is="list-state" data="{{failure,skeleton,loaded,rows,emptyObject}}" />
 <template wx:if="{{ledgerTab === 'statements'}}" is="cards" data="{{rows,statusKind,done,allLoaded}}" />

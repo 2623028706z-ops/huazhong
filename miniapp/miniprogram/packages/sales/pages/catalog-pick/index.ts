@@ -9,11 +9,9 @@ Page({
     title: copy.screen.title.pickProduct,
     loaded: false,
     failure: null as FailureView | null,
-    selected: '',
     keyword: '',
     rows: [] as { id: string; name: string; sub: string }[],
     texts: {
-      next: copy.screen.action.next,
       empty: copy.screen.empty.addableProducts,
       search: copy.screen.title.pickProduct,
     },
@@ -38,7 +36,7 @@ Page({
     this.products = products.data.items
     this.picks = addableOf(this.products, catalog.data).map((row) => ({
       ...row,
-      sub: this.products.find((p) => p.id === row.id)?.unit ?? '',
+      sub: `${copy.field.unit} ${this.products.find((p) => p.id === row.id)?.unit ?? ''}`,
     }))
     this.setData({ loaded: true, failure: null })
     this.render()
@@ -50,13 +48,12 @@ Page({
     this.setData({ keyword: event.detail })
     this.render()
   },
+  // 点一个产品直接进目录产品页（一次只设一个产品的订货价、分类），不用再点「下一步」
   onPick(event: KeyEvent) {
-    this.setData({ selected: event.currentTarget.dataset.key })
-  },
-  onNext() {
-    if (this.picks.some((row) => row.id === this.data.selected))
+    const productId = event.currentTarget.dataset.key
+    if (this.picks.some((row) => row.id === productId))
       void wx.redirectTo({
-        url: `/packages/sales/pages/catalog-item/index?customerId=${this.customerId}&productId=${this.data.selected}`,
+        url: `/packages/sales/pages/catalog-item/index?customerId=${this.customerId}&productId=${productId}`,
       })
   },
   onFailureAction() {

@@ -2,7 +2,7 @@ import { contract, copy, type AfterDetail } from '@huazhong/shared'
 import type { FailureView } from '../../../../core/failure-view'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
-import { watch, unwatchOnLeave } from '../../../../core/live'
+import { watch, unwatchOnLeave, pullToRefresh } from '../../../../core/live'
 import { afterInfoOf, afterLinesOf, afterReasonsOf } from '../../../../views/after'
 import { afterProgress, externalProgressOf } from '../../../../views/progress'
 function viewOf(after: AfterDetail) {
@@ -20,6 +20,7 @@ function viewOf(after: AfterDetail) {
   }
 }
 Page({
+  ...pullToRefresh,
   ...unwatchOnLeave,
   data: {
     title: copy.screen.title.afterDetail,

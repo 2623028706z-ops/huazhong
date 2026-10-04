@@ -71,11 +71,8 @@ describe('可申请数量', () => {
     })
     const third = dataOf<AfterDetail>(await storeApply(5))
     expect(await roseMax()).toBe(0)
-    dataOf(
-      await (
-        await s.as('u2')
-      ).post(`/afters/${third.id}/close`, { version: third.version, reason: '门店撤回' }),
-    )
+    // 关闭原因选填：不填也能关闭
+    dataOf(await (await s.as('u2')).post(`/afters/${third.id}/close`, { version: third.version }))
     expect(await roseMax()).toBe(5)
   })
 
@@ -100,7 +97,7 @@ describe('处理和关闭', () => {
     })
     expect(zero.body.error).toMatchObject({
       code: 'BUSINESS_RULE',
-      message: '数量都是 0，整张不处理请关闭售后并写原因',
+      message: '数量都是 0，整张不处理请关闭售后',
     })
     const done = dataOf<AfterDetail>(
       await sales.post(`/afters/${applied.id}/process`, {

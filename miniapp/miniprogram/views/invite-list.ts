@@ -3,7 +3,7 @@ import type { KeyEvent } from '../core/events'
 import type { FailureView } from '../core/failure-view'
 import { emptyFilter, type FilterDimension } from '../core/filter'
 import type { PagedList } from '../core/list'
-import { unwatch, watch } from '../core/live'
+import { pullToRefresh, unwatch, watch } from '../core/live'
 import { request } from '../core/request'
 import { loadMe, tabsOf } from '../core/session'
 import { listHandlers, listOf, listQueryOf, showList } from './list'
@@ -73,6 +73,7 @@ function embeddedPatch(host: InviteListHost, status: string | undefined) {
   })
 }
 const methods = {
+  ...pullToRefresh,
   ...listHandlers,
   list: null as PagedList<InviteCard> | null,
   onLoad(this: InviteListHost, query: Record<string, string | undefined>) {

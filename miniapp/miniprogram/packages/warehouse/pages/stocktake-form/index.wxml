@@ -3,8 +3,7 @@
 <view class="u-list">
   <hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" />
   <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" /><hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" /><hz-error wx:if="{{formError}}" message="{{formError}}" /><hz-skeleton wx:if="{{!loaded}}" type="form" />
-  <block wx:else><view class="u-card u-info"><view class="u-info__head"><text class="u-info__title">{{categories}}</text></view></view><template is="count-table" data="{{rows,texts}}" /><view class="u-card u-form-card"><hz-field label="{{texts.diffReason}}" type="textarea" value="{{form.reason}}" error="{{fields.reason}}" bind:change="onReason" /></view></block>
+  <block wx:else><view class="u-card u-info"><view class="u-info__head"><text class="u-info__title">{{categories}}</text></view></view><template is="count-table" data="{{rows,texts,editable:true}}" /><view class="u-card u-form-card"><hz-field label="{{texts.diffReason}}" type="textarea" value="{{form.reason}}" error="{{fields.reason}}" bind:change="onReason" /></view></block>
 </view>
 <hz-action-bar wx:if="{{loaded}}"><hz-button text="{{texts.submit.stocktake}}" loading="{{saving}}" bind:press="onSubmit" /></hz-action-bar>
 <hz-confirm id="hz-confirm" />
-<hz-sheet show="{{editor}}" title="{{draftName}}" center footer bind:close="onCloseEditor"><view class="u-sheet-form"><hz-field label="{{texts.actualQty}}" type="number" value="{{draftActual}}" suffix="{{draftUnit}}" bind:change="onDraftActual" /></view><hz-button slot="footer" text="{{texts.confirm}}" bind:press="onConfirmEditor" /></hz-sheet>

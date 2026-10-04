@@ -14,6 +14,8 @@
     "hz-sheet": "/components/hz-sheet/index",
     "hz-picker": "/components/hz-picker/index",
     "hz-reason-sheet": "/components/hz-reason-sheet/index",
-    "hz-confirm": "/components/hz-confirm/index"
-  }
+    "hz-confirm": "/components/hz-confirm/index",
+    "hz-order-confirm": "/packages/sales/components/hz-order-confirm/index"
+  },
+  "enablePullDownRefresh": true
 }

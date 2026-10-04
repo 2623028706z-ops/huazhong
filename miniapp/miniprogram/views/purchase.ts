@@ -3,7 +3,6 @@ import {
   copy,
   redesignCopy,
   formatMoney,
-  formatQty,
   formatTime,
   formatUnitTotals,
   labels,
@@ -161,7 +160,8 @@ function poRecordsOf(po: PoDetail) {
       actor: r.actorLabel,
       reason: r.reason,
       changes: r.items.map(
-        (i) => `${i.name} ${formatMoney(i.fromCents)} → ${formatMoney(i.toCents)}`,
+        (i) =>
+          `${i.name} ${redesignCopy.price} ${formatMoney(i.fromCents)} → ${formatMoney(i.toCents)}`,
       ),
     })),
     returns: po.returns.map((r) => ({
@@ -169,7 +169,7 @@ function poRecordsOf(po: PoDetail) {
       at: r.createdAt,
       actor: r.actorLabel,
       reason: null,
-      changes: r.items.map((i) => `${i.name} ${i.qty}`),
+      changes: r.items.map((i) => `${i.name} ${redesignCopy.qty} ${i.qty}`),
     })),
   }
 }
@@ -280,5 +280,5 @@ export function poViewOf(po: PoDetail, supplier = false, finance = false) {
 }
 
 export function materialPickOf(material: { id: string; name: string; unit: string }) {
-  return { id: material.id, name: material.name, sub: formatQty(1, material.unit) }
+  return { id: material.id, name: material.name, sub: `${redesignCopy.unit} ${material.unit}` }
 }

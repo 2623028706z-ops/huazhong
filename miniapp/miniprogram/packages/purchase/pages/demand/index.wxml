@@ -5,16 +5,12 @@
 <view wx:else class="u-list">
   <hz-filter-bar search-placeholder="{{texts.search}}" sections="{{sections}}" section="{{section}}" date-label="{{texts.shipDate}}" date-presets="{{datePresets}}" default-date="next7Days" value="{{dateFilter}}" bind:change="onDemandFilter" bind:section="onSection" />
   <view wx:if="{{overdue.count}}" class="u-note-warn" bindtap="onOverdue"><text>{{overdueText}} ›</text></view>
-  <hz-error wx:if="{{failure && !sourceSheet && !supplierSheet}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
+  <hz-error wx:if="{{failure && !sourceSheet}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <hz-skeleton wx:if="{{!loaded}}" type="list" />
-  <block wx:else><text wx:if="{{rows.length}}" class="u-info__meta">{{count}}</text><hz-state wx:if="{{!rows.length}}" object="{{emptyObject}}" message="{{emptyText}}" /></block>
+  <block wx:else><view wx:if="{{rows.length}}" class="hz-demand-bar"><view wx:if="{{canInvite || canCreate}}" class="hz-demand-bar__all u-tap" bindtap="onSelectAll"><view class="u-check {{allSelected ? 'u-check--on' : ''}}"><text wx:if="{{allSelected}}" class="hz-icon hz-icon--check"></text></view><text>{{selectAllText}}</text></view><text class="u-info__meta">{{count}}</text></view><hz-state wx:if="{{!rows.length}}" object="{{emptyObject}}" message="{{emptyText}}" /></block>
   <hz-demand-row wx:for="{{rows}}" wx:key="id" name="{{item.name}}" enabled="{{item.enabled}}" selected="{{item.selected}}" range="{{item.range}}" need="{{item.needText}}" stock="{{item.stockText}}" transit="{{item.transitText}}" left="{{item.left}}" short="{{item.leftQty < 0}}" tags="{{item.tags}}" data-key="{{item.id}}" bind:toggle="onToggle" bind:open="onSource" />
 </view>
 <hz-action-bar><hz-button wx:if="{{canInvite}}" kind="secondary" text="{{inviteText}}" disabled="{{!selected.length}}" bind:press="onInvite" /><hz-button wx:if="{{canCreate}}" text="{{createText}}" disabled="{{!selected.length}}" bind:press="onCreate" /></hz-action-bar>
-<hz-sheet show="{{supplierSheet}}" title="{{texts.invite}}" footer bind:close="onCloseSupplier">
-  <view class="u-sheet-form"><hz-picker inline label="{{texts.supplier}}" options="{{suppliers}}" value="{{supplierId}}" error="{{error}}" bind:change="onSupplier" /><text wx:if="{{!suppliers.length}}" class="u-info__meta">{{texts.noSuppliers}}</text></view>
-  <hz-button slot="footer" text="{{texts.next}}" bind:press="onNext" />
-</hz-sheet>
 <hz-sheet show="{{sourceSheet}}" title="{{sourceName}}" bind:close="onCloseSource">
   <view class="u-sheet-form u-sheet-plain">
     <hz-error wx:if="{{error}}" message="{{error}}" />

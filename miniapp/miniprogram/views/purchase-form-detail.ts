@@ -1,10 +1,13 @@
 import { contract, copy, labels } from '@huazhong/shared'
 import { canDo } from '../core/actions'
+import { syncUnloadAlert } from '../core/guard'
 import { request } from '../core/request'
 import { failureOf } from '../core/session'
+import { showSuccess } from '../core/toast'
 import { poViewOf } from './purchase'
 import { inviteViewOf, openInvitePo } from './invite-detail'
 import { poFormOf, inviteFormOf } from './purchase-form-data'
+import { leaveAfterSupply, submitSupply } from './purchase-submit'
 import type { PurchaseFormHost as Host } from './purchase-form'
 
 export const purchaseFormDetails = {
@@ -17,6 +20,18 @@ export const purchaseFormDetails = {
   },
   onFailureAction(this: Host) {
     void this.load()
+  },
+  // 供应商提交填报：成功后回到填报邀请列表
+  async saveSupply(this: Host, body: unknown) {
+    const result = await submitSupply(this.id, body, this.key)
+    if (!result.ok) {
+      await this.fail(result.failure)
+      return
+    }
+    syncUnloadAlert(false)
+    this.setData({ changed: false })
+    showSuccess(labels.inviteStatus.submitted)
+    leaveAfterSupply()
   },
   onPo(this: Host) {
     openInvitePo(this.invite, this.data.mode === 'supply')

@@ -11,7 +11,7 @@ import type { DetailEvent, KeyEvent } from '../core/events'
 import type { FailureView } from '../core/failure-view'
 import { emptyFilter, type FilterValue } from '../core/filter'
 import type { PagedList } from '../core/list'
-import { watch, unwatchOnLeave } from '../core/live'
+import { watch, unwatchOnLeave, pullToRefresh } from '../core/live'
 import { request } from '../core/request'
 import { loadMe, tabsOf } from '../core/session'
 import { listOf, listQueryOf } from './list'
@@ -214,6 +214,7 @@ function subscribeLists(host: Host, topics: Topic[]) {
 }
 const methods = {
   ...unwatchOnLeave,
+  ...pullToRefresh,
   lists: {} as Host['lists'],
   states: {} as Host['states'],
   list: null as Host['list'],

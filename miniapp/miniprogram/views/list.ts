@@ -4,7 +4,7 @@ import { shanghaiDateOf, type Topic } from '@huazhong/shared'
 import type { DetailEvent } from '../core/events'
 import { queryOf, type FilterValue } from '../core/filter'
 import { PagedList } from '../core/list'
-import { unwatchOnLeave, watch } from '../core/live'
+import { pullToRefresh, unwatchOnLeave, watch } from '../core/live'
 import type { Fetch } from '../core/pager'
 
 interface Host {
@@ -56,6 +56,7 @@ export function showList(page: ListPage, topics: Topic[]): void {
 
 // 列表页共用的事件：Page({ ...listHandlers, … })
 export const listHandlers = {
+  ...pullToRefresh,
   ...unwatchOnLeave,
   onReachBottom(this: ListPage) {
     void this.list?.more()

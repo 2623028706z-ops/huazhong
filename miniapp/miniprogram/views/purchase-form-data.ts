@@ -5,7 +5,7 @@ import { centsOfText, lineCents, textOfCents } from '../core/money'
 export type PurchaseMode = 'po' | 'invite' | 'supply'
 export function purchaseSuccessOf(mode: PurchaseMode, editing: boolean, supplierName: string) {
   if (mode !== 'invite') return copy.action.saved
-  return editing ? copy.screen.inviteEdited : copy.screen.inviteSent(supplierName)
+  return editing ? copy.screen.inviteEdited : copy.screen.inviteSentShare(supplierName)
 }
 export function purchaseErrorOf(fields: Record<string, string>) {
   return unplacedErrorOf(fields, [

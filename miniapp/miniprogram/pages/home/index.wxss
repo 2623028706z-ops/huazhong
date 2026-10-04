@@ -1,0 +1,16 @@
+/* 花众首页模块格子右上角的待办数（0 不显示）：和底栏角标同款 16px 陶土红圆形白字；
+   入口窗格组件 apply-shared，页面样式能作用到它里面 */
+.hz-entry-grid__badge {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: var(--hz-font-xs);
+  line-height: 16px;
+  color: var(--hz-on-brand);
+  text-align: center;
+  background: var(--hz-brand);
+  border-radius: var(--hz-radius-pill);
+}

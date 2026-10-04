@@ -80,6 +80,7 @@
 
 .hz-progress__date {
   display: block;
+  white-space: nowrap;
   margin-top: 2px;
   font-size: var(--hz-font-xs);
   font-weight: 400;

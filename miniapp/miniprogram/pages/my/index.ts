@@ -4,7 +4,7 @@ import { contract, copy, type Me } from '@huazhong/shared'
 import type { DetailEvent } from '../../core/events'
 import type { FailureView } from '../../core/failure-view'
 import { confirmAsk } from '../../core/guard'
-import { unwatch, watch } from '../../core/live'
+import { unwatch, watch, pullToRefresh } from '../../core/live'
 import { failureOf, identityOf, isDevelop, loadMe, logout, tabsOf } from '../../core/session'
 import { request } from '../../core/request'
 
@@ -53,6 +53,7 @@ function profileOf(me: Me) {
 }
 
 Page({
+  ...pullToRefresh,
   data: {
     title: copy.title.my,
     back: false,

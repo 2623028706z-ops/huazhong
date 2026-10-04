@@ -18,7 +18,7 @@
 
 /* 占住底栏的高度，页面内容不被挡住；多留 16px，最后一张卡和页底灰字不贴着底栏 */
 .hz-action-bar__spacer {
-  height: calc(var(--hz-tap) + 34px + env(safe-area-inset-bottom));
+  height: calc(var(--hz-tap) + 40px + env(safe-area-inset-bottom));
 }
 
 /* 底栏页：贴在底栏上面 */
@@ -28,7 +28,7 @@
 }
 
 .hz-action-bar__spacer--tabbar {
-  height: calc(var(--hz-tap) + 34px);
+  height: calc(var(--hz-tap) + 40px);
 }
 
 /* 弹层底部：跟在内容后面，上面一条卡片内细线 */

@@ -88,7 +88,7 @@ export function storeStateOf(row: StoreRow): StoreState {
 
 export function storeLogView(state: StoreState): Record<string, string> {
   return {
-    [copy.field.name]: state.name,
+    [copy.field.objectName]: state.name,
     [copy.field.contact]: state.contact,
     [copy.field.storePhone]: state.phone,
     [copy.field.address]: state.address,

@@ -11,11 +11,11 @@
     <block wx:elif="{{receiving}}"><hz-notice wx:if="{{view.notice}}" text="{{view.notice}}" /><hz-progress steps="{{view.progress}}" />
       <template is="info" data="{{...view.info}}" />
       <view class="u-section">
-        <hz-line-item title="{{texts.lines}}" qty-label="{{texts.receivedQty}}" lines="{{lineViews}}" mode="price" bind:qty="onQty" bind:price="onPrice" />
+        <hz-line-item material title="{{texts.lines}}" qty-label="{{texts.receivedQty}}" lines="{{lineViews}}" mode="price" reject-text="{{texts.rejectLine}}" bind:qty="onQty" bind:price="onPrice" />
       </view>
       <hz-records wx:if="{{view.changes.length}}" type="poChange" items="{{view.changes}}" />
       <view class="u-card u-form-card">
-        <hz-field wx:if="{{repriced}}" id="receive-reason" label="{{texts.repriceReason}}" value="{{reason}}" error="{{fields.reason}}" bind:change="onReason" />
+        <hz-field wx:if="{{repriced}}" id="receive-reason" label="{{texts.repriceReason}}" placeholder="{{texts.optional}}" value="{{reason}}" error="{{fields.reason}}" bind:change="onReason" />
         <hz-field label="{{texts.receiveNote}}" value="{{recvNote}}" bind:change="onRecvNote" />
       </view>
     </block>
@@ -27,8 +27,8 @@
   <hz-sheet show="{{sheet !== ''}}" title="{{sheetTitle}}" guard="{{changed}}" footer bind:close="onCloseSheet">
     <view class="u-sheet-form">
       <hz-error wx:if="{{error}}" message="{{error}}" />
-      <hz-line-item title="{{texts.lines}}" qty-label="{{texts.receivedQty}}" lines="{{lineViews}}" mode="price" quantity-only="{{sheet === 'return'}}" quantity-readonly="{{sheet === 'reprice'}}" bind:qty="onQty" bind:price="onPrice" />
-      <hz-field wx:if="{{sheet === 'reprice'}}" label="{{texts.repriceReason}}" value="{{reason}}" error="{{fields.reason}}" bind:change="onReason" />
+      <hz-line-item material title="{{texts.lines}}" qty-label="{{texts.receivedQty}}" lines="{{lineViews}}" mode="price" quantity-only="{{sheet === 'return'}}" quantity-readonly="{{sheet === 'reprice'}}" bind:qty="onQty" bind:price="onPrice" />
+      <hz-field wx:if="{{sheet === 'reprice'}}" label="{{texts.repriceReason}}" placeholder="{{texts.optional}}" value="{{reason}}" error="{{fields.reason}}" bind:change="onReason" />
     </view>
     <hz-button slot="footer" text="{{sheet === 'return' ? texts.confirmReturn : texts.confirmReprice}}" loading="{{busy !== ''}}" bind:press="onSaveSheet" />
   </hz-sheet>

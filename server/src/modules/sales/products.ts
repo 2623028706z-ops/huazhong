@@ -49,7 +49,7 @@ function productView(item: ProductItem): Record<string, string> {
     .map((line) => `${line.materialName} ${formatQty(line.qty, line.unit)}`)
     .join(copy.order.nameSeparator)
   return {
-    [copy.field.name]: item.name,
+    [copy.field.objectName]: item.name,
     [copy.field.category]: item.categoryName,
     [copy.field.unit]: item.unit,
     [copy.field.bom]: bom,

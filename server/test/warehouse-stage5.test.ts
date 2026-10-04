@@ -190,7 +190,7 @@ test('C12/C15/C17/C20/C23/C24: FIFO stock deduction, restore original batches an
       await warehouse.post('/warehouse/docs', {
         kind: 'loss',
         reason: '',
-        lines: [{ materialId: values.materialId, qty: 1 }],
+        lines: [{ materialId: values.materialId, qty: 0 }],
       })
     ).status,
   ).toBe(422)
@@ -274,7 +274,6 @@ test('C13/C16/C22/C25: stocktake snapshot excludes other categories, keeps disab
     bookQty: line.bookQty,
     actualQty: line.bookQty + (line.materialId === first.materialId ? 2 : 0),
   }))
-  expect((await warehouse.post('/stocktakes', { ...input, reason: '' })).status).toBe(422)
   const created = await warehouse.post('/stocktakes', input)
   expect(created.status).toBe(200)
   const detail = contract.getStocktake.response.parse(created.body.data)
@@ -334,4 +333,30 @@ test('仓库首页待办：待收货和库龄超期都能统计', async () => {
   )
   expect(todo.rows.map((row) => row.key)).toEqual(['pendingReceives', 'agedStock'])
   expect(todo.count).toBe(todo.rows.reduce((n, row) => n + row.count, 0))
+})
+test('C15/C16: 报损原因、盘点差异原因选填，不写也能保存', async () => {
+  const warehouse = await app.as('u5'),
+    values = await ids(),
+    before = await quantity(values.materialId)
+  const loss = await warehouse.post('/warehouse/docs', {
+    kind: 'loss',
+    reason: '',
+    lines: [{ materialId: values.materialId, qty: 1 }],
+  })
+  expect(loss.status).toBe(200)
+  expect(await quantity(values.materialId)).toBe(before - 1)
+  const categoryId = await idBy(app.t, 'material_categories.name', '玫瑰')
+  const draft = dataOf<StocktakeDraft>(
+    await warehouse.get(`/stocktakes/draft?categoryIds=${categoryId}`),
+  )
+  const created = await warehouse.post('/stocktakes', {
+    categoryIds: [categoryId],
+    reason: '',
+    lines: draft.lines.map((line, index) => ({
+      materialId: line.materialId,
+      bookQty: line.bookQty,
+      actualQty: line.bookQty + (index === 0 ? 1 : 0),
+    })),
+  })
+  expect(created.status).toBe(200)
 })

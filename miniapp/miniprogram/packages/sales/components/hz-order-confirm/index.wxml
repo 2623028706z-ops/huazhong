@@ -1,0 +1,12 @@
+<hz-sheet show="{{show}}" title="{{title}}" footer bind:close="onClose">
+  <view class="u-sheet-form">
+    <hz-notice wx:for="{{overdue}}" wx:key="index" text="{{item}}" />
+    <hz-error wx:if="{{error}}" message="{{error}}" />
+    <hz-picker label="{{texts.shipDate}}" mode="date" value="{{date}}" bind:change="onDate" />
+    <view wx:for="{{rows}}" wx:key="id" class="u-sheet-row"><text>{{item.title}}</text><text class="u-info__meta">{{item.no}}</text></view>
+    <text wx:if="{{more}}" class="u-info__meta">{{more}}</text>
+    <text wx:if="{{note}}" class="u-info__meta">{{note}}</text>
+  </view>
+  <hz-button slot="footer" kind="secondary" text="{{texts.back}}" bind:press="onClose" />
+  <hz-button slot="footer" text="{{texts.confirm}}" loading="{{busy}}" bind:press="onConfirm" />
+</hz-sheet>

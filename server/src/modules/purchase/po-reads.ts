@@ -85,7 +85,7 @@ type Line = typeof purchaseOrderLines.$inferSelect
 function purchaseActions(row: PoRow, viewer: Viewer): Action[] {
   const actions: Action[] = []
   if (row.po.status === 'to_receive' && viewer.modules.includes('purchase')) {
-    actions.push(enabledAction('editPo', true))
+    actions.push(enabledAction('editPo', false))
     if (owns(viewer, row.po.buyerId)) actions.push(enabledAction('cancelPo', true))
     if (row.po.inviteId === null) actions.push(enabledAction('changeSupplier', null))
   }
@@ -103,7 +103,7 @@ function actionsOf(row: PoRow, viewer: Viewer, statement: StatementRef | null): 
   if (!viewer.modules.includes('warehouse')) return actions
   if (row.po.status === 'to_receive') actions.push(enabledAction('receive', false))
   if (row.po.status === 'received' && !row.allReturned) {
-    actions.push(enabledAction('return', false), enabledAction('reprice', true))
+    actions.push(enabledAction('return', false), enabledAction('reprice', false))
   }
   if (row.po.status === 'received' && owns(viewer, row.po.receivedBy ?? row.po.createdBy))
     actions.push(actionOf('voidPo', row.counted ? copy.stock.voidAfterStocktake : null, true))

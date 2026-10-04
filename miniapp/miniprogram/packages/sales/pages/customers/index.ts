@@ -8,7 +8,7 @@ import { isChanged, syncUnloadAlert } from '../../../../core/guard'
 import { firstFailure, newIdempotencyKey, request, type Result } from '../../../../core/request'
 import { failureOf, loadMe } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
-import { unwatch } from '../../../../core/live'
+import { unwatch, pullToRefresh } from '../../../../core/live'
 import { catalogPanelData } from './catalog-state'
 import { catalogPanelMethods } from './catalog-panel'
 import { catalogCopyMethods } from '../directory/catalog-copy'
@@ -23,6 +23,7 @@ import {
 } from './form'
 
 Page({
+  ...pullToRefresh,
   ...catalogCopyMethods,
   ...catalogPanelMethods,
   data: {
@@ -62,6 +63,8 @@ Page({
       saveCustomer: copy.action.saveCustomer,
       empty: copy.screen.empty.customers,
       noStores: copy.state.empty(copy.screen.label.store),
+      rePreview: copy.rework.copyRePreview,
+      confirmCopy: copy.rework.copyConfirm,
     },
   },
   customers: [] as CustomerItem[],
@@ -208,9 +211,15 @@ Page({
   afterSave(result: Result<unknown>, selectId: string) {
     this.setData({ saving: false })
     if (result.ok) {
+      const created = !this.data.editingCustomer
       this.onCloseSheet()
       showSuccess(copy.action.saved)
       void this.load(selectId)
+      // 新建的客户还没有门店：保存完直接进新建门店
+      if (created)
+        void wx.navigateTo({
+          url: `/packages/sales/pages/store-form/index?customerId=${selectId}`,
+        })
       return
     }
     const view = failureOf(result.failure, 'submit')

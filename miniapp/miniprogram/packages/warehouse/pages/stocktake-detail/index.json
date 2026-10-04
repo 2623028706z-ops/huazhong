@@ -11,5 +11,6 @@
     "hz-action-bar": "/components/hz-action-bar/index",
     "hz-notice": "/components/hz-notice/index",
     "hz-records": "/components/hz-records/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

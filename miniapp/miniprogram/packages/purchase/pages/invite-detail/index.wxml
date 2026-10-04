@@ -10,16 +10,5 @@
     <view wx:for="{{buttons}}" wx:key="code" wx:if="{{index >= 2}}" class="u-detail-third"><hz-button kind="quiet" text="{{item.text}}" disabled="{{item.disabled}}" reason="{{item.reason}}" data-code="{{item.code}}" bind:press="onAction" /></view>
   </block>
 </view>
-<hz-action-bar wx:if="{{buttons.length}}" busy="{{busy !== ''}}"><hz-button wx:for="{{buttons}}" wx:key="code" wx:if="{{index < 2}}" text="{{item.text}}" kind="{{item.kind}}" loading="{{busy === item.code}}" disabled="{{item.disabled}}" reason="{{item.reason}}" data-code="{{item.code}}" bind:press="onAction" /></hz-action-bar>
-<hz-sheet show="{{shareSheet}}" title="{{texts.share}}" footer bind:close="onCloseShare">
-  <view class="u-sheet-form">
-    <hz-error wx:if="{{shareError}}" message="{{shareError}}" />
-    <hz-skeleton wx:elif="{{!share}}" type="detail" />
-    <block wx:else>
-      <view class="u-card hz-share-card"><text class="hz-share-card__title">{{texts.shareTitle}}</text><view class="hz-share-card__cover"><hz-cover mode="soft" /><image class="hz-share-card__logo" src="/assets/logo.png" mode="heightFix" /></view><text class="u-info__meta hz-share-card__foot">{{texts.miniApp}}</text></view>
-      <view class="u-rows__head hz-share-copy" bindtap="onCopyLink"><text class="u-rows__title">{{texts.copy}}</text><text class="hz-icon hz-icon--clipboard-list u-info__meta"></text></view>
-    </block>
-  </view>
-  <hz-button wx:if="{{share}}" slot="footer" text="{{texts.send}}" open-type="share" />
-</hz-sheet>
+<hz-action-bar wx:if="{{buttons.length}}" busy="{{busy !== ''}}"><hz-button wx:for="{{buttons}}" wx:key="code" wx:if="{{index < 2}}" text="{{item.text}}" kind="{{item.kind}}" loading="{{busy === item.code}}" open-type="{{item.code === 'shareInvite' ? 'share' : ''}}" disabled="{{item.disabled || (item.code === 'shareInvite' && !share)}}" reason="{{item.reason}}" data-code="{{item.code}}" bind:press="onAction" /></hz-action-bar>
 <hz-confirm id="hz-confirm" />

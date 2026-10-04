@@ -193,7 +193,7 @@
   </view>
 
   <view class="hz-gallery__section">
-    <view class="u-caption">对账格 hz-statement：待付用琥珀底</view>
+    <view class="u-caption">对账格 hz-statement：未付用琥珀底</view>
     <hz-statement cells="{{statement}}" />
   </view>
 

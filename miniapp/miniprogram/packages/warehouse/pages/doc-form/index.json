@@ -13,7 +13,6 @@
     "hz-add-button": "/components/hz-add-button/index",
     "hz-upload": "/components/hz-upload/index",
     "hz-confirm": "/components/hz-confirm/index",
-    "hz-realtime-bar": "/components/hz-realtime-bar/index",
-    "hz-category-sheet": "/components/hz-category-sheet/index"
+    "hz-realtime-bar": "/components/hz-realtime-bar/index"
   }
 }

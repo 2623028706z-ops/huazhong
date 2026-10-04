@@ -2,7 +2,7 @@
 .hz-stock-row__qty {
   display: flex;
   flex: none;
-  gap: 2px;
+  gap: var(--hz-line-gap);
   align-items: baseline;
 }
 
@@ -24,7 +24,7 @@
   display: flex;
   gap: var(--hz-line-gap);
   align-items: baseline;
-  padding: 0 2px;
+  padding: 0 4px;
 }
 
 .hz-stock-group__count {

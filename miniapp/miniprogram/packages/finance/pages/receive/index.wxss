@@ -49,3 +49,12 @@
   font-size: var(--hz-font-md);
   color: var(--hz-ink);
 }
+
+.hz-receive-fold {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--hz-row-pad) var(--hz-card-pad);
+  font-size: var(--hz-font);
+  color: var(--hz-muted);
+}

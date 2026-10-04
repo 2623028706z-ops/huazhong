@@ -45,13 +45,25 @@ export function materialPicksOf(materials: readonly InventoryItem[], bom: readon
     .map((item) => ({
       id: item.id,
       name: item.name,
-      sub: [item.code, item.unit].join(copy.separator),
+      sub: [`${copy.field.code} ${item.code}`, `${copy.field.unit} ${item.unit}`].join(
+        copy.separator,
+      ),
     }))
 }
 
-export function addMaterial(materials: readonly InventoryItem[], bom: BomLine[], id: string) {
-  const item = materials.find((m) => m.id === id)
-  return item ? [...bom, { materialId: item.id, name: item.name, unit: item.unit, qty: 1 }] : bom
+// 「添加花材」多选确认：勾选的花材一次加进配方，用量默认 1（已在配方里的跳过）
+export function addMaterials(
+  materials: readonly InventoryItem[],
+  bom: BomLine[],
+  ids: readonly string[],
+): BomLine[] {
+  const added = new Set(bom.map((line) => line.materialId))
+  const lines = ids.flatMap((id) => {
+    const item = materials.find((m) => m.id === id)
+    if (!item || added.has(id)) return []
+    return [{ materialId: item.id, name: item.name, unit: item.unit, qty: 1 }]
+  })
+  return [...bom, ...lines]
 }
 
 export function setBomQty(bom: readonly BomLine[], index: number, qty: number): BomLine[] {

@@ -344,8 +344,22 @@ export async function renderDocumentImage(
     })
   })
 }
+// 用户点了取消：不提示；拒绝过相册权限：引导去设置里打开，不当失败
 export async function saveDocumentImage(path: string): Promise<void> {
-  await wx.saveImageToPhotosAlbum({ filePath: path })
+  try {
+    await wx.saveImageToPhotosAlbum({ filePath: path })
+  } catch (error) {
+    const message = String((error as { errMsg?: string }).errMsg)
+    if (message.includes('cancel')) return
+    if (!message.includes('auth')) throw error
+    const { confirm } = await wx.showModal({
+      title: redesignCopy.albumDeniedTitle,
+      content: redesignCopy.albumDeniedBody,
+      confirmText: redesignCopy.albumDeniedConfirm,
+    })
+    if (confirm) await wx.openSetting()
+    return
+  }
   showSuccess(redesignCopy.savedImage)
 }
 export async function shareDocumentImage(path: string): Promise<void> {

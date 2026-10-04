@@ -1,3 +1,4 @@
+<wxs src="../../core/format.wxs" module="format" />
 <view class="hz-entry-grid {{compact ? 'hz-entry-grid--compact' : ''}}">
   <view
     wx:for="{{entries}}"
@@ -8,6 +9,7 @@
   >
     <text class="hz-icon hz-icon--{{item.icon}} hz-entry-grid__icon"></text>
     <text class="hz-entry-grid__name u-serif">{{item.text}}</text>
+    <text wx:if="{{item.badge > 0}}" class="hz-entry-grid__badge">{{format.formatCount(item.badge)}}</text>
     <text class="hz-icon hz-icon--chevron-right hz-entry-grid__go"></text>
   </view>
 </view>

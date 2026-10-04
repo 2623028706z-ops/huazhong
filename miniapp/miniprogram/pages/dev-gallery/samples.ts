@@ -267,7 +267,7 @@ const statement = [
   { label: '发货金额', amountCents: 1842000, due: false },
   { label: '售后', amountCents: -27200, due: false },
   { label: '已付', amountCents: 1200000, due: false },
-  { label: '待付', amountCents: 614800, due: true },
+  { label: '未付', amountCents: 614800, due: true },
 ]
 
 // TDesign 按 url 做列表 key，示例只放一张（主包里只有这一张图）

@@ -25,7 +25,7 @@ export function supplierLog(row: { id: number; name: string }, action: string) {
 }
 export function supplierView(input: ParsedInput<typeof contract.createSupplier>['body']) {
   return {
-    [copy.field.name]: input.name,
+    [copy.field.objectName]: input.name,
     [copy.field.contact]: input.contact,
     [copy.field.storePhone]: input.phone,
     [copy.field.address]: input.address,

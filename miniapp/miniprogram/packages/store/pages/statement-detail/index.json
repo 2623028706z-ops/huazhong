@@ -25,5 +25,6 @@
     "hz-records": "/components/hz-records/index",
     "hz-statement-list": "/components/hz-statement-list/index",
     "hz-tag": "/components/hz-tag/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

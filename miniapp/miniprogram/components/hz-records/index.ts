@@ -22,6 +22,9 @@ Component({
     title: '',
     timeLabel: '',
     actorLabel: copy.records.actor,
+    // 默认收起，只显示「变更记录 n 条 ›」，点开才展开明细
+    open: false,
+    countText: '',
     rows: [] as (RecordItem & { reasonText: string })[],
   },
   observers: {
@@ -30,7 +33,17 @@ Component({
         ...item,
         reasonText: item.reason ? copy.records.reason(item.reason) : '',
       }))
-      this.setData({ title: copy.records[type], timeLabel: copy.records.time[type], rows })
+      this.setData({
+        title: copy.records[type],
+        timeLabel: copy.records.time[type],
+        countText: copy.records.count(rows.length),
+        rows,
+      })
+    },
+  },
+  methods: {
+    onToggle() {
+      this.setData({ open: !this.data.open })
     },
   },
 })

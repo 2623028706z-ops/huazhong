@@ -1,5 +1,5 @@
 <view class="hz-button hz-button--{{kind}}">
-  <view wx:if="{{kind === 'text' || kind === 'quiet'}}" class="hz-button__text {{kind === 'quiet' ? 'hz-button__text--quiet' : ''}} u-tap" bindtap="onTap">{{text}}</view>
+  <view wx:if="{{kind === 'text' || kind === 'quiet'}}" class="hz-button__text {{kind === 'quiet' ? 'hz-button__text--quiet' : ''}} {{disabled ? 'hz-button__text--off' : ''}} u-tap" bindtap="onTap">{{text}}</view>
   <t-button
     wx:else
     t-class="hz-button__inner"

@@ -25,5 +25,6 @@
     "hz-info-rows": "/components/hz-info-rows/index",
     "hz-statement-list": "/components/hz-statement-list/index",
     "hz-records": "/components/hz-records/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

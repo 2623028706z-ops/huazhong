@@ -10,7 +10,7 @@ import {
   markChanged,
   syncUnloadAlert,
 } from '../../../../core/guard'
-import { watch } from '../../../../core/live'
+import { watch, pullToRefresh } from '../../../../core/live'
 import { centsOfText, textOfCents } from '../../../../core/money'
 import { request } from '../../../../core/request'
 import { failureOf, messageOf, type ShownFailure } from '../../../../core/session'
@@ -28,6 +28,7 @@ interface PriceLine {
 const blank = { reason: '', lines: [] as PriceLine[] }
 const blankFields: Record<string, string> = {}
 Page({
+  ...pullToRefresh,
   ...formOnLeave,
   data: {
     title: copy.stock.screen.detail,
@@ -61,6 +62,7 @@ Page({
       reason: copy.screen.label.reason,
       repriceReason: copy.screen.label.repriceReason,
       materials: copy.screen.section.materials,
+      optional: copy.placeholder.optional,
     },
   },
   id: '',

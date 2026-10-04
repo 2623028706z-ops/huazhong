@@ -41,8 +41,6 @@ test('C11: 花材详情新建手工入库后进入本张详情，改价和作废
   expect(await page.data('view.notice')).toBe('')
   await page.callMethod('onAction', { currentTarget: { dataset: { code: 'reprice' } } })
   await editWarehouseLine(page, 0, { price: '3.00' })
-  await page.callMethod('onSave')
-  await waitData(page, 'fields.reason', copy.finance.repriceReason)
   await page.callMethod('onReason', { detail: '供应商调整报价' })
   await page.callMethod('onSave')
   await waitData(page, 'sheet', '')
@@ -55,7 +53,7 @@ test('C11: 花材详情新建手工入库后进入本张详情，改价和作废
   expect(await page.data('buttons')).toEqual([])
 })
 
-test('C12-F/C20-F/C21: 花材出库入口与分类管理保留草稿，保存进入本张详情', async () => {
+test('C12-F/C20-F/C21: 花材出库入口与分类管理（出库分类页）保留草稿，保存进入本张详情', async () => {
   const { mini, server } = suite()
   await asMini(mini, server, 'u5')
   const materialId = await idBy(server.t, 'materials.name', '尤加利'),
@@ -70,29 +68,32 @@ test('C12-F/C20-F/C21: 花材出库入口与分类管理保留草稿，保存进
   await editWarehouseLine(page, 0, { qty: 2 })
   await page.callMethod('onSubmit')
   await waitData(page, 'fields.outCategoryId', copy.stock.outCategoryRequired)
-  await tapText(page, copy.screen.action.manageCategories)
-  // 管理分类是表单上的弹层（W5），不离开表单
-  await waitData(page, 'categorySheet', true)
-  await page.callMethod('onSaveCategory', { detail: { id: '', name: '活动布置', enabled: true } })
+  // 管理分类在出库分类页做（分类弹层里不再套管理弹层），回来草稿还在
+  await page.callMethod('onManageCategories')
+  const cats = await waitPage(mini, 'packages/warehouse/pages/out-categories/index')
+  await waitData(cats, 'loaded', true)
+  await cats.callMethod('onAdd')
+  await cats.callMethod('onName', { detail: '活动布置' })
+  await cats.callMethod('onSave')
+  await waitData(cats, 'sheet', false)
+  const sampleId = await idBy(server.t, 'out_categories.name', '样品')
+  await cats.callMethod('onEdit', { currentTarget: { dataset: { key: sampleId } } })
+  await cats.callMethod('onEnabled', { detail: false })
+  await cats.callMethod('onSave')
+  await waitData(cats, 'sheet', false)
+  await snap(mini, 'stock-out-categories')
+  await mini.navigateBack()
+  page = await waitPage(mini, 'packages/warehouse/pages/doc-form/index')
   await expect
     .poll(async () =>
-      ((await page.data('categoryOptions')) as { name: string }[]).some(
-        (row) => row.name === '活动布置',
+      ((await page.data('categoryOptions')) as { id: string; name: string }[]).map((row) =>
+        row.id === sampleId ? 'sample' : row.name,
       ),
     )
-    .toBe(true)
-  const sampleId = await idBy(server.t, 'out_categories.name', '样品')
-  await page.callMethod('onSaveCategory', {
-    detail: { id: sampleId, name: '样品', enabled: false },
-  })
-  await expect
-    .poll(async () =>
-      ((await page.data('categoryOptions')) as { id: string }[]).some((row) => row.id === sampleId),
-    )
-    .toBe(false)
-  await snap(mini, 'stock-out-categories')
-  await page.callMethod('onCloseCategories')
-  await waitData(page, 'categorySheet', false)
+    .toContain('活动布置')
+  expect(
+    ((await page.data('categoryOptions')) as { id: string }[]).map((row) => row.id),
+  ).not.toContain(sampleId)
   expect(await page.data('form.lines.0.qty')).toBe(2)
   await pickOption(page, '#doc-category', ids.outCategoryId)
   await snap(mini, 'stock-out-form')
@@ -106,7 +107,7 @@ test('C12-F/C20-F/C21: 花材出库入口与分类管理保留草稿，保存进
   expect(await stockQtyOf(server, materialId)).toBe(before - 2)
 })
 
-test('C15/C24: loss requires reason; saves without photos and original-batch void restores stock', async () => {
+test('C15/C24: loss reason optional; saves without photos and original-batch void restores stock', async () => {
   const { mini, server } = suite()
   await asMini(mini, server, 'u5')
   const ids = await whIds(server)
@@ -114,8 +115,6 @@ test('C15/C24: loss requires reason; saves without photos and original-batch voi
   let page = await enter(mini, `${warehouse}/doc-form/index?kind=loss&materialId=${ids.materialId}`)
   await waitData(page, 'loaded', true)
   await editWarehouseLine(page, 0, { qty: 5 })
-  await tapText(page, copy.stock.screen.submit.loss)
-  await waitData(page, 'fields.reason', copy.stock.lossReasonRequired)
   await inputField(page, '#doc-reason', '花头发黑')
   await snap(mini, 'stock-loss-form')
   await tapText(page, copy.stock.screen.submit.loss)
@@ -141,6 +140,8 @@ test('C13-F/C22-F: category selection, zero difference, stale preserves actual q
   await waitData(page, 'loaded', true)
   await tapText(page, copy.stock.screen.create.stocktake)
   await waitData(page, 'sheet', true)
+  expect(await page.data('allSelected')).toBe(true)
+  await page.callMethod('onAll', { detail: false })
   await page.callMethod('onStart')
   await waitData(page, 'categoryError', copy.stock.categoriesRequired)
   for (const key of categoryIds)
@@ -149,21 +150,24 @@ test('C13-F/C22-F: category selection, zero difference, stale preserves actual q
   page = await waitPage(mini, 'packages/warehouse/pages/stocktake-form/index')
   await waitData(page, 'loaded', true)
   const book = (await page.data('form.lines.0.bookQty')) as number
-  await page.callMethod('onEdit', { currentTarget: { dataset: { index: 0 } } })
-  await page.callMethod('onDraftActual', { detail: '' })
-  await page.callMethod('onConfirmEditor')
+  await page.callMethod('onActualInput', {
+    currentTarget: { dataset: { index: 0 } },
+    detail: { value: '' },
+  })
   await page.callMethod('onSubmit')
   const invalid = (await page.data('fields')) as Record<string, string>
   expect(invalid['lines.0.actualQty']).toMatch(/\S+/)
-  await page.callMethod('onEdit', { currentTarget: { dataset: { index: 0 } } })
-  await page.callMethod('onDraftActual', { detail: '0' })
-  await page.callMethod('onConfirmEditor')
+  await page.callMethod('onActualInput', {
+    currentTarget: { dataset: { index: 0 } },
+    detail: { value: '0' },
+  })
   expect(await page.data('rows.0.actualText')).toBe('0')
   expect(await page.data('rows.0.diffQty')).toBe(String(-book))
   await snap(mini, 'redesign-stocktake-table')
-  await page.callMethod('onEdit', { currentTarget: { dataset: { index: 0 } } })
-  await page.callMethod('onDraftActual', { detail: String(book) })
-  await page.callMethod('onConfirmEditor')
+  await page.callMethod('onActualInput', {
+    currentTarget: { dataset: { index: 0 } },
+    detail: { value: String(book) },
+  })
   await page.callMethod('onSubmit')
   page = await waitPage(mini, 'packages/warehouse/pages/stocktake-detail/index')
   await waitData(page, 'loaded', true)
@@ -177,8 +181,6 @@ test('C13-F/C22-F: category selection, zero difference, stale preserves actual q
   const first = (await page.data('form.lines.0')) as { materialId: string; bookQty: number }
   const actual = String(first.bookQty - 2)
   await page.callMethod('onActual', { currentTarget: { dataset: { index: 0 } }, detail: actual })
-  await page.callMethod('onSubmit')
-  await waitData(page, 'fields.reason', copy.stock.diffReasonRequired)
   await page.callMethod('onReason', { detail: '花材数量复核' })
   dataOf(
     await api.post('/warehouse/docs', {
@@ -294,7 +296,6 @@ test('warehouse entries and stock moves: filter records and open the source docu
     .toEqual(
       expect.arrayContaining([
         expect.objectContaining({ key: 'in' }),
-        expect.objectContaining({ key: 'receive' }),
         expect.objectContaining({ key: 'out' }),
         expect.objectContaining({ key: 'loss' }),
         expect.objectContaining({ key: 'stocktake' }),

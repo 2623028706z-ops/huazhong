@@ -31,14 +31,12 @@ const data = {
   ],
   rows: [] as FinanceRow[],
   sourceGroups: [] as { title: string; rows: FinanceRow[] }[],
-  cells: [] as { label: string; amountCents: number; due: boolean }[],
-  totalRows: [] as {
-    key: string
-    label: string
-    text: string
-    amount?: boolean
-    action?: string
-  }[],
+  summary: {
+    label: '',
+    amountCents: 0,
+    edit: '',
+    lines: [] as { key: string; text: string; action?: string }[],
+  },
   canCreate: false,
   canRegister: false,
   canRefund: false,
@@ -89,17 +87,6 @@ function groupsOf(sources: PartyLedger['sources'], supplier: boolean) {
   }
   return [...groups.values()]
 }
-function ledgerCells(ledger: PartyLedger, supplier: boolean) {
-  return [
-    {
-      label: supplier ? f.payableOutstanding : f.outstanding,
-      amountCents: ledger.outstandingCents,
-      due: true,
-    },
-    { label: f.unsettled, amountCents: ledger.unsettledCents, due: false },
-    { label: f.unstatemented, amountCents: ledger.unstatementedCents, due: false },
-  ]
-}
 function refundRows(ledger: PartyLedger) {
   return ledger.refunds.map((item) => ({
     id: item.id,
@@ -116,25 +103,29 @@ function applyLedger(host: Host, ledger: PartyLedger) {
   const supplier = host.data.supplier
   host.setData({
     partyName: ledger.partyName,
-    cells: ledgerCells(ledger, supplier),
-    totalRows: [
-      {
-        key: 'credit',
-        label: supplier ? f.supplierCredited : f.credited,
-        text: formatMoney(ledger.creditCents),
-        amount: true,
-        ...(canDo(ledger.actions, 'refundCredit') ? { action: f.refund } : {}),
-      },
-      {
-        key: 'terms',
-        label: f.termDays,
-        text: [
-          ledger.termDays === null ? f.notSet : `${ledger.termDays} ${f.days}`,
-          `${f.openingDebt} ${formatMoney(ledger.openingDebtCents)}`,
-        ].join(f.gap),
-        ...(canDo(ledger.actions, 'editTerms') ? { action: f.modify } : {}),
-      },
-    ],
+    summary: {
+      label: supplier ? f.payableOutstanding : f.outstanding,
+      amountCents: ledger.outstandingCents,
+      edit: canDo(ledger.actions, 'editTerms') ? f.modify : '',
+      lines: [
+        {
+          key: 'credit',
+          text: [
+            `${f.unsettled} ${formatMoney(ledger.unsettledCents)}`,
+            `${f.unstatemented} ${formatMoney(ledger.unstatementedCents)}`,
+            `${supplier ? f.supplierCredited : f.credited} ${formatMoney(ledger.creditCents)}`,
+          ].join(f.gap),
+          ...(canDo(ledger.actions, 'refundCredit') ? { action: f.refund } : {}),
+        },
+        {
+          key: 'terms',
+          text: [
+            `${f.termDays} ${ledger.termDays === null ? f.notSet : `${ledger.termDays} ${f.days}`}`,
+            `${f.openingDebt} ${formatMoney(ledger.openingDebtCents)}`,
+          ].join(f.gap),
+        },
+      ],
+    },
     canCreate: canDo(ledger.actions, 'createStatement'),
     canRegister: canDo(ledger.actions, supplier ? 'registerPayment' : 'registerReceipt'),
     canRefund: canDo(ledger.actions, 'refundCredit'),

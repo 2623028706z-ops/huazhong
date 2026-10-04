@@ -14,5 +14,6 @@
     "hz-line-item": "/components/hz-line-item/index",
     "hz-records": "/components/hz-records/index",
     "hz-tabbar": "/components/hz-tabbar/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

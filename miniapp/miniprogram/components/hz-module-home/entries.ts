@@ -78,12 +78,6 @@ export const entriesOf: Partial<Record<ModuleKey, { common: Entry[]; masters: En
   warehouse: {
     common: [
       {
-        key: 'receive',
-        icon: 'truck',
-        text: redesignCopy.receiving,
-        url: pages('warehouse', 'pending'),
-      },
-      {
         key: 'out',
         icon: 'arrow-up-from-line',
         text: copy.stock.verbOut,
@@ -106,7 +100,6 @@ export const entriesOf: Partial<Record<ModuleKey, { common: Entry[]; masters: En
         icon: 'arrow-down-to-line',
         text: copy.stock.screen.stockIn,
         url: pages('warehouse', 'doc-form', '?kind=in'),
-        wide: true,
       },
     ],
     // 定稿 090 没有「资料」：花材、出库分类从库存页底栏和出库单的分类弹层管

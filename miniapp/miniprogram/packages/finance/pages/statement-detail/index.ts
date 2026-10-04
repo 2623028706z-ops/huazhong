@@ -12,7 +12,7 @@ import type { DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
-import { watch, unwatchOnLeave } from '../../../../core/live'
+import { watch, unwatchOnLeave, pullToRefresh } from '../../../../core/live'
 import {
   statementInfoOf,
   statementAmountCells,
@@ -94,6 +94,7 @@ function statementTopics(detail: StatementDetail, internal: boolean): Topic[] {
     .filter((topic): topic is Topic => topic !== null)
 }
 Page({
+  ...pullToRefresh,
   ...unwatchOnLeave,
   data: {
     title: f.statementDetail,
@@ -167,7 +168,9 @@ Page({
   },
   onShare() {
     if (this.data.internal) return
-    void wx.navigateTo({ url: `/packages/finance/pages/statement-image/index?id=${this.id}` })
+    void wx.navigateTo({
+      url: `/packages/finance/pages/statement-image/index?id=${this.id}&auto=1`,
+    })
   },
   onRegister() {
     if (!this.statement || this.data.internal) return

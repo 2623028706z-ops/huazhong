@@ -4,7 +4,7 @@ import { contract, copy, type OrderDetail } from '@huazhong/shared'
 import { buttonsOf, isReasonRequired, type ButtonView } from '../../../../core/actions'
 import type { CodeEvent, DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
-import { unwatchOnLeave, watchNewer } from '../../../../core/live'
+import { unwatchOnLeave, watchNewer, pullToRefresh } from '../../../../core/live'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
@@ -31,10 +31,11 @@ const cancelConfirms: Record<CancelCode, string> = {
 }
 const sheetDefaults = { cancelMode: 'storeCancel' as CancelCode }
 function isCancelAction(code: string): code is CancelCode {
-  return Object.hasOwn(cancelTitles, code)
+  return Object.prototype.hasOwnProperty.call(cancelTitles, code)
 }
 
 Page({
+  ...pullToRefresh,
   ...unwatchOnLeave,
   data: {
     title: copy.screen.title.orderDetail,

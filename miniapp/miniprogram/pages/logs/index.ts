@@ -15,10 +15,12 @@ import type { PagerView } from '../../core/pager'
 import { request } from '../../core/request'
 import { failureOf } from '../../core/session'
 import { detailOf, groupsOf } from './view'
+import { pullToRefresh } from '../../core/live'
 
 const MODULE = 'module'
 
 Page({
+  ...pullToRefresh,
   data: {
     title: copy.title.logs,
     dateLabel: copy.log.date,

@@ -128,8 +128,6 @@ export class PoWrites {
       throw appError.businessRule(copy.finance.poCannotChangeSupplier)
     const changes = await this.changes(ctx, before, input)
     if (changes.length === 0) throw appError.businessRule(copy.error.noChange)
-    if (viewer.type !== 'supplier' && input.reason === '')
-      throw appError.validation({ reason: copy.finance.poReasonRequired })
     await this.replaceLines(ctx, id, input.lines)
     await ctx.tx
       .update(purchaseOrders)

@@ -13,10 +13,12 @@ import type { FailureView } from '../../../../core/failure-view'
 import { emptyFilter, type FilterDimension } from '../../../../core/filter'
 import { PagedList } from '../../../../core/list'
 import { request } from '../../../../core/request'
+import { failureOf } from '../../../../core/session'
 import { listHandlers, listQueryOf, showList } from '../../../../views/list'
 import { moveDocUrl, moveRowOf } from '../../../../views/stock'
 import type { DetailEvent } from '../../../../core/events'
 import type { FilterValue } from '../../../../core/filter'
+import { pullToRefresh } from '../../../../core/live'
 function groupsOf(items: StockMove[]) {
   const groups: { day: string; title: string; rows: ReturnType<typeof moveRowOf>[] }[] = []
   for (const item of items) {
@@ -29,6 +31,7 @@ function groupsOf(items: StockMove[]) {
   return groups
 }
 Page({
+  ...pullToRefresh,
   ...listHandlers,
   data: {
     title: copy.stock.screen.materialMoves,
@@ -99,7 +102,10 @@ Page({
   // 顶上：花材名 + 当前库存，下面编码 / 分类
   async loadHead() {
     const result = await request(contract.getMaterial, { params: { id: this.materialId } })
-    if (!result.ok) return
+    if (!result.ok) {
+      this.setData({ failure: failureOf(result.failure, 'refresh') })
+      return
+    }
     const m = result.data
     this.setData({
       head: {

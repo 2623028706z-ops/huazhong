@@ -5,7 +5,6 @@ import {
   centsInputSchema,
   positiveIntSchema,
   requiredIdSchema,
-  requiredTextSchema,
   versionSchema,
 } from '../rules.ts'
 import { checkDistinct, checkDateRange } from './page.ts'
@@ -54,7 +53,7 @@ export const poUpdateSchema = z
     note: z.string().trim(),
     lines: z.array(poLineInput).min(1),
     version: versionSchema,
-    reason: requiredTextSchema(copy.rework.reasonRequired),
+    reason: z.string().trim().default(''),
   })
   .superRefine(distinctMaterials)
 const inviteLines = z

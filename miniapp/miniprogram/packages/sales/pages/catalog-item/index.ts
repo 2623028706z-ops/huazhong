@@ -15,13 +15,14 @@ import { showSuccess } from '../../../../core/toast'
 import { unwatch, watch } from '../../../../core/live'
 import { loadCustomers } from '../../../../views/customers'
 import {
-  addMaterial,
+  addMaterials,
   bomTableRowsOf,
   loadMaterials,
   materialPicksOf,
   removeBomLine,
   setBomQty,
 } from '../../../../views/bom'
+import { pickOpen, pickPatch, toggled } from '../../../../views/pick'
 import { bomChanged, checkItem, formOfItem, formOfProduct, type ItemForm } from '../directory/form'
 Page({
   data: {
@@ -42,7 +43,10 @@ Page({
     saving: false,
     bomRows: [] as ReturnType<typeof bomTableRowsOf>,
     editKey: '',
-    materialPicks: [] as ReturnType<typeof materialPicksOf>,
+    materialPicks: [] as ReturnType<typeof pickOpen>['picks'],
+    pickIds: [] as string[],
+    pickCount: 0,
+    pickConfirm: '',
     texts: {
       customerItem: copy.screen.section.customerItem,
       sharedBom: copy.screen.section.sharedBom,
@@ -178,18 +182,29 @@ Page({
   },
   onAddBom() {
     const bom = this.data.form?.bom ?? []
-    this.setData({ layer: 'material', materialPicks: materialPicksOf(this.materials, bom) })
-  },
-  onPickMaterial(event: KeyEvent) {
-    const bom = addMaterial(
-      this.materials,
-      this.data.form?.bom ?? [],
-      event.currentTarget.dataset.key,
+    const { pickIds, pickCount, pickConfirm, picks } = pickOpen(
+      materialPicksOf(this.materials, bom),
     )
-    this.setData({ layer: '', editKey: event.currentTarget.dataset.key })
-    this.patch({ bom }, 'product')
+    this.setData({ layer: 'material', pickIds, pickCount, pickConfirm, materialPicks: picks })
   },
-  onItemClose() {
+  onPick(event: KeyEvent) {
+    const { pickIds, pickCount, pickConfirm, picks } = pickPatch(
+      this.data.materialPicks,
+      toggled(this.data.pickIds, event.currentTarget.dataset.key),
+    )
+    this.setData({ pickIds, pickCount, pickConfirm, materialPicks: picks })
+  },
+  // 勾选的花材一次加入，用量默认 1
+  onPickConfirm() {
+    const { pickIds } = this.data
+    this.setData({ layer: '', editKey: pickIds[pickIds.length - 1] ?? '' })
+    if (pickIds.length)
+      this.patch(
+        { bom: addMaterials(this.materials, this.data.form?.bom ?? [], pickIds) },
+        'product',
+      )
+  },
+  onClosePick() {
     this.closeItem()
   },
   showCatalogFields(fields: Record<string, string>, message: string) {

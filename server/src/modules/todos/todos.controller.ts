@@ -15,4 +15,9 @@ export class TodosController {
   ): Promise<OutputOf<typeof contract.moduleTodos>> {
     return this.todos.todos(viewer, input.params.key)
   }
+
+  @Route(contract.moduleTodoCounts)
+  counts(@CurrentViewer() viewer: Viewer): Promise<OutputOf<typeof contract.moduleTodoCounts>> {
+    return this.todos.counts(viewer)
+  }
 }

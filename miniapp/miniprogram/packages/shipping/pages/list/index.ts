@@ -11,6 +11,7 @@ import { failureOf } from '../../../../core/session'
 import { request } from '../../../../core/request'
 import { listHandlers, listOf, listQueryOf, showList } from '../../../../views/list'
 import { shippingRowOf } from '../../../../views/order'
+import { pullToRefresh } from '../../../../core/live'
 
 type ShipStatus = 'to_ship' | 'shipped'
 const statuses: ShipStatus[] = ['to_ship', 'shipped']
@@ -26,6 +27,7 @@ const dimensions: FilterDimension[] = [
   { key: DUE, label: redesignCopy.dueFilter, options: [{ id: 'true', name: redesignCopy.due }] },
 ]
 Page({
+  ...pullToRefresh,
   ...listHandlers,
   data: {
     title: copy.screen.title.shipList,

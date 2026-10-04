@@ -132,7 +132,6 @@ test('D02–D07 足额或优惠整张结清，作废收款恢复未结清，再�
       '/finance/receipts',
       receiptInput(360000, [{ id: d.id, version: d.version }], {
         discountCents: 1000,
-        discountReason: '抹零',
       }),
     ),
   )

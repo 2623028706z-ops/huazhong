@@ -111,8 +111,8 @@ export class CategoryService {
           await ctx.tx.update(productCategories).set({ name }).where(eq(productCategories.id, id))
           await ctx.log({
             ...categoryLog({ id, name }, copy.log.action.updateCategory),
-            before: { [copy.field.name]: before.name },
-            after: { [copy.field.name]: name },
+            before: { [copy.field.objectName]: before.name },
+            after: { [copy.field.objectName]: name },
           })
           return categoryOf(ctx.tx, id)
         }),

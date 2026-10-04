@@ -17,5 +17,6 @@
     "hz-realtime-bar": "/components/hz-realtime-bar/index",
     "hz-tag": "/components/hz-tag/index",
     "hz-category-sheet": "/components/hz-category-sheet/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

@@ -68,6 +68,7 @@ page {
   --hz-gap-page: 16px; /* 列表、详情、表单页左右 */
   --hz-gap-sheet: 16px; /* 弹层内容 */
   --hz-card-pad: 16px;
+  --hz-card-pad-y: 14px; /* 卡片、信息卡、提示条上下 */
   --hz-card-gap: 10px;
   --hz-gap-controls: 16px; /* 控件区（搜索、筛选）和下面的内容 */
   --hz-row-pad: 12px;

@@ -6,6 +6,7 @@ import type { PagedList } from '../../../../core/list'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
 import { listHandlers, listOf, showList } from '../../../../views/list'
+import { pullToRefresh } from '../../../../core/live'
 
 function rowOf(doc: StocktakeCard) {
   return {
@@ -40,6 +41,7 @@ function pickedOf(categories: { selected: boolean }[]) {
   }
 }
 Page({
+  ...pullToRefresh,
   ...listHandlers,
   data: {
     title: redesignCopy.stocktakeRecords,
@@ -87,16 +89,16 @@ Page({
   async onCreate() {
     if (!this.data.canCreate) return
     const result = await request(contract.listMaterialCategories)
+    const pickedCategories = result.ok
+      ? result.data.items.map((row) => ({ id: row.id, name: row.name, selected: true }))
+      : []
     if (result.ok)
       this.setData({
         sheet: true,
         categoryError: '',
-        categories: result.data.items.map((row) => ({
-          id: row.id,
-          name: row.name,
-          selected: false,
-        })),
-        ...pickedOf([]),
+        // 默认全选，一键开始
+        categories: pickedCategories,
+        ...pickedOf(pickedCategories),
       })
     else this.setData({ failure: failureOf(result.failure, 'refresh') })
   },

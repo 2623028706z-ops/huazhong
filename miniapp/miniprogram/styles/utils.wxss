@@ -319,7 +319,7 @@
   margin-bottom: 8px;
 }
 
-/* 铺品牌背景的页面（各首页、我的）：左右 20px，抬头下面 32px 开始放窗格 */
+/* 铺品牌背景的页面（各首页、我的）：左右 16px，抬头下面 32px 开始放窗格 */
 .u-home {
   padding: 0 var(--hz-gap-page);
 }
@@ -327,7 +327,7 @@
 .u-home__body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--hz-card-gap);
   margin-top: 32px;
 }
 
@@ -361,7 +361,7 @@
 }
 
 .u-list__group {
-  padding: var(--hz-line-gap) 2px 0;
+  padding: var(--hz-line-gap) 4px 0;
 }
 
 .u-list__end {
@@ -437,7 +437,7 @@
 
 /* 提醒说明（配方所有客户共用）：琥珀字，不用最弱的灰 */
 .u-note-warn {
-  padding: 8px 12px;
+  padding: 10px var(--hz-card-pad);
   font-size: var(--hz-font-sm);
   color: var(--hz-amber);
   background: var(--hz-amber-bg);
@@ -510,7 +510,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--hz-line-gap);
-  padding: 14px var(--hz-card-pad);
+  padding: var(--hz-card-pad-y) var(--hz-card-pad);
   font-size: var(--hz-font-sm);
 }
 
@@ -618,6 +618,12 @@
   border-top: 1px solid var(--hz-line);
 }
 
+/* 表单卡第一行是小标题（订单信息、确认订单店名）：上面留足内边距，下面再接字段行 */
+.u-form-card > .u-info__title {
+  display: block;
+  padding: var(--hz-card-pad-y) 0 var(--hz-line-gap);
+}
+
 /* 左侧列表 + 右侧内容（客户门店、订货目录） */
 .u-split {
   display: flex;
@@ -637,6 +643,22 @@
   gap: var(--hz-card-gap);
   min-width: 0;
   padding: 0 var(--hz-gap-page) 0 var(--hz-line-gap);
+}
+
+/* scroll-view 里 gap 不生效：直接子卡片自己留 10px，标签行和第一张卡片之间同样 10px，底部留 12px */
+.u-split__main > view[data-key] {
+  margin-bottom: var(--hz-card-gap);
+}
+
+.u-split__main > .u-info__head + * {
+  display: block;
+  margin-bottom: var(--hz-card-gap);
+}
+
+.u-split__main::after {
+  display: block;
+  height: 12px;
+  content: '';
 }
 
 /* 带图的一行（产品管理）：左图右字 */
@@ -736,6 +758,23 @@
 .u-count-table--head {
   background: var(--hz-tint);
   color: var(--hz-muted);
+}
+
+/* 盘点行内直接输入实盘数 */
+.u-count-table--edit {
+  grid-template-columns: minmax(85px, 1fr) 38px 64px 38px 28px;
+}
+
+.u-count-table__input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 30px;
+  padding: 0 6px;
+  font-size: var(--hz-font-sm);
+  text-align: right;
+  background: var(--hz-paper);
+  box-shadow: inset 0 0 0 1px var(--hz-hair);
+  border-radius: var(--hz-radius-check);
 }
 
 /* 勾选框：方框，选中品牌红底白勾（卡片多选、配货打勾、对账单选单共用） */

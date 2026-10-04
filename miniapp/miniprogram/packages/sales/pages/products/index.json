@@ -9,5 +9,6 @@
     "hz-button": "/components/hz-button/index",
     "hz-category-sheet": "/components/hz-category-sheet/index",
     "hz-confirm": "/components/hz-confirm/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

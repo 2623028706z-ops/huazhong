@@ -9,5 +9,6 @@
     "hz-button": "/components/hz-button/index",
     "hz-sheet": "/components/hz-sheet/index",
     "hz-switch": "/components/hz-switch/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

@@ -11,6 +11,7 @@ import { newIdempotencyKey, request } from '../../../../core/request'
 import { failureOf, messageOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
 import { listHandlers, listOf, showList } from '../../../../views/list'
+import { pullToRefresh } from '../../../../core/live'
 
 function blank(code = '') {
   return { code, name: '', unit: '', categoryId: '', enabled: true }
@@ -33,6 +34,7 @@ function rowOf(m: Material) {
   }
 }
 Page({
+  ...pullToRefresh,
   ...listHandlers,
   data: {
     title: copy.screen.title.materials,
@@ -77,9 +79,12 @@ Page({
   categoryKey: '',
   // 从库存页底栏进来：直接打开「管理分类」或「新建花材」
   openAction: '',
+  // 从花材详情「编辑」或库存页「新建花材」进来的，保存后回到来源页
+  leaveAfterSave: false,
   onLoad(query: Record<string, string | undefined>) {
     this.editId = query.editId ?? ''
     this.openAction = query.open ?? ''
+    this.leaveAfterSave = !!this.editId || this.openAction === 'create'
     this.list = listOf(
       this,
       async (cursor) => {
@@ -220,6 +225,10 @@ Page({
     if (result.ok) {
       this.onClose()
       showSuccess(copy.action.saved)
+      if (this.leaveAfterSave) {
+        void wx.navigateBack()
+        return
+      }
       void this.list?.refresh()
       return
     }

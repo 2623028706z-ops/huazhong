@@ -18,7 +18,7 @@ function view(row: typeof outCategories.$inferSelect) {
 }
 function logView(row: Fields) {
   return {
-    [copy.field.name]: row.name,
+    [copy.field.objectName]: row.name,
     [copy.field.status]: row.enabled ? copy.statusValue.enabled : copy.statusValue.disabled,
   }
 }

@@ -6,14 +6,13 @@
     "hz-skeleton": "/components/hz-skeleton/index",
     "hz-action-bar": "/components/hz-action-bar/index",
     "hz-button": "/components/hz-button/index",
-    "hz-sheet": "/components/hz-sheet/index",
     "hz-notice": "/components/hz-notice/index",
     "hz-status": "/components/hz-status/index",
     "hz-line-item": "/components/hz-line-item/index",
     "hz-records": "/components/hz-records/index",
     "hz-confirm": "/components/hz-confirm/index",
     "hz-progress": "/components/hz-progress/index",
-    "hz-info-rows": "/components/hz-info-rows/index",
-    "hz-cover": "/components/hz-cover/index"
-  }
+    "hz-info-rows": "/components/hz-info-rows/index"
+  },
+  "enablePullDownRefresh": true
 }

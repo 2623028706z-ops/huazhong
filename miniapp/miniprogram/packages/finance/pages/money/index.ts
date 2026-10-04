@@ -10,10 +10,11 @@ import type { DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
-import { watch, unwatchOnLeave } from '../../../../core/live'
+import { watch, unwatchOnLeave, pullToRefresh } from '../../../../core/live'
 import { fundViewOf } from '../../../../views/receipt-view'
 const DEFAULT_TITLE: string = f.receiptDetail
 Page({
+  ...pullToRefresh,
   ...unwatchOnLeave,
   data: {
     title: DEFAULT_TITLE,

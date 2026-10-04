@@ -121,8 +121,11 @@ Page({
     texts: financeTexts,
   },
   id: '',
+  auto: false,
   onLoad(query: Record<string, string | undefined>) {
     this.id = query.id ?? ''
+    // 从对账单详情底栏「分享」进来：图生成好直接弹出保存 / 发送，少点一步
+    this.auto = query.auto === '1'
     void this.load()
   },
   async load() {
@@ -139,12 +142,24 @@ Page({
       })
       const image = await renderDocumentImage(this, doc)
       this.setData({ image, busy: false, failure: null })
+      if (this.auto) {
+        this.auto = false
+        this.pickOperation()
+      }
     } catch {
       this.setData({ busy: false, error: f.imageGenerateFailed })
     }
   },
   onFailureAction() {
     void this.load()
+  },
+  pickOperation() {
+    wx.showActionSheet({
+      itemList: [f.saveImage, f.sendImage],
+      success: ({ tapIndex }) => {
+        void this.imageOperation(tapIndex === 0 ? 'save' : 'send')
+      },
+    })
   },
   async imageOperation(action: 'save' | 'send') {
     if (!this.data.image) return

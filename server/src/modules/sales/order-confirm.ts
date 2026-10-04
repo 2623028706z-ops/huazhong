@@ -1,4 +1,4 @@
-import { appError, copy, type contract, type OrderDetail } from '@huazhong/shared'
+import { type contract, type OrderDetail } from '@huazhong/shared'
 import { eq } from 'drizzle-orm'
 import { orders } from '../../../db/schema/index.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
@@ -29,8 +29,6 @@ export function confirmationOf(before: OrderDetail, input: ConfirmInput, lines: 
       const old = before.lines.find((row) => Number(row.productId) === line.productId)
       return !old || old.qty !== line.qty || old.priceCents !== line.priceCents
     })
-  if (productChanged && !input.reason?.trim())
-    throw appError.validation({ reason: copy.order.editReasonRequired })
   return { beforeState, afterState, productChanged, items: diffOrder(beforeState, afterState) }
 }
 

@@ -9,5 +9,6 @@
     "hz-field": "/components/hz-field/index",
     "hz-button": "/components/hz-button/index",
     "hz-confirm": "/components/hz-confirm/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

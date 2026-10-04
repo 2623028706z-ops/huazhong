@@ -2,7 +2,7 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 10px 14px;
+  padding: 10px var(--hz-card-pad);
   font-size: var(--hz-font);
   color: var(--hz-danger);
   background: var(--hz-danger-bg);

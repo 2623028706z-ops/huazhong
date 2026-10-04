@@ -3,7 +3,7 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  padding: 10px 14px;
+  padding: 10px var(--hz-card-pad);
   font-size: var(--hz-font-sm);
   color: var(--hz-ink);
   box-shadow: inset 2px 0 0 var(--hz-brand);
@@ -14,7 +14,7 @@
 }
 
 .hz-notice__close {
-  margin: -10px -14px -10px 0;
+  margin: -10px calc(0px - var(--hz-card-pad)) -10px 0;
   font-size: var(--hz-icon-xs);
   color: var(--hz-muted);
 }

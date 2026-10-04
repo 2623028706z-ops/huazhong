@@ -1,1 +1,1 @@
-<hz-module-home module="finance" />
+<hz-module-home class="module-home" module="finance" />

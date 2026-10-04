@@ -4,7 +4,7 @@ import type { CodeEvent, DetailEvent } from '../core/events'
 import type { FailureView } from '../core/failure-view'
 import { checkedOf, unplacedErrorOf } from '../core/form'
 import { confirmAsk, isChanged, syncUnloadAlert } from '../core/guard'
-import { unwatch, watchNewer } from '../core/live'
+import { pullToRefresh, unwatch, watchNewer } from '../core/live'
 import { centsOfText } from '../core/money'
 import { request, type Result } from '../core/request'
 import { failureOf, messageOf } from '../core/session'
@@ -50,11 +50,13 @@ const data = {
     ...copy.screen.label,
     lines: copy.screen.section.materials,
     reject: redesignCopy.rejectPurchaseConfirm,
+    rejectLine: redesignCopy.rejectLine,
     confirmCancel: copy.screen.action.confirmCancel,
     cancelPo: copy.screen.action.cancelPo as string,
     receive: copy.screen.action.receive,
     confirmReturn: copy.screen.confirmReturn,
     confirmReprice: copy.screen.confirmReprice,
+    optional: copy.placeholder.optional,
   },
 }
 interface Host {
@@ -70,7 +72,7 @@ interface Host {
   show(po: PoDetail, recvNote?: string): void
   preserve(po: PoDetail): boolean
   render(lines: ReceiveLine[]): void
-  settle(result: Result<PoDetail>, done: string): void
+  settle(result: Result<PoDetail>, done: string, back?: boolean): void
 }
 function readPurchaseOrder(host: Host) {
   return request(host.financeScope ? contract.getFinancePurchaseOrder : contract.getPurchaseOrder, {
@@ -79,6 +81,7 @@ function readPurchaseOrder(host: Host) {
   })
 }
 const methods = {
+  ...pullToRefresh,
   id: '',
   financeScope: false,
   readonlyScope: false,
@@ -280,7 +283,7 @@ const methods = {
         })),
       },
     })
-    this.settle(result, result.ok ? labels.poStatus[result.data.status] : '')
+    this.settle(result, result.ok ? labels.poStatus[result.data.status] : '', true)
   },
   async onReceive(this: Host) {
     if (!this.order) return
@@ -309,7 +312,7 @@ const methods = {
       params: { id: this.id },
       body: checked.body,
     })
-    this.settle(result, result.ok ? labels.poStatus[result.data.status] : '')
+    this.settle(result, result.ok ? labels.poStatus[result.data.status] : '', true)
   },
   async onSaveSheet(this: Host) {
     if (!this.order) return
@@ -352,13 +355,15 @@ const methods = {
           })
     this.settle(saved, copy.action.saved)
   },
-  settle(this: Host, result: Result<PoDetail>, done: string) {
+  settle(this: Host, result: Result<PoDetail>, done: string, back = false) {
     this.setData({ busy: '' })
     if (result.ok) {
       this.setData({ sheet: '', cancelSheet: false, error: '' })
       this.show(result.data)
       syncUnloadAlert(false)
       showSuccess(done)
+      // 收货 / 拒收做完回到待收货列表（列表 onShow 会重新读）
+      if (back) void wx.navigateBack()
       return
     }
     const view = failureOf(result.failure, 'submit')

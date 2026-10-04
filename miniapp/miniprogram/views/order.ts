@@ -185,7 +185,7 @@ function cancelNoticeOf(order: {
   status: string
   cancelRequests: OrderDetail['cancelRequests']
 }): string {
-  const request = order.cancelRequests.at(-1)
+  const request = order.cancelRequests[order.cancelRequests.length - 1]
   if (!request) return ''
   if (request.status === 'rejected')
     return redesignCopy.cancelRejectedNotice(request.rejectReason ?? '')

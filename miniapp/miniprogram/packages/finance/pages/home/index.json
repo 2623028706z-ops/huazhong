@@ -1,5 +1,6 @@
 {
   "usingComponents": {
     "hz-module-home": "/components/hz-module-home/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

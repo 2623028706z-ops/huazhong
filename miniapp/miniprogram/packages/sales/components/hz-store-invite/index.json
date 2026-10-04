@@ -1,0 +1,12 @@
+{
+  "component": true,
+  "styleIsolation": "apply-shared",
+  "usingComponents": {
+    "hz-sheet": "/components/hz-sheet/index",
+    "hz-search": "/components/hz-search/index",
+    "hz-field": "/components/hz-field/index",
+    "hz-error": "/components/hz-error/index",
+    "hz-button": "/components/hz-button/index",
+    "hz-tag": "/components/hz-tag/index"
+  }
+}

@@ -1,4 +1,5 @@
-// S8 申请售后（06 章 S8）：原订单、出货日期 → 明细（数量上限 maxQty；问题原因、问题说明、图片）→「添加产品」。
+// S8 申请售后（06 章 S8）：原订单、出货日期 → 明细（数量上限 maxQty；问题原因、问题说明选填、图片）→「添加产品」（可多选）。
+// 订单只有一个能申请的产品时进来直接打开它的编辑弹层；原因是「数量不符」（少发、漏发）时图片选填，其余原因至少 1 张。
 // 提交后进 S7，并打开这张售后的详情弹层
 import {
   contract,
@@ -16,6 +17,7 @@ import { newIdempotencyKey, request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
 import { uploadImage, type LocalImage } from '../../../../core/upload'
 import { rowsOf, shipDateText } from '../../../../views/order'
+import { pickOpen, pickPatch, toggled } from '../../../../views/pick'
 import { reasonOptions } from '../../../../views/after'
 import { checkForm, formLineOf, lineErrorsOf, type FormLine, type LineErrors } from './form'
 
@@ -32,7 +34,10 @@ Page({
     lineErrors: [] as LineErrors[],
     reasonOptions,
     pickSheet: false,
-    picks: [] as { id: string; name: string; sub: string }[],
+    picks: [] as ReturnType<typeof pickOpen>['picks'],
+    pickIds: [] as string[],
+    pickCount: 0,
+    pickConfirm: '',
     saving: false,
     uploading: false,
     editIndex: -1,
@@ -48,6 +53,8 @@ Page({
       reason: copy.screen.label.afterReason,
       description: copy.screen.label.afterDescription,
       images: financeCopy.imagesRequired,
+      imagesOptional: redesignCopy.afterImagesOptional,
+      optional: copy.placeholder.optional,
       add: copy.screen.action.addProduct,
       submit: copy.screen.action.submitAfter,
       qty: financeCopy.afterQty,
@@ -85,6 +92,18 @@ Page({
         [copy.field.shipDate, shipDateText(order.shipDate)],
       ]),
     })
+    // 只有一个能申请的产品：直接加进来并打开编辑
+    const only = this.claimable([])
+    if (only.length === 1 && only[0]) {
+      this.setLines([formLineOf(only[0])])
+      this.openEditor(0)
+    }
+  },
+  // 这张单里还能申请、还没加进来的产品
+  claimable(added: readonly string[]) {
+    return (this.order?.lines ?? []).filter(
+      (line) => (line.maxQty ?? 0) > 0 && !added.includes(line.id),
+    )
   },
   setLines(lines: FormLine[]) {
     this.setData({
@@ -136,7 +155,10 @@ Page({
     for (const file of event.detail) {
       const result = await uploadImage('after_image', file)
       if (!result.ok) {
-        this.setData({ editError: { ...this.data.editError, images: result.message } })
+        const message = result.failure
+          ? (failureOf(result.failure, 'submit')?.message ?? '')
+          : result.message
+        this.setData({ editError: { ...this.data.editError, images: message } })
         break
       }
       const line = this.data.editIndex === index ? this.data.editLine : this.data.lines[index]
@@ -149,23 +171,34 @@ Page({
     const line = this.data.editIndex === index ? this.data.editLine : this.data.lines[index]
     if (line) this.update(index, { images: line.images.filter((_, i) => i !== event.detail) })
   },
-  // 只列这张单里还能申请、还没加进来的产品
+  // 只列这张单里还能申请、还没加进来的产品，可多选
   onOpenPick() {
-    const added = new Set(this.data.lines.map((line) => line.orderLineId))
-    const picks = (this.order?.lines ?? [])
-      .filter((line) => (line.maxQty ?? 0) > 0 && !added.has(line.id))
-      .map((line) => ({ id: line.id, name: line.name, sub: copy.screen.maxQty(line.maxQty ?? 0) }))
-    this.setData({ pickSheet: true, picks })
+    const picks = this.claimable(this.data.lines.map((line) => line.orderLineId)).map((line) => ({
+      id: line.id,
+      name: line.name,
+      sub: copy.screen.maxQty(line.maxQty ?? 0),
+    }))
+    this.setData({ pickSheet: true, ...pickOpen(picks) })
   },
   onClosePick() {
     this.setData({ pickSheet: false })
   },
   onPick(event: KeyEvent) {
-    const line = this.order?.lines.find((l) => l.id === event.currentTarget.dataset.key)
+    this.setData(
+      pickPatch(this.data.picks, toggled(this.data.pickIds, event.currentTarget.dataset.key)),
+    )
+  },
+  // 勾选的产品一次加入（数量默认 1）；只勾一个时直接打开它的编辑弹层，勾了多个的点行再逐个填原因
+  onPickConfirm() {
+    const added = this.data.pickIds.flatMap((id) => {
+      const line = this.order?.lines.find((l) => l.id === id)
+      return line ? [formLineOf(line)] : []
+    })
     this.setData({ pickSheet: false })
-    if (line) {
-      const lines = [...this.data.lines, formLineOf(line)]
-      this.setLines(lines)
+    if (!added.length) return
+    const lines = [...this.data.lines, ...added]
+    this.setLines(lines)
+    if (added.length === 1) {
       this.openEditor(lines.length - 1)
       this.setData({ editorNew: true })
     }

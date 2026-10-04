@@ -50,13 +50,13 @@ export const orderCreateSchema = z
   .superRefine(checkProductLines)
 export type OrderCreate = z.infer<typeof orderCreateSchema>
 
-// 修改待发货订单；待确认统一通过 confirmOrder 的可编辑确认页。
+// 修改待发货订单；待确认统一通过 confirmOrder 的可编辑确认页。修改原因选填（03 章：只有作废、取消必填）
 export const orderUpdateSchema = z
   .object({
     version: versionSchema,
     shipDate: shipDateSchema,
     note: z.string().trim(),
-    reason: requiredTextSchema(copy.order.editReasonRequired),
+    reason: z.string().trim().default(''),
     lines: salesLinesSchema,
   })
   .superRefine(checkProductLines)
@@ -164,7 +164,7 @@ export const rejectOrderCancel = {
   path: '/orders/:id/cancel-request/reject',
   grants: ['sales'],
   params: idParamsSchema,
-  body: versionBody.extend({ reason: requiredTextSchema(copy.rework.rejectReasonRequired) }),
+  body: versionBody.extend({ reason: z.string().trim().default('') }),
   response: orderDetailSchema,
   errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
 } as const satisfies Endpoint

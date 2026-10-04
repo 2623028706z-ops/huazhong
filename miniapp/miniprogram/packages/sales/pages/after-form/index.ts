@@ -1,5 +1,6 @@
 // X7 售后表单（06 章 X7）：处理（processAfter，从 X6）、新建（从 X3、X5）。
-// 原订单、客户门店 → 明细（数量上限 maxQty；单价默认发货单价）→ 售后金额合计 → 处理说明（选填）
+// 原订单、客户门店 → 明细（数量上限 maxQty；单价默认发货单价）→ 售后金额合计 → 处理说明（选填）。
+// 新建时订单只有一个能申请的产品就直接打开它的编辑；「添加产品」可多选
 import {
   contract,
   copy,
@@ -19,6 +20,7 @@ import { showSuccess } from '../../../../core/toast'
 import { watch } from '../../../../core/live'
 import { previewImage, reasonOptions } from '../../../../views/after'
 import { rowsOf } from '../../../../views/order'
+import { pickOpen, pickPatch, toggled } from '../../../../views/pick'
 import {
   checkCreate,
   checkProcess,
@@ -64,7 +66,10 @@ Page({
     note: '',
     reasonOptions,
     pickSheet: false,
-    picks: [] as { id: string; name: string; sub: string }[],
+    picks: [] as ReturnType<typeof pickOpen>['picks'],
+    pickIds: [] as string[],
+    pickCount: 0,
+    pickConfirm: '',
     saving: false,
     texts: {
       lines: copy.screen.section.afterLines,
@@ -158,6 +163,18 @@ Page({
       ]),
       infoTitle: copy.org.store(order.customerName, order.storeName),
     })
+    // 只有一个能申请的产品：直接加进来并打开编辑
+    const only = this.claimable([])
+    if (only.length === 1 && only[0]) {
+      this.setLines([createLineOf(only[0])], false)
+      this.onEditLine({ detail: 0 } as DetailEvent<number>)
+    }
+  },
+  // 这张单里还能申请、还没加进来的产品
+  claimable(added: readonly string[]) {
+    return (this.order?.lines ?? []).filter(
+      (line) => (line.maxQty ?? 0) > 0 && !added.includes(line.id),
+    )
   },
   setLines(lines: FormLine[], changed = true) {
     this.setData({
@@ -236,22 +253,32 @@ Page({
     markChanged(this, true)
   },
   onOpenPick() {
-    const added = new Set(this.data.lines.map((line) => line.id))
-    const picks = (this.order?.lines ?? [])
-      .filter((line) => (line.maxQty ?? 0) > 0 && !added.has(line.id))
-      .map((line) => ({ id: line.id, name: line.name, sub: copy.screen.maxQty(line.maxQty ?? 0) }))
-    this.setData({ pickSheet: true, picks })
+    const picks = this.claimable(this.data.lines.map((line) => line.id)).map((line) => ({
+      id: line.id,
+      name: line.name,
+      sub: copy.screen.maxQty(line.maxQty ?? 0),
+    }))
+    this.setData({ pickSheet: true, ...pickOpen(picks) })
   },
   onClosePick() {
     this.setData({ pickSheet: false })
   },
   onPick(event: KeyEvent) {
-    const line = this.order?.lines.find((l) => l.id === event.currentTarget.dataset.key)
+    this.setData(
+      pickPatch(this.data.picks, toggled(this.data.pickIds, event.currentTarget.dataset.key)),
+    )
+  },
+  // 勾选的产品一次加入（数量默认 1）；只勾一个时直接打开编辑，勾了多个的点行逐个填原因
+  onPickConfirm() {
+    const added = this.data.pickIds.flatMap((id) => {
+      const line = this.order?.lines.find((l) => l.id === id)
+      return line ? [createLineOf(line)] : []
+    })
     this.setData({ pickSheet: false })
-    if (line) {
-      this.setLines([...this.data.lines, createLineOf(line)])
+    if (!added.length) return
+    this.setLines([...this.data.lines, ...added])
+    if (added.length === 1)
       this.onEditLine({ detail: this.data.lines.length - 1 } as DetailEvent<number>)
-    }
   },
   showFields(fields: Record<string, string>) {
     this.setData({

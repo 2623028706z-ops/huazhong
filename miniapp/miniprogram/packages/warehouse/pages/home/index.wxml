@@ -1,1 +1,1 @@
-<hz-module-home id="warehouse-home" module="warehouse" />
+<hz-module-home class="module-home" id="warehouse-home" module="warehouse" />

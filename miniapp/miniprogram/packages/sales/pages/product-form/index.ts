@@ -10,13 +10,14 @@ import { failureOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
 import { uploadImage, type LocalImage } from '../../../../core/upload'
 import {
-  addMaterial,
+  addMaterials,
   bomTableRowsOf,
   loadMaterials,
   materialPicksOf,
   removeBomLine,
   setBomQty,
 } from '../../../../views/bom'
+import { pickOpen, pickPatch, toggled } from '../../../../views/pick'
 import { checkCreate, checkUpdate, productFormOf, type ProductForm } from './form'
 
 const DEFAULT_TITLE: string = copy.screen.title.createProduct
@@ -34,7 +35,10 @@ Page({
     images: [] as { url: string }[],
     categoryOptions: [] as { id: string; name: string }[],
     pickSheet: false,
-    picks: [] as { id: string; name: string; sub: string }[],
+    picks: [] as ReturnType<typeof pickOpen>['picks'],
+    pickIds: [] as string[],
+    pickCount: 0,
+    pickConfirm: '',
     saving: false,
     uploading: false,
     bomRows: [] as ReturnType<typeof bomTableRowsOf>,
@@ -123,7 +127,11 @@ Page({
     const result = await uploadImage('product_image', file)
     this.setData({ uploading: false })
     if (!result.ok) {
-      this.setData({ formError: result.message })
+      this.setData({
+        formError: result.failure
+          ? (failureOf(result.failure, 'submit')?.message ?? '')
+          : result.message,
+      })
       return
     }
     this.update({ imageFileId: result.image.fileId, imageUrl: result.image.url }, 'imageFileId')
@@ -140,15 +148,25 @@ Page({
     this.update({ bom: removeBomLine(this.data.form.bom, index) }, 'bom')
   },
   onAddBom() {
-    this.setData({ pickSheet: true, picks: materialPicksOf(this.materials, this.data.form.bom) })
+    this.setData({
+      pickSheet: true,
+      ...pickOpen(materialPicksOf(this.materials, this.data.form.bom)),
+    })
   },
   onClosePick() {
     this.setData({ pickSheet: false })
   },
   onPick(event: KeyEvent) {
-    this.setData({ pickSheet: false, editKey: event.currentTarget.dataset.key })
-    const bom = addMaterial(this.materials, this.data.form.bom, event.currentTarget.dataset.key)
-    this.update({ bom }, 'bom')
+    this.setData(
+      pickPatch(this.data.picks, toggled(this.data.pickIds, event.currentTarget.dataset.key)),
+    )
+  },
+  // 勾选的花材一次加入，用量默认 1
+  onPickConfirm() {
+    const { pickIds } = this.data
+    this.setData({ pickSheet: false, editKey: pickIds[pickIds.length - 1] ?? '' })
+    if (pickIds.length)
+      this.update({ bom: addMaterials(this.materials, this.data.form.bom, pickIds) }, 'bom')
   },
   showFields(fields: Record<string, string>) {
     this.setData({

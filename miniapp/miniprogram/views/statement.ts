@@ -43,16 +43,13 @@ export function statementRowOf(
   card: StatementCard | ExternalCard,
   external: 'store' | 'supplier' | null = null,
 ): FinanceRow {
+  // 卡片只留三项主字段：对账期间、金额、付款截止（没有账期就写开单日期）；单号、发货 / 采购张数等进详情
   const fields: FinanceRow['fields'] = [
-    { label: f.no, value: card.no },
-    { label: f.statementDate, value: card.statementDate },
-    ...(card.dueDate ? [{ label: f.dueDate, value: card.dueDate, wide: true }] : []),
     { label: f.period, value: periodTextOf(card.periodFrom, card.periodTo), wide: true },
-    {
-      label: card.kind === 'supplier' ? f.purchaseTitle : f.shipTitle,
-      value: f.countText(card.sourceCount),
-    },
     cardAmountOf(card, external),
+    card.dueDate
+      ? { label: f.dueDate, value: card.dueDate }
+      : { label: f.statementDate, value: card.statementDate },
   ]
   return {
     id: card.id,
@@ -354,7 +351,7 @@ export function settlementListRowsOf(items: Settlement[], payment: boolean): Lis
       amount: formatMoney(item.amountCents),
       notes: [
         `${payment ? f.paymentDate : f.receiptDate} ${item.date}`,
-        [`${f.method} ${item.methodName}`, ...extra].join(f.gap),
+        [`${payment ? f.paymentMethod : f.receiptMethod} ${item.methodName}`, ...extra].join(f.gap),
       ],
       tags: item.reversedAt ? [{ text: f.voided, warn: false }] : [],
       muted: Boolean(item.reversedAt),

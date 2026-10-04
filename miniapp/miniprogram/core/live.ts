@@ -1,19 +1,22 @@
 // 全小程序共用一条实时连接（05 章第 12 节）；页面按 onShow 订阅、onHide / onUnload 退订
 import type { Topic } from '@huazhong/shared'
 import { Realtime } from './realtime'
+import { readsSettled } from './request'
 
 const LOGIN_ROUTE = 'pages/login/index'
 
 // 重连后、断网恢复后当前页整页刷新一次：各页的刷新都放在 onShow 里（01 章第 3.3 节）
 export function refreshCurrentPage(): void {
-  const page = getCurrentPages().at(-1)
+  const pages = getCurrentPages()
+  const page = pages[pages.length - 1]
   const onShow: (() => unknown) | undefined = page?.onShow
   void onShow?.call(page)
 }
 
 // 解绑、停用：回登录页，登录页再按 /me 的结果显示登录区或停用状态
 function returnToLogin(): void {
-  if (getCurrentPages().at(-1)?.route === LOGIN_ROUTE) return
+  const pages = getCurrentPages()
+  if (pages[pages.length - 1]?.route === LOGIN_ROUTE) return
   void wx.reLaunch({ url: `/${LOGIN_ROUTE}` })
 }
 
@@ -58,5 +61,16 @@ export const unwatchOnLeave = {
   },
   onUnload(this: object) {
     unwatch(this)
+  },
+}
+
+// 下拉刷新（02 章第 5.1 节）：和重新显示一样走 onShow，保留旧内容不出骨架；读请求都回来再收起。
+// 页面 json 开 enablePullDownRefresh，Page({ ...pullToRefresh, … })
+export const pullToRefresh = {
+  onPullDownRefresh(this: { onShow?: () => unknown }) {
+    void this.onShow?.call(this)
+    setTimeout(() => {
+      void readsSettled().then(() => wx.stopPullDownRefresh())
+    }, 0)
   },
 }

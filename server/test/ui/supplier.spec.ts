@@ -227,11 +227,12 @@ test('B27 F02-F I01-F 填报默认需求量、校验、编辑保护、提交后�
   await page.callMethod('onPrice', { detail: { index: 0, text: '3.50' } })
   await snap(mini, 'supplier-supply')
   await page.callMethod('onSubmit')
-  await waitData(page, 'editable', false)
-  expect(await page.data('inviteView.lines')).toMatchObject([
-    { qty: 70, priceCents: 350, meta: '需求 70 枝', subText: '供 70 枝 × ¥3.50' },
-  ])
-  expect((await inviteOf(s)).version).toBeGreaterThan(edited.version)
+  // 提交后回到填报邀请列表（没有上一页就换到列表）
+  const list = await waitPage(mini, 'packages/supplier/pages/invites/index')
+  await waitData(list, 'loaded', true)
+  const submitted = await inviteOf(s)
+  expect(submitted.version).toBeGreaterThan(edited.version)
+  expect(submitted.status).toBe('submitted')
   await snap(mini, 'supplier-submitted')
 })
 
@@ -246,7 +247,7 @@ test('F03 B12-F 供应商整页采购修改、实时详情与填报关联状态'
   await waitData(detail, 'loaded', true)
   expect(await detail.data('view.info.title')).toBe(po.supplierName)
   expect(await detail.data('view.info.rows')).toContainEqual(
-    expect.objectContaining({ label: '采购', value: po.buyerName, phone: po.buyerPhone }),
+    expect.objectContaining({ label: '采购员', value: po.buyerName, phone: po.buyerPhone }),
   )
   await detail.callMethod('onEdit')
   const edit = await waitPage(mini, 'packages/supplier/pages/supply/index')

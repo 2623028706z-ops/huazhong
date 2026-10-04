@@ -15,6 +15,7 @@ vi.mock('../miniprogram/core/request', () => ({
 vi.mock('../miniprogram/core/live', () => ({
   unwatch: () => undefined,
   unwatchOnLeave: {},
+  pullToRefresh: {},
   watch: (_page: unknown, _topics: unknown, listener: (version: number | null) => void) => {
     mocks.changes.push(listener)
   },
@@ -181,7 +182,7 @@ describe('阶段5草稿与复合单据引用', () => {
     expect(page.data.sheet).toBe('')
     expect(page.data.changed).toBe(false)
   })
-  it('管理出库分类在表单弹层里做，不离开表单、不清空草稿；选中的分类被停用就清掉', async () => {
+  it('管理出库分类跳到出库分类页，不再在分类弹层里套管理弹层，草稿保留', async () => {
     const page = await loadPage(
       () => import('../miniprogram/packages/warehouse/pages/doc-form/index'),
     )
@@ -192,30 +193,14 @@ describe('阶段5草稿与复合单据引用', () => {
       lines: [],
       images: [],
     }
-    page.setData({ kind: 'out', form, changed: true })
+    page.setData({ kind: 'out', form, changed: true, categoryPick: true })
     await invoke(page, 'onManageCategories')
-    expect(page.data.categorySheet).toBe(true)
-    expect(mocks.navigateTo).not.toHaveBeenCalled()
-    expect(page.data.form).toEqual(form)
-    mocks.request
-      .mockResolvedValueOnce({ ok: true, data: { id: '1', name: '样品', enabled: false, sort: 0 } })
-      .mockResolvedValueOnce({
-        ok: true,
-        data: {
-          items: [
-            { id: '1', name: '样品', enabled: false, sort: 0 },
-            { id: '2', name: '其他', enabled: true, sort: 1 },
-          ],
-          nextCursor: null,
-        },
-      })
-    await invoke(page, 'onSaveCategory', { detail: { id: '1', name: '样品', enabled: false } })
-    expect(mocks.request.mock.calls.at(-2)?.[0]).toMatchObject({
-      method: contract.updateOutCategory.method,
-      path: contract.updateOutCategory.path,
+    expect(mocks.navigateTo).toHaveBeenCalledWith({
+      url: '/packages/warehouse/pages/out-categories/index',
     })
-    expect(page.data.categoryOptions).toEqual([{ id: '2', name: '其他' }])
-    expect(page.data.form).toEqual({ ...form, outCategoryId: '' })
+    expect(page.data.categoryPick).toBe(false)
+    expect(page.data.categorySheet).toBeUndefined()
+    expect(page.data.form).toEqual(form)
     expect(page.data.changed).toBe(true)
   })
 })

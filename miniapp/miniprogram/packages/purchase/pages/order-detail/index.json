@@ -15,5 +15,6 @@
     "hz-confirm": "/components/hz-confirm/index",
     "hz-reason-sheet": "/components/hz-reason-sheet/index",
     "hz-realtime-bar": "/components/hz-realtime-bar/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

@@ -44,7 +44,6 @@ export const whDocs = pgTable(
   (table) => [
     check('wh_docs_supplier', sql`(${table.kind} = 'in') = (${table.supplierId} IS NOT NULL)`),
     check('wh_docs_category', sql`(${table.kind} = 'out') = (${table.outCategoryId} IS NOT NULL)`),
-    check('wh_docs_loss_reason', sql`${table.kind} <> 'loss' OR ${table.reason} <> ''`),
     check(
       'wh_docs_status',
       sql`(${table.kind} = 'in' AND ${table.status} IN ('stocked_in','voided')) OR (${table.kind} = 'out' AND ${table.status} IN ('stocked_out','voided')) OR (${table.kind} = 'loss' AND ${table.status} IN ('lost','voided'))`,

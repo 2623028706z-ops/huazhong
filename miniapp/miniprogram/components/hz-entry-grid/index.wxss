@@ -67,7 +67,7 @@
 /* 模块首页：小一号 */
 .hz-entry-grid--compact .hz-entry-grid__cell {
   min-height: 56px;
-  padding: 14px;
+  padding: var(--hz-card-pad-y) var(--hz-card-pad);
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;

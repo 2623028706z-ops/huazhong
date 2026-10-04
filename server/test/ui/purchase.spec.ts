@@ -3,7 +3,16 @@ import type { CustomElement } from 'miniprogram-automator/out/Element.js'
 import { expect, test } from 'vitest'
 import { inviteOf, poInput, poOf } from '../support/purchase.ts'
 import { dataOf, TODAY, TOMORROW } from '../support/sales.ts'
-import { asMini, enter, setupMiniSuite, snap, tapText, waitData, waitPage } from './mini.ts'
+import {
+  asMini,
+  enter,
+  pickOption,
+  setupMiniSuite,
+  snap,
+  tapText,
+  waitData,
+  waitPage,
+} from './mini.ts'
 
 const suite = setupMiniSuite()
 
@@ -67,22 +76,28 @@ test('B21 B24-F B25-F G11 需求来源、缺口预填和日期校验', async () 
   await page.callMethod('onCloseSource')
   await page.callMethod('onToggle', event)
   expect(await page.callMethod('draft')).toMatchObject({ lines: [{ qty: 15 }] })
+  // 邀请供应商直接进 C7，供应商在 C7 里选
+  await page.callMethod('onSelectAll')
+  expect(await page.data('allSelected')).toBe(true)
+  await page.callMethod('onSelectAll')
+  expect(await page.data('selected')).toEqual([])
+  await page.callMethod('onToggle', event)
   await page.callMethod('onInvite')
-  await expect.poll(async () => page.data('suppliers') as Promise<unknown>).not.toEqual([])
-  await page.callMethod('onNext')
-  expect(await page.data('error')).toBe('请选择一家供应商')
-  const suppliers = (await page.data('suppliers')) as { id: string }[]
-  await page.callMethod('onSupplier', { detail: suppliers[0]?.id })
-  await page.callMethod('onNext')
   const form = await waitPage(mini, 'packages/purchase/pages/invite-form/index')
   await waitData(form, 'loaded', true)
   await expect
     .poll(async () => form.data('form.lines') as Promise<unknown>)
     .toMatchObject([{ qty: 15, stockQty: 60 }])
+  const options = (await form.data('supplierOptions')) as { id: string }[]
+  await pickOption(form, '#supplier-picker', options[0]?.id ?? '')
   await snap(mini, 'invite-create')
   await tapText(form, copy.screen.title.createInvite)
   await waitData(form, 'reviewSheet', true)
   await form.callMethod('onReviewConfirm')
+  // 新建发出后换到 C9，「发给供应商」一点转发；返回回到需求页
+  const sent = await waitPage(mini, 'packages/purchase/pages/invite-detail/index')
+  await expect.poll(async () => sent.data('share.path') as Promise<unknown>).toContain('sig=')
+  await mini.navigateBack()
   await waitPage(mini, 'packages/purchase/pages/demand/index')
   await waitData(page, 'selected', [])
   await page.callMethod('onTo', { detail: '2026-09-28' })
@@ -127,11 +142,8 @@ test('B12-F B28-F G04-F I01 填报整页分享、修改返回与采购关联状�
   await waitData(page, 'loaded', true)
   await waitData(page, 'view.info.title', invite.supplierName)
   await snap(mini, 'invite-detail-pending')
-  await page.callMethod('onAction', { currentTarget: { dataset: { code: 'shareInvite' } } })
-  await waitData(page, 'shareSheet', true)
   await expect.poll(async () => page.data('share.path') as Promise<unknown>).toContain('sig=')
   await snap(mini, 'invite-share')
-  await page.callMethod('onCloseShare')
   await page.callMethod('onAction', { currentTarget: { dataset: { code: 'editInvite' } } })
   const edit = await waitPage(mini, 'packages/purchase/pages/invite-form/index')
   await waitData(edit, 'loaded', true)

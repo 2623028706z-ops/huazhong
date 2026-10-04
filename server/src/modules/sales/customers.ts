@@ -65,7 +65,7 @@ function customerLog(row: { id: number; name: string }, action: string) {
 
 function customerView(row: { name: string; enabled: boolean }): Record<string, string> {
   return {
-    [copy.field.name]: row.name,
+    [copy.field.objectName]: row.name,
     [copy.field.status]: row.enabled ? copy.statusValue.enabled : copy.statusValue.disabled,
   }
 }

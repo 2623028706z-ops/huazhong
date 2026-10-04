@@ -30,7 +30,7 @@ function materialView(row: {
   enabled: boolean
 }) {
   return {
-    [copy.field.name]: row.name,
+    [copy.field.objectName]: row.name,
     [copy.field.code]: row.code,
     [copy.field.category]: row.categoryName,
     [copy.field.unit]: row.unit,

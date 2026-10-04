@@ -345,7 +345,6 @@ export class SalesOrderWrites {
         originalQuantities
           ? lines.map((line) => ({ orderLineId: String(line.id), shippedQty: line.qty }))
           : input.lines,
-        input.shipNote,
       )
       for (const [lineId, shippedQty] of qtys) {
         await ctx.tx.update(orderLines).set({ shippedQty }).where(eq(orderLines.id, lineId))

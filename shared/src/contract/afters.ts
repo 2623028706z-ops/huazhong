@@ -208,7 +208,7 @@ export const closeAfter = {
   params: idParamsSchema,
   body: z.object({
     version: versionSchema,
-    reason: requiredTextSchema(copy.after.closeReasonRequired),
+    reason: z.string().trim().default(''),
   }),
   response: afterDetailSchema,
   errors: ['NOT_FOUND', 'STALE'],
@@ -236,7 +236,7 @@ export const storeAfterCreateSchema = z
           orderLineId: idSchema,
           qty: positiveIntSchema(copy.after.storeQtyInvalid),
           reason: reasonSchema,
-          description: requiredTextSchema(copy.after.descriptionRequired),
+          description: z.string().trim().default(''),
           imageFileIds: z
             .array(idSchema)
             .max(AFTER_IMAGE_MAX_COUNT, { error: copy.after.imagesTooMany(AFTER_IMAGE_MAX_COUNT) }),
@@ -246,8 +246,9 @@ export const storeAfterCreateSchema = z
   })
   .superRefine((value, ctx) => {
     checkAfterLines(value, ctx)
+    // 「数量不符」（少发、漏发）不用传图片，其余原因至少 1 张
     value.lines.forEach((line, index) => {
-      if (line.imageFileIds.length === 0)
+      if (line.reason !== 'qty_mismatch' && line.imageFileIds.length === 0)
         ctx.addIssue({
           code: 'custom',
           message: redesignCopy.afterImageRequired,

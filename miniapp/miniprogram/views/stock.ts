@@ -65,7 +65,8 @@ export function stockViewOf(doc: StockViewDoc, finance = false) {
       at: price.createdAt,
       reason: price.reason,
       changes: price.items.map(
-        (item) => `${item.name} ${formatMoney(item.fromCents)} → ${formatMoney(item.toCents)}`,
+        (item) =>
+          `${item.name} ${redesignCopy.price} ${formatMoney(item.fromCents)} → ${formatMoney(item.toCents)}`,
       ),
     })),
     images: 'images' in doc ? doc.images : [],

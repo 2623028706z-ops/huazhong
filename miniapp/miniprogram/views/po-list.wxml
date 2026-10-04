@@ -1,6 +1,4 @@
 <import src="list.wxml" />
-<import src="purchase.wxml" />
-<import src="detail.wxml" />
 <template name="po-list">
   <hz-navbar title="{{title}}" back />
   <view class="u-list">
@@ -9,13 +7,4 @@
     <template is="cards" data="{{rows,statusKind,done,allLoaded}}" />
   </view>
   <hz-action-bar wx:if="{{kind === 'purchase' && canCreate}}"><hz-button text="{{createText}}" bind:press="onCreate" /></hz-action-bar>
-  <hz-sheet show="{{sheet}}" title="{{title}}" bind:close="onCloseSheet">
-    <view class="u-sheet-form u-sheet-plain">
-      <hz-error wx:if="{{sheetError}}" message="{{sheetError}}" />
-      <hz-skeleton wx:elif="{{!view}}" type="detail" />
-      <template wx:else is="po-body" data="{{...view}}" />
-      <view wx:if="{{detailButtons.length}}" class="u-sheet-actions"><hz-button wx:for="{{detailButtons}}" wx:key="code" text="{{item.text}}" disabled="{{item.disabled}}" reason="{{item.reason}}" data-code="{{item.code}}" bind:press="onAction" /></view>
-    </view>
-  </hz-sheet>
-  <hz-reason-sheet show="{{cancelSheet}}" title="{{cancelTitle}}" required confirm="{{cancelConfirm}}" error="{{sheetError}}" loading="{{cancelBusy}}" bind:close="onCloseCancel" bind:submit="onCancel" />
 </template>

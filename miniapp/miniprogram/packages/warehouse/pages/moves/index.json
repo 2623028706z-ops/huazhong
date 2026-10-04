@@ -13,5 +13,6 @@
     "hz-records": "/components/hz-records/index",
     "hz-status": "/components/hz-status/index",
     "hz-action-bar": "/components/hz-action-bar/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

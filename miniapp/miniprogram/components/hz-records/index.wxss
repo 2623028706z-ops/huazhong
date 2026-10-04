@@ -30,3 +30,23 @@
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);
 }
+
+.hz-records__toggle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.hz-records__count {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+.hz-records__arrow {
+  margin-left: 2px;
+  transition: transform 0.2s;
+}
+
+.hz-records__arrow--open {
+  transform: rotate(90deg);
+}

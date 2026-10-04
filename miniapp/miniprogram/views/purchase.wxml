@@ -4,7 +4,7 @@
   <hz-progress steps="{{progress}}" />
   <template is="info" data="{{...info}}" />
   <view class="u-section">
-    <hz-line-item title="{{linesHeading}}" qty-label="{{qtyLabel}}" lines="{{lines}}" />
+    <hz-line-item material title="{{linesHeading}}" qty-label="{{qtyLabel}}" lines="{{lines}}" />
 
   </view>
   <hz-records wx:if="{{changes.length}}" type="poChange" items="{{changes}}" />
@@ -16,7 +16,7 @@
   <hz-progress steps="{{progress}}" />
   <template is="info" data="{{...info}}" />
   <view class="u-section">
-    <hz-line-item title="{{linesHeading}}" qty-label="{{qtyLabel}}" lines="{{lines}}" quantity-only="{{!submitted}}" />
+    <hz-line-item material title="{{linesHeading}}" qty-label="{{qtyLabel}}" lines="{{lines}}" quantity-only="{{!submitted}}" />
   </view>
   <template wx:if="{{reason.rows.length}}" is="info" data="{{...reason}}" />
 </template>

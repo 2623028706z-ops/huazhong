@@ -5,6 +5,7 @@ import {
   moduleKeys,
   receiptCreateSchema,
   paymentCreateSchema,
+  orderUpdateSchema,
   shippingCardSchema,
   shippingLineSchema,
   shippingDetailSchema,
@@ -20,12 +21,12 @@ describe('review rework contracts', () => {
     expect(contract.createInvite.errors).toContain('STALE')
     expect(contract.voidReceipt.errors).toContain('BUSINESS_RULE')
     expect(contract.requestOrderCancel.body.safeParse({ version: 1 }).success).toBe(true)
+    // 拒绝取消申请的原因选填
     const rejection = contract.rejectOrderCancel.body.safeParse({ version: 1, reason: ' ' })
-    expect(rejection.success).toBe(false)
-    if (!rejection.success)
-      expect(rejection.error.issues[0]?.message).toBe(copy.rework.rejectReasonRequired)
+    expect(rejection.success).toBe(true)
+    expect(contract.rejectOrderCancel.body.safeParse({ version: 1 }).success).toBe(true)
   })
-  it('requires an employee purchase change reason but permits a blank supplier reason', () => {
+  it('makes purchase change, reprice, close and reject reasons optional but keeps cancel reasons required', () => {
     const body = {
       supplierId: '1',
       note: '',
@@ -33,7 +34,24 @@ describe('review rework contracts', () => {
       reason: '   ',
       lines: [{ materialId: '1', qty: 1, priceCents: 100 }],
     }
-    expect(contract.updatePurchaseOrder.body.safeParse(body).success).toBe(false)
+    expect(contract.updatePurchaseOrder.body.safeParse(body).success).toBe(true)
+    const { reason: _none, ...bare } = body
+    expect(_none).toBe('   ')
+    expect(contract.updatePurchaseOrder.body.safeParse(bare).success).toBe(true)
+    expect(contract.closeAfter.body.safeParse({ version: 1 }).success).toBe(true)
+    expect(contract.voidAfter.body.safeParse({ version: 1, reason: ' ' }).success).toBe(false)
+    expect(
+      contract.repricePurchaseOrder.body.safeParse({
+        version: 1,
+        lines: [{ poLineId: '1', priceCents: 100 }],
+      }).success,
+    ).toBe(true)
+    expect(
+      contract.repriceWhDoc.body.safeParse({
+        version: 1,
+        lines: [{ lineId: '1', priceCents: 100 }],
+      }).success,
+    ).toBe(true)
     expect(
       contract.updatePurchaseOrder.body.safeParse({ ...body, reason: '数量调整' }).success,
     ).toBe(true)
@@ -89,7 +107,7 @@ describe('review rework contracts', () => {
     expect(contract.createPayment.path).toBe('/finance/payments')
     expect(contract.createRefund.path).toBe('/finance/refunds')
   })
-  it('settles whole statements without full-ledger credentials; requires a discount reason and unique IDs', () => {
+  it('settles whole statements without full-ledger credentials; discount reason is optional; unique IDs', () => {
     const input = {
       receiptDate: '2026-10-02',
       payDate: '2026-10-02',
@@ -106,16 +124,17 @@ describe('review rework contracts', () => {
       expect(schema.safeParse(input).success).toBe(true)
       expect(schema.safeParse({ ...input, discountCents: 1 }).success).toBe(false)
       expect(
-        schema.safeParse({ ...input, statements: [{ id: '1', version: 1 }], discountCents: 1 })
-          .success,
-      ).toBe(false)
-      expect(
         schema.safeParse({
           ...input,
           statements: [{ id: '1', version: 1 }],
           discountCents: 1,
           discountReason: '抹零',
         }).success,
+      ).toBe(true)
+      // 优惠原因选填：不填也能登记
+      expect(
+        schema.safeParse({ ...input, statements: [{ id: '1', version: 1 }], discountCents: 1 })
+          .success,
       ).toBe(true)
       expect(
         schema.safeParse({
@@ -142,14 +161,22 @@ describe('review rework contracts', () => {
     expect('afters' in shippingDetailSchema.shape).toBe(false)
     expect('allocations' in shippingDetailSchema.shape).toBe(false)
   })
-  it('A48: every store after reason requires a description and image', () => {
+  it('order edit reason is optional; cancel and void reasons stay required', () => {
+    const lines = [{ productId: '1', qty: 1, priceCents: 100 }]
+    const edit = { version: 1, shipDate: '2026-10-06', note: '', lines }
+    expect(orderUpdateSchema.safeParse(edit).success).toBe(true)
+    expect(orderUpdateSchema.safeParse({ ...edit, reason: ' ' }).success).toBe(true)
+    expect(contract.voidOrder.body.safeParse({ version: 1, reason: ' ' }).success).toBe(false)
+  })
+  it('A48: store after description is optional; image required except for qty_mismatch', () => {
     for (const reason of ['qty_mismatch', 'damaged', 'quality', 'other']) {
       const line = { orderLineId: '1', qty: 1, reason, description: '说明', imageFileIds: ['1'] }
       const parsed = (changes: object) =>
         storeAfterCreateSchema.safeParse({ orderId: '1', lines: [{ ...line, ...changes }] })
       expect(parsed({}).success).toBe(true)
-      expect(parsed({ description: ' ' }).success).toBe(false)
-      expect(parsed({ imageFileIds: [] }).success).toBe(false)
+      expect(parsed({ description: ' ' }).success).toBe(true)
+      expect(parsed({ description: undefined }).success).toBe(true)
+      expect(parsed({ imageFileIds: [] }).success).toBe(reason === 'qty_mismatch')
     }
   })
 })

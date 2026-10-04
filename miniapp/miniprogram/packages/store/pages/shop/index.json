@@ -14,7 +14,9 @@
     "hz-cover": "/components/hz-cover/index",
     "hz-brand": "/components/hz-brand/index",
     "hz-notice": "/components/hz-notice/index",
+    "hz-field": "/components/hz-field/index",
     "hz-tabbar": "/components/hz-tabbar/index",
     "hz-confirm": "/components/hz-confirm/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

@@ -2,7 +2,7 @@
 <template name="stock-body">
   <hz-notice wx:if="{{notice}}" text="{{notice}}" />
   <template is="info" data="{{...info}}" />
-  <view class="u-section"><hz-line-item title="{{linesHeading}}" qty-label="{{qtyLabel}}" lines="{{lines}}" quantity-only="{{quantityOnly}}" /></view>
+  <view class="u-section"><hz-line-item material title="{{linesHeading}}" qty-label="{{qtyLabel}}" lines="{{lines}}" quantity-only="{{quantityOnly}}" /></view>
   <hz-records wx:if="{{prices.length}}" type="priceChange" items="{{prices}}" />
   <view wx:if="{{images.length}}" class="u-section"><view class="u-thumbs"><image wx:for="{{images}}" wx:key="fileId" class="u-thumbs__item" src="{{item.thumbUrl}}" mode="aspectFill" data-url="{{item.url}}" data-urls="{{urls}}" bindtap="onPreview" /></view></view>
   <template wx:if="{{void.rows.length}}" is="info" data="{{...void}}" />

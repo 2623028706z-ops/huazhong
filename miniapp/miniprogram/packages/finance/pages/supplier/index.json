@@ -18,9 +18,11 @@
     "hz-picker": "/components/hz-picker/index",
     "hz-confirm": "/components/hz-confirm/index",
     "hz-statement": "/components/hz-statement/index",
+    "hz-party-summary": "/components/hz-party-summary/index",
     "hz-tabbar": "/components/hz-tabbar/index",
     "hz-brand": "/components/hz-brand/index",
     "hz-cover": "/components/hz-cover/index",
     "hz-progress": "/components/hz-progress/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }

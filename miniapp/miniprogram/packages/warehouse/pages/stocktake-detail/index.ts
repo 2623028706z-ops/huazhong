@@ -2,8 +2,10 @@ import { contract, copy, redesignCopy } from '@huazhong/shared'
 import type { FailureView } from '../../../../core/failure-view'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
+import { pullToRefresh } from '../../../../core/live'
 
 Page({
+  ...pullToRefresh,
   data: {
     title: copy.stock.screen.stocktakeDetail,
     loaded: false,

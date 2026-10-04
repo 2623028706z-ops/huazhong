@@ -138,10 +138,6 @@ export const receipts = pgTable(
       sql`${t.amountCents}>0 AND ${t.discountCents}>=0 AND ${t.creditCents}>=0 AND ${t.creditCents}<=${t.amountCents}`,
     ),
     check(
-      'receipts_discount_reason',
-      sql`${t.discountCents}=0 OR length(trim(${t.discountReason}))>0`,
-    ),
-    check(
       'receipts_void_reason',
       sql`${t.status}<>'voided' OR (${t.voidReason} IS NOT NULL AND length(trim(${t.voidReason}))>0 AND ${t.voidedBy} IS NOT NULL AND ${t.voidedAt} IS NOT NULL)`,
     ),
@@ -156,10 +152,6 @@ export const payments = pgTable(
     check(
       'payments_amount_positive',
       sql`${t.amountCents}>0 AND ${t.discountCents}>=0 AND ${t.creditCents}>=0 AND ${t.creditCents}<=${t.amountCents}`,
-    ),
-    check(
-      'payments_discount_reason',
-      sql`${t.discountCents}=0 OR length(trim(${t.discountReason}))>0`,
     ),
     check(
       'payments_void_reason',

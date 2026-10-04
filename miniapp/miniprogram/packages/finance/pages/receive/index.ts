@@ -35,13 +35,26 @@ function pickRowOf(card: StatementCard, selected: boolean) {
     due: formatMoney(card.dueCents),
   }
 }
-function blank(today: string): ReceiveForm {
+// 收付款方式默认上次用的：按账号记在这台手机上，没记过就不默认
+const METHOD_KEY = 'hz-fund-method:'
+function methodKeyOf(accountId: string, isPayment: boolean): string {
+  return `${METHOD_KEY}${accountId}:${isPayment ? 'payment' : 'receipt'}`
+}
+function storedMethodOf(accountId: string, isPayment: boolean, options: { id: string }[]) {
+  const stored: unknown = wx.getStorageSync(methodKeyOf(accountId, isPayment))
+  return typeof stored === 'string' && options.some((item) => item.id === stored) ? stored : ''
+}
+// 带对账单进来只勾那一张；从客户 / 供应商对账进来默认勾全部未结清，可取消
+function initialIdsOf(candidates: StatementCard[], preselected: string): string[] {
+  return preselected ? [preselected] : candidates.map((item) => item.id)
+}
+function blank(today: string, methodName = ''): ReceiveForm {
   return {
     receiptDate: today,
     amountText: '',
     discountText: '',
     discountReason: '',
-    methodName: '',
+    methodName,
     note: '',
     statements: [],
   }
@@ -62,6 +75,7 @@ Page({
     partyName: '',
     partyOptions: [] as { id: string; name: string }[],
     methodOptions: [] as { id: string; name: string }[],
+    discountOpen: false,
     form: blank(''),
     initial: blank(''),
     rows: [] as ReturnType<typeof pickRowOf>[],
@@ -76,6 +90,8 @@ Page({
   candidates: [] as StatementCard[],
   preselected: '',
   amountEdited: false,
+  accountId: '',
+  lastMethod: '',
   onLoad(query: Record<string, string | undefined>) {
     const isPayment = query.kind === 'payment',
       today = shanghaiDateOf(Date.now())
@@ -112,24 +128,39 @@ Page({
     )
   },
   async loadOptions() {
-    const [parties, methods] = await Promise.all([
+    const [parties, methods, me] = await Promise.all([
       this.data.isPayment ? loadSuppliers() : loadCustomers(),
       request(contract.listMethods),
+      request(contract.me),
     ])
     if (!parties.ok || !methods.ok) {
       const fail = firstFailure([parties, methods])
       if (fail) this.setData({ failure: failureOf(fail, 'load') })
       return
     }
+    const methodOptions = methods.data.items
+      .filter((item) => item.enabled)
+      .map((item) => ({ id: item.name, name: item.name }))
+    // 拿不到账号就不默认方式，和以前一样手选
+    if (me.ok) {
+      this.accountId = me.data.id
+      this.lastMethod = storedMethodOf(this.accountId, this.data.isPayment, methodOptions)
+    }
     this.setData({
       partyOptions: parties.data.map(({ id, name }) => ({ id, name })),
       partyName: parties.data.find((party) => party.id === this.data.partyId)?.name ?? '',
-      methodOptions: methods.data.items
-        .filter((item) => item.enabled)
-        .map((item) => ({ id: item.name, name: item.name })),
+      methodOptions,
       loaded: true,
+      ...this.methodDefaultPatch(),
     })
     if (this.data.partyId) await this.loadStatements(true)
+  },
+  methodDefaultPatch() {
+    if (!this.lastMethod || this.data.form.methodName) return {}
+    return {
+      form: { ...this.data.form, methodName: this.lastMethod },
+      initial: { ...this.data.initial, methodName: this.lastMethod },
+    }
   },
   async loadStatements(reset: boolean) {
     const seq = ++this.loadVersion
@@ -146,7 +177,9 @@ Page({
     }
     const previous = this.data.form.statements
     this.candidates = result.data.items
-    const ids = new Set(reset ? [this.preselected] : previous.map((item) => item.id))
+    const ids = new Set(
+      reset ? initialIdsOf(this.candidates, this.preselected) : previous.map((item) => item.id),
+    )
     const selected = this.candidates.filter((item) => ids.has(item.id))
     const changes = reset
       ? []
@@ -178,6 +211,9 @@ Page({
     this.setData({ formError: '', fields: {} })
     this.render({ ...this.data.form, [event.currentTarget.dataset.key]: event.detail })
   },
+  onAddDiscount() {
+    this.setData({ discountOpen: true })
+  },
   onStatement(event: KeyEvent) {
     const card = this.candidates.find((item) => item.id === event.currentTarget.dataset.key)
     if (!card) return
@@ -205,7 +241,7 @@ Page({
       partyId: event.detail,
       needsReview: false,
       changes: [],
-      form: blank(this.data.today),
+      form: blank(this.data.today, this.lastMethod),
       fields: {},
       formError: '',
     })
@@ -279,6 +315,11 @@ Page({
         )
     this.setData({ saving: false })
     if (result.ok) {
+      if (this.accountId)
+        wx.setStorageSync(
+          methodKeyOf(this.accountId, this.data.isPayment),
+          this.data.form.methodName,
+        )
       syncUnloadAlert(false)
       void wx.navigateBack()
       return

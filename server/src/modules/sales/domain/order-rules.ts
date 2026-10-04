@@ -47,11 +47,10 @@ interface ShipLine {
   qty: number
 }
 
-// 确认发货：明细必须正好是这张单的每一行；0 ≤ 实发 ≤ 订单数量；全 0 不能发；少发要写发货备注
+// 确认发货：明细必须正好是这张单的每一行；0 ≤ 实发 ≤ 订单数量；全 0 不能发；少发、多发的发货备注选填
 export function shippedQtysOf(
   lines: readonly ShipLine[],
   input: readonly { orderLineId: string; shippedQty: number }[],
-  shipNote: string,
 ): Map<number, number> {
   const qtys = new Map(input.map((item) => [Number(item.orderLineId), item.shippedQty]))
   const covered = qtys.size === input.length && lines.every((line) => qtys.has(line.id))
@@ -61,9 +60,6 @@ export function shippedQtysOf(
   if (lines.every((line) => qtys.get(line.id) === 0)) {
     throw appError.businessRule(copy.order.shipNothing)
   }
-  const short = lines.some((line) => (qtys.get(line.id) ?? 0) !== line.qty)
-  if (short && shipNote === '')
-    throw appError.validation({ shipNote: copy.rework.shipDifferenceNoteRequired })
   return qtys
 }
 

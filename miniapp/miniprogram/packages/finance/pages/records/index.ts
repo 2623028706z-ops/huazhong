@@ -13,11 +13,13 @@ import type { PagedList } from '../../../../core/list'
 import { request } from '../../../../core/request'
 import { listHandlers, listOf, listQueryOf, showList } from '../../../../views/list'
 import { recordRowOf } from '../../../../views/receipt-view'
+import { pullToRefresh } from '../../../../core/live'
 const DEFAULT_DATE_LABEL: string = f.receiptDate
 function fundKindOf(): 'receipt' | 'payment' {
   return 'receipt'
 }
 Page({
+  ...pullToRefresh,
   ...listHandlers,
   data: {
     title: copy.screen.title.records,

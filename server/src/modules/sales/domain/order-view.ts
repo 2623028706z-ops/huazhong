@@ -103,7 +103,7 @@ function cancelActions(row: OrderRow, roles: OrderRoles, owned: boolean): OrderC
   if (roles.sales && row.status === 'to_ship' && row.cancelRequested && owned)
     actions.push(
       { code: 'approveCancel', enabled: true, disabledReason: null, reasonRequired: false },
-      { code: 'rejectCancel', enabled: true, disabledReason: null, reasonRequired: true },
+      { code: 'rejectCancel', enabled: true, disabledReason: null, reasonRequired: false },
     )
   return actions
 }

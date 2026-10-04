@@ -7,12 +7,7 @@
     "hz-state": "/components/hz-state/index",
     "hz-error": "/components/hz-error/index",
     "hz-action-bar": "/components/hz-action-bar/index",
-    "hz-button": "/components/hz-button/index",
-    "hz-sheet": "/components/hz-sheet/index",
-    "hz-notice": "/components/hz-notice/index",
-    "hz-status": "/components/hz-status/index",
-    "hz-line-item": "/components/hz-line-item/index",
-    "hz-records": "/components/hz-records/index",
-    "hz-reason-sheet": "/components/hz-reason-sheet/index"
-  }
+    "hz-button": "/components/hz-button/index"
+  },
+  "enablePullDownRefresh": true
 }

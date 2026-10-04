@@ -1,5 +1,5 @@
 // GET /me：身份守卫、停用规则、各角色的落点和「我的」入口（05 章第 2 节；07 章 J07、J08、J15、J28）
-import { contract, type Me } from '@huazhong/shared'
+import { contract, type Me, type OutputOf } from '@huazhong/shared'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { accounts, customers, stores, suppliers } from '../db/schema/index.ts'
@@ -137,5 +137,35 @@ describe('当前账号', () => {
       landing: 'supplier_invites',
       menus: [],
     })
+  })
+})
+
+describe('首页模块待办角标', () => {
+  test('M3-B 只含有权限的模块，数字等于各模块待办 count，门店 403', async () => {
+    const counts = async (user: 'u1' | 'u3') => {
+      const res = await call(t, contract.moduleTodoCounts.method, contract.moduleTodoCounts.path, {
+        openid: await t.bind(user),
+      })
+      return (res.body.data as OutputOf<typeof contract.moduleTodoCounts>).counts
+    }
+    const admin = await counts('u1')
+    expect(admin.map((row) => row.key)).toEqual([
+      'sales',
+      'shipping',
+      'purchase',
+      'warehouse',
+      'finance',
+    ])
+    const openid = await t.bind('u1')
+    for (const row of admin) {
+      const one = await call(t, 'GET', `/modules/${row.key}/todos`, { openid })
+      expect(row.count).toBe((one.body.data as { count: number }).count)
+    }
+    expect(admin.find((row) => row.key === 'finance')?.count).toBe(1)
+    expect((await counts('u3')).map((row) => row.key)).toEqual(['sales', 'warehouse'])
+    const store = await call(t, 'GET', contract.moduleTodoCounts.path, {
+      openid: await t.bind('s1'),
+    })
+    expect(store.status).toBe(403)
   })
 })

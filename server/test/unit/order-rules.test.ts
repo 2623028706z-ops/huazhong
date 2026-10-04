@@ -1,5 +1,5 @@
 // 下单、发货、售后提交时的纯函数规则（03 章第 4、5 节）
-import { AppError, copy } from '@huazhong/shared'
+import { AppError } from '@huazhong/shared'
 import { describe, expect, test } from 'vitest'
 import {
   checkClaims,
@@ -71,7 +71,7 @@ describe('shippedQtysOf', () => {
   ]
 
   test('全发：返回每行实发', () => {
-    expect([...shippedQtysOf(lines, input(10, 5), '')]).toEqual([
+    expect([...shippedQtysOf(lines, input(10, 5))]).toEqual([
       [1, 10],
       [2, 5],
     ])
@@ -79,29 +79,24 @@ describe('shippedQtysOf', () => {
 
   test('少一行、多一行、重复一行都 422', () => {
     const missing = [{ orderLineId: '1', shippedQty: 10 }]
-    expect(errorOf(() => shippedQtysOf(lines, missing, '')).code).toBe('VALIDATION_FAILED')
+    expect(errorOf(() => shippedQtysOf(lines, missing)).code).toBe('VALIDATION_FAILED')
     const extra = [...input(10, 5), { orderLineId: '3', shippedQty: 1 }]
-    expect(errorOf(() => shippedQtysOf(lines, extra, '')).code).toBe('VALIDATION_FAILED')
+    expect(errorOf(() => shippedQtysOf(lines, extra)).code).toBe('VALIDATION_FAILED')
     const dup = [
       { orderLineId: '1', shippedQty: 1 },
       { orderLineId: '1', shippedQty: 1 },
     ]
-    expect(errorOf(() => shippedQtysOf(lines, dup, '')).code).toBe('VALIDATION_FAILED')
+    expect(errorOf(() => shippedQtysOf(lines, dup)).code).toBe('VALIDATION_FAILED')
   })
 
-  test('实发没有上限，多发也需要备注', () => {
-    expect(shippedQtysOf(lines, input(10, 5), '').get(2)).toBe(5)
-    expect(errorOf(() => shippedQtysOf(lines, input(10, 6), '')).fields).toEqual({
-      shipNote: copy.rework.shipDifferenceNoteRequired,
-    })
+  test('实发没有上限，多发不需要备注', () => {
+    expect(shippedQtysOf(lines, input(10, 5)).get(2)).toBe(5)
+    expect(shippedQtysOf(lines, input(10, 6)).get(2)).toBe(6)
   })
 
-  test('全 0 不能发；少发要写备注，写了按实发', () => {
-    expect(errorOf(() => shippedQtysOf(lines, input(0, 0), '备注')).code).toBe('BUSINESS_RULE')
-    expect(errorOf(() => shippedQtysOf(lines, input(10, 0), '')).fields).toEqual({
-      shipNote: copy.rework.shipDifferenceNoteRequired,
-    })
-    expect(shippedQtysOf(lines, input(10, 0), '缺货').get(2)).toBe(0)
+  test('全 0 不能发；少发不写备注也能发，按实发', () => {
+    expect(errorOf(() => shippedQtysOf(lines, input(0, 0))).code).toBe('BUSINESS_RULE')
+    expect(shippedQtysOf(lines, input(10, 0)).get(2)).toBe(0)
   })
 })
 
@@ -175,7 +170,7 @@ describe('checkProcess', () => {
       errorOf(() => {
         checkProcess(lines, zero)
       }).message,
-    ).toBe('数量都是 0，整张不处理请关闭售后并写原因')
+    ).toBe('数量都是 0，整张不处理请关闭售后')
     const some = [
       { id: 2, qty: 5, priceCents: 7800 },
       { id: 1, qty: 0, priceCents: 6800 },

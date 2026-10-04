@@ -12,7 +12,7 @@
       <block wx:if="{{!quantityOnly}}"><text>{{item.hideAmount ? '—' : format.formatMoney(item.priceCents)}}</text><text>{{item.hideAmount ? '—' : format.formatMoney(item.amountCents)}}</text></block>
     </view>
     <view wx:if="{{item.code || item.meta || item.tags.length}}" class="hz-line-item__sub">
-      <text wx:if="{{item.code}}"><text class="hz-line-item__code-label">{{texts.code}}</text>{{item.code}}</text><text wx:if="{{item.meta}}">{{item.meta}}</text>
+      <text wx:if="{{item.code}}"><text class="hz-line-item__code-label">{{material ? texts.materialCode : texts.customerCode}}</text>{{item.code}}</text><text wx:if="{{item.meta}}">{{item.meta}}</text>
       <hz-tag wx:for="{{item.tags}}" wx:for-item="tag" wx:key="text" text="{{tag.text}}" warn="{{tag.warn}}" />
     </view>
 <hz-button wx:if="{{mode==='view' && removable && item.removable}}" kind="text" text="{{texts.remove}}" data-index="{{index}}" catch:press="onRemoveRead" />
@@ -37,5 +37,5 @@
     <hz-field wx:if="{{mode === 'price' && !quantityOnly}}" label="{{texts.price}}" type="digit" value="{{draftPrice}}" suffix="{{texts.yuan}}" error="{{priceError}}" bind:change="onDraftPrice" />
     <view wx:if="{{!quantityOnly}}" class="u-sheet-row"><text>{{texts.subtotal}}</text><text class="u-serif-amount">{{draftAmount}}</text></view>
   </view>
-  <hz-button wx:if="{{removable}}" slot="footer" kind="secondary" text="{{texts.remove}}" bind:press="onRemove" /><hz-button slot="footer" text="{{texts.confirm}}" bind:press="onConfirm" />
+  <hz-button wx:if="{{removable}}" slot="footer" kind="secondary" text="{{texts.remove}}" bind:press="onRemove" /><hz-button wx:if="{{rejectText}}" slot="footer" kind="secondary" text="{{rejectText}}" bind:press="onRejectLine" /><hz-button slot="footer" text="{{texts.confirm}}" bind:press="onConfirm" />
 </hz-sheet>

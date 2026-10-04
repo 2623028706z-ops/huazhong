@@ -87,7 +87,7 @@
 
 .hz-line-item__sub {
   display: flex;
-  gap: 12px;
+  gap: 4px 14px;
   margin-top: 5px;
   color: var(--hz-muted);
   font-size: var(--hz-font-sm);
@@ -99,7 +99,8 @@
   grid-template-columns: 1fr 1fr;
   column-gap: 14px;
   align-items: baseline;
-  padding: 14px var(--hz-card-pad);
+  padding: var(--hz-card-pad-y) 0;
+  margin: 0 var(--hz-card-pad);
   border-top: 1px solid var(--hz-line);
   font-size: var(--hz-font-row);
 }
@@ -120,7 +121,9 @@
 }
 
 .hz-line-item__total-qty {
-  font-size: var(--hz-font-group);
+  font-family: var(--hz-serif);
+  font-size: var(--hz-font-total);
+  font-weight: 700;
   color: var(--hz-ink);
 }
 
@@ -139,6 +142,7 @@
 
 .hz-line-item__head {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
   gap: 10px;
@@ -171,7 +175,8 @@
 .hz-line-item__note {
   display: flex;
   gap: 12px;
-  padding: 10px var(--hz-card-pad);
+  padding: 10px 0;
+  margin: 0 var(--hz-card-pad);
   font-size: var(--hz-font-sm);
   border-top: 1px solid var(--hz-line);
 }
@@ -179,7 +184,7 @@
 .hz-line-item__qtys {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 10px;
+  gap: 4px 12px;
   justify-content: flex-end;
 }
 
@@ -189,13 +194,14 @@
   align-items: center;
   justify-content: center;
   height: var(--hz-tap);
+  margin: 0 var(--hz-card-pad);
   font-size: var(--hz-font);
   color: var(--hz-brand);
   border-top: 1px solid var(--hz-line);
 }
 
 .hz-line-item__code-label {
-  margin-right: 6px;
+  margin-right: var(--hz-line-gap);
 }
 
 /* 能点开改的明细（定稿表单里的表格）：右边留一个「›」 */
@@ -209,6 +215,8 @@
   position: absolute;
   top: 14px;
   right: -2px;
+  width: 16px;
+  text-align: center;
   font-size: var(--hz-icon-sm);
   color: var(--hz-muted);
 }

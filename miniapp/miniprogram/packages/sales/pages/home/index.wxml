@@ -1,1 +1,1 @@
-<hz-module-home module="sales" />
+<hz-module-home class="module-home" module="sales" />

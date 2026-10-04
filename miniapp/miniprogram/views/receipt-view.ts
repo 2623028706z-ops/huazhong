@@ -25,7 +25,7 @@ function fundRows(fund: Fund) {
       label: payment ? f.paymentDate : f.receiptDate,
       value: payment ? fund.payDate : fund.receiptDate,
     },
-    { label: f.method, value: fund.methodName },
+    { label: payment ? f.paymentMethod : f.receiptMethod, value: fund.methodName },
     { label: payment ? f.paymentAmount : f.receiptAmount, value: formatMoney(fund.amountCents) },
     { label: f.discount, value: formatMoney(fund.discountCents) },
     { label: payment ? f.supplierCredited : f.credited, value: formatMoney(fund.creditCents) },
@@ -83,7 +83,7 @@ export function recordRowOf(record: ReceiptDetail | PaymentDetail): FinanceRow {
         label: payment ? f.paymentDate : f.receiptDate,
         value: payment ? record.payDate : record.receiptDate,
       },
-      { label: f.method, value: record.methodName },
+      { label: payment ? f.paymentMethod : f.receiptMethod, value: record.methodName },
       {
         label: payment ? f.paymentAmount : f.receiptAmount,
         value: formatMoney(record.amountCents),

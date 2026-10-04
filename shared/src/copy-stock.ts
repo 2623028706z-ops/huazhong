@@ -7,7 +7,6 @@ export const stockCopy = {
   supplierDisabled: '这家供应商已停用，请重新选择',
   outCategoryRequired: '请选择出库分类',
   outCategoryDisabled: '这个出库分类已停用，请重新选择',
-  lossReasonRequired: '请填写报损原因',
   qtyInvalid: '数量须为大于 0 的整数',
   linesRequired: '请添加花材',
   priceRequired: '请填写单价，赠送的花材填 0',
@@ -26,7 +25,6 @@ export const stockCopy = {
   // 盘点
   categoriesRequired: '请选择分类',
   actualQtyInvalid: '实盘数须为不小于 0 的整数',
-  diffReasonRequired: '有差异时请填写差异原因',
   stocktakeStale: '库存已变化，已刷新账面数，请核对后再确认',
   stocktakeLinesChanged: '所选分类的花材有变化，已刷新，请核对后再确认',
   // 出库分类

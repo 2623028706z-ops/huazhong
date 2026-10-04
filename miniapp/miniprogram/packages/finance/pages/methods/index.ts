@@ -9,10 +9,12 @@ import { syncUnloadAlert } from '../../../../core/guard'
 import { newIdempotencyKey, request } from '../../../../core/request'
 import { failureOf, messageOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
+import { pullToRefresh } from '../../../../core/live'
 
 type IdEvent<T> = DetailEvent<T, { id: string }>
 
 Page({
+  ...pullToRefresh,
   // 一次打开弹层一个幂等键，网络失败后重试用同一个
   idempotencyKey: '',
   data: {

@@ -1,4 +1,4 @@
-import { copy, formatMoney, type PoDetail } from '@huazhong/shared'
+import { copy, formatMoney, redesignCopy, type PoDetail } from '@huazhong/shared'
 import { centsOfText, lineCents, textOfCents } from '../core/money'
 
 export interface ReceiveLine {
@@ -50,6 +50,7 @@ export function receiveViewsOf(
 }
 function receiveTagsOf(line: ReceiveLine) {
   const price = centsOfText(line.priceText)
+  if (line.qty === 0) return [{ text: redesignCopy.lineRejected, warn: true }]
   return [
     ...(line.qty < line.orderQty
       ? [{ text: copy.screen.shortReceived(line.orderQty - line.qty), warn: true }]

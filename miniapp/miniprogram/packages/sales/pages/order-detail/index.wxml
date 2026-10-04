@@ -13,6 +13,7 @@
   show="{{cancelSheet}}"
   title="{{texts.cancelTitle}}"
   required="{{cancelRequired}}"
+  optional="{{cancelOptional}}"
   subject="{{texts.cancelSubject}}"
   hint="{{texts.cancelBody}}"
   body="{{texts.cancelBody}}"
@@ -22,4 +23,5 @@
   bind:close="onCloseCancel"
   bind:submit="onCancel"
 />
+<hz-order-confirm show="{{confirmSheet}}" orders="{{confirmTargets}}" overdue="{{confirmOverdue}}" bind:close="onCloseConfirm" bind:done="onConfirmDone" />
 <hz-confirm id="hz-confirm" />

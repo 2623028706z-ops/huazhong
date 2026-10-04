@@ -5,9 +5,11 @@ import { confirmLeave, isChanged } from '../../../../core/guard'
 import { newIdempotencyKey, request } from '../../../../core/request'
 import { failureOf, messageOf } from '../../../../core/session'
 import { canDo } from '../../../../core/actions'
+import { pullToRefresh } from '../../../../core/live'
 
 const blank = { name: '', enabled: true }
 Page({
+  ...pullToRefresh,
   data: {
     title: copy.stock.screen.titles.categories,
     loaded: false,

@@ -72,8 +72,11 @@ export class MaterialCategories {
           )
           await ctx.log({
             ...categoryLog(saved, copy.log.action.updateCategory),
-            before: { [copy.field.name]: before.name, [copy.field.sort]: String(before.sort) },
-            after: { [copy.field.name]: saved.name, [copy.field.sort]: String(saved.sort) },
+            before: {
+              [copy.field.objectName]: before.name,
+              [copy.field.sort]: String(before.sort),
+            },
+            after: { [copy.field.objectName]: saved.name, [copy.field.sort]: String(saved.sort) },
           })
           ctx.notify([{ topic: 'stock', version: null }])
           return categoryView(saved)

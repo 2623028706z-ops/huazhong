@@ -4,9 +4,10 @@ import type { FailureView } from '../../../../core/failure-view'
 import { canDo } from '../../../../core/actions'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
-import { watch, unwatchOnLeave } from '../../../../core/live'
+import { watch, unwatchOnLeave, pullToRefresh } from '../../../../core/live'
 import { poViewOf } from '../../../../views/purchase'
 Page({
+  ...pullToRefresh,
   ...unwatchOnLeave,
   data: {
     title: copy.screen.title.purchaseOrder,

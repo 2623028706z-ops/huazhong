@@ -7,6 +7,7 @@ import type {
   ReceiptDetail,
   PaymentDetail,
 } from '@huazhong/shared'
+import { addDays } from '@huazhong/shared'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, expect, test } from 'vitest'
 import {
@@ -240,4 +241,29 @@ test('D26 同来源并发开DZ只生成一次，credit快照变化拒绝过期�
   )
   await register('payment')
   expect((await finance.post('/finance/statements', body)).body.error?.code).toBe('STALE')
+})
+
+test('D37 对账期间默认起点：第一次从最早一笔未对账单据，之后从上一张截止日次日', async () => {
+  const finance = await s.as('u6'),
+    partyId = found((await subject('payment')).supplierId)
+  const read = async (to = '') =>
+    dataOf<StatementDraft>(
+      await finance.get(`/finance/statements/draft?kind=supplier&partyId=${partyId}${to}`),
+    )
+  const first = await read()
+  expect(first.periodFrom).toBe(first.sources.map((x) => x.sourceDate).sort()[0])
+  const created = dataOf<StatementDetail>(
+    await finance.post('/finance/statements', {
+      kind: 'supplier',
+      partyId,
+      partyVersion: first.partyVersion,
+      periodFrom: first.periodFrom,
+      periodTo: first.periodTo,
+      creditCents: first.creditCents,
+      note: '',
+      sources: first.sources,
+    }),
+  )
+  const next = await read(`&to=${addDays(created.periodTo, 5)}`)
+  expect(next.periodFrom).toBe(addDays(created.periodTo, 1))
 })

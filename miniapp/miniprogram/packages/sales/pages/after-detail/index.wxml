@@ -14,6 +14,7 @@
   show="{{sheetCode !== ''}}"
   title="{{sheetTitle}}"
   required="{{sheetRequired}}"
+  optional="{{sheetCode === 'closeAfter'}}"
   confirm="{{sheetConfirm}}"
   error="{{sheetError}}"
   loading="{{busy !== ''}}"

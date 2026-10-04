@@ -36,7 +36,6 @@ export async function applyPoPrices(
       : []
   })
   if (changes.length === 0) return []
-  if (input.reason === '') throw appError.validation({ reason: copy.finance.receiveReason })
   for (const line of input.lines) {
     await ctx.tx
       .update(purchaseOrderLines)

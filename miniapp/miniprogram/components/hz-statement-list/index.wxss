@@ -75,7 +75,7 @@
 .hz-statement-list__amount {
   display: flex;
   flex: none;
-  gap: 2px;
+  gap: var(--hz-line-gap);
   align-items: baseline;
 }
 
@@ -86,6 +86,7 @@
 
 .hz-statement-list__money {
   font-size: var(--hz-font-md);
+  font-weight: 600;
 }
 
 .hz-statement-list__notes {

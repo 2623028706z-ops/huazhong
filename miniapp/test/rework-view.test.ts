@@ -205,7 +205,7 @@ describe('按完整对账单结清', () => {
     expect(short).toMatchObject({ ok: false, fields: { amountCents: f.insufficient('¥5.00') } })
     expect(
       checkReceipt({ ...receipt, amountText: '20', discountText: '5' }, '1', '2026-10-02').ok,
-    ).toBe(false)
+    ).toBe(true)
     expect(
       checkReceipt(
         { ...receipt, amountText: '20', discountText: '5', discountReason: '抹零' },
@@ -304,11 +304,13 @@ describe('对账单金额和受限视图', () => {
       creditGeneratedCents: 200,
     })
   })
-  it('门店卡片只取storeAmountCents，供应商金额叫应收，保留全日期与截止', () => {
+  it('对账单卡片只留对账期间、金额、截止三项；门店只取storeAmountCents，供应商金额叫应收', () => {
     const card = { ...statement('1', 9999), storeAmountCents: 1234 }
     const row = statementRowOf(card, 'store')
     expect(row.fields).toContainEqual({ label: f.storeAmount, value: '¥12.34', amount: true })
     expect(JSON.stringify(row)).not.toContain('¥99.99')
+    expect(row.fields.map((x) => x.label)).toEqual([f.period, f.storeAmount, f.dueDate])
+    expect(row.fields).toHaveLength(3)
     expect(statementRowOf(card, 'supplier').fields).toContainEqual({
       label: f.receivable,
       value: '¥99.99',

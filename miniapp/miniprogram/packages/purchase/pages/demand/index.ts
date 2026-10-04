@@ -14,11 +14,10 @@ import { canDo } from '../../../../core/actions'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { checkedOf } from '../../../../core/form'
-import { unwatchOnLeave, watch } from '../../../../core/live'
+import { unwatchOnLeave, watch, pullToRefresh } from '../../../../core/live'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
 import { purchaseLineOf, type PurchaseDraft } from '../../../../views/purchase-form-data'
-import { loadSuppliers } from '../../../../views/purchase-load'
 import {
   sourceSectionsOf,
   sourceTopOf,
@@ -59,6 +58,7 @@ function defaultFilter(): FilterValue {
   return { ...emptyFilter, date: 'next7Days' }
 }
 Page({
+  ...pullToRefresh,
   ...unwatchOnLeave,
   data: {
     title: copy.screen.title.demand,
@@ -88,19 +88,15 @@ Page({
     sourceName: '',
     sourceTop: [] as SourceField[],
     sourceSections: [] as SourceSection[],
-    supplierSheet: false,
-    suppliers: [] as { id: string; name: string }[],
-    supplierId: '',
     inviteSupplierId: '',
+    allSelected: false,
+    selectAllText: redesignCopy.allSelected,
     texts: {
       shipDate: redesignCopy.shipDate,
       search: copy.screen.demandSearch,
       invite: copy.screen.action.inviteSupplier,
       create: copy.screen.action.createPo,
-      supplier: copy.screen.label.supplier,
-      next: copy.screen.action.next,
       source: copy.screen.label.origin,
-      noSuppliers: copy.screen.noInviteSupplier,
     },
   },
   demand: null as Demand | null,
@@ -152,11 +148,13 @@ Page({
       demand.mats.some((m) => m.materialId === id && m.enabled),
     )
     const mats = this.visibleMats()
+    const pickable = mats.filter((m) => m.enabled)
     const shortage = demand.mats.filter((m) => m.leftQty < 0).length
     const orders = copy.screen.orderCount(demand.orderCount)
     const keyword = this.data.dateFilter.keyword.trim()
     this.setData({
       selected,
+      allSelected: pickable.length > 0 && pickable.every((m) => selected.includes(m.materialId)),
       rows: rowsOf(mats, selected),
       count:
         this.data.section === 'shortage' && demand.orderCount
@@ -245,6 +243,19 @@ Page({
     this.setData({ selected })
     this.render()
   },
+  // 全选 / 取消全选：当前列出的、没停用的花材
+  onSelectAll() {
+    const pickable = this.visibleMats()
+      .filter((m) => m.enabled)
+      .map((m) => m.materialId)
+    const all = pickable.length > 0 && pickable.every((id) => this.data.selected.includes(id))
+    this.setData({
+      selected: all
+        ? this.data.selected.filter((id) => !pickable.includes(id))
+        : [...new Set([...this.data.selected, ...pickable])],
+    })
+    this.render()
+  },
   onSource(event: KeyEvent) {
     return this.openSource(event.currentTarget.dataset.key)
   },
@@ -278,7 +289,7 @@ Page({
   draft(): PurchaseDraft {
     const mats = this.demand?.mats.filter((m) => this.data.selected.includes(m.materialId)) ?? []
     return {
-      supplierId: this.data.supplierId,
+      supplierId: '',
       demandContext: {
         from: this.data.from,
         to: this.data.to,
@@ -312,29 +323,14 @@ Page({
         },
       },
     })
-    this.setData({ supplierSheet: false, selected: [] })
+    this.setData({ selected: [] })
     this.render()
   },
   onCreate() {
     this.enter(false)
   },
-  async onInvite() {
-    this.setData({ supplierSheet: true, supplierId: '', error: '' })
-    const result = await loadSuppliers({ enabled: 'true', hasAccount: 'true' })
-    if (result.ok) this.setData({ suppliers: result.data.map((s) => ({ id: s.id, name: s.name })) })
-    else this.setData({ error: failureOf(result.failure, 'refresh')?.message ?? '' })
-  },
-  onSupplier(event: DetailEvent<string>) {
-    this.setData({ supplierId: event.detail, error: '' })
-  },
-  onCloseSupplier() {
-    this.setData({ supplierSheet: false })
-  },
-  onNext() {
-    if (!this.data.supplierId) {
-      this.setData({ error: copy.screen.pickSupplier })
-      return
-    }
+  // 供应商直接在 C7 里选，这里不再先选一次
+  onInvite() {
     this.enter(true)
   },
   onFailureAction() {

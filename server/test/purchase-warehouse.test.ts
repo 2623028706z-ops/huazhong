@@ -62,9 +62,6 @@ test('C01 C02 C19 退货库存限制、净实收限制、流水和改价原因',
     .from(stockBatches)
     .where(eq(stockBatches.id, moves[0]?.batchId ?? 0))
   expect(batch[0]).toMatchObject({ sourceType: 'po', sourceId: Number(po.id), leftQty: 76 })
-  expect(
-    (await wh.post(`/purchase-orders/${po.id}/reprice`, price(returned, 750))).body.error?.fields,
-  ).toEqual({ reason: '请填写改价原因' })
   const repriced = dataOf<PoDetail>(
     await wh.post(`/purchase-orders/${po.id}/reprice`, price(returned, 750, '供应商让价')),
   )
@@ -72,6 +69,11 @@ test('C01 C02 C19 退货库存限制、净实收限制、流水和改价原因',
     amountCents: 82500,
     priceChanges: [{ reason: '供应商让价', items: [{ fromCents: 800, toCents: 750 }] }],
   })
+  // 改价原因选填：不填也能改
+  const again = dataOf<PoDetail>(
+    await wh.post(`/purchase-orders/${po.id}/reprice`, price(repriced, 700)),
+  )
+  expect(again.priceChanges.map((change) => change.reason)).toContain('')
 })
 test('B08 C04 有效DZ锁定采购来源；付款与作废付款都不解锁，先作废DZ才可退货改价', async () => {
   const finance = await s.as('u6'),
