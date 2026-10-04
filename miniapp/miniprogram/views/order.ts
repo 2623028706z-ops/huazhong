@@ -287,7 +287,8 @@ export function shippingInfoOf(order: ShippingDetail) {
       [redesignCopy.no, order.no],
       [copy.field.shipDate, shipDateText(order.shipDate)],
       [redesignCopy.shipper, order.shippedBy],
-      [redesignCopy.shippedAt, order.shippedAt ? formatTime(order.shippedAt) : null],
+      // 带时分的值太长，放第二列会把整列撑宽、挤掉左列单号，单占一行
+      [redesignCopy.shippedAt, order.shippedAt ? formatTime(order.shippedAt) : null, { wide: true }],
       [
         redesignCopy.contact,
         [order.contactName, order.contactPhone].filter(Boolean).join(' ') || redesignCopy.notFilled,
@@ -312,7 +313,8 @@ function orderInfoOf(order: OrderDetail, forStore: boolean, finance: boolean) {
       [copy.screen.label.orderDate, order.orderDate],
       [copy.field.shipDate, shipDateText(order.shipDate)],
       [redesignCopy.shipper, forStore ? null : order.shippedBy],
-      [redesignCopy.shippedAt, order.shippedAt ? formatTime(order.shippedAt) : null],
+      // 带时分的值太长，放第二列会把整列撑宽、挤掉左列单号，单占一行
+      [redesignCopy.shippedAt, order.shippedAt ? formatTime(order.shippedAt) : null, { wide: true }],
       [
         redesignCopy.statement,
         order.status === 'shipped' ? statementText(order.statement) : null,

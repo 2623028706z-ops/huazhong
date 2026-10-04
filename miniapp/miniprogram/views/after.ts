@@ -32,7 +32,7 @@ export function afterRowOf(after: AfterCard, forStore: boolean) {
       { label: redesignCopy.originalOrder, value: after.orderNo },
       {
         label: redesignCopy.afterAmount,
-        value: after.amountCents === null ? redesignCopy.pending : formatMoney(after.amountCents),
+        value: after.amountCents === null ? copy.screen.noAmount : formatMoney(after.amountCents),
         amount: after.amountCents !== null,
       },
     ],
@@ -73,7 +73,7 @@ export function afterInfoOf(after: AfterDetail, forStore = false) {
   const wide = { wide: true }
   const amount: [string, string, { wide: boolean }] = [
     copy.screen.label.afterAmount,
-    after.amountCents === null ? redesignCopy.pending : formatMoney(after.amountCents),
+    after.amountCents === null ? copy.screen.noAmount : formatMoney(after.amountCents),
     wide,
   ]
   const order: [string, string, { url: string; wide: boolean }] = [

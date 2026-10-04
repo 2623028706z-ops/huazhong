@@ -93,10 +93,7 @@
   color: var(--hz-green);
 }
 
-.hz-card__field--minor {
-  font-size: var(--hz-font-sm);
-}
-
 .hz-card__field--minor .hz-card__value {
+  font-size: var(--hz-font-sm);
   color: var(--hz-muted);
 }

@@ -114,3 +114,16 @@
 .hz-stock-batch__qty {
   font-size: var(--hz-font-md);
 }
+
+/* 出入库记录的时间、单号、经办人：一项不拆开，放不下整项换到下一行 */
+.hz-stock-row__subs {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 0 12px;
+  min-width: 0;
+}
+
+.hz-stock-row__sub {
+  white-space: nowrap;
+}

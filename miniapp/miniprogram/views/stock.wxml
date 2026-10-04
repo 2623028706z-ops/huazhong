@@ -14,7 +14,7 @@
       <view class="hz-stock-row__name"><text class="u-rows__title">{{name}}</text><text wx:if="{{typeText}}" class="hz-stock-row__type">{{typeText}}</text></view>
       <view class="hz-stock-row__qty"><text class="hz-stock-row__unit">{{label}}</text><text class="u-serif-amount hz-stock-row__num {{tone}}">{{qty}}</text><text class="hz-stock-row__unit">{{unit}}</text></view>
     </view>
-    <view class="u-rows__foot"><text>{{sub}}</text><hz-tag wx:if="{{disabled}}" text="{{disabledText}}" /><text wx:if="{{age}}" class="hz-stock-row__age {{aged ? 'u-aged' : ''}}">{{age}}</text></view>
+    <view class="u-rows__foot"><text wx:if="{{sub}}">{{sub}}</text><view wx:if="{{subs}}" class="hz-stock-row__subs"><text wx:for="{{subs}}" wx:key="*this" class="hz-stock-row__sub">{{item}}</text></view><hz-tag wx:if="{{disabled}}" text="{{disabledText}}" /><text wx:if="{{age}}" class="hz-stock-row__age {{aged ? 'u-aged' : ''}}">{{age}}</text></view>
   </view>
 </template>
 <!-- 分组：放久了 · 先用 / 其他，一组一张卡 -->

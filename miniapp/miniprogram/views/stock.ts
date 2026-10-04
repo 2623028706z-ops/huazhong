@@ -95,11 +95,13 @@ export function moveRowOf(move: StockMove, options: { withName: boolean; date: b
     qty: `${move.qty > 0 ? '+' : ''}${move.qty}`,
     unit: move.unit,
     tone: move.qty > 0 ? 'hz-stock-row__num--in' : 'hz-stock-row__num--out',
-    sub: [
+    sub: '',
+    // 一项一段、整段换行，免得「经办人 陈青」从名字中间断开
+    subs: [
       `${copy.screen.timeLabel} ${time}`,
       `${redesignCopy.no} ${move.docNo}`,
       `${copy.screen.handler} ${move.actorName}`,
-    ].join(copy.separator),
+    ],
     age: '',
     aged: false,
     disabled: false,

@@ -88,7 +88,8 @@ export function storeRowsOf(customer: CustomerItem | undefined, isAdmin = false)
   return (customer?.stores ?? []).map((store) => ({
     id: store.id,
     fields: [
-      { label: copy.field.contact, value: store.contact },
+      // 右侧栏窄，两列放不下，联系人也单占一行
+      { label: copy.field.contact, value: store.contact, wide: true },
       { label: copy.screen.label.contactPhone, value: shown(store.phone), wide: true },
     ],
     title: store.name,

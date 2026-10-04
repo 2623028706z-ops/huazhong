@@ -39,12 +39,10 @@
   overflow-wrap: anywhere;
 }
 
-/* 次要字段（单号、日期、经办人、来源、编码、备注，02 章第 6 节）：小一号、次要色 */
-.hz-info-rows__minor {
-  font-size: var(--hz-font-sm);
-}
-
+/* 次要字段（单号、日期、经办人、来源、编码、备注，02 章第 6 节）：值小一号、次要色；
+   字段名不缩小，否则 4 字宽跟着变窄，值和上下行对不齐 */
 .hz-info-rows__minor .hz-info-rows__value,
 .hz-info-rows__minor .u-sheet-row__value {
+  font-size: var(--hz-font-sm);
   color: var(--hz-muted);
 }
