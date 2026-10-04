@@ -15,7 +15,12 @@ import { newIdempotencyKey, request, type Failure } from '../core/request'
 import { failureOf, messageOf } from '../core/session'
 import { showSuccess } from '../core/toast'
 import { materialPickOf, type poViewOf } from './purchase'
-import { reviewDraft, purchaseReviewData, purchaseReviewMethods } from './purchase-review'
+import {
+  reviewDraft,
+  purchaseReviewData,
+  purchaseReviewMethods,
+  purchaseReviewTexts,
+} from './purchase-review'
 import { submitPurchase } from './purchase-submit'
 import { purchaseFormDetails } from './purchase-form-detail'
 import type { Checked } from '../core/form'
@@ -79,10 +84,7 @@ const data = {
     noPick: copy.state.empty(copy.screen.empty.addableMaterials),
     note: copy.field.note,
     supplierPlaceholder: copy.screen.supplierPlaceholder,
-    reviewTitle: copy.rework.reviewBeforeSubmit,
-    continueSubmit: copy.rework.continueSubmit,
-    backToReview: copy.rework.backToReview,
-    allowOverGap: copy.rework.allowOverGap,
+    ...purchaseReviewTexts,
     inviteTitle: copy.screen.title.invite,
     reasonOptional: copy.placeholder.optional,
   },
@@ -186,7 +188,7 @@ const methods = {
     if (this.data.mode === 'supply' || this.data.supplierEditing)
       return this.loadExternalMaterials()
     if (!(await this.loadInternalChoices())) return false
-    if (this.data.mode === 'po' && !this.id && !(await this.loadInviteWarnings())) return false
+    if (!this.id && !(await this.loadInviteWarnings())) return false
     return this.data.mode !== 'invite' || (await this.loadStock())
   },
   async loadInternalChoices(this: Host) {

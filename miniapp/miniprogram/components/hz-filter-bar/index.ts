@@ -35,6 +35,11 @@ Component({
       value: ['all', 'today', 'last7Days', 'thisMonth', 'custom'] as string[],
     },
     dateLabel: { type: String, value: '' },
+    // 页面默认的日期条件；和它一样时不算「改过」（不变红、不出胶囊）
+    defaultDate: { type: String, value: 'all' },
+    // 页面自己的分段（不是状态），和状态标签同一行，例如采购需求「全部 / 缺货 / 待填报」
+    sections: { type: Array, value: [] as { key: string; text: string; count?: number }[] },
+    section: { type: String, value: '' },
     dimensions: { type: Array, value: [] as FilterDimension[] },
     value: { type: Object, value: emptyFilter },
   },
@@ -73,7 +78,7 @@ Component({
         ),
       })
     },
-    'value, dimensions, dateLabel'() {
+    'value, dimensions, dateLabel, defaultDate'() {
       this.refresh()
     },
   },
@@ -87,7 +92,7 @@ Component({
     endedStatus() {
       return (
         !this.data.endedTabs &&
-        statusOf(this.data.statusKind, this.data.value.status)?.tone === 'ended'
+        statusOf(this.data.statusKind, this.current().status)?.tone === 'ended'
       )
     },
     allDimensions(): FilterDimension[] {
@@ -108,18 +113,24 @@ Component({
         },
       }
     },
+    base(): DatePreset {
+      return this.data.defaultDate as DatePreset
+    },
     current(): FilterValue {
-      return this.data.value
+      // 页面数据还没准备好时会传进 null，当作没筛
+      const value: unknown = this.data.value
+      return typeof value === 'object' && value !== null ? (value as FilterValue) : emptyFilter
     },
     refresh() {
       const value = this.current()
       const dimensions = this.allDimensions()
       const { today, show, active } = this.data
+      const dateChanged = value.date !== this.base()
       this.setData({
-        chips: chipsOf(this.filterValue(), dimensions, today),
-        dot: value.date !== 'all' || Object.values(value.picks).some(Boolean) || this.endedStatus(),
+        chips: chipsOf(this.filterValue(), dimensions, today, this.base()),
+        dot: dateChanged || Object.values(value.picks).some(Boolean) || this.endedStatus(),
         filterCount:
-          Number(value.date !== 'all') +
+          Number(dateChanged) +
           Object.values(value.picks).filter(Boolean).length +
           Number(this.endedStatus()),
         hasFilter: Boolean(this.data.dateLabel) || dimensions.length > 0,
@@ -132,6 +143,9 @@ Component({
     },
     emit(value: FilterValue) {
       this.triggerEvent('change', value)
+    },
+    onSection(event: KeyEvent) {
+      this.triggerEvent('section', event.currentTarget.dataset.key)
     },
     onTab(event: IndexEvent) {
       const tab = this.data.tabs[event.currentTarget.dataset.index]
@@ -214,12 +228,12 @@ Component({
       this.emit(
         event.currentTarget.dataset.key === '__status'
           ? { ...this.current(), status: '' }
-          : removeChip(this.current(), event.currentTarget.dataset.key),
+          : removeChip(this.current(), event.currentTarget.dataset.key, this.base()),
       )
     },
     onClear() {
       this.emit({
-        ...clearConditions(this.current()),
+        ...clearConditions(this.current(), this.base()),
         status: this.endedStatus() ? '' : this.current().status,
       })
     },

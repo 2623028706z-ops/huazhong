@@ -9,7 +9,7 @@ import { unwatchOnLeave, watchNewer } from '../../../../core/live'
 import { request } from '../../../../core/request'
 import { failureOf, messageOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
-import { afterProgress } from '../../../../views/progress'
+import { afterStaffProgress } from '../../../../views/progress'
 import { afterInfoOf, afterLinesOf, afterReasonsOf } from '../../../../views/after'
 
 type SheetCode = 'closeAfter' | 'voidAfter'
@@ -37,15 +37,16 @@ const NO_SHEET = '' as SheetCode | ''
 
 function viewOf(after: AfterDetail) {
   return {
-    progress: afterProgress(after),
+    progress: afterStaffProgress(after),
     info: {
       title: copy.org.store(after.customerName, after.storeName),
       statusKind: 'afterStatus',
       status: after.status,
       rows: afterInfoOf(after),
+      cols: true,
     },
     linesHeading: copy.screen.section.afterLines,
-    lines: afterLinesOf(after),
+    lines: afterLinesOf(after, true),
     reason: afterReasonsOf(after),
     notice: after.notice ?? after.lockedReason ?? '',
   }

@@ -1,7 +1,13 @@
-// X9 产品管理（06 章 X9）：按分类列产品（图、名、单位、配方花材数；停用的标「已停用」）。
+// X9 产品管理（06 章 X9）：按分类列产品（名、单位、配方花材数；停用的标「已停用」）。
 // 底栏「管理分类」（manageCategories，次）、「新建产品」（create）。分类是产品内部分类（单品、花束…），
 // 门店订货页的分类在订货目录里管（2026-10-03 确认）。管理分类弹层见 hz-category-sheet
-import { contract, copy, type ProductCategory, type ProductItem } from '@huazhong/shared'
+import {
+  contract,
+  copy,
+  redesignCopy,
+  type ProductCategory,
+  type ProductItem,
+} from '@huazhong/shared'
 import { hasAction } from '../../../../core/actions'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
@@ -21,8 +27,10 @@ function groupsOf(categories: readonly ProductCategory[], products: readonly Pro
         .map((product) => ({
           id: product.id,
           name: product.name,
-          meta: [product.unit, copy.screen.bomCount(product.bom.length)].join(copy.separator),
-          imageUrl: product.imageUrl ?? '',
+          meta: [
+            `${redesignCopy.unit} ${product.unit}`,
+            copy.screen.bomCount(product.bom.length),
+          ].join(copy.separator),
           disabled: !product.enabled,
         })),
     }))

@@ -31,10 +31,18 @@
   <template is="pick-sheet" data="{{show:pickSheet,title:texts.pickTitle,picks,empty:texts.noPick}}" />
   <hz-sheet id="purchase-review" show="{{reviewSheet}}" title="{{texts.reviewTitle}}" footer bind:close="onReviewCancel">
     <view class="u-sheet-form u-sheet-plain">
-      <hz-notice wx:for="{{reviewWarnings}}" wx:key="index" text="{{item}}" />
-      <hz-notice text="{{texts.allowOverGap}}" />
-      <view wx:for="{{reviewDemand}}" wx:key="name" class="u-info__line"><text>{{item.name}}{{texts.separator}}{{item.left}}</text><text class="u-info__meta">{{item.summary}}</text></view>
-      <hz-button wx:for="{{reviewInvites}}" wx:key="inviteId" kind="text" text="{{texts.no + ' ' + item.no + texts.separator + texts.supplier + ' ' + item.supplierName}}" data-key="{{item.inviteId}}" bind:press="onReviewInvite" />
+      <block wx:if="{{reviewInvites.length}}">
+        <text class="u-section__title">{{texts.invitedPending}}</text>
+        <view wx:for="{{reviewInvites}}" wx:key="inviteId" class="u-rows__item" data-key="{{item.inviteId}}" bindtap="onReviewInvite">
+          <view class="u-rows__head"><text class="u-rows__title">{{item.supplierName}}</text><text class="hz-icon hz-icon--chevron-right u-info__meta"></text></view>
+          <view class="u-rows__foot"><text>{{texts.inviteNo}} {{item.no}}</text><text>{{texts.materialLabel}} {{item.material}}</text><text>{{texts.needLabel}} {{item.need}}</text></view>
+        </view>
+      </block>
+      <text class="u-section__title">{{texts.currentGap}}</text>
+      <view wx:for="{{reviewDemand}}" wx:key="id" class="u-rows__item">
+        <view class="u-rows__head"><text class="u-rows__title">{{item.name}}</text><hz-tag text="{{item.gap}}" danger="{{item.short}}" /></view>
+        <view class="u-rows__foot"><text>{{texts.needLabel}} {{item.need}}</text><text>{{texts.inStockLabel}} {{item.stock}}</text><text>{{texts.inTransitLabel}} {{item.transit}}</text></view>
+      </view>
     </view>
     <hz-button slot="footer" kind="secondary" text="{{texts.backToReview}}" bind:press="onReviewCancel" /><hz-button slot="footer" id="review-continue" text="{{texts.continueSubmit}}" bind:press="onReviewConfirm" />
   </hz-sheet>

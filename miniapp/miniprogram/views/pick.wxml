@@ -5,9 +5,13 @@
   <hz-sheet show="{{show}}" title="{{title}}" bind:close="onClosePick">
     <view wx:if="{{error}}" class="u-sheet-section"><hz-error message="{{error}}" /></view>
     <view wx:elif="{{picks.length === 0}}" class="u-sheet-section">{{empty}}</view>
-    <view wx:for="{{picks}}" wx:key="id" class="u-pick-row" data-key="{{item.id}}" bindtap="onPick">
-      <text>{{item.name}}</text>
-      <text class="u-pick-row__sub">{{item.sub}}</text>
+    <view class="u-sheet-section">
+      <view wx:for="{{picks}}" wx:key="id" class="u-choice" data-key="{{item.id}}" bindtap="onPick">
+        <view class="u-choice__main">
+          <text>{{item.name}}</text>
+          <text wx:if="{{item.sub}}" class="u-choice__sub">{{item.sub}}</text>
+        </view>
+      </view>
     </view>
   </hz-sheet>
 </template>

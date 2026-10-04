@@ -3,8 +3,10 @@ Component({
   properties: {
     rows: {
       type: Array,
-      value: [] as { label: string; value: string; url?: string; phone?: string }[],
+      value: [] as { label: string; value: string; url?: string; phone?: string; wide?: boolean }[],
     },
+    // 两列并排；行上的 wide 占整行
+    cols: { type: Boolean, value: false },
   },
   methods: {
     onLink(event: DetailEvent<unknown, { url?: string; phone?: string }>) {

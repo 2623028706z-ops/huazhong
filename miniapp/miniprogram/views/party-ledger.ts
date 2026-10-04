@@ -11,22 +11,19 @@ import {
 import { canDo } from '../core/actions'
 import type { DetailEvent, KeyEvent } from '../core/events'
 import type { FailureView } from '../core/failure-view'
-import { emptyFilter } from '../core/filter'
 import type { PagedList } from '../core/list'
 import { checkedOf } from '../core/form'
 import { centsOfText } from '../core/money'
 import { newIdempotencyKey, request } from '../core/request'
 import { failureOf, messageOf } from '../core/session'
 import { showSuccess } from '../core/toast'
-import { listHandlers, listOf, listQueryOf, showList } from './list'
+import { listHandlers, listOf, showList } from './list'
 import { statementRowOf, sourceRowOf, sourceRoute, type FinanceRow } from './statement'
 const data = {
   supplier: false,
-  title: f.customer as string,
+  title: copy.screen.title.arCustomers as string,
+  partyName: '',
   statusKind: 'statementStatus',
-  statuses: ['unsettled', 'settled', 'voided'],
-  counts: {},
-  filter: emptyFilter,
   ledgerTab: 'statements',
   ledgerTabs: [
     { key: 'statements', text: f.statements },
@@ -35,8 +32,13 @@ const data = {
   rows: [] as FinanceRow[],
   sourceGroups: [] as { title: string; rows: FinanceRow[] }[],
   cells: [] as { label: string; amountCents: number; due: boolean }[],
-  creditText: '',
-  termsText: '',
+  totalRows: [] as {
+    key: string
+    label: string
+    text: string
+    amount?: boolean
+    action?: string
+  }[],
   canCreate: false,
   canRegister: false,
   canRefund: false,
@@ -45,7 +47,7 @@ const data = {
   skeleton: false,
   done: false,
   failure: null as FailureView | null,
-  emptyObject: f.noStatements as string,
+  emptyObject: f.statements as string,
   allLoaded: copy.state.allLoaded,
   refundSheet: false,
   refundChanged: false,
@@ -75,13 +77,15 @@ interface Host {
   refundKey: string
   setData(patch: Record<string, unknown>): void
   openRefund(): Promise<void>
+  onTerms(): void
 }
-function groupsOf(sources: PartyLedger['sources']) {
+function groupsOf(sources: PartyLedger['sources'], supplier: boolean) {
   const groups = new Map<string, { title: string; rows: FinanceRow[] }>()
   for (const source of sources) {
     const key = source.storeId ?? ''
-    if (!groups.has(key)) groups.set(key, { title: source.storeName ?? f.supplier, rows: [] })
-    groups.get(key)?.rows.push(sourceRowOf(source))
+    if (!groups.has(key))
+      groups.set(key, { title: supplier ? '' : (source.storeName ?? ''), rows: [] })
+    groups.get(key)?.rows.push(sourceRowOf(source, supplier))
   }
   return [...groups.values()]
 }
@@ -111,33 +115,41 @@ function applyLedger(host: Host, ledger: PartyLedger) {
   host.ledger = ledger
   const supplier = host.data.supplier
   host.setData({
-    title: ledger.partyName,
-    counts: ledger.counts,
+    partyName: ledger.partyName,
     cells: ledgerCells(ledger, supplier),
-    creditText: formatMoney(ledger.creditCents),
-    termsText: [
-      `${f.termDays} ${ledger.termDays === null ? f.notSet : `${ledger.termDays}${f.days}`}`,
-      `${f.openingDebt} ${formatMoney(ledger.openingDebtCents)}`,
-    ].join(copy.separator),
+    totalRows: [
+      {
+        key: 'credit',
+        label: supplier ? f.supplierCredited : f.credited,
+        text: formatMoney(ledger.creditCents),
+        amount: true,
+        ...(canDo(ledger.actions, 'refundCredit') ? { action: f.refund } : {}),
+      },
+      {
+        key: 'terms',
+        label: f.termDays,
+        text: [
+          ledger.termDays === null ? f.notSet : `${ledger.termDays} ${f.days}`,
+          `${f.openingDebt} ${formatMoney(ledger.openingDebtCents)}`,
+        ].join(f.gap),
+        ...(canDo(ledger.actions, 'editTerms') ? { action: f.modify } : {}),
+      },
+    ],
     canCreate: canDo(ledger.actions, 'createStatement'),
     canRegister: canDo(ledger.actions, supplier ? 'registerPayment' : 'registerReceipt'),
     canRefund: canDo(ledger.actions, 'refundCredit'),
     canTerms: canDo(ledger.actions, 'editTerms'),
-    sourceGroups: groupsOf(ledger.sources),
+    sourceGroups: groupsOf(ledger.sources, supplier),
     refundRows: refundRows(ledger),
   })
 }
 async function fetchLedger(host: Host, cursor: string | undefined) {
-  const { status, from, to } = listQueryOf<'unsettled' | 'settled' | 'voided'>(host.data.filter)
   const result = await request(
     host.data.supplier ? contract.getFinanceSupplier : contract.getArCustomer,
     {
       params: { id: host.id },
       query: {
         tab: host.data.ledgerTab as 'statements' | 'unstatemented',
-        status,
-        from,
-        to,
         cursor,
       },
     },
@@ -197,11 +209,14 @@ export const partyLedgerPage = {
   onLedgerTab(this: Host, event: DetailEvent<string>) {
     this.setData({
       ledgerTab: event.detail,
-      statusKind: event.detail === 'statements' ? 'statementStatus' : '',
-      emptyObject: event.detail === 'statements' ? f.noStatements : f.noUnstatemented,
+      emptyObject: event.detail === 'statements' ? f.statements : f.unstatementedSources,
       rows: [],
     })
     void this.list?.refresh()
+  },
+  onTotalAction(this: Host, event: DetailEvent<string>) {
+    if (event.detail === 'credit') void this.openRefund()
+    else this.onTerms()
   },
   onOpen(this: Host, event: KeyEvent) {
     void wx.navigateTo({

@@ -16,7 +16,8 @@ export class FinanceService {
       const payable = rows.filter((r) => r.kind === 'supplier')
       const overdue = receivable.filter((r) => overdueDays(r.dueDate, this.reads.clock.today()) > 0)
       return {
-        count: receivable.length + payable.length + overdue.length,
+        // 逾期未收已经包含在待收款里，角标不重复计
+        count: receivable.length + payable.length,
         rows: [
           {
             key: 'receivable',

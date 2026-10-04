@@ -1,87 +1,84 @@
 .hz-demand-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   padding: var(--hz-row-pad) var(--hz-card-pad);
-}
-
-.hz-demand-row__body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--hz-line-gap);
-}
-
-.hz-demand-row__line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: var(--hz-font-sm);
-  color: var(--hz-muted);
-}
-
-.hz-demand-row__name {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  font-size: var(--hz-font-md);
-}
-
-.hz-demand-row__summary {
-  font-size: var(--hz-font-sm);
-  color: var(--hz-muted);
-}
-
-.hz-demand-row__left {
-  color: var(--hz-green);
-  background: var(--hz-green-bg);
-  border-radius: var(--hz-radius-pill);
-  padding: 2px 8px;
-}
-
-.hz-demand-row__left--short {
-  color: var(--hz-amber);
-  background: var(--hz-amber-bg);
-}
-
-.hz-demand-row__check {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border: 1px solid var(--hz-muted);
-  border-radius: var(--hz-radius-inner);
-  font-size: var(--hz-font-sm);
-}
-
-.hz-demand-row__check--on {
-  background: var(--hz-brand);
-  border-color: var(--hz-brand);
-  color: var(--hz-on-brand);
 }
 
 .hz-demand-row--disabled {
   opacity: 0.6;
 }
 
-.hz-demand-row__numbers {
+.hz-demand-row__head {
   display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: var(--hz-font-sm);
+  gap: var(--hz-line-gap);
+  align-items: center;
+  padding-bottom: var(--hz-card-gap);
+  border-bottom: 1px solid var(--hz-line);
 }
 
-.hz-demand-row__numbers > view {
+.hz-demand-row__check {
   display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: -6px 0 -6px -6px;
+}
+
+.hz-demand-row__check--off {
+  opacity: 0.4;
+}
+
+.hz-demand-row__name {
   flex: 1;
-  justify-content: space-between;
-  gap: 6px;
+  min-width: 0;
+  font-size: var(--hz-font-md);
+  font-weight: 600;
 }
 
-.hz-demand-row__numbers > view > text:first-child {
+.hz-demand-row__tags {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--hz-line-gap);
+}
+
+.hz-demand-row__left {
+  padding: 2px var(--hz-line-gap);
+  font-size: var(--hz-font-sm);
+  color: var(--hz-green);
+  background: var(--hz-green-bg);
+  border-radius: var(--hz-radius-pill);
+}
+
+.hz-demand-row__left--short {
+  color: var(--hz-danger);
+  background: var(--hz-danger-bg);
+}
+
+/* 出货日期整行，需求、库存、在途一行三列，值紧跟字段名 */
+.hz-demand-row__fields {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 2px var(--hz-line-gap);
+  justify-content: space-between;
+  margin-top: var(--hz-line-gap);
+}
+
+.hz-demand-row__field {
+  display: flex;
+  gap: var(--hz-line-gap);
+  align-items: baseline;
+  font-size: var(--hz-font);
+  line-height: 26px;
+  white-space: nowrap;
+}
+
+.hz-demand-row__field--wide {
+  grid-column: 1 / -1;
+  white-space: normal;
+}
+
+.hz-demand-row__label {
+  flex: none;
   color: var(--hz-muted);
 }

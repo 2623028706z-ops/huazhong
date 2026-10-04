@@ -1,37 +1,37 @@
 import {
   contract,
-  copy,
+  statementCopy,
   financeCopy as f,
   financeTexts,
-  formatTime,
-  formatMoney,
   type StatementDetail,
   type StatementSource,
   type Topic,
 } from '@huazhong/shared'
 import { canDo } from '../../../../core/actions'
-import type { DetailEvent, KeyEvent } from '../../../../core/events'
+import type { DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
 import { watch, unwatchOnLeave } from '../../../../core/live'
 import {
   statementInfoOf,
-  statementAmountRows,
-  sourceRowOf,
+  statementAmountCells,
+  statementSectionsOf,
+  settlementListRowsOf,
   sourceRoute,
-  settlementRowsOf,
+  type ListSection,
 } from '../../../../views/statement'
 function statementActions(detail: StatementDetail, internal: boolean) {
   const supplier = detail.kind === 'supplier'
+  const voidAction = detail.actions.find((action) => action.code === 'voidStatement')
   return {
     canShare: !internal && canDo(detail.actions, 'shareStatement'),
     canRegister:
       !internal && canDo(detail.actions, supplier ? 'registerPayment' : 'registerReceipt'),
-    canVoid: !internal && detail.actions.some((action) => action.code === 'voidStatement'),
+    // 作废对账单是页面最下面的灰字；已结清的底栏只有「分享」，不显示作废
+    canVoid: !internal && detail.status === 'unsettled' && voidAction !== undefined,
     voidDisabled: !canDo(detail.actions, 'voidStatement'),
-    voidReason:
-      detail.actions.find((action) => action.code === 'voidStatement')?.disabledReason ?? '',
+    voidReason: voidAction?.disabledReason ?? '',
   }
 }
 function detailInfo(detail: StatementDetail) {
@@ -39,39 +39,40 @@ function detailInfo(detail: StatementDetail) {
     title: detail.partyName,
     status: detail.status,
     statusKind: 'statementStatus',
-    rows: [
-      ...statementInfoOf(detail),
-      ...(detail.settledAt ? [{ label: f.settledDate, value: formatTime(detail.settledAt) }] : []),
-    ],
+    rows: statementInfoOf(detail),
   }
 }
 function detailPatch(detail: StatementDetail, internal: boolean) {
   const supplier = detail.kind === 'supplier'
+  const sections = statementSectionsOf(
+    detail.groups.flatMap((group) => group.sources),
+    { supplier, count: false },
+  )
   return {
     loaded: true,
     failure: null,
     supplier,
     info: detailInfo(detail),
-    amountRows: statementAmountRows(detail),
-    groups: detail.groups.map((group) => ({
-      title: [
-        group.storeName ?? detail.partyName,
-        f.sourceCount(
-          group.sources.filter((source) => ['order', 'po', 'wh'].includes(source.type)).length,
-          supplier,
-        ),
-        formatMoney(group.amountCents),
-      ].join(copy.separator),
-      rows: group.sources.map(sourceRowOf),
-    })),
-    settlements: settlementRowsOf(detail.settlements),
-    hasAfter: detail.groups.some((group) =>
-      group.sources.some((source) =>
-        ['after', 'purchase_return', 'price_change'].includes(source.type),
-      ),
-    ),
+    amountCells: statementAmountCells(detail),
+    main: sections.main,
+    afterSection: sections.after,
+    receiptSection: {
+      title: supplier ? f.payments : f.receipts,
+      meta: '',
+      emptyText: supplier ? f.noPayment : f.noReceipt,
+      groups: detail.settlements.length
+        ? [
+            {
+              key: '',
+              head: '',
+              meta: '',
+              rows: settlementListRowsOf(detail.settlements, supplier),
+            },
+          ]
+        : [],
+    },
     ...statementActions(detail, internal),
-    notice: detail.overdueDays ? f.overdue(detail.overdueDays) : (detail.lockedReason ?? ''),
+    overdue: detail.overdueDays ? f.overdue(detail.overdueDays) : '',
   }
 }
 function sourceTopic(source: StatementSource): Topic | null {
@@ -99,12 +100,12 @@ Page({
       title: string
       status: string
       statusKind: string
-      rows: { label: string; value: string }[]
+      rows: { label: string; value: string; wide?: boolean }[]
     } | null,
-    amountRows: [] as ReturnType<typeof statementAmountRows>,
-    groups: [] as { title: string; rows: ReturnType<typeof sourceRowOf>[] }[],
-    settlements: [] as ReturnType<typeof settlementRowsOf>,
-    hasAfter: false,
+    amountCells: [] as ReturnType<typeof statementAmountCells>,
+    main: null as ListSection | null,
+    afterSection: null as ListSection | null,
+    receiptSection: null as ListSection | null,
     canShare: false,
     canRegister: false,
     canVoid: false,
@@ -113,7 +114,7 @@ Page({
     voidSheet: false,
     busy: false,
     error: '',
-    notice: '',
+    overdue: '',
     supplier: false,
     texts: financeTexts,
   },
@@ -147,20 +148,18 @@ Page({
   onFailureAction() {
     void this.load()
   },
-  onSource(event: KeyEvent) {
+  onSource(event: DetailEvent<string>) {
     const source = this.statement?.groups
       .flatMap((group) => group.sources)
-      .find((item) => `${item.type}:${item.id}` === event.currentTarget.dataset.key)
+      .find((item) => `${item.type}:${item.id}` === event.detail)
     if (source)
       void wx.navigateTo({ url: sourceRoute(source, this.data.internal ? 'internal' : 'finance') })
   },
-  onFund(event: KeyEvent) {
+  onFund(event: DetailEvent<string>) {
     if (this.data.internal) return
-    const item = this.data.settlements.find((item) => item.id === event.currentTarget.dataset.key)
-    if (item)
-      void wx.navigateTo({
-        url: `/packages/finance/pages/money/index?kind=${item.kind}&id=${item.id}`,
-      })
+    const [kind, id] = event.detail.split(':')
+    if (kind && id)
+      void wx.navigateTo({ url: `/packages/finance/pages/money/index?kind=${kind}&id=${id}` })
   },
   onShare() {
     if (this.data.internal) return
@@ -183,7 +182,7 @@ Page({
     if (!this.statement || this.data.busy || this.data.internal) return
     const reason = event.detail.trim()
     if (!reason) {
-      this.setData({ error: f.voidReason })
+      this.setData({ error: statementCopy.voidReasonRequired })
       return
     }
     this.setData({ busy: true, error: '' })

@@ -6,9 +6,21 @@
 
   </view>
 
-  <view wx:if="{{tabs.length > 1 || hasFilter}}" class="hz-filter-bar__tabs">
+  <view wx:if="{{sections.length > 1 || tabs.length > 1 || hasFilter}}" class="hz-filter-bar__tabs">
     <scroll-view class="hz-filter-bar__scroll" scroll-x enhanced show-scrollbar="{{false}}">
-      <view class="hz-filter-bar__track">
+      <view wx:if="{{sections.length}}" class="hz-filter-bar__track">
+        <view
+          wx:for="{{sections}}"
+          wx:key="key"
+          class="hz-filter-bar__tab {{item.key === section ? 'hz-filter-bar__tab--on' : ''}}"
+          data-key="{{item.key}}"
+          bindtap="onSection"
+        >
+          <text>{{item.text}}</text>
+          <text wx:if="{{item.count}}" class="hz-filter-bar__count">{{format.formatCount(item.count)}}</text>
+        </view>
+      </view>
+      <view wx:else class="hz-filter-bar__track">
         <view
           wx:for="{{tabs}}"
           wx:key="code"
@@ -32,7 +44,7 @@
   </view>
 
   <view
-    wx:if="{{chips.length > 0 || (!searchPlaceholder && tabs.length <= 1 && hasFilter)}}"
+    wx:if="{{chips.length > 0}}"
     class="hz-filter-bar__chips"
   >
     <view class="hz-filter-bar__chip-list">
@@ -100,12 +112,12 @@
       <view
         wx:for="{{options}}"
         wx:key="id"
-        class="hz-filter-bar__option {{item.picked ? 'hz-filter-bar__option--on' : ''}}"
+        class="u-choice {{item.picked ? 'u-choice--on' : ''}}"
         data-key="{{item.id}}"
         bindtap="onPick"
       >
         <text>{{item.name}}</text>
-        <text wx:if="{{item.picked}}" class="hz-icon hz-icon--check hz-filter-bar__check"></text>
+        <text wx:if="{{item.picked}}" class="hz-icon hz-icon--check u-choice__check"></text>
       </view>
     </view>
   </block>

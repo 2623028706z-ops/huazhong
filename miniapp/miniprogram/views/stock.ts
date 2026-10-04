@@ -3,7 +3,10 @@ import {
   copy,
   redesignCopy,
   formatMoney,
+  formatClock,
   formatTime,
+  labels,
+  type StockMove,
   type WhDocDetail,
   type OutputOf,
   type contract,
@@ -76,4 +79,33 @@ export function stockViewOf(doc: StockViewDoc, finance = false) {
     },
     texts: copy.stock.screen,
   }
+}
+
+// 出入库记录行（W12 最近出入库、W13 记录共用）：类型 + 数量变化（入绿出红），下面时间、单号、经办
+export function moveRowOf(move: StockMove, options: { withName: boolean; date: boolean }) {
+  const time = options.date ? formatTime(move.movedAt) : formatClock(move.movedAt)
+  return {
+    id: move.id,
+    docType: move.docType,
+    docId: move.docId,
+    name: options.withName ? move.materialName : labels.moveType[move.type],
+    typeText: options.withName ? labels.moveType[move.type] : '',
+    label: redesignCopy.qty,
+    qty: `${move.qty > 0 ? '+' : ''}${move.qty}`,
+    unit: move.unit,
+    tone: move.qty > 0 ? 'hz-stock-row__num--in' : 'hz-stock-row__num--out',
+    sub: [
+      `${copy.screen.timeLabel} ${time}`,
+      `${redesignCopy.no} ${move.docNo}`,
+      `${copy.screen.handler} ${move.actorName}`,
+    ].join(copy.separator),
+    age: '',
+    aged: false,
+    disabled: false,
+  }
+}
+export function moveDocUrl(row: { docType: string; docId: string }) {
+  const path =
+    row.docType === 'po' ? 'receive' : row.docType === 'wh' ? 'doc-detail' : 'stocktake-detail'
+  return `/packages/warehouse/pages/${path}/index?id=${row.docId}`
 }

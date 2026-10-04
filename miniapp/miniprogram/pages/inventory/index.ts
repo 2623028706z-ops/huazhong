@@ -1,5 +1,5 @@
 // M5 库存查询（06 章 M5）：没有仓库权限的员工只读查。搜索（名称、编码）+ 分类；停用的标「已停用」
-import { contract, copy, formatQty, type InventoryItem } from '@huazhong/shared'
+import { contract, copy, type InventoryItem } from '@huazhong/shared'
 import type { DetailEvent } from '../../core/events'
 import type { FailureView } from '../../core/failure-view'
 import { emptyFilter, type FilterDimension, type FilterValue } from '../../core/filter'
@@ -14,29 +14,30 @@ const CATEGORY = 'category'
 function rowOf(item: InventoryItem) {
   return {
     id: item.id,
-    fields: [
-      { label: copy.screen.title.stock, value: formatQty(item.stockQty, item.unit) },
-      { label: copy.field.unit, value: item.unit },
-      { label: copy.field.code, value: item.code },
-      { label: copy.field.category, value: item.categoryName },
-    ],
-    title: item.name,
-    total: formatQty(item.stockQty, item.unit),
-    // 库存数是这页的关键数字，加粗；库存 0 照常次要色（02 章第 4 节 hz-card）
-    keyTotal: item.stockQty > 0,
-    meta: [item.code, item.categoryName].join(copy.separator),
-    tags: item.enabled ? [] : [{ text: copy.tag.disabled, warn: false }],
+    aged: false,
+    name: item.name,
+    label: copy.screen.title.stock,
+    qty: String(item.stockQty),
+    unit: item.unit,
+    sub: [`${copy.field.code} ${item.code}`, `${copy.field.category} ${item.categoryName}`].join(
+      copy.separator,
+    ),
+    // 库存查询给所有员工只读用：不写已放天数
+    age: '',
+    disabled: !item.enabled,
+    disabledText: copy.tag.disabled,
   }
 }
 
 Page({
   data: {
     title: copy.title.inventory,
-    searchPlaceholder: copy.filter.search(copy.object.material),
+    searchPlaceholder: copy.screen.materialSearch,
     emptyObject: copy.object.inventory,
     filter: emptyFilter,
     dimensions: [] as FilterDimension[],
     rows: [] as ReturnType<typeof rowOf>[],
+    groups: [] as { key: string; title: string; count: string; rows: ReturnType<typeof rowOf>[] }[],
     loaded: false,
     skeleton: false,
     done: false,
@@ -53,7 +54,13 @@ Page({
       },
       (view: PagerView<InventoryItem>) => {
         const { items, ...rest } = view
-        this.setData({ ...rest, rows: items.map(rowOf) })
+        const rows = items.map(rowOf)
+        // 不分组：一张卡列全部
+        this.setData({
+          ...rest,
+          rows,
+          groups: rows.length ? [{ key: 'all', title: '', count: '', rows }] : [],
+        })
       },
       (patch) => {
         this.setData(patch)

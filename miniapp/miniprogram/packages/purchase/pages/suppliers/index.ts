@@ -12,13 +12,13 @@ function rowOf(s: Supplier) {
     id: s.id,
     fields: [
       { label: copy.field.contact, value: s.contact },
-      { label: copy.field.phone, value: s.phone, phone: s.phone, wide: true },
       {
         label: copy.screen.label.accountStatus,
         value: s.hasAccount ? copy.screen.label.accountOpened : copy.screen.label.accountNotOpened,
       },
-      { label: copy.screen.label.openPurchaseOrders, value: String(s.openPoCount) },
+      { label: copy.screen.label.contactPhone, value: s.phone, phone: s.phone, wide: true },
     ],
+    headText: s.openPoCount ? copy.screen.pendingPos(s.openPoCount) : '',
     title: s.name,
     tags: s.enabled ? [] : [{ text: copy.tag.disabled, warn: false }],
   }

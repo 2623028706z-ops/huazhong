@@ -1,1 +1,43 @@
-<hz-navbar title="{{title}}" back guard="{{changed}}" /><hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" /><view wx:else class="u-list"><hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" /><hz-error wx:if="{{error}}" message="{{error}}" /><hz-skeleton wx:if="{{!loaded}}" type="form" /><block wx:else><view class="u-card u-form-card"><view class="u-sheet-row"><text>{{kind === 'supplier' ? texts.supplier : texts.customer}}</text><text>{{partyName}}</text></view><view class="u-sheet-row"><text>{{texts.statementDate}}</text><text>{{today}}</text></view><hz-picker label="{{texts.periodFrom}}" mode="date" value="{{periodFrom}}" end="{{periodTo}}" data-key="periodFrom" bind:change="onPeriod" /><hz-picker label="{{texts.periodTo}}" mode="date" value="{{periodTo}}" start="{{periodFrom}}" end="{{today}}" data-key="periodTo" bind:change="onPeriod" /><view wx:if="{{dueDate}}" class="u-sheet-row"><text>{{texts.dueDate}}</text><text>{{dueDate}}</text></view><hz-field label="{{texts.note}}" value="{{note}}" placeholder="{{texts.optional}}" bind:change="onNote" /></view><view wx:if="{{changes.length}}" class="u-card u-info"><view wx:for="{{changes}}" wx:key="*this">{{item}}</view></view><view wx:for="{{sourceGroups}}" wx:key="id" class="u-section"><text class="u-section__title">{{item.title}}</text><view wx:for="{{item.rows}}" wx:for-item="source" wx:key="id" class="hz-finance-select" data-key="{{source.id}}" bindtap="onSource"><text wx:if="{{source.source.carriesAmount}}" class="hz-finance-select__check">{{source.selected?'☑':'☐'}}</text><view class="hz-finance-select__card"><hz-card row="{{source}}" /><hz-button kind="text" text="{{texts.sourceNo}}" data-key="{{source.id}}" bind:press="onSourceDetail" /></view></view></view><hz-state wx:if="{{!rows.length}}" message="{{texts.noUnstatemented}}" /><hz-statement cells="{{cells}}" /></block></view><hz-action-bar><hz-button text="{{needsReview ? texts.review : texts.statementGenerate}}" loading="{{saving}}" bind:press="onSubmit" /></hz-action-bar><hz-confirm id="hz-confirm" />
+<hz-navbar title="{{title}}" back guard="{{changed}}" />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<view wx:else class="u-list">
+  <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
+  <hz-error wx:if="{{error}}" message="{{error}}" />
+  <hz-skeleton wx:if="{{!loaded}}" type="form" />
+  <block wx:else>
+    <view class="u-card u-form-card">
+      <view class="u-sheet-row">
+        <text class="u-sheet-row__label">{{kind === 'supplier' ? texts.supplier : texts.customer}}</text>
+        <text class="u-sheet-row__value">{{partyName}}</text>
+      </view>
+      <view class="u-sheet-row" bindtap="onOpenPeriod">
+        <text class="u-sheet-row__label">{{texts.period}}</text>
+        <text class="u-sheet-row__value">{{periodText}}<text class="hz-icon hz-icon--chevron-right"></text></text>
+      </view>
+      <view class="u-sheet-row">
+        <text class="u-sheet-row__label">{{texts.statementDate}}</text>
+        <text class="u-sheet-row__value">{{today}}</text>
+      </view>
+      <hz-field label="{{texts.note}}" type="textarea" value="{{note}}" placeholder="{{texts.optional}}" bind:change="onNote" />
+    </view>
+    <view wx:if="{{changes.length}}" class="u-card u-info">
+      <view wx:for="{{changes}}" wx:key="*this">{{item}}</view>
+    </view>
+    <hz-statement-list title="{{main.title}}" meta="{{main.meta}}" groups="{{main.groups}}" empty-text="{{main.emptyText}}" bind:press="onSourceDetail" bind:toggle="onToggle" />
+    <hz-statement-list title="{{afterSection.title}}" groups="{{afterSection.groups}}" empty-text="{{afterSection.emptyText}}" bind:press="onSourceDetail" bind:toggle="onToggle" />
+    <hz-statement cells="{{cells}}" />
+  </block>
+</view>
+<hz-action-bar>
+  <view class="u-bar-total">
+    <text class="u-serif-amount">{{kind === 'supplier' ? texts.payable : texts.receivable}} {{dueText}}</text>
+  </view>
+  <hz-button text="{{needsReview ? texts.review : texts.statementGenerate}}" loading="{{saving}}" bind:press="onSubmit" />
+</hz-action-bar>
+<hz-sheet show="{{periodSheet}}" title="{{texts.period}}" bind:close="onClosePeriod">
+  <view class="u-sheet-form">
+    <hz-picker label="{{texts.periodFrom}}" mode="date" value="{{periodFrom}}" end="{{periodTo}}" data-key="periodFrom" bind:change="onPeriod" />
+    <hz-picker label="{{texts.periodTo}}" mode="date" value="{{periodTo}}" start="{{periodFrom}}" end="{{today}}" data-key="periodTo" bind:change="onPeriod" />
+  </view>
+</hz-sheet>
+<hz-confirm id="hz-confirm" />

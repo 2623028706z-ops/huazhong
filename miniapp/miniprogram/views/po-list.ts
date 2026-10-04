@@ -20,7 +20,7 @@ const data = {
   filter: emptyFilter,
   dimensions: [] as FilterDimension[],
   dateLabel: copy.screen.label.orderDate,
-  searchPlaceholder: copy.filter.search(copy.screen.title.purchaseOrders),
+  searchPlaceholder: copy.screen.poSearch,
   rows: [] as ReturnType<typeof poRowOf>[],
   loaded: false,
   skeleton: false,
@@ -36,6 +36,8 @@ const data = {
   detailId: '',
   detailVersion: 0,
   detailButtons: [] as ButtonView[],
+  cancelTitle: copy.screen.action.cancelPo as string,
+  cancelConfirm: copy.screen.action.confirmCancel as string,
   cancelSheet: false,
   cancelBusy: false,
 }
@@ -75,7 +77,7 @@ const methods = {
           })
         return result
       },
-      poRowOf,
+      (po) => poRowOf(po, this.data.kind === 'supplier'),
     )
     if (this.data.kind !== 'supplier') void this.loadDimensions()
   },

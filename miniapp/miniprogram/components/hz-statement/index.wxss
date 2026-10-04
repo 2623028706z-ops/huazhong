@@ -1,28 +1,53 @@
 .hz-statement {
+  overflow: hidden;
+}
+
+.hz-statement__cells {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: var(--hz-card-pad);
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  gap: var(--hz-line-gap);
+  padding: var(--hz-card-pad) var(--hz-row-pad);
+}
+
+/* 只有两格时靠左并排，不撑满 */
+.hz-statement__cells--few {
+  grid-auto-columns: max-content;
+  gap: calc(var(--hz-card-pad) * 2);
+  padding-left: var(--hz-card-pad);
 }
 
 .hz-statement__cell {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: var(--hz-row-pad);
+  gap: var(--hz-line-gap);
+  align-items: center;
+}
+
+.hz-statement__label {
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);
-  background: var(--hz-paper);
-  border-radius: var(--hz-radius-inner);
 }
 
 .hz-statement__amount {
   font-size: var(--hz-font-md);
-  font-weight: 600;
   color: var(--hz-ink);
 }
 
-.hz-statement__cell--due {
-  color: var(--hz-amber);
-  background: var(--hz-amber-bg);
+.hz-statement__amount--due {
+  color: var(--hz-brand);
+}
+
+.hz-statement__row {
+  display: flex;
+  gap: var(--hz-line-gap);
+  align-items: center;
+  padding: var(--hz-row-pad) var(--hz-card-pad);
+  font-size: var(--hz-font-sm);
+  border-top: 1px solid var(--hz-line);
+}
+
+.hz-statement__value {
+  flex: 1;
+  text-align: right;
 }

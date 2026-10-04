@@ -18,3 +18,36 @@
   color: var(--hz-ink);
   border-bottom-color: var(--hz-brand);
 }
+
+.hz-tabs--big {
+  gap: 26px;
+  padding: 2px 4px 0;
+  border-bottom: 0;
+}
+
+.hz-tabs--big .hz-tabs__item {
+  position: relative;
+  min-height: 0;
+  padding-bottom: 9px;
+  font-family: var(--hz-serif);
+  font-size: var(--hz-font-total);
+  font-weight: 500;
+  letter-spacing: 2px;
+  border-bottom: 0;
+}
+
+.hz-tabs--big .hz-tabs__item--on {
+  font-weight: 600;
+}
+
+.hz-tabs--big .hz-tabs__item--on::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 20px;
+  height: 2.5px;
+  margin-left: -10px;
+  background: var(--hz-brand);
+  border-radius: var(--hz-radius-line);
+}

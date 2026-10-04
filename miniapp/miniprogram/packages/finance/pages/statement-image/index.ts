@@ -10,68 +10,106 @@ import {
   renderDocumentImage,
   saveDocumentImage,
   shareDocumentImage,
-  type DocumentImageRow,
+  type DocumentBlock,
+  type DocumentImage,
 } from '../../../../core/document-image'
+import { periodTextOf } from '../../../../views/statement'
 import type { FailureView } from '../../../../core/failure-view'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
 type Share = OutputOf<typeof contract.shareStatement>
-function imageAmountsOf(detail: Share['shareData']): DocumentImageRow[] {
+const line = (...pairs: [string, string][]) =>
+  pairs.map(([label, value]) => `${label} ${value}`).join(f.gap)
+function minus(cents: number) {
+  return `−${formatMoney(cents)}`
+}
+const MAIN_TYPES = new Set(['order', 'po', 'wh'])
+function tableOf(detail: Share['shareData']): DocumentBlock {
+  const supplier = detail.kind === 'supplier'
+  return {
+    kind: 'table',
+    columns: [
+      { weight: 4, align: 'left' },
+      { weight: 3.3, align: 'left', muted: true },
+      { weight: 2.4, align: 'right' },
+    ],
+    head: [
+      `${f.store} · ${f.no}`,
+      supplier ? f.receiveDate : f.shipDate,
+      supplier ? f.received : f.shipped,
+    ],
+    rows: detail.groups.flatMap((group) =>
+      group.sources
+        .filter((source) => MAIN_TYPES.has(source.type))
+        .map((source) => [
+          group.storeName ? `${group.storeName} ${source.sourceNo}` : source.sourceNo,
+          source.sourceDate,
+          formatMoney(source.amountCents),
+        ]),
+    ),
+  }
+}
+function sumsOf(detail: Share['shareData']): DocumentBlock[] {
   const supplier = detail.kind === 'supplier'
   return [
     {
+      kind: 'sum',
       label: supplier ? f.received : f.shipped,
       value: formatMoney(supplier ? detail.receivedCents : detail.shippedCents),
     },
     {
+      kind: 'sum',
       label: supplier ? f.returned : f.after,
-      value: formatMoney(supplier ? detail.returnCents : detail.afterCents),
+      value: minus(supplier ? detail.returnCents : detail.afterCents),
     },
     {
+      kind: 'sum',
       label: supplier ? f.supplierDeducted : f.deducted,
-      value: formatMoney(detail.creditDeductedCents),
+      value: minus(detail.creditDeductedCents),
     },
     ...(detail.openingDebtCents
-      ? [{ label: f.openingDebt, value: formatMoney(detail.openingDebtCents) }]
+      ? [
+          {
+            kind: 'sum' as const,
+            label: f.openingDebt,
+            value: formatMoney(detail.openingDebtCents),
+          },
+        ]
       : []),
-    { label: supplier ? f.payable : f.receivable, value: formatMoney(detail.amountCents) },
-    { label: supplier ? f.paid : f.receivedFund, value: formatMoney(detail.settledCents) },
+    {
+      kind: 'sum',
+      label: supplier ? f.payable : f.receivable,
+      value: formatMoney(detail.amountCents),
+      strong: true,
+    },
+    {
+      kind: 'sum',
+      label: supplier ? f.paid : f.receivedFund,
+      value: formatMoney(detail.settledCents),
+    },
   ]
 }
-function imageRowsOf(share: Share): DocumentImageRow[] {
+function imageOf(share: Share): DocumentImage {
   const detail = share.shareData
-  const rows: DocumentImageRow[] = [
-    { label: detail.kind === 'supplier' ? f.supplier : f.customer, value: detail.partyName },
-    { label: f.no, value: detail.no },
-    { label: f.statementDate, value: detail.statementDate },
-    { label: f.period, value: `${detail.periodFrom} — ${detail.periodTo}` },
-    ...(detail.dueDate ? [{ label: f.dueDate, value: detail.dueDate }] : []),
-  ]
-  for (const group of detail.groups) {
-    rows.push(group.storeName ?? detail.partyName)
-    for (const source of group.sources) {
-      const dates = {
-        order: f.shipDate,
-        after: f.afterDate,
-        po: f.receiveDate,
-        wh: f.stockInDate,
-        purchase_return: f.afterDate,
-        price_change: f.afterDate,
-      }
-      rows.push(
-        { label: f.no, value: source.sourceNo },
-        { label: dates[source.type], value: source.sourceDate },
-        { label: f.amount, value: formatMoney(source.amountCents) },
-        '',
-      )
-    }
+  return {
+    title: f.statement,
+    brand: f.company,
+    meta: [
+      line([detail.kind === 'supplier' ? f.supplier : f.customer, detail.partyName]),
+      line([f.no, detail.no], [f.statementDate, detail.statementDate]),
+      ...(detail.dueDate ? [line([f.dueDate, detail.dueDate])] : []),
+      line([f.period, periodTextOf(detail.periodFrom, detail.periodTo)]),
+    ],
+    blocks: [
+      tableOf(detail),
+      { kind: 'rule' },
+      ...sumsOf(detail),
+      {
+        kind: 'note',
+        text: line([f.status, f[detail.status]], [f.generatedAt, formatTime(share.generatedAt)]),
+      },
+    ],
   }
-  return [
-    ...rows,
-    ...imageAmountsOf(detail),
-    { label: f.status, value: f[detail.status] },
-    { label: f.generatedAt, value: formatTime(share.generatedAt) },
-  ]
 }
 Page({
   data: {
@@ -94,12 +132,12 @@ Page({
       this.setData({ busy: false, failure: failureOf(result.failure, 'load') })
       return
     }
-    const rows = imageRowsOf(result.data)
+    const doc = imageOf(result.data)
     try {
       await new Promise<void>((resolve) => {
         wx.nextTick(resolve)
       })
-      const image = await renderDocumentImage(this, rows, f.statement)
+      const image = await renderDocumentImage(this, doc)
       this.setData({ image, busy: false, failure: null })
     } catch {
       this.setData({ busy: false, error: f.imageGenerateFailed })

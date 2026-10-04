@@ -13,6 +13,8 @@
   show="{{cancelSheet}}"
   title="{{texts.cancelTitle}}"
   required="{{cancelRequired}}"
+  subject="{{texts.cancelSubject}}"
+  hint="{{texts.cancelBody}}"
   body="{{texts.cancelBody}}"
   confirm="{{texts.confirmCancel}}"
   error="{{cancelError}}"

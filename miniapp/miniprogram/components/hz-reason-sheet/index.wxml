@@ -1,6 +1,8 @@
 <hz-sheet show="{{show}}" title="{{title}}" footer bind:close="onClose">
   <view class="u-sheet-form">
+    <text wx:if="{{subject}}" class="hz-reason-sheet__subject">{{subject}}</text>
     <hz-error wx:if="{{error}}" message="{{error}}" />
+    <text wx:if="{{hint && (required || optional)}}" class="hz-reason-sheet__hint">{{hint}}</text>
     <hz-field wx:if="{{required || optional}}" label="{{reasonLabel}}" type="textarea" placeholder="{{optional ? optionalHint : ''}}" value="{{text}}" bind:change="onInput" />
     <text wx:else>{{body}}</text>
   </view>

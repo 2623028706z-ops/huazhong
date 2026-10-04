@@ -1,6 +1,7 @@
 .hz-progress {
   display: flex;
-  padding: 10px 0 14px;
+  align-items: flex-start;
+  padding: 10px 6px 4px;
 }
 
 .hz-progress__step {
@@ -11,12 +12,13 @@
   font-size: var(--hz-font-sm);
 }
 
+/* 定稿 .steps：13 圆点、1.5 连线，字 12、日期 11；已走过墨色、当前品牌色加粗 */
 .hz-progress__step::before {
   position: absolute;
-  top: 5px;
+  top: 6px;
   left: -50%;
   width: 100%;
-  height: 1px;
+  height: 1.5px;
   content: '';
   background: var(--hz-rule);
 }
@@ -27,24 +29,49 @@
 
 .hz-progress__dot {
   position: relative;
-  width: 11px;
-  height: 11px;
-  margin: 0 auto 8px;
-  background: var(--hz-rule);
+  box-sizing: border-box;
+  width: 13px;
+  height: 13px;
+  margin: 0 auto 7px;
+  background: var(--hz-bg);
+  border: 1.5px solid var(--hz-hair);
   border-radius: 50%;
 }
 
+/* 已走过：品牌色圆点和连线，字深色加粗；当前：空心点 + 光圈，字品牌色；没走到：灰；取消、作废：灰色终点 */
 .hz-progress__step--done .hz-progress__dot {
-  background: var(--hz-green);
+  background: var(--hz-brand);
+  border-color: var(--hz-brand);
 }
 
-.hz-progress__step--done,
+.hz-progress__step--done::before,
+.hz-progress__step--current::before {
+  background: var(--hz-brand);
+}
+
+.hz-progress__step--done {
+  color: var(--hz-ink);
+  font-weight: 500;
+}
+
 .hz-progress__step--current {
-  color: var(--hz-green);
+  color: var(--hz-brand);
+  font-weight: 700;
+}
+
+.hz-progress__step--pending {
+  color: var(--hz-muted);
+  opacity: 0.7;
 }
 
 .hz-progress__step--ended {
   color: var(--hz-muted);
+  font-weight: 700;
+}
+
+.hz-progress__step--ended .hz-progress__dot {
+  background: var(--hz-grey-bg);
+  border-color: var(--hz-muted);
 }
 
 .hz-progress__label {
@@ -53,11 +80,14 @@
 
 .hz-progress__date {
   display: block;
-  margin-top: 4px;
+  margin-top: 2px;
   font-size: var(--hz-font-xs);
+  font-weight: 400;
+  color: var(--hz-muted);
 }
 
 .hz-progress__step--current .hz-progress__dot {
   background: var(--hz-paper);
-  box-shadow: 0 0 0 2px var(--hz-danger);
+  border-color: var(--hz-brand);
+  box-shadow: 0 0 0 3px var(--hz-tint);
 }

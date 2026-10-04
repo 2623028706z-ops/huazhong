@@ -1,3 +1,3 @@
-<view class="hz-tabs">
+<view class="hz-tabs {{big ? 'hz-tabs--big' : ''}}">
   <view wx:for="{{items}}" wx:key="key" class="hz-tabs__item {{value === item.key ? 'hz-tabs__item--on' : ''}}" data-key="{{item.key}}" bindtap="onPick">{{item.text}}</view>
 </view>

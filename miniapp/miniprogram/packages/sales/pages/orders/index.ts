@@ -6,18 +6,19 @@ import {
   addDays,
   shanghaiDateOf,
   formatMoney,
+  formatTime,
   labels,
   type CustomerItem,
   type OrderCard,
   type OrderStatus,
 } from '@huazhong/shared'
-import { hasAction, canDo } from '../../../../core/actions'
+import { findAction, hasAction, canDo } from '../../../../core/actions'
 import type { KeyEvent, DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { emptyFilter, type FilterDimension, type FilterValue } from '../../../../core/filter'
 import type { PagedList } from '../../../../core/list'
 import { failureOf } from '../../../../core/session'
-import { request } from '../../../../core/request'
+import { newIdempotencyKey, request } from '../../../../core/request'
 import { loadCustomers } from '../../../../views/customers'
 import { listHandlers, listOf, listQueryOf, showList } from '../../../../views/list'
 import { orderRowOf } from '../../../../views/order'
@@ -50,7 +51,15 @@ Page({
     batchDate: '',
     batchError: '',
     batchBusy: false,
-    batchNos: [] as string[],
+    batchRows: [] as { id: string; title: string; no: string }[],
+    batchMore: '',
+    batchTitle: '',
+    inviteSheet: false,
+    inviteOptions: [] as { id: string; name: string }[],
+    inviteStoreId: '',
+    invited: null as { path: string; title: string; expiresText: string } | null,
+    inviteError: '',
+    inviteBusy: false,
     batchOverdue: [] as string[],
     batchText: redesignCopy.confirmMany(0),
     texts: {
@@ -58,6 +67,12 @@ Page({
       confirmOrders: redesignCopy.confirmOrders,
       shipDate: redesignCopy.shipDate,
       invite: copy.screen.action.inviteStore,
+      back: copy.action.back,
+      note: redesignCopy.confirmSheetNote,
+      inviteTitle: redesignCopy.inviteSheetTitle,
+      inviteStore: redesignCopy.inviteStorePick,
+      noInvite: redesignCopy.inviteNoStore,
+      share: copy.screen.action.shareInvite,
     },
     createText: copy.screen.action.createOrder,
   },
@@ -189,12 +204,19 @@ Page({
       batchSheet: true,
       batchDate: addDays(shanghaiDateOf(Date.now()), 1),
       batchError: '',
-      batchNos: [
-        ...this.data.selected.slice(0, BATCH_PREVIEW_COUNT).map((row) => row.no),
-        ...(this.data.selected.length > BATCH_PREVIEW_COUNT
-          ? [redesignCopy.moreOrders(this.data.selected.length)]
-          : []),
-      ],
+      batchTitle: redesignCopy.confirmSheetTitle(this.data.selected.length),
+      batchRows: this.data.selected.slice(0, BATCH_PREVIEW_COUNT).map((row) => {
+        const order = this.cards.find((card) => card.id === row.id)
+        return {
+          id: row.id,
+          title: order ? copy.org.store(order.customerName, order.storeName) : '',
+          no: row.no,
+        }
+      }),
+      batchMore:
+        this.data.selected.length > BATCH_PREVIEW_COUNT
+          ? redesignCopy.moreOrders(this.data.selected.length)
+          : '',
     })
   },
   onBatchDate(event: DetailEvent<string>) {
@@ -220,15 +242,54 @@ Page({
     const message = result.data.failed.length
       ? redesignCopy.confirmationResult(
           result.data.failed.length,
-          result.data.failed.map((row) => `${row.no} ${row.reason}`).join(copy.separator),
+          [...new Set(result.data.failed.map((row) => row.reason))].join(copy.separator),
         )
-      : copy.order.confirmed
+      : redesignCopy.confirmedMany(result.data.succeeded.length)
     this.setData({ selected: [], batchSheet: false })
     await this.list?.refresh()
     void wx.showToast({ title: message, icon: 'none' })
   },
+  // 邀请订货：只列启用、有登录手机号、还没绑定微信的门店；选好就生成邀请，再点「发送给门店」分享
   onInvite() {
-    void wx.navigateTo({ url: `${PAGES}/customers/index?invite=true` })
+    const options = this.customers.flatMap((customer) =>
+      customer.stores
+        .filter((store) => findAction(store.actions, 'inviteStore')?.enabled)
+        .map((store) => ({ id: store.id, name: copy.org.store(customer.name, store.name) })),
+    )
+    this.setData({
+      inviteSheet: true,
+      inviteOptions: options,
+      inviteStoreId: '',
+      invited: null,
+      inviteError: '',
+    })
+  },
+  onCloseInvite() {
+    this.setData({ inviteSheet: false })
+  },
+  async onInviteStore(event: DetailEvent<string>): Promise<void> {
+    const id = event.detail
+    this.setData({ inviteStoreId: id, invited: null, inviteError: '', inviteBusy: true })
+    const result = await request(
+      contract.createStoreInvite,
+      { params: { id } },
+      { idempotencyKey: newIdempotencyKey() },
+    )
+    this.setData({ inviteBusy: false })
+    if (!result.ok) {
+      this.setData({ inviteError: failureOf(result.failure, 'submit')?.message ?? '' })
+      return
+    }
+    const { path, title, expiresAt } = result.data
+    this.setData({
+      invited: { path, title, expiresText: copy.screen.inviteExpires(formatTime(expiresAt)) },
+    })
+  },
+  onShareAppMessage(): WechatMiniprogram.Page.ICustomShareContent {
+    const invited = this.data.invited
+    return invited
+      ? { title: invited.title, path: invited.path, imageUrl: '/assets/backdrop.jpg' }
+      : { title: copy.invite.storeTitle }
   },
   onOpen(event: KeyEvent) {
     void wx.navigateTo({ url: `${PAGES}/order-detail/index?id=${event.currentTarget.dataset.key}` })

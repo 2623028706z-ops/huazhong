@@ -6,6 +6,8 @@ Component({
     // 身份行加粗的部分：员工的岗位、门店的「客户 · 门店」、供应商名称
     lead: { type: String, value: '' },
     person: { type: String, value: '' },
+    // 订货页门店名下面已经写了日期（定稿 000），字标旁不再写
+    noDate: { type: Boolean, value: false },
   },
   data: { today: '' },
   lifetimes: {

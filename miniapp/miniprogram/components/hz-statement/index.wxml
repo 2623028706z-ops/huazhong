@@ -1,11 +1,14 @@
 <wxs src="../../core/format.wxs" module="format" />
 <view class="u-card hz-statement">
-  <view
-    wx:for="{{cells}}"
-    wx:key="label"
-    class="hz-statement__cell {{item.due ? 'hz-statement__cell--due' : ''}}"
-  >
-    <text>{{item.label}}</text>
-    <text class="hz-statement__amount u-serif-amount">{{format.formatMoney(item.amountCents)}}</text>
+  <view class="hz-statement__cells {{cells.length > 2 ? '' : 'hz-statement__cells--few'}}">
+    <view wx:for="{{cells}}" wx:key="label" class="hz-statement__cell">
+      <text class="hz-statement__label">{{item.label}}</text>
+      <text class="hz-statement__amount u-serif-amount {{item.due ? 'hz-statement__amount--due' : ''}}">{{item.text || format.formatMoney(item.amountCents)}}</text>
+    </view>
+  </view>
+  <view wx:for="{{rows}}" wx:key="key" class="hz-statement__row">
+    <text class="hz-statement__label">{{item.label}}</text>
+    <text class="hz-statement__value {{item.amount ? 'u-serif-amount' : ''}}">{{item.text}}</text>
+    <hz-button wx:if="{{item.action}}" kind="text" text="{{item.action}}" data-key="{{item.key}}" bind:press="onAction" />
   </view>
 </view>

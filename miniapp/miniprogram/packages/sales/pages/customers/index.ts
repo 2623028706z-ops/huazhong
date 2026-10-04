@@ -27,6 +27,10 @@ Page({
   ...catalogPanelMethods,
   data: {
     section: 'stores',
+    sections: [
+      { key: 'stores', text: redesignCopy.stores },
+      { key: 'catalog', text: copy.screen.title.directory },
+    ],
     catalogTitle: copy.screen.title.directory,
 
     ...catalogPanelData,
@@ -112,8 +116,8 @@ Page({
     this.select(event.detail)
     void this.selectCatalog(event.detail)
   },
-  onSection(event: KeyEvent) {
-    this.setData({ section: event.currentTarget.dataset.key })
+  onSection(event: DetailEvent<string>) {
+    this.setData({ section: event.detail })
   },
   currentCustomer(): CustomerItem | undefined {
     return this.customers.find((c: CustomerItem) => c.id === this.data.customerId)

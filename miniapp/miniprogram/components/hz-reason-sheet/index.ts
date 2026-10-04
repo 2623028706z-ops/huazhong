@@ -10,6 +10,9 @@ Component({
     required: { type: Boolean, value: false },
     optional: { type: Boolean, value: false },
     body: { type: String, value: '' },
+    // 是哪一单（客户 · 门店 · 单号）和操作的后果，要填原因时写在原因框上面
+    subject: { type: String, value: '' },
+    hint: { type: String, value: '' },
     confirm: { type: String, value: '' },
     error: { type: String, value: '' },
     loading: { type: Boolean, value: false },

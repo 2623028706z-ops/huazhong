@@ -18,7 +18,6 @@ import { Clock } from '../../common/clock.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import {
   lockParty,
-  owns,
   useCredit,
   notifyStatement,
   notifyCreditSources,
@@ -83,7 +82,6 @@ export class StatementWrites {
           (await ctx.tx.select().from(statements).where(eq(statements.id, id)).for('update'))[0],
         ),
         latest = await this.reads.detail(ctx.tx, id, viewer)
-      if (!owns(viewer, row.createdBy)) throw appError.forbidden(statementCopy.ownerOnly)
       if (row.version !== input.version || row.status === 'voided')
         throw appError.stale(statementCopy.statementStale, latest)
       assertVoidAllowed(latest)

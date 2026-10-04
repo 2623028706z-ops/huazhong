@@ -94,7 +94,7 @@ export const recordsCopy = {
   },
   actor: '操作人',
   orderChange: '变更记录',
-  poChange: '改单记录',
+  poChange: '变更记录',
   priceChange: '改价记录',
   returns: '退货记录',
   reason: (text: string) => `原因：${text}`,

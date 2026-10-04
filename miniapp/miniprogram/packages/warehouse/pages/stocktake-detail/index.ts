@@ -43,13 +43,14 @@ Page({
       loaded: true,
       failure: null,
       info: {
-        title: doc.no,
+        title: doc.categories.join(copy.separator),
         status: doc.status,
         statusKind: 'stocktakeStatus',
         rows: [
-          { label: copy.stock.screen.categories, value: doc.categories.join(copy.separator) },
-          { label: copy.screen.label.date, value: doc.checkDate },
+          { label: redesignCopy.no, value: doc.no },
           { label: copy.stock.screen.actor, value: doc.actorName },
+          { label: copy.stock.screen.checkDate, value: doc.checkDate },
+          { label: copy.stock.screen.lineCountLabel, value: copy.stock.lineCount(doc.lineCount) },
           {
             label: copy.stock.screen.difference,
             value: doc.diffCount

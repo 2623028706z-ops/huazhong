@@ -1,35 +1,31 @@
 <hz-navbar title="{{title}}" back />
-<view class="u-list"><view class="u-segments"><view wx:for="{{['all','shortage','invites']}}" wx:key="*this" class="u-segments__item {{section===item?'u-segments__item--on':''}}" data-key="{{item}}" bindtap="onSection">{{item==='all'?texts.all:item==='shortage'?texts.shortage:texts.toSupply}}</view></view></view>
-<hz-invite-list supplier-id="{{inviteSupplierId}}" wx:if="{{section==='invites'}}" />
+<hz-invite-list wx:if="{{section==='invites'}}" supplier-id="{{inviteSupplierId}}" sections="{{sections}}" section="{{section}}" search-placeholder="{{texts.search}}" bind:section="onSection" />
 <block wx:else>
 <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
 <view wx:else class="u-list">
-  <hz-filter-bar date-label="{{texts.shipDate}}" date-presets="{{datePresets}}" value="{{dateFilter}}" bind:change="onDemandFilter" />
-  <view wx:if="{{overdue.count}}" class="u-card u-info"><hz-button kind="text" text="{{overdueText}}" bind:press="onOverdue" /><view class="u-info__line"><text>{{texts.shipDate}}</text><text>{{overdue.shipFrom}} — {{overdue.shipTo}}</text></view></view>
+  <hz-filter-bar search-placeholder="{{texts.search}}" sections="{{sections}}" section="{{section}}" date-label="{{texts.shipDate}}" date-presets="{{datePresets}}" default-date="next7Days" value="{{dateFilter}}" bind:change="onDemandFilter" bind:section="onSection" />
+  <view wx:if="{{overdue.count}}" class="u-note-warn" bindtap="onOverdue"><text>{{overdueText}} ›</text></view>
   <hz-error wx:if="{{failure && !sourceSheet && !supplierSheet}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <hz-skeleton wx:if="{{!loaded}}" type="list" />
-  <block wx:else><text class="u-info__meta">{{count}}</text><hz-state wx:if="{{!rows.length}}" object="{{texts.empty}}" /></block>
-  <hz-demand-row wx:for="{{rows}}" wx:key="id" name="{{item.name}}" enabled="{{item.enabled}}" selected="{{item.selected}}" range="{{item.range}}" summary="{{item.summary}}" need="{{item.needQty}}" stock="{{item.stockQty}}" transit="{{item.inTransitQty}}" left="{{item.left}}" short="{{item.leftQty < 0}}" tags="{{item.tags}}" data-key="{{item.id}}" bind:toggle="onToggle" bind:open="onSource" />
+  <block wx:else><text wx:if="{{rows.length}}" class="u-info__meta">{{count}}</text><hz-state wx:if="{{!rows.length}}" object="{{emptyObject}}" message="{{emptyText}}" /></block>
+  <hz-demand-row wx:for="{{rows}}" wx:key="id" name="{{item.name}}" enabled="{{item.enabled}}" selected="{{item.selected}}" range="{{item.range}}" need="{{item.needText}}" stock="{{item.stockText}}" transit="{{item.transitText}}" left="{{item.left}}" short="{{item.leftQty < 0}}" tags="{{item.tags}}" data-key="{{item.id}}" bind:toggle="onToggle" bind:open="onSource" />
 </view>
-<hz-action-bar><hz-button wx:if="{{canInvite}}" kind="secondary" text="{{texts.invite}} ({{selected.length}})" disabled="{{!selected.length}}" bind:press="onInvite" /><hz-button wx:if="{{canCreate}}" text="{{texts.create}} ({{selected.length}})" disabled="{{!selected.length}}" bind:press="onCreate" /></hz-action-bar>
+<hz-action-bar><hz-button wx:if="{{canInvite}}" kind="secondary" text="{{inviteText}}" disabled="{{!selected.length}}" bind:press="onInvite" /><hz-button wx:if="{{canCreate}}" text="{{createText}}" disabled="{{!selected.length}}" bind:press="onCreate" /></hz-action-bar>
 <hz-sheet show="{{supplierSheet}}" title="{{texts.invite}}" footer bind:close="onCloseSupplier">
-  <view class="u-sheet-form"><hz-picker label="{{texts.supplier}}" options="{{suppliers}}" value="{{supplierId}}" error="{{error}}" bind:change="onSupplier" /><text wx:if="{{!suppliers.length}}" class="u-info__meta">{{texts.noSuppliers}}</text></view>
+  <view class="u-sheet-form"><hz-picker inline label="{{texts.supplier}}" options="{{suppliers}}" value="{{supplierId}}" error="{{error}}" bind:change="onSupplier" /><text wx:if="{{!suppliers.length}}" class="u-info__meta">{{texts.noSuppliers}}</text></view>
   <hz-button slot="footer" text="{{texts.next}}" bind:press="onNext" />
 </hz-sheet>
-<hz-sheet show="{{sourceSheet}}" title="{{texts.source}}" bind:close="onCloseSource">
-  <view class="u-sheet-form">
+<hz-sheet show="{{sourceSheet}}" title="{{sourceName}}" bind:close="onCloseSource">
+  <view class="u-sheet-form u-sheet-plain">
     <hz-error wx:if="{{error}}" message="{{error}}" />
-    <view class="u-sheet-row"><text class="u-info__meta">{{sourceSummary}}</text><hz-tag text="{{sourceLeft}}" warn="{{sourceShort}}" /></view>
-    <view wx:if="{{source.inTransitSources.length}}" class="u-sheet-form__group"><text class="u-section__title">{{texts.inTransitSources}}</text><view wx:for="{{source.inTransitSources}}" wx:key="poId" class="u-info" data-key="{{item.poId}}" bind:tap="onOpenSourcePo"><view class="u-info__line"><text>{{texts.no}}</text><text>{{item.no}}</text></view><view class="u-info__line"><text>{{texts.supplier}}</text><text>{{item.supplierName}}</text></view><view class="u-info__line"><text>{{texts.qty}}</text><text>{{item.qty}} {{sourceUnit}}</text></view></view></view>
-    <view wx:if="{{source.invites.length}}" class="u-sheet-form__group">
-      <text class="u-section__title">{{texts.invited}}</text>
-      <view wx:for="{{source.invites}}" wx:key="inviteId" class="u-info" data-key="{{item.inviteId}}" bind:tap="onOpenSourceInvite"><view class="u-info__line"><text>{{texts.supplier}}</text><text>{{item.supplierName}}</text></view><view class="u-info__line"><text>{{texts.no}}</text><text>{{item.no}}</text></view><view class="u-info__line"><text>{{texts.need}}</text><text>{{item.needQty}} {{sourceUnit}}</text></view></view>
-    </view>
-    <view wx:for="{{sourceGroups}}" wx:key="shipDate" wx:for-item="group" class="u-sheet-form__group">
-      <text class="u-section__title">{{group.title}}</text>
-      <view wx:for="{{group.items}}" wx:key="meta" class="u-info__line"><view class="u-info__head"><text class="u-rows__title u-ellipsis">{{item.title}}</text><text class="u-amount">{{item.qty}}</text></view><text class="u-rows__foot">{{item.meta}}</text></view>
+    <hz-info-rows rows="{{sourceTop}}" cols />
+    <view wx:for="{{sourceSections}}" wx:key="key" wx:for-item="section" class="u-sheet-form__group">
+      <text class="u-section__title">{{section.title}}</text>
+      <view wx:for="{{section.blocks}}" wx:key="key" class="u-info" data-key="{{item.key}}" data-kind="{{item.kind}}" bindtap="onOpenBlock">
+        <view class="u-info__head"><text class="u-info__title">{{item.title}}</text><text wx:if="{{item.link}}" class="hz-icon hz-icon--chevron-right"></text></view>
+        <hz-info-rows rows="{{item.fields}}" cols />
+      </view>
     </view>
   </view>
 </hz-sheet>
-
 </block>

@@ -1,8 +1,13 @@
-<view class="u-card hz-demand-row {{!enabled ? 'hz-demand-row--disabled' : ''}}">
-  <view class="u-tap" catchtap="onToggle"><text class="hz-demand-row__check {{selected ? 'hz-demand-row__check--on hz-icon hz-icon--check' : ''}}"></text></view>
-  <view class="hz-demand-row__body" bindtap="onOpen">
-
-    <view class="hz-demand-row__name"><text>{{name}}</text><text class="hz-demand-row__left {{short ? 'hz-demand-row__left--short' : ''}}">{{left}}</text><hz-tag wx:for="{{tags}}" wx:key="text" text="{{item.text}}" warn="{{item.warn}}" /></view>
-    <text class="hz-demand-row__summary">{{range}}</text><view class="hz-demand-row__numbers"><view><text>{{texts.need}}</text><text>{{need}}</text></view><view><text>{{texts.stock}}</text><text>{{stock}}</text></view><view><text>{{texts.transit}}</text><text>{{transit}}</text></view></view>
+<view class="u-card hz-demand-row {{!enabled ? 'hz-demand-row--disabled' : ''}}" bindtap="onOpen">
+  <view class="hz-demand-row__head">
+    <view class="hz-demand-row__check u-tap" catchtap="onToggle"><view class="u-check {{selected ? 'u-check--on' : ''}} {{enabled ? '' : 'hz-demand-row__check--off'}}"><text wx:if="{{selected}}" class="hz-icon hz-icon--check"></text></view></view>
+    <text class="hz-demand-row__name">{{name}}</text>
+    <view class="hz-demand-row__tags"><hz-tag wx:for="{{tags}}" wx:key="text" text="{{item.text}}" warn="{{item.warn}}" /><text class="hz-demand-row__left {{short ? 'hz-demand-row__left--short' : ''}}">{{left}}</text></view>
+  </view>
+  <view class="hz-demand-row__fields">
+    <view class="hz-demand-row__field hz-demand-row__field--wide"><text class="hz-demand-row__label">{{texts.shipDate}}</text><text>{{range}}</text></view>
+    <view class="hz-demand-row__field"><text class="hz-demand-row__label">{{texts.need}}</text><text>{{need}}</text></view>
+    <view class="hz-demand-row__field"><text class="hz-demand-row__label">{{texts.stock}}</text><text>{{stock}}</text></view>
+    <view class="hz-demand-row__field"><text class="hz-demand-row__label">{{texts.transit}}</text><text>{{transit}}</text></view>
   </view>
 </view>

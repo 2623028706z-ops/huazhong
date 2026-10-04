@@ -1,27 +1,14 @@
-import {
-  copy,
-  redesignCopy,
-  formatMoney,
-  formatTime,
-  labels,
-  type InviteDetail,
-} from '@huazhong/shared'
+import { copy, redesignCopy, formatTime, labels, type InviteDetail } from '@huazhong/shared'
 import { inviteProgress } from './progress'
 import { lineCents } from '../core/money'
 import { rowsOf } from './order'
 
 type SupplyLine = InviteDetail['supply'][number]
-function supplyTextOf(supply: SupplyLine | undefined, submitted: boolean) {
-  if (!submitted) return ''
-  return supply ? supplyViewOf(supply).subText : copy.screen.notSupplied
-}
-
 function supplyViewOf(line: SupplyLine) {
   return {
     ...line,
     key: line.materialId,
     priceText: '',
-    subText: `${copy.screen.supplyQty(line.qty, line.unit)} × ${formatMoney(line.priceCents)}`,
     amountCents: lineCents(line.qty, line.priceCents),
     tags: [{ text: copy.screen.extraSupply, warn: false }],
   }
@@ -43,11 +30,13 @@ function invitedLineOf(
     priceCents,
     amountCents: supply ? lineCents(qty, priceCents) : 0,
     priceText: '',
+    // 需求数量写在编码那行；没供的行标「未供」
     meta: submitted ? copy.screen.needQty(line.needQty, line.unit) : '',
-    subText: supplyTextOf(supply, submitted),
-    notice: submitted && !supply ? copy.screen.notSupplied : '',
     hideAmount: submitted && !supply,
-    tags: line.enabled ? [] : [{ text: copy.screen.tag.discontinued, warn: true }],
+    tags: [
+      ...(submitted && !supply ? [{ text: copy.screen.notSupplied, warn: true }] : []),
+      ...(line.enabled ? [] : [{ text: copy.screen.tag.discontinued, warn: true }]),
+    ],
   }
 }
 
@@ -55,9 +44,7 @@ function poLinkOf(invite: InviteDetail) {
   if (!invite.purchaseOrderNo) return ''
   const status =
     invite.purchaseOrderStatus === null ? null : labels.poStatus[invite.purchaseOrderStatus]
-  return [`${copy.screen.title.purchaseOrders} ${invite.purchaseOrderNo}`, status]
-    .filter(Boolean)
-    .join(copy.separator)
+  return [invite.purchaseOrderNo, status].filter(Boolean).join(copy.separator)
 }
 
 function invitePoUrl(id: string, supplier: boolean): string {
@@ -71,15 +58,22 @@ function inviteInfoOf(invite: InviteDetail, supplier: boolean) {
     title: invite.supplierName,
     statusKind: 'inviteStatus',
     status: invite.status,
+    cols: true,
     rows: rowsOf([
-      [redesignCopy.no, invite.no],
-      [redesignCopy.inviteDate, invite.inviteDate],
+      [copy.screen.inviteNo, invite.no],
       [copy.screen.label.buyer, invite.buyerName, supplier ? { phone: invite.buyerPhone } : {}],
-      [redesignCopy.submittedAt, invite.submittedAt ? formatTime(invite.submittedAt) : null],
+      [redesignCopy.inviteDate, invite.inviteDate, { wide: true }],
+      [
+        redesignCopy.submittedAt,
+        invite.submittedAt ? formatTime(invite.submittedAt) : null,
+        { wide: true },
+      ],
       [
         redesignCopy.purchaseOrders,
         poLinkOf(invite) || null,
-        invite.purchaseOrderId ? { url: invitePoUrl(invite.purchaseOrderId, supplier) } : {},
+        invite.purchaseOrderId
+          ? { url: invitePoUrl(invite.purchaseOrderId, supplier), wide: true }
+          : {},
       ],
     ]),
   }
@@ -111,6 +105,7 @@ export function inviteViewOf(invite: InviteDetail, supplier = false) {
       ...invite.supply.filter((line) => !invited.has(line.materialId)).map(supplyViewOf),
     ],
     linesHeading: copy.screen.section.materials,
+    qtyLabel: submitted ? copy.screen.supplyLabel : redesignCopy.need,
   }
 }
 

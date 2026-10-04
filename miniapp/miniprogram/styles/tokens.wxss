@@ -22,12 +22,19 @@ page {
   --hz-danger: #a3313d; /* 报错（玫瑰红） */
   --hz-danger-bg: #f9e4e3;
   --hz-on-brand: #fff; /* 陶土红底上的字和图标 */
+  --hz-bar-off: #8d7a70; /* 订货结算条（深底）上停用的按钮底 */
+  --hz-bar-off-text: #e9dfd6;
+  --hz-bar-shadow: 0 6px 18px #3b2a242e; /* 订货结算条浮起（全站唯一的阴影） */
 
   /* 字体 */
   --hz-serif: 'HZ Serif', 'Songti SC', serif; /* 思源宋体子集，core/font.ts 加载 */
+  --hz-sans: -apple-system, 'PingFang SC', sans-serif; /* 宋体标题里夹的计数 */
   --hz-font: 14px;
   --hz-font-xs: 11px;
   --hz-font-sm: 12px;
+  --hz-font-row: 13px; /* 卡片字段行、筛选、页底灰字 */
+  --hz-font-group: 15px; /* 分组标题（宋体） */
+  --hz-font-total: 19px; /* 明细合计金额（宋体） */
   --hz-font-md: 16px; /* 按钮、卡片对象、明细名称、金额、步进器数字 */
   --hz-font-lg: 18px; /* 入口卡名称、弹层标题 */
   --hz-font-todo: 28px;
@@ -39,7 +46,7 @@ page {
   --hz-icon: 18px;
   --hz-icon-md: 20px; /* 弹层左上 */
   --hz-icon-nav: 22px;
-  --hz-icon-tab: 24px;
+  --hz-icon-tab: 24px; /* 底栏、订货结算条购物车 */
   --hz-icon-entry: 26px;
   --hz-icon-hero: 32px; /* 首页主卡图标 */
 
@@ -48,7 +55,9 @@ page {
   --hz-radius-button: 8px;
   --hz-radius-inner: 9px;
   --hz-radius-sheet: 14px;
-  --hz-radius-pill: 999px; /* 状态标签、标记、胶囊、角标 */
+  --hz-radius-pill: 999px; /* 胶囊、角标 */
+  --hz-radius-check: 4px; /* 勾选框、状态标签（定稿 .tag） */
+  --hz-radius-line: 1px; /* 标签下划线 */
   --hz-tap: 44px;
   --hz-nav: 44px;
   --hz-tabbar: 62px;

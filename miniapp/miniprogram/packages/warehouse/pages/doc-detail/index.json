@@ -12,6 +12,8 @@
     "hz-notice": "/components/hz-notice/index",
     "hz-records": "/components/hz-records/index",
     "hz-status": "/components/hz-status/index",
-    "hz-confirm": "/components/hz-confirm/index"
+    "hz-confirm": "/components/hz-confirm/index",
+    "hz-realtime-bar": "/components/hz-realtime-bar/index",
+    "hz-tag": "/components/hz-tag/index"
   }
 }

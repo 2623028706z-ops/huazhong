@@ -75,3 +75,35 @@
   text-decoration-color: var(--hz-brand);
   text-underline-offset: 4px;
 }
+
+/* 页底灰字（第三个操作、少用的危险操作）：灰色、不加粗、无下划线 */
+.hz-button__text--quiet {
+  font-size: var(--hz-font-row);
+  font-weight: 400;
+  color: var(--hz-muted);
+  text-decoration: none;
+}
+
+/* 订货结算条上的主按钮（定稿 .cb .go）：红色胶囊，停用时深底上的灰褐色 */
+.hz-button--round {
+  --td-button-medium-height: 44px;
+  --td-button-border-radius: var(--hz-radius-pill);
+  --td-button-medium-padding-horizontal: 26px;
+  --td-button-primary-disabled-bg: var(--hz-bar-off);
+  --td-button-primary-disabled-border-color: var(--hz-bar-off);
+  --td-button-primary-disabled-color: var(--hz-bar-off-text);
+}
+
+.hz-button--round .hz-button__inner {
+  letter-spacing: 2px;
+}
+
+/* 停用原因放到结算条上方（定位到结算条），不撑高胶囊 */
+.hz-button--round .hz-button__reason {
+  position: absolute;
+  right: 0;
+  bottom: 64px;
+  left: 0;
+  margin: 0;
+  color: var(--hz-amber);
+}

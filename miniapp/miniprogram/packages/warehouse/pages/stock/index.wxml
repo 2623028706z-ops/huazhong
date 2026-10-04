@@ -1,11 +1,11 @@
 <import src="/views/list.wxml" />
+<import src="/views/stock.wxml" />
 <hz-navbar title="{{title}}" back="{{back}}" />
 <view class="u-list">
-  <hz-filter-bar search-placeholder="{{search}}" dimensions="{{dimensions}}" value="{{filter}}" bind:change="onFilter" />
+  <hz-filter-bar search-placeholder="{{search}}" sections="{{sections}}" section="{{section}}" dimensions="{{dimensions}}" value="{{filter}}" bind:change="onFilter" bind:section="onSection" />
   <template is="list-state" data="{{failure,skeleton,loaded,rows,emptyObject}}" />
-  <text wx:if="{{loaded && hasAged}}" class="u-section__title u-aged">{{texts.old}}</text><view wx:for="{{rows}}" wx:key="id" wx:if="{{item.aged}}" data-key="{{item.id}}" bindtap="onOpen"><hz-card row="{{item}}" /></view>
-  <block wx:if="{{!agedOnly}}"><text wx:if="{{loaded && hasOther}}" class="u-section__title">{{texts.other}}</text><view wx:for="{{rows}}" wx:key="id" wx:if="{{!item.aged}}" data-key="{{item.id}}" bindtap="onOpen"><hz-card row="{{item}}" /></view></block>
+  <template is="hz-stock-groups" data="{{groups, openable: true}}" />
   <text wx:if="{{done && rows.length}}" class="u-list__end">{{allLoaded}}</text>
 </view>
-
+<hz-action-bar tabbar="{{tabs.length > 0}}"><hz-button kind="secondary" text="{{texts.manage}}" bind:press="onManage" /><hz-button text="{{texts.create}}" bind:press="onCreate" /></hz-action-bar>
 <hz-tabbar wx:if="{{tabs.length}}" tabs="{{tabs}}" current="stock" />

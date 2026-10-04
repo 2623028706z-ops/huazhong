@@ -86,7 +86,7 @@ export const entriesOf: Partial<Record<ModuleKey, { common: Entry[]; masters: En
       {
         key: 'out',
         icon: 'arrow-up-from-line',
-        text: copy.stock.screen.stockOut,
+        text: copy.stock.verbOut,
         url: pages('warehouse', 'doc-form', '?kind=out'),
       },
       {
@@ -109,38 +109,26 @@ export const entriesOf: Partial<Record<ModuleKey, { common: Entry[]; masters: En
         wide: true,
       },
     ],
-    masters: [
-      {
-        key: 'materials',
-        icon: 'flower-2',
-        text: copy.screen.title.materials,
-        url: pages('warehouse', 'materials'),
-      },
-      {
-        key: 'out-categories',
-        icon: 'notebook-text',
-        text: copy.stock.screen.titles.categories,
-        url: pages('warehouse', 'out-categories'),
-      },
-    ],
+    // 定稿 090 没有「资料」：花材、出库分类从库存页底栏和出库单的分类弹层管
+    masters: [],
   },
   finance: {
     common: [
       {
         key: 'customers',
-        icon: 'store',
+        icon: 'book-open',
         text: copy.screen.title.arCustomers,
         url: pages('finance', 'customers'),
       },
       {
         key: 'suppliers',
-        icon: 'truck',
+        icon: 'scale',
         text: copy.screen.title.apSuppliers,
         url: pages('finance', 'suppliers'),
       },
       {
         key: 'records',
-        icon: 'scroll-text',
+        icon: 'arrow-left-right',
         text: copy.screen.title.records,
         url: pages('finance', 'records'),
         wide: true,
@@ -148,6 +136,26 @@ export const entriesOf: Partial<Record<ModuleKey, { common: Entry[]; masters: En
     ],
     masters: [],
   },
+}
+// 首页入口：从工作台进仓库多一格「库存」，六格正好三行，手工入库不再占整行；
+// 单模块员工登录落在这里，没有返回也没有底栏：「我的」放进最后一组小格
+const extraCommon = (key: ModuleKey, top: boolean): Entry[] =>
+  key === 'warehouse' && !top
+    ? [{ key: 'stock', icon: 'boxes', text: redesignCopy.stock, url: pages('warehouse', 'stock') }]
+    : []
+export const gridOf = (key: ModuleKey, top: boolean, noTabs: boolean) => {
+  const entries = entriesOf[key] ?? { common: [], masters: [] },
+    my: Entry = { key: 'my', icon: 'user-round', text: copy.tab.my, url: '/pages/my/index' },
+    masters = [...entries.masters, ...(top && noTabs ? [my] : [])]
+  return {
+    common: [...entries.common, ...extraCommon(key, top)].map((row) => ({
+      ...row,
+      wide: row.wide === true && top,
+      disabled: false,
+    })),
+    masters: masters.map((row) => ({ ...row, disabled: false })),
+    mastersTitle: entries.masters.length ? redesignCopy.masters : copy.tab.my,
+  }
 }
 export const todoUrls: Record<string, string> = {
   pendingOrders: pages('sales', 'orders', '?status=pending_confirm'),

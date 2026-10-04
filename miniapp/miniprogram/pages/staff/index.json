@@ -1,7 +1,8 @@
 {
   "usingComponents": {
     "hz-navbar": "/components/hz-navbar/index",
-    "hz-card": "/components/hz-card/index",
+    "hz-search": "/components/hz-search/index",
+    "hz-tag": "/components/hz-tag/index",
     "hz-sheet": "/components/hz-sheet/index",
     "hz-field": "/components/hz-field/index",
     "hz-switch": "/components/hz-switch/index",

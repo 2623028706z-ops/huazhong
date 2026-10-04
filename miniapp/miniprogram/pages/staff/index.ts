@@ -5,6 +5,7 @@ import {
   labels,
   maskPhone,
   moduleKeys,
+  redesignCopy,
   roleLabelOf,
   type StaffItem,
 } from '@huazhong/shared'
@@ -30,14 +31,12 @@ import {
 function rowOf(item: StaffItem) {
   return {
     id: item.id,
-    fields: [
-      { label: copy.field.role, value: roleLabelOf(item), wide: true },
-      { label: copy.field.phone, value: maskPhone(item.phone), wide: true },
-    ],
-    title: item.name,
-    total: roleLabelOf(item),
-    meta: maskPhone(item.phone),
-    tags: item.enabled ? [] : [{ text: copy.tag.disabled, warn: false }],
+    name: item.name,
+    disabled: !item.enabled,
+    sub: [
+      `${copy.field.phone} ${maskPhone(item.phone)}`,
+      `${copy.field.role} ${roleLabelOf(item)}`,
+    ].join(copy.separator),
   }
 }
 
@@ -52,6 +51,7 @@ Page({
     emptyObject: copy.object.staff,
     items: [] as StaffItem[],
     rows: [] as ReturnType<typeof rowOf>[],
+    keyword: '',
     loaded: false,
     skeleton: false,
     done: false,
@@ -76,6 +76,8 @@ Page({
       enabled: copy.statusValue.enabled,
       bound: copy.statusValue.bound,
       allLoaded: copy.state.allLoaded,
+      search: redesignCopy.staffSearch,
+      disabled: copy.tag.disabled,
     },
   },
   list: null as PagedList<StaffItem> | null,
@@ -90,7 +92,8 @@ Page({
         return result
       },
       (view: PagerView<StaffItem>) => {
-        this.setData({ ...view, rows: view.items.map(rowOf) })
+        this.setData({ ...view })
+        this.showRows()
       },
       (patch) => {
         this.setData(patch)
@@ -99,6 +102,18 @@ Page({
   },
   onShow() {
     void this.refresh()
+  },
+  // 接口没有搜索：在已取回的员工里按姓名、手机号过滤
+  showRows() {
+    const keyword = this.data.keyword.trim()
+    const items = this.data.items.filter(
+      (item) => !keyword || item.name.includes(keyword) || item.phone.includes(keyword),
+    )
+    this.setData({ rows: items.map(rowOf) })
+  },
+  onSearch(event: DetailEvent<string>) {
+    this.setData({ keyword: event.detail })
+    this.showRows()
   },
   async refresh(): Promise<void> {
     await this.list?.refresh()

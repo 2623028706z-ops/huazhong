@@ -10,7 +10,6 @@ import {
   labels,
   type AfterCard,
   type AfterDetail,
-  type AfterLine,
 } from '@huazhong/shared'
 import { lineTitleOf, rowsOf } from './order'
 
@@ -28,19 +27,19 @@ export function afterRowOf(after: AfterCard, forStore: boolean) {
   return {
     id: after.id,
     fields: [
-      { label: redesignCopy.no, value: after.no, wide: true },
+      { label: redesignCopy.no, value: after.no },
       { label: redesignCopy.submittedDate, value: after.afterDate },
+      { label: redesignCopy.originalOrder, value: after.orderNo },
       {
         label: redesignCopy.afterAmount,
         value: after.amountCents === null ? redesignCopy.pending : formatMoney(after.amountCents),
         amount: after.amountCents !== null,
       },
-      { label: redesignCopy.originalOrder, value: after.orderNo, wide: true },
     ],
     date: after.afterDate,
     status: forStore && after.status === 'voided' ? 'cancelled' : after.status,
     title: forStore
-      ? lineTitleOf(after.lineName, after.lineCount)
+      ? `${lineTitleOf(after.lineName, after.lineCount)} ${formatUnitTotals(after.units)}`
       : copy.org.store(after.customerName, after.storeName),
     total: formatUnitTotals(after.units),
     meta: [after.no, after.orderNo].join(copy.separator),
@@ -49,20 +48,21 @@ export function afterRowOf(after: AfterCard, forStore: boolean) {
   }
 }
 
-// 门店原来申请的数量和售后数量不同：「3 束 → 2 束」
-function qtyTextOf(line: AfterLine): string {
-  const qty = formatQty(line.qty, line.unit)
-  if (line.requestedQty === null || line.requestedQty === line.qty) return qty
-  return formatQty(line.requestedQty, line.unit) + copy.log.arrow + qty
-}
-
-// 只读的售后产品：原因、说明、图片直接展开
-export function afterLinesOf(after: AfterDetail) {
+// 只读的售后产品：申请 / 处理数量、红色原因标签、说明、图片直接展开
+export function afterLinesOf(after: AfterDetail, staff = false) {
   return after.lines.map((line) => ({
     key: line.id,
     name: line.name,
     amountText: line.amountCents === null ? '' : formatMoney(line.amountCents),
-    meta: [qtyTextOf(line), labels.afterReason[line.reason]].join(copy.separator),
+    applied: [redesignCopy.appliedQty, formatQty(line.requestedQty ?? line.qty, line.unit)].join(
+      ' ',
+    ),
+    handled: [
+      redesignCopy.handledQty,
+      after.status === 'processed' ? formatQty(line.qty, line.unit) : copy.screen.noAmount,
+    ].join(' '),
+    meta: staff ? `${redesignCopy.shipPrice} ${formatMoney(line.shipPriceCents)}` : '',
+    reason: labels.afterReason[line.reason],
     description: line.description,
     images: line.images.map((image) => ({ url: image.url, thumbUrl: image.thumbUrl })),
     urls: line.images.map((image) => image.url),
@@ -70,24 +70,29 @@ export function afterLinesOf(after: AfterDetail) {
 }
 
 export function afterInfoOf(after: AfterDetail, forStore = false) {
+  const wide = { wide: true }
+  const amount: [string, string, { wide: boolean }] = [
+    copy.screen.label.afterAmount,
+    after.amountCents === null ? redesignCopy.pending : formatMoney(after.amountCents),
+    wide,
+  ]
+  const order: [string, string, { url: string; wide: boolean }] = [
+    copy.screen.label.sourceOrder,
+    after.orderNo,
+    {
+      url: `/packages/${forStore ? 'store' : 'sales'}/pages/order-detail/index?id=${after.orderId}`,
+      wide: true,
+    },
+  ]
+  if (forStore) return rowsOf([[redesignCopy.no, after.no, wide], amount, order])
   return rowsOf([
     [redesignCopy.no, after.no],
-    [
-      copy.screen.label.sourceOrder,
-      after.orderNo,
-      {
-        url: `/packages/${forStore ? 'store' : 'sales'}/pages/order-detail/index?id=${after.orderId}`,
-      },
-    ],
-    [copy.screen.label.customerStore, copy.org.store(after.customerName, after.storeName)],
-    [copy.field.shipDate, after.shipDate],
-    [copy.screen.label.afterDate, after.afterDate],
     [copy.screen.label.origin, labels.afterOrigin[after.origin]],
-    [
-      copy.screen.label.afterAmount,
-      after.amountCents === null ? redesignCopy.pending : formatMoney(after.amountCents),
-    ],
-    [copy.screen.label.processNote, after.note],
+    [copy.screen.label.afterDate, after.afterDate],
+    [copy.field.shipDate, after.shipDate],
+    amount,
+    order,
+    [copy.screen.label.processNote, after.note, wide],
   ])
 }
 

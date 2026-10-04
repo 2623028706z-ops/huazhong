@@ -1,0 +1,5 @@
+.hz-statement-head__tags {
+  display: flex;
+  gap: var(--hz-line-gap);
+  align-items: center;
+}

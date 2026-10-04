@@ -1,0 +1,5 @@
+.hz-staff-row__go {
+  flex: none;
+  font-size: var(--hz-icon-sm);
+  color: var(--hz-muted);
+}

@@ -38,7 +38,7 @@ const titles: Record<FormMode, string> = {
   confirm: copy.screen.title.confirmOrder,
 }
 const submitTexts: Record<FormMode, string> = {
-  create: copy.screen.action.confirm,
+  create: copy.screen.action.submitOrder,
   edit: copy.screen.action.saveEdit,
   confirm: copy.screen.action.confirm,
 }
@@ -69,7 +69,7 @@ Page({
     realtime: '',
     form: blankForm(),
     initial: blankForm(),
-    customerRows: [] as { label: string; value: string }[],
+    customerTitle: '',
     customerOptions: [] as { id: string; name: string }[],
     storeOptions: [] as { id: string; name: string }[],
     lineViews: [] as ReturnType<typeof lineViewsOf>,
@@ -86,6 +86,7 @@ Page({
       note: copy.field.note,
       reason: copy.screen.label.editReason,
       optional: copy.placeholder.optional,
+      reasonHint: redesignCopy.reasonHint,
       add: copy.screen.action.addProduct,
       pickTitle: copy.screen.title.pickProduct,
       noPick: copy.state.empty(copy.screen.empty.addableProducts),
@@ -156,12 +157,7 @@ Page({
     this.setData({
       loaded: true,
       realtime: '',
-      customerRows: [
-        {
-          label: copy.screen.label.customerStore,
-          value: copy.org.store(order.customerName, order.storeName),
-        },
-      ],
+      customerTitle: copy.org.store(order.customerName, order.storeName),
     })
     this.render(formOf(order, this.data.form.reason), true)
   },

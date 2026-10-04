@@ -1,36 +1,51 @@
 .hz-module-home {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   padding: 14px var(--hz-gap-page);
 }
 
+/* 待办小卡：三列，大数字在上、名称在下，右上小箭头 */
 .hz-module-home__todos {
-  display: flex;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .hz-module-home__todo {
-  flex: 1;
-  min-width: 0;
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 12px 8px;
-  text-align: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 14px 12px 12px;
 }
 
-.hz-module-home__label {
-  font-size: var(--hz-font-sm);
+.hz-module-home__arrow {
+  position: absolute;
+  top: 12px;
+  right: 10px;
+  font-size: var(--hz-icon-sm);
   color: var(--hz-muted);
 }
 
 .hz-module-home__count {
+  font-family: var(--hz-serif);
   font-size: var(--hz-font-todo);
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1.2;
   color: var(--hz-brand);
 }
 
 .hz-module-home__count--zero {
   color: var(--hz-muted);
+}
+
+.hz-module-home__label {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-ink);
+}
+
+.hz-module-home__amount {
+  font-size: var(--hz-font-sm);
 }

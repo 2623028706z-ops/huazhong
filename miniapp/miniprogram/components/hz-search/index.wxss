@@ -1,8 +1,8 @@
-/* TDesign 搜索框只改主题变量 */
+/* TDesign 搜索框只改主题变量；外面一圈细线（定稿 .search .box：高 38、细线、按钮圆角） */
 .hz-search {
-  --td-search-height: var(--hz-tap);
+  --td-search-height: 36px;
   --td-search-bg-color: var(--hz-paper);
-  --td-search-square-radius: var(--hz-radius);
+  --td-search-square-radius: var(--hz-radius-button);
   --td-search-text-color: var(--hz-ink);
   --td-search-placeholder-color: var(--hz-muted);
   --td-search-icon-color: var(--hz-muted);
@@ -12,6 +12,9 @@
 
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--hz-hair);
+  border-radius: var(--hz-radius-button);
 }
 
 .hz-search--paper {

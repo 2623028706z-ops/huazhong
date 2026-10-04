@@ -154,7 +154,10 @@ const methods = {
       loaded: true,
       failure: null,
       view: poViewOf(po, false, this.financeScope),
-      buttons: this.readonlyScope ? [] : buttonsOf(po.actions, specs),
+      // 不能点的原因已经写在页面上方的提示条里，按钮下面不再重复
+      buttons: this.readonlyScope
+        ? []
+        : buttonsOf(po.actions, specs).map((button) => ({ ...button, reason: '' })),
       receiving,
       initial: lines,
       recvNote,

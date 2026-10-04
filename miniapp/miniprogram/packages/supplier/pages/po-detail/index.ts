@@ -11,7 +11,6 @@ Page({
   data: {
     title: copy.screen.title.purchaseOrder,
     loaded: false,
-    statementLink: '',
     failure: null as FailureView | null,
     view: null as ReturnType<typeof poViewOf> | null,
     canCancel: false,
@@ -40,7 +39,6 @@ Page({
         loaded: true,
         failure: null,
         view: poViewOf(result.data, true),
-        statementLink: result.data.statement?.no ?? '',
         canCancel: canDo(result.data.actions, 'supplierCancelPo'),
         canEdit: canDo(result.data.actions, 'supplierEditPo'),
       })
@@ -58,12 +56,6 @@ Page({
   },
   onEdit() {
     void wx.navigateTo({ url: `/packages/supplier/pages/supply/index?poId=${this.id}` })
-  },
-  onStatement() {
-    if (this.po?.statement)
-      void wx.navigateTo({
-        url: `/packages/supplier/pages/statement-detail/index?id=${this.po.statement.id}`,
-      })
   },
   async onSubmitCancel(event: DetailEvent<string>) {
     if (!this.po || this.data.busy) return

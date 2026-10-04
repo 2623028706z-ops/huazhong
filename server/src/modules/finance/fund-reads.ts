@@ -82,6 +82,8 @@ function linkedStatements(row: FundRow, links: Link[]) {
     .map(({ link: l, statement: s }) => ({
       id: String(s.id),
       no: s.no,
+      periodFrom: s.periodFrom,
+      periodTo: s.periodTo,
       dueCents: s.dueCents,
       amountCents: l.amountCents,
       status: s.status,

@@ -10,6 +10,7 @@
     "hz-action-bar": "/components/hz-action-bar/index",
     "hz-button": "/components/hz-button/index",
     "hz-reason-sheet": "/components/hz-reason-sheet/index",
-    "hz-line-item": "/components/hz-line-item/index"
+    "hz-line-item": "/components/hz-line-item/index",
+    "hz-records": "/components/hz-records/index"
   }
 }

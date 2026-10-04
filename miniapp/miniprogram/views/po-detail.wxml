@@ -8,12 +8,12 @@
     <hz-error wx:if="{{failure && !sheet && !cancelSheet}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
     <hz-error wx:if="{{error && !sheet && !cancelSheet}}" message="{{error}}" />
     <hz-skeleton wx:if="{{!loaded}}" type="detail" />
-    <block wx:elif="{{receiving}}"><hz-progress steps="{{view.progress}}" />
+    <block wx:elif="{{receiving}}"><hz-notice wx:if="{{view.notice}}" text="{{view.notice}}" /><hz-progress steps="{{view.progress}}" />
       <template is="info" data="{{...view.info}}" />
-      <hz-records wx:if="{{view.changes.length}}" type="poChange" items="{{view.changes}}" />
       <view class="u-section">
         <hz-line-item title="{{texts.lines}}" qty-label="{{texts.receivedQty}}" lines="{{lineViews}}" mode="price" bind:qty="onQty" bind:price="onPrice" />
       </view>
+      <hz-records wx:if="{{view.changes.length}}" type="poChange" items="{{view.changes}}" />
       <view class="u-card u-form-card">
         <hz-field wx:if="{{repriced}}" id="receive-reason" label="{{texts.repriceReason}}" value="{{reason}}" error="{{fields.reason}}" bind:change="onReason" />
         <hz-field label="{{texts.receiveNote}}" value="{{recvNote}}" bind:change="onRecvNote" />

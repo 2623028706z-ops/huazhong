@@ -5,7 +5,7 @@
     <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   </view>
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="list" /></block>
-  <hz-state wx:elif="{{side.length === 0}}" object="{{texts.empty}}" />
+  <block wx:elif="{{side.length === 0}}"><hz-state object="{{texts.empty}}" /><view class="u-detail-third"><hz-button wx:if="{{canCreateCustomer}}" kind="text" text="{{texts.createCustomer}}" bind:press="onNewCustomer" /></view></block>
   <view wx:else class="u-split">
     <view class="u-split__side">
       <hz-side-list items="{{side}}" value="{{customerId}}" bind:change="onCustomer" /><hz-button wx:if="{{canCreateCustomer}}" kind="text" text="{{texts.createCustomer}}" bind:press="onNewCustomer" />
@@ -15,7 +15,7 @@
         <text class="u-info__title">{{customerName}}</text>
         <hz-button kind="text" text="{{texts.editCustomer}}" bind:press="onEditCustomer" />
       </view>
-      <view class="u-segments"><view class="u-segments__item {{section==='stores'?'u-segments__item--on':''}}" data-key="stores" bindtap="onSection">{{texts.stores}}</view><view class="u-segments__item {{section==='catalog'?'u-segments__item--on':''}}" data-key="catalog" bindtap="onSection">{{catalogTitle}}</view></view>
+      <hz-tabs items="{{sections}}" value="{{section}}" bind:change="onSection" />
       <block wx:if="{{section==='stores'}}">      <text wx:if="{{stores.length === 0}}" class="u-info__meta">{{texts.noStores}}</text>
       <view wx:for="{{stores}}" wx:key="id" data-key="{{item.id}}" bindtap="onOpen">
         <hz-card row="{{item}}" />
@@ -67,7 +67,7 @@
 
 <hz-sheet show="{{copySheet}}" title="复制其他客户目录" footer bind:close="onCloseCopy">
   <view class="u-sheet-form">
-    <hz-picker label="来源客户" options="{{copyOptions}}" value="{{copySourceId}}" bind:change="onCopySource" />
+    <hz-picker inline label="来源客户" options="{{copyOptions}}" value="{{copySourceId}}" bind:change="onCopySource" />
     <hz-error wx:if="{{copyError}}" message="{{copyError}}" />
     <view wx:if="{{copyPreview}}" class="u-info__meta">可复制 {{copyPreview.copyCount}} 项，跳过 {{copyPreview.skipCount}} 项。目标空分类按名称复用；不会覆盖现有目录项。</view>
     <hz-button kind="secondary" text="重新预览" disabled="{{!copySourceId}}" loading="{{copyBusy}}" bind:press="onPreviewCopy" />

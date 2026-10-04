@@ -7,7 +7,7 @@
     "hz-skeleton": "/components/hz-skeleton/index",
     "hz-state": "/components/hz-state/index",
     "hz-error": "/components/hz-error/index",
-    "hz-notice": "/components/hz-notice/index",
+    "hz-tag": "/components/hz-tag/index",
     "hz-status": "/components/hz-status/index",
     "hz-action-bar": "/components/hz-action-bar/index",
     "hz-button": "/components/hz-button/index",
@@ -22,6 +22,8 @@
     "hz-brand": "/components/hz-brand/index",
     "hz-cover": "/components/hz-cover/index",
     "hz-progress": "/components/hz-progress/index",
-    "hz-info-rows": "/components/hz-info-rows/index"
+    "hz-info-rows": "/components/hz-info-rows/index",
+    "hz-statement-list": "/components/hz-statement-list/index",
+    "hz-records": "/components/hz-records/index"
   }
 }

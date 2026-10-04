@@ -22,6 +22,7 @@
   margin: 6px 0 18px;
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);
+  white-space: pre-line;
 }
 
 .hz-confirm__actions {

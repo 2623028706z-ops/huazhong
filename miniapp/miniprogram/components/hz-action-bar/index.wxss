@@ -13,11 +13,12 @@
   padding: 9px var(--hz-gap-page);
   padding-bottom: calc(9px + env(safe-area-inset-bottom));
   background: var(--hz-paper);
+  border-top: 1px solid var(--hz-hair);
 }
 
-/* 占住底栏的高度，页面内容不被挡住 */
+/* 占住底栏的高度，页面内容不被挡住；多留 16px，最后一张卡和页底灰字不贴着底栏 */
 .hz-action-bar__spacer {
-  height: calc(var(--hz-tap) + 18px + env(safe-area-inset-bottom));
+  height: calc(var(--hz-tap) + 34px + env(safe-area-inset-bottom));
 }
 
 /* 底栏页：贴在底栏上面 */
@@ -27,26 +28,35 @@
 }
 
 .hz-action-bar__spacer--tabbar {
-  height: calc(var(--hz-tap) + 18px);
+  height: calc(var(--hz-tap) + 34px);
 }
 
 /* 弹层底部：跟在内容后面，上面一条卡片内细线 */
 .hz-action-bar--inline {
   position: static;
+  padding-bottom: 9px;
   background: transparent;
   border-top: 1px solid var(--hz-line);
 }
 
+/* 订货结算条（定稿 .cb）：深棕胶囊浮在底部，左边金额、右边红色胶囊按钮 */
 .hz-action-bar--settlement {
   right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
   left: 12px;
-  bottom: 12px;
-  border-radius: var(--hz-radius);
-  background: var(--hz-green);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 56px;
+  padding: 0 6px 0 20px;
+  border-radius: var(--hz-radius-pill);
+  background: var(--hz-ink);
   color: var(--hz-paper);
-  box-shadow: var(--hz-shadow);
+  border-top: 0;
+  box-shadow: var(--hz-bar-shadow);
 }
 
 .hz-action-bar--settlement.hz-action-bar--tabbar {
   bottom: calc(var(--hz-tabbar) + env(safe-area-inset-bottom) + 8px);
+  padding-bottom: 0;
 }

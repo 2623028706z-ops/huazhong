@@ -4,22 +4,18 @@
   <hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="list" /></block>
   <hz-state wx:elif="{{groups.length === 0}}" object="{{texts.empty}}" />
-  <block wx:for="{{groups}}" wx:key="id" wx:for-item="group">
-    <text class="u-list__group">{{group.name}}</text>
-    <view wx:for="{{group.rows}}" wx:key="id" class="u-card u-product" data-key="{{item.id}}" bindtap="onOpen">
-      <image wx:if="{{item.imageUrl}}" class="u-thumbs__item" src="{{item.imageUrl}}" mode="aspectFill" lazy-load />
-      <view wx:else class="u-thumbs__item"></view>
-      <view class="u-product__info">
-        <view class="u-info__head">
-          <view class="u-product__name-row">
-            <text class="u-info__title">{{item.name}}</text>
-            <hz-tag wx:if="{{item.disabled}}" text="{{texts.disabled}}" />
-          </view>
+  <view wx:for="{{groups}}" wx:key="id" wx:for-item="group" class="u-section">
+    <text class="u-section__title">{{group.name}}</text>
+    <view class="u-card u-rows">
+      <view wx:for="{{group.rows}}" wx:key="id" class="u-rows__item u-products__row" data-key="{{item.id}}" bindtap="onOpen">
+        <view class="u-products__main">
+          <view class="u-products__name"><text class="u-rows__title">{{item.name}}</text><hz-tag wx:if="{{item.disabled}}" text="{{texts.disabled}}" /></view>
+          <text class="u-info__meta">{{item.meta}}</text>
         </view>
-        <text class="u-info__meta">{{item.meta}}</text>
+        <text class="hz-icon hz-icon--chevron-right u-field__icon"></text>
       </view>
     </view>
-  </block>
+  </view>
 </view>
 <hz-action-bar wx:if="{{canCreate || canManage}}">
   <hz-button wx:if="{{canManage}}" kind="secondary" text="{{texts.manage}}" bind:press="onManage" />

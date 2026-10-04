@@ -1,0 +1,38 @@
+<view class="u-card hz-statement-list">
+  <view class="hz-statement-list__head">
+    <text class="hz-statement-list__title u-serif">{{title}}</text>
+    <text wx:if="{{meta}}" class="hz-statement-list__meta">{{meta}}</text>
+  </view>
+  <text wx:if="{{!groups.length}}" class="hz-statement-list__empty">{{emptyText}}</text>
+  <view wx:for="{{groups}}" wx:key="key" class="hz-statement-list__group">
+    <view wx:if="{{item.head}}" class="hz-statement-list__group-head">
+      <text class="hz-statement-list__group-name">{{item.head}}</text>
+      <text class="hz-statement-list__meta">{{item.meta}}</text>
+    </view>
+    <view
+      wx:for="{{item.rows}}"
+      wx:for-item="row"
+      wx:key="key"
+      class="hz-statement-list__row {{row.muted ? 'hz-statement-list__row--muted' : ''}}"
+      data-key="{{row.key}}"
+      bindtap="onPress"
+    >
+      <view class="hz-statement-list__main">
+        <view wx:if="{{row.selectable}}" class="hz-statement-list__check" data-key="{{row.key}}" catchtap="onToggle">
+          <view class="u-check {{row.selected ? 'u-check--on' : ''}}">
+            <text wx:if="{{row.selected}}" class="hz-icon hz-icon--check"></text>
+          </view>
+        </view>
+        <text class="hz-statement-list__no">{{row.title}}</text>
+        <hz-tag wx:for="{{row.tags}}" wx:for-item="tag" wx:key="text" text="{{tag.text}}" warn="{{tag.warn}}" done="{{tag.done}}" />
+        <view class="hz-statement-list__amount">
+          <text class="hz-statement-list__label">{{row.amountLabel}}</text>
+          <text class="hz-statement-list__money u-serif-amount">{{row.amount}}</text>
+        </view>
+      </view>
+      <view wx:if="{{row.notes.length}}" class="hz-statement-list__notes">
+        <text wx:for="{{row.notes}}" wx:for-item="note" wx:key="*this">{{note}}</text>
+      </view>
+    </view>
+  </view>
+</view>

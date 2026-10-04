@@ -258,32 +258,34 @@ describe('X8 客户页目录复制凭据', () => {
 })
 
 describe('C2 需求卡片与草稿来源', () => {
-  it('每张卡片显示实际shipFrom/shipTo，并携带需求快照；缺货开关作为查询传入', async () => {
-    mocks.request.mockResolvedValue({
-      ok: true,
-      data: {
-        from: '2026-10-01',
-        to: '2026-10-08',
-        orderCount: 1,
-        overdue: { count: 1, shipFrom: '2026-09-30', shipTo: '2026-09-30' },
-        actions: [],
-        mats: [
-          {
-            materialId: '1',
-            name: '花材',
-            unit: '枝',
-            enabled: true,
-            shipFrom: '2026-10-03',
-            shipTo: '2026-10-04',
-            needQty: 20,
-            stockQty: 5,
-            inTransitQty: 3,
-            leftQty: -12,
-            invited: true,
-          },
-        ],
-      },
-    })
+  it('每张卡片显示实际shipFrom/shipTo，并携带需求快照；缺货只在前端按缺口筛', async () => {
+    mocks.request
+      .mockResolvedValueOnce({
+        ok: true,
+        data: {
+          from: '2026-10-01',
+          to: '2026-10-08',
+          orderCount: 1,
+          overdue: { count: 1, shipFrom: '2026-09-30', shipTo: '2026-09-30' },
+          actions: [],
+          mats: [
+            {
+              materialId: '1',
+              name: '花材',
+              unit: '枝',
+              enabled: true,
+              shipFrom: '2026-10-03',
+              shipTo: '2026-10-04',
+              needQty: 20,
+              stockQty: 5,
+              inTransitQty: 3,
+              leftQty: -12,
+              invited: true,
+            },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({ ok: true, data: { counts: { pending: 2 } } })
     const page = await loadPage(() => import('../miniprogram/packages/purchase/pages/demand/index'))
     page.setData({
       from: '2026-10-01',
@@ -294,8 +296,8 @@ describe('C2 需求卡片与草稿来源', () => {
     })
     await invoke(page, 'load')
     const rows = page.data.rows as { range: string }[]
-    expect(rows[0]?.range).toBe('2026-10-03 ~ 2026-10-04 出货')
-    expect(mocks.request.mock.calls[0]?.[1]).toMatchObject({ query: { shortageOnly: 'true' } })
+    expect(rows[0]?.range).toBe('2026-10-03 ~ 2026-10-04')
+    expect(mocks.request.mock.calls[0]?.[1]).toMatchObject({ query: { shortageOnly: 'false' } })
     expect(await invoke(page, 'draft')).toMatchObject({
       demandContext: {
         from: '2026-10-01',

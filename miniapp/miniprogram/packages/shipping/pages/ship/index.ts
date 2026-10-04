@@ -18,7 +18,7 @@ import { unwatch, watchNewer } from '../../../../core/live'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
-import { shippingViewOf, rowsOf, shipDateText } from '../../../../views/order'
+import { shippingViewOf, shippingInfoOf } from '../../../../views/order'
 
 interface ShipLine {
   id: string
@@ -54,7 +54,6 @@ function lineViewsOf(lines: readonly ShipLine[]) {
         : line.shippedQty > line.qty
           ? [{ text: copy.rework.overShipped, warn: true }]
           : [],
-    meta: `${copy.screen.label.orderQty} ${line.qty} ${line.unit}`,
     qty: line.shippedQty,
     orderedQty: line.qty,
     packed: line.packed,
@@ -62,29 +61,12 @@ function lineViewsOf(lines: readonly ShipLine[]) {
   }))
 }
 
-function infoOf(order: ShippingDetail) {
-  return {
-    title: copy.org.store(order.customerName, order.storeName),
-    statusKind: 'orderStatus',
-    status: order.status,
-    rows: rowsOf([
-      [redesignCopy.no, order.no],
-      [copy.field.shipDate, shipDateText(order.shipDate)],
-      [
-        redesignCopy.contact,
-        [order.contactName, order.contactPhone].filter(Boolean).join(copy.separator) ||
-          redesignCopy.notFilled,
-        { phone: order.contactPhone },
-      ],
-      [redesignCopy.address, order.address || redesignCopy.notFilled],
-    ]),
-  }
-}
+const infoOf = shippingInfoOf
 
 Page({
   data: {
     changed: false,
-    title: copy.screen.title.ship,
+    title: copy.screen.title.shipDetail,
     loaded: false,
     failure: null as FailureView | null,
     formError: '',
@@ -169,7 +151,7 @@ Page({
       shipReason: action?.disabledReason ?? '',
       info: infoOf(order),
       view: shippingViewOf(order),
-      orderNote: order.note ?? '',
+      orderNote: order.note ? redesignCopy.orderNote(order.note) : '',
       shipNote: '',
     })
     this.setLines(shipLinesOf(order), false)

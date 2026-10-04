@@ -75,7 +75,6 @@ Page({
     failure: null as FailureView | null,
     catalogError: '',
     head: '',
-    dateLabel: copy.screen.label.orderDate,
     date: '',
     countText: '',
     keyword: '',
@@ -88,6 +87,7 @@ Page({
     cartTotal: 0,
     cartText: '',
     cartSheet: false,
+    pickedTitle: copy.screen.title.pickedWith(0),
     cartRows: [] as ReturnType<typeof cartLinesOf>,
     tabs: [] as ReturnType<typeof tabsOf>,
     notice: '',
@@ -138,9 +138,9 @@ Page({
       failure: null,
       catalogError: catalogErrorOf(data),
       head: data.me.orgLabel ?? '',
-      date: headerDateOf(this.data.isEdit),
+      date: this.data.isEdit ? '' : headerDateOf(false),
       countText: this.data.isEdit
-        ? copy.screen.title.editOrder
+        ? copy.screen.title.editOrderDated(headerDateOf(true))
         : copy.store.orderableCount(data.home.orderableCount),
       tabs: tabsOf(data.me),
       notice: data.home.lockedReason ?? '',
@@ -156,6 +156,7 @@ Page({
       products: this.catalog ? productRowsOf(this.catalog, categoryId, keyword, lines) : [],
       emptyObject: keyword.trim() ? copy.screen.empty.shopSearch : copy.screen.empty.shop,
       cartCount: count,
+      pickedTitle: copy.screen.title.pickedWith(lines.length),
       cartText: redesignCopy.pickedCount(
         lines.length,
         formatUnitTotals(

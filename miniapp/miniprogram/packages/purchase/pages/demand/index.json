@@ -8,6 +8,7 @@
     "hz-action-bar": "/components/hz-action-bar/index",
     "hz-button": "/components/hz-button/index",
     "hz-sheet": "/components/hz-sheet/index",
+    "hz-info-rows": "/components/hz-info-rows/index",
     "hz-picker": "/components/hz-picker/index",
     "hz-demand-row": "/components/hz-demand-row/index",
     "hz-invite-list": "/components/hz-invite-list/index",

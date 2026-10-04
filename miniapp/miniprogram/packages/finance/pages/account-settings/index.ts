@@ -74,8 +74,11 @@ Page({
   },
   checkBody() {
     const termDays = this.data.termText.trim() === '' ? null : Number(this.data.termText)
+    const schema = this.data.supplier
+      ? contract.updateSupplierTerms.body
+      : contract.updateCustomerTerms.body
     return checkedOf(
-      contract.updateCustomerTerms.body.safeParse({
+      schema.safeParse({
         version: this.data.version,
         termDays,
         ...(this.data.openingEditable

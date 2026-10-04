@@ -1,0 +1,4 @@
+.hz-party-title {
+  font-size: var(--hz-font-hero);
+  font-weight: 600;
+}

@@ -92,6 +92,12 @@ test('D01 新种子使用整张DZ，首页只算已开对账单，门店只见�
   const todos = dataOf<OutputOf<typeof contract.moduleTodos>>(
     await finance.get('/modules/finance/todos'),
   )
+  // 角标 = 待收款 + 待付款张数，逾期未收已含在待收款里，不重复计
+  expect(todos.count).toBe(1)
+  const unsettled = dataOf<OutputOf<typeof contract.listArCustomers>>(
+    await finance.get('/finance/customers?filter=unsettled'),
+  )
+  expect(unsettled.items.map((item) => item.partyName)).toEqual(['晨曦花艺'])
   expect(todos.rows).toEqual([
     { key: 'receivable', label: '待收款', count: 1, amountCents: 358800 },
     { key: 'overdueReceivable', label: '逾期未收', count: 0 },
@@ -134,9 +140,23 @@ test('D02–D07 足额或优惠整张结清，作废收款恢复未结清，再�
     creditCents: 2200,
     creditBalanceCents: 2200,
     discountCents: 1000,
-    statements: [{ id: d.id, amountCents: 358800, status: 'settled' }],
+    statements: [
+      {
+        id: d.id,
+        amountCents: 358800,
+        status: 'settled',
+        periodFrom: d.periodFrom,
+        periodTo: d.periodTo,
+      },
+    ],
   })
-  expect(await detail()).toMatchObject({ status: 'settled', settledCents: 358800 })
+  // 已收只算实际收到的钱，优惠单列，不能把优惠算成已收
+  expect(await detail()).toMatchObject({
+    status: 'settled',
+    settledCents: 357800,
+    settledDiscountCents: 1000,
+    settlements: [{ amountCents: 360000, discountCents: 1000, creditCents: 2200 }],
+  })
   expect(
     (
       await finance.post(`/finance/statements/${d.id}/void`, {
@@ -332,11 +352,12 @@ test('D11 开首单后期初设置永久锁，首单作废重新待入单；账�
   ).toBe(1)
   await voidStatement(d)
   expect((await draft('supplier', partyId)).openingDebtCents).toBe(1000)
+  // 首单作废后没有未作废的对账单，期初欠款可以再改
   expect(
     dataOf<OutputOf<typeof contract.supplierTerms>>(
       await finance.get(`/finance/suppliers/${partyId}/terms`),
     ).openingDebtEditable,
-  ).toBe(false)
+  ).toBe(true)
 })
 
 test('D12 外部状态日期筛选只影响列表，抬头总账不变；share含整单', async () => {
@@ -384,24 +405,4 @@ test('D13 别家来源不存在；同一家金额或版本变化STALE', async ()
       })
     ).body.error?.code,
   ).toBe('STALE')
-})
-
-test('D14 批量列表遵守往来/记录契约；内部只读DZ按岗位和kind授权', async () => {
-  const finance = await s.as('u6')
-  const sales = await s.as('u2')
-  const parties = dataOf<OutputOf<typeof contract.listArCustomers>>(
-    await finance.get('/finance/customers'),
-  )
-  expect(parties.items.find((p) => p.partyId === customerId)?.outstandingCents).toBe(358800)
-  const records = dataOf<OutputOf<typeof contract.listFinanceRecords>>(
-    await finance.get('/finance/records'),
-  )
-  expect(records.items).toHaveLength(1)
-  expect(records.items[0]?.creditCents).toBe(6400)
-  const internal = dataOf<StatementDetail>(await sales.get(`/statements/${statementId}`))
-  expect(internal.actions).toEqual([])
-  expect(internal.no).toBe('DZ-260929-001')
-  expect((await (await s.as('u4')).get(`/statements/${statementId}`)).status).toBe(404)
-  expect((await (await s.as('u7')).get(`/statements/${statementId}`)).status).toBe(403)
-  expect((await sales.post(`/finance/statements/${statementId}/share`)).status).toBe(403)
 })

@@ -1,18 +1,18 @@
 <wxs src="../../core/format.wxs" module="format" />
-<view wx:if="{{mode !== 'after'}}" class="u-card hz-line-item__table">
-  <view class="hz-line-item__tr hz-line-item__tr--head {{quantityOnly ? (lines[0].orderedQty !== undefined ? 'hz-line-item__tr--actual' : 'hz-line-item__tr--qty') : ''}}">
+<view wx:if="{{mode !== 'after'}}" class="u-card hz-line-item__table {{mode !== 'view' ? 'hz-line-item__table--edit' : ''}}">
+  <view class="hz-line-item__tr hz-line-item__tr--head {{quantityOnly ? (lines[0].orderedQty !== undefined ? 'hz-line-item__tr--actual' : 'hz-line-item__tr--qty') : 'hz-line-item__tr--price'}}">
     <text class="hz-line-item__name">{{title || texts.lines}}<text wx:if="{{picking}}" class="hz-line-item__meta"> {{packedText}}</text></text>
     <text>{{qtyLabel || texts.qty}}</text><text wx:if="{{quantityOnly && lines[0].orderedQty !== undefined}}">{{texts.actual}}</text><text>{{texts.unit}}</text>
     <block wx:if="{{!quantityOnly}}"><text>{{texts.price}}</text><text>{{texts.subtotal}}</text></block>
   </view>
-  <view wx:for="{{lines}}" wx:key="key" class="hz-line-item__row" data-index="{{index}}" bindtap="onEdit">
-    <view class="hz-line-item__tr {{quantityOnly ? (lines[0].orderedQty !== undefined ? 'hz-line-item__tr--actual' : 'hz-line-item__tr--qty') : ''}}">
-      <view class="hz-line-item__name"><text wx:if="{{picking}}" class="hz-line-item__check" data-index="{{index}}" catchtap="onPacked">{{item.packed ? '☑' : '☐'}}</text><text>{{item.name}}</text></view>
+  <view wx:for="{{lines}}" wx:key="key" class="hz-line-item__row" data-index="{{index}}" bindtap="onEdit"><text wx:if="{{mode !== 'view' && !item.readonly}}" class="hz-icon hz-icon--chevron-right hz-line-item__go"></text>
+    <view class="hz-line-item__tr {{quantityOnly ? (lines[0].orderedQty !== undefined ? 'hz-line-item__tr--actual' : 'hz-line-item__tr--qty') : 'hz-line-item__tr--price'}}">
+      <view class="hz-line-item__name"><view wx:if="{{picking}}" class="hz-line-item__check" data-index="{{index}}" catchtap="onPacked"><view class="u-check {{item.packed ? 'u-check--on' : ''}}"><text wx:if="{{item.packed}}" class="hz-icon hz-icon--check"></text></view></view><text>{{item.name}}</text></view>
       <text>{{item.orderedQty === undefined ? item.qty : item.orderedQty}}</text><text wx:if="{{quantityOnly && item.orderedQty !== undefined}}">{{item.qty}}</text><text>{{item.unit}}</text>
-      <block wx:if="{{!quantityOnly}}"><text class="u-serif-amount">{{item.hideAmount ? '—' : format.formatMoney(item.priceCents)}}</text><text class="u-serif-amount">{{item.hideAmount ? '—' : format.formatMoney(item.amountCents)}}</text></block>
+      <block wx:if="{{!quantityOnly}}"><text>{{item.hideAmount ? '—' : format.formatMoney(item.priceCents)}}</text><text>{{item.hideAmount ? '—' : format.formatMoney(item.amountCents)}}</text></block>
     </view>
     <view wx:if="{{item.code || item.meta || item.tags.length}}" class="hz-line-item__sub">
-      <text wx:if="{{item.code}}">{{texts.code}} {{item.code}}</text><text wx:if="{{item.meta}}">{{item.meta}}</text>
+      <text wx:if="{{item.code}}"><text class="hz-line-item__code-label">{{texts.code}}</text>{{item.code}}</text><text wx:if="{{item.meta}}">{{item.meta}}</text>
       <hz-tag wx:for="{{item.tags}}" wx:for-item="tag" wx:key="text" text="{{tag.text}}" warn="{{tag.warn}}" />
     </view>
 <hz-button wx:if="{{mode==='view' && removable && item.removable}}" kind="text" text="{{texts.remove}}" data-index="{{index}}" catch:press="onRemoveRead" />
@@ -20,12 +20,14 @@
     <text wx:if="{{item.qtyError || item.priceError}}" class="u-field__error">{{item.qtyError || item.priceError}}</text>
   </view>
   <view wx:if="{{note}}" class="hz-line-item__note"><text>{{noteLabel}}</text><text>{{note}}</text></view>
-  <view class="hz-line-item__totals"><view><text>{{texts.totalQty}}</text><text>{{totalQty}}</text></view><view wx:if="{{!quantityOnly}}"><text>{{texts.totalAmount}}</text><text class="u-serif-amount">{{totalAmount}}</text></view></view>
+  <view wx:if="{{addText}}" class="hz-line-item__add u-tap" bindtap="onAdd"><text class="hz-icon hz-icon--plus"></text><text>{{addText}}</text></view>
+  <view class="hz-line-item__totals"><view class="hz-line-item__total"><text class="hz-line-item__total-label">{{texts.totalQty}}</text><text class="hz-line-item__total-qty">{{totalQty}}</text></view><view wx:if="{{!quantityOnly}}" class="hz-line-item__total hz-line-item__total--amount"><text class="hz-line-item__total-label">{{texts.totalAmount}}</text><text class="hz-line-item__total-amount">{{totalAmount}}</text></view></view>
 </view>
 <view wx:else>
   <view wx:for="{{lines}}" wx:key="key" class="u-card hz-line-item__after">
-    <view class="hz-line-item__head"><text>{{item.name}}</text><text class="u-serif-amount">{{item.amountText}}</text></view>
-    <text class="hz-line-item__meta">{{item.meta}}</text><text wx:if="{{item.description}}">{{item.description}}</text>
+    <view class="hz-line-item__head"><text>{{item.name}}</text><view class="hz-line-item__qtys"><text class="hz-line-item__meta">{{item.applied}}</text><text class="hz-line-item__meta">{{item.handled}}</text></view></view>
+    <text wx:if="{{item.meta}}" class="hz-line-item__meta">{{item.meta}}</text>
+    <view wx:if="{{item.reason}}"><hz-tag text="{{item.reason}}" danger /></view><text wx:if="{{item.description}}">{{item.description}}</text>
     <view wx:if="{{item.images.length}}" class="u-thumbs"><image wx:for="{{item.images}}" wx:for-item="image" wx:key="url" class="u-thumbs__item" src="{{image.thumbUrl}}" mode="aspectFill" data-url="{{image.url}}" data-urls="{{item.urls}}" bindtap="onPreview" /></view>
   </view>
 </view>

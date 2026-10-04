@@ -41,6 +41,7 @@ Page({
     formError: '',
     realtime: '',
     info: [] as { label: string; value: string }[],
+    infoTitle: '',
     lines: [] as FormLine[],
     lineViews: [] as {
       key: string
@@ -135,8 +136,8 @@ Page({
       info: rowsOf([
         [copy.screen.label.sourceOrder, after.orderNo],
         [copy.field.shipDate, after.shipDate],
-        [copy.screen.label.customerStore, copy.org.store(after.customerName, after.storeName)],
       ]),
+      infoTitle: copy.org.store(after.customerName, after.storeName),
     })
     this.setLines(processLinesOf(after, this.order ?? undefined), false)
   },
@@ -154,8 +155,8 @@ Page({
       info: rowsOf([
         [copy.screen.label.sourceOrder, order.no],
         [copy.field.shipDate, order.shipDate],
-        [copy.screen.label.customerStore, copy.org.store(order.customerName, order.storeName)],
       ]),
+      infoTitle: copy.org.store(order.customerName, order.storeName),
     })
   },
   setLines(lines: FormLine[], changed = true) {

@@ -17,5 +17,5 @@
       <view wx:if="{{detailButtons.length}}" class="u-sheet-actions"><hz-button wx:for="{{detailButtons}}" wx:key="code" text="{{item.text}}" disabled="{{item.disabled}}" reason="{{item.reason}}" data-code="{{item.code}}" bind:press="onAction" /></view>
     </view>
   </hz-sheet>
-  <hz-reason-sheet show="{{cancelSheet}}" title="取消采购单" required confirm="确认取消" error="{{sheetError}}" loading="{{cancelBusy}}" bind:close="onCloseCancel" bind:submit="onCancel" />
+  <hz-reason-sheet show="{{cancelSheet}}" title="{{cancelTitle}}" required confirm="{{cancelConfirm}}" error="{{sheetError}}" loading="{{cancelBusy}}" bind:close="onCloseCancel" bind:submit="onCancel" />
 </template>

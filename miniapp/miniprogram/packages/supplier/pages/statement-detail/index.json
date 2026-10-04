@@ -22,6 +22,8 @@
     "hz-brand": "/components/hz-brand/index",
     "hz-cover": "/components/hz-cover/index",
     "hz-progress": "/components/hz-progress/index",
-    "hz-records": "/components/hz-records/index"
+    "hz-records": "/components/hz-records/index",
+    "hz-statement-list": "/components/hz-statement-list/index",
+    "hz-tag": "/components/hz-tag/index"
   }
 }

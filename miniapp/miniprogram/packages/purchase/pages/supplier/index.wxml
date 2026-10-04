@@ -11,7 +11,7 @@
     <hz-switch label="{{texts.supplierAccount}}" value="{{form.account.enabled}}" bind:change="onAccount" />
     <hz-field wx:if="{{form.account.enabled}}" label="{{texts.supplierLoginPhone}}" value="{{form.account.loginPhone}}" error="{{fields['account.loginPhone']}}" bind:change="onLoginPhone" />
   </view>
-<view wx:if="{{supplierId}}" class="u-card u-form-card"><hz-button kind="text" text="{{texts.orders}}" bind:press="onOrders" /><hz-button kind="text" text="{{texts.invites}}" bind:press="onInvites" /></view></block></view>
+<view wx:if="{{supplierId}}" class="u-card u-rows"><view class="u-rows__item"><view class="u-rows__head" bindtap="onOrders"><text class="u-rows__title">{{texts.orders}}</text><text class="hz-icon hz-icon--chevron-right u-info__meta"></text></view></view><view class="u-rows__item"><view class="u-rows__head" bindtap="onInvites"><text class="u-rows__title">{{texts.invites}}</text><text class="hz-icon hz-icon--chevron-right u-info__meta"></text></view></view></view></block></view>
 <hz-action-bar><hz-button text="{{texts.save}}" loading="{{saving}}" disabled="{{!loaded}}" bind:press="onSave" /></hz-action-bar>
 
 <hz-confirm id="hz-confirm" />

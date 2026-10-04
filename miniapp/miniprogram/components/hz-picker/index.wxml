@@ -1,4 +1,10 @@
-<view class="u-field">
+<view wx:if="{{inline}}" class="u-field">
+  <text wx:if="{{label}}" class="u-field__label">{{label}}</text>
+  <hz-search wx:if="{{searchable}}" paper placeholder="{{searchHint}}" bind:search="onSearch" />
+  <template is="choices" data="{{rows,value}}" />
+  <text wx:if="{{error}}" class="u-field__error">{{error}}</text>
+</view>
+<view wx:else class="u-field">
   <text wx:if="{{label}}" class="u-field__label">{{label}}</text>
   <picker
     wx:if="{{mode === 'date'}}"
@@ -6,22 +12,43 @@
     value="{{value}}"
     start="{{start}}"
     end="{{end}}"
-    bindchange="onPick"
+    bindchange="onDate"
   >
     <view
       class="u-field__box {{shown ? '' : 'u-field__box--placeholder'}} {{error ? 'u-field__box--error' : ''}}"
     >
       <text>{{shown || hint}}</text>
-      <text class="hz-icon hz-icon--calendar u-field__icon"></text>
+      <text class="hz-icon hz-icon--chevron-right u-field__icon"></text>
     </view>
   </picker>
-  <picker wx:else range="{{options}}" range-key="name" value="{{index}}" bindchange="onPick">
-    <view
-      class="u-field__box {{shown ? '' : 'u-field__box--placeholder'}} {{error ? 'u-field__box--error' : ''}}"
-    >
-      <text class="u-ellipsis">{{shown || hint}}</text>
-      <text class="hz-icon hz-icon--chevron-down u-field__icon"></text>
-    </view>
-  </picker>
+  <view
+    wx:else
+    class="u-field__box {{shown ? '' : 'u-field__box--placeholder'}} {{error ? 'u-field__box--error' : ''}}"
+    bindtap="onOpen"
+  >
+    <text class="u-ellipsis">{{shown || hint}}</text>
+    <text class="hz-icon hz-icon--chevron-right u-field__icon"></text>
+  </view>
   <text wx:if="{{error}}" class="u-field__error">{{error}}</text>
 </view>
+<hz-sheet wx:if="{{!inline && mode !== 'date'}}" show="{{open}}" title="{{label || hint}}" bind:close="onClose">
+  <view wx:if="{{searchable}}" class="u-sheet-section">
+    <hz-search paper placeholder="{{searchHint}}" bind:search="onSearch" />
+  </view>
+  <view class="u-sheet-section"><template is="choices" data="{{rows,value}}" /></view>
+</hz-sheet>
+<template name="choices">
+  <view
+    wx:for="{{rows}}"
+    wx:key="id"
+    class="u-choice {{item.id === value ? 'u-choice--on' : ''}}"
+    data-key="{{item.id}}"
+    bindtap="onPick"
+  >
+    <view class="u-choice__main">
+      <text>{{item.name}}</text>
+      <text wx:if="{{item.sub}}" class="u-choice__sub">{{item.sub}}</text>
+    </view>
+    <text wx:if="{{item.id === value}}" class="hz-icon hz-icon--check u-choice__check"></text>
+  </view>
+</template>

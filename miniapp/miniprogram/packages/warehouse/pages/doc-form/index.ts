@@ -68,6 +68,8 @@ Page({
     lines: [] as ReturnType<typeof lineViews>,
     supplierOptions: [] as { id: string; name: string }[],
     categoryOptions: [] as { id: string; name: string }[],
+    categoryName: '',
+    categoryPick: false,
     categories: [] as OutCategory[],
     categorySheet: false,
     categoryError: '',
@@ -86,6 +88,8 @@ Page({
       pick: copy.screen.title.pickMaterial,
       noPick: copy.stock.screen.noPickMaterial,
       manage: copy.screen.action.manageCategories,
+      pickOne: copy.screen.pickOne,
+      pickHint: copy.screen.pickHint,
     },
   },
   inventory: [] as InventoryItem[],
@@ -98,7 +102,7 @@ Page({
     this.key = newIdempotencyKey()
     this.setData({
       kind,
-      title: copy.stock.screen.create[kind],
+      title: copy.stock.screen.createTitle[kind],
       submitText: copy.stock.screen.submit[kind],
     })
   },
@@ -175,6 +179,8 @@ Page({
     this.setData({
       form,
       fields,
+      categoryName:
+        this.data.categoryOptions.find((option) => option.id === form.outCategoryId)?.name ?? '',
       lines: lineViews(form, fields, this.data.kind),
     })
     const normalize = (value: Form) => ({
@@ -186,8 +192,17 @@ Page({
   onSupplier(event: DetailEvent<string>) {
     this.render({ ...this.data.form, supplierId: event.detail }, {})
   },
-  onCategory(event: DetailEvent<string>) {
-    this.render({ ...this.data.form, outCategoryId: event.detail }, {})
+  onOpenCategoryPick() {
+    this.setData({ categoryPick: true })
+  },
+  onCloseCategoryPick() {
+    this.setData({ categoryPick: false })
+  },
+  // 点一下就选好并关掉
+  onCategory(event: KeyEvent) {
+    const id = event.currentTarget.dataset.key
+    this.render({ ...this.data.form, outCategoryId: id }, {})
+    this.setData({ categoryPick: false })
   },
   onReason(event: DetailEvent<string>) {
     this.render({ ...this.data.form, reason: event.detail }, {})

@@ -5,7 +5,7 @@ Page({
   data: {
     ...poListPage.data,
     kind: 'warehouse',
-    title: copy.screen.title.pendingReceive,
+    title: copy.screen.title.receive,
     filter: { ...poListPage.data.filter, status: 'to_receive' },
   },
 })

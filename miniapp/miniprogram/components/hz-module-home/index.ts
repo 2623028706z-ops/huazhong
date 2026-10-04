@@ -13,7 +13,8 @@ import type { FailureView } from '../../core/failure-view'
 import { unwatch, watch } from '../../core/live'
 import { request } from '../../core/request'
 import { failureOf, isLandingModule, loadMe, logout, tabsOf } from '../../core/session'
-import { entriesOf, todoUrls } from './entries'
+import type { entriesOf } from './entries'
+import { gridOf, todoUrls } from './entries'
 Component({
   properties: { module: { type: String, value: '' } },
   data: {
@@ -23,10 +24,10 @@ Component({
     failure: null as FailureView | null,
     common: [] as NonNullable<(typeof entriesOf)[ModuleKey]>['common'],
     masters: [] as NonNullable<(typeof entriesOf)[ModuleKey]>['masters'],
+    mastersTitle: '',
     todos: [] as (TodoRow & { amount: string })[],
     texts: {
       todos: copy.screen.title.todos,
-      my: copy.tab.my,
       common: redesignCopy.common,
       masters: redesignCopy.masters,
     },
@@ -53,27 +54,12 @@ Component({
         return
       }
       const me = result.data,
-        top = isLandingModule(me, key),
-        entries = entriesOf[key]
+        top = isLandingModule(me, key)
       this.setData({
         title: labels.module[key],
         back: !top,
         tabs: top ? tabsOf(me) : [],
-        common: [
-          ...(entries?.common ?? []),
-          ...(key === 'warehouse' && !top
-            ? [
-                {
-                  key: 'stock',
-                  icon: 'boxes',
-                  text: redesignCopy.stock,
-                  url: '/packages/warehouse/pages/stock/index',
-                  wide: true,
-                },
-              ]
-            : []),
-        ].map((row) => ({ ...row, disabled: false })),
-        masters: (entries?.masters ?? []).map((row) => ({ ...row, disabled: false })),
+        ...gridOf(key, top, !tabsOf(me).length),
         failure: null,
       })
       watch(this, [`todo:${key}`], () => void this.loadTodos(key))
@@ -91,9 +77,6 @@ Component({
           amount: row.amountCents === undefined ? '' : formatMoney(row.amountCents),
         })),
       })
-    },
-    onMy() {
-      void wx.navigateTo({ url: '/pages/my/index' })
     },
     onEntry(event: DetailEvent<string>) {
       const entry = [...this.data.common, ...this.data.masters].find(

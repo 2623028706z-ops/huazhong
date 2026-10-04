@@ -72,7 +72,7 @@ function metaOf(segment: Segment, supplier: boolean) {
       statusKind: 'statementStatus',
       statuses: ['unsettled', 'settled'],
       dateLabel: f.statementDate,
-      emptyObject: f.noStatements,
+      emptyObject: f.statements,
     }
   if (segment === 'afters')
     return {
@@ -270,12 +270,12 @@ export function externalBusinessPage(supplier: boolean, initial: Segment = 'orde
   const segmentTabs = supplier
     ? [
         { key: 'orders', text: copy.screen.title.purchaseOrders },
-        { key: 'statements', text: f.statement },
+        { key: 'statements', text: f.statementTab },
       ]
     : [
         { key: 'orders', text: copy.screen.title.storeOrders },
         { key: 'afters', text: copy.screen.title.storeAfters },
-        { key: 'statements', text: f.statement },
+        { key: 'statements', text: f.statementTab },
       ]
   return {
     ...methods,

@@ -2,14 +2,33 @@
   overflow: hidden;
 }
 
+/* 明细表（定稿 .tbl / .tr）：左右留 16、列宽 1fr 30 28 54 68、字 13 基线对齐；表头 11 灰字、标题宋体 14 */
+.hz-line-item__row,
+.hz-line-item__tr--head {
+  margin: 0 var(--hz-card-pad);
+}
+
 .hz-line-item__tr {
   display: grid;
-  grid-template-columns: minmax(75px, 1fr) 26px 24px 55px 62px;
-  gap: 2px;
-  align-items: center;
-  padding: 12px 10px;
-  font-size: var(--hz-font-sm);
+  grid-template-columns: minmax(0, 1fr) 30px 28px 54px 68px;
+  column-gap: 6px;
+  align-items: baseline;
+  font-size: var(--hz-font-row);
   text-align: right;
+  white-space: nowrap;
+}
+
+.hz-line-item__row {
+  padding: 12px 0;
+}
+
+.hz-line-item__tr--price > text:nth-child(3) {
+  text-align: center;
+  color: var(--hz-muted);
+}
+
+.hz-line-item__tr--price > text:last-child {
+  font-weight: 600;
 }
 
 .hz-line-item__tr--qty {
@@ -17,20 +36,30 @@
 }
 
 .hz-line-item__tr--head {
+  padding: 14px 0 8px;
+  font-size: var(--hz-font-xs);
   color: var(--hz-muted);
-  background: var(--hz-tint);
+  border-bottom: 1px solid var(--hz-line);
+}
+
+.hz-line-item__tr--head.hz-line-item__tr--price > text:last-child {
+  font-weight: 400;
 }
 
 .hz-line-item__name {
+  display: flex;
+  align-items: center;
   text-align: left;
-  font-size: var(--hz-font-sm);
+  font-size: var(--hz-font);
+  font-weight: 600;
+  white-space: normal;
   overflow-wrap: anywhere;
 }
 
 .hz-line-item__tr--head .hz-line-item__name {
   font-family: var(--hz-serif);
-  font-size: var(--hz-font-md);
-  font-weight: 600;
+  font-size: var(--hz-font);
+  letter-spacing: 1px;
   color: var(--hz-ink);
 }
 
@@ -41,30 +70,47 @@
 .hz-line-item__sub {
   display: flex;
   gap: 12px;
-  padding: 0 10px 10px;
+  margin-top: 5px;
   color: var(--hz-muted);
-  font-size: var(--hz-font-xs);
+  font-size: var(--hz-font-sm);
   flex-wrap: wrap;
 }
 
 .hz-line-item__totals {
-  display: flex;
-  gap: 14px;
-  padding: 12px 10px;
-  border-top: 1px solid var(--hz-hair);
-  font-size: var(--hz-font-sm);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 14px;
+  align-items: baseline;
+  padding: 14px var(--hz-card-pad);
+  border-top: 1px solid var(--hz-line);
+  font-size: var(--hz-font-row);
 }
 
-.hz-line-item__totals > view {
+/* 合计（定稿 .tot）：左「合计数量 30 束」15 号；右「合计金额」贴右，金额宋体 19 粗 */
+.hz-line-item__total {
   display: flex;
-  flex: 1;
-  gap: 6px;
-  justify-content: space-between;
-  align-items: center;
+  gap: 8px;
+  align-items: baseline;
 }
 
-.hz-line-item__totals > view > text:first-child {
+.hz-line-item__total--amount {
+  justify-content: flex-end;
+}
+
+.hz-line-item__total-label {
   color: var(--hz-muted);
+}
+
+.hz-line-item__total-qty {
+  font-size: var(--hz-font-group);
+  color: var(--hz-ink);
+}
+
+.hz-line-item__total-amount {
+  font-family: var(--hz-serif);
+  font-size: var(--hz-font-total);
+  font-weight: 700;
+  color: var(--hz-ink);
 }
 
 .hz-line-item__quantity {
@@ -76,6 +122,7 @@
 .hz-line-item__head {
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   gap: 10px;
   font-family: var(--hz-serif);
   font-size: var(--hz-font-md);
@@ -95,20 +142,55 @@
 }
 
 .hz-line-item__check {
+  display: flex;
   margin-right: 8px;
-  font-size: var(--hz-icon);
-  color: var(--hz-brand);
 }
 
 .hz-line-item__tr--actual {
-  grid-template-columns: minmax(100px, 1fr) repeat(3, 48px);
+  grid-template-columns: minmax(100px, 1fr) repeat(3, 44px);
 }
 
 .hz-line-item__note {
   display: flex;
-  justify-content: space-between;
   gap: 12px;
-  padding: 10px;
+  padding: 10px var(--hz-card-pad);
   font-size: var(--hz-font-sm);
   border-top: 1px solid var(--hz-line);
+}
+
+.hz-line-item__qtys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  justify-content: flex-end;
+}
+
+.hz-line-item__add {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  height: var(--hz-tap);
+  font-size: var(--hz-font);
+  color: var(--hz-brand);
+  border-top: 1px solid var(--hz-line);
+}
+
+.hz-line-item__code-label {
+  margin-right: 6px;
+}
+
+/* 能点开改的明细（定稿表单里的表格）：右边留一个「›」 */
+.hz-line-item__table--edit .hz-line-item__row,
+.hz-line-item__table--edit .hz-line-item__tr--head {
+  position: relative;
+  padding-right: 14px;
+}
+
+.hz-line-item__go {
+  position: absolute;
+  top: 14px;
+  right: -2px;
+  font-size: var(--hz-icon-sm);
+  color: var(--hz-muted);
 }

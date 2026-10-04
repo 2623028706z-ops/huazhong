@@ -39,6 +39,8 @@ export type RefundDetail = z.infer<typeof refundSchema>
 export const fundStatementSchema = z.object({
   id: idSchema,
   no: z.string(),
+  periodFrom: businessDateSchema,
+  periodTo: businessDateSchema,
   dueCents: centsSchema,
   amountCents: centsSchema,
   status: z.enum(['unsettled', 'settled', 'voided']),

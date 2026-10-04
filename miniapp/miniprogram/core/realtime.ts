@@ -100,7 +100,8 @@ export class Realtime {
         })
       },
       // 连不上（断网等）：和断开一样按重连间隔再试
-      fail: () => {
+      fail: (error) => {
+        wx.getRealtimeLogManager().warn('connectContainer', error.errMsg)
         if (version === this.connectionVersion) this.handleClose(0)
       },
     })

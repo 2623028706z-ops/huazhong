@@ -4,8 +4,9 @@ import { canDo } from '../../../../core/actions'
 import { clearPicking, loadPicking } from '../../../../core/picking'
 import type { KeyEvent, DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
-import { emptyFilter, type FilterValue } from '../../../../core/filter'
+import { emptyFilter, type FilterDimension, type FilterValue } from '../../../../core/filter'
 import type { PagedList } from '../../../../core/list'
+import { confirmAsk } from '../../../../core/guard'
 import { failureOf } from '../../../../core/session'
 import { request } from '../../../../core/request'
 import { listHandlers, listOf, listQueryOf, showList } from '../../../../views/list'
@@ -20,6 +21,10 @@ function statusOf(value: string): ShipStatus | undefined {
 }
 
 const BATCH_PREVIEW_COUNT = 3
+const DUE = 'due'
+const dimensions: FilterDimension[] = [
+  { key: DUE, label: redesignCopy.dueFilter, options: [{ id: 'true', name: redesignCopy.due }] },
+]
 Page({
   ...listHandlers,
   data: {
@@ -28,6 +33,7 @@ Page({
     statuses,
     counts: {},
     searchPlaceholder: copy.screen.label.searchShipments,
+    dimensions,
     filter: emptyFilter,
     rows: [] as (Omit<ReturnType<typeof shippingRowOf>, 'fields'> & {
       fields: { label: string; value: string; wide?: boolean }[]
@@ -39,30 +45,29 @@ Page({
     emptyObject: copy.screen.empty.shipments,
     allLoaded: copy.state.allLoaded,
     selected: [] as { id: string; version: number; no: string }[],
-    batchSheet: false,
-    batchBusy: false,
-    batchError: '',
-    batchNos: [] as string[],
     batchText: redesignCopy.shipMany(0),
+    batchBusy: false,
     texts: {
       allSelected: redesignCopy.allSelected,
-      shipOrders: redesignCopy.shipOrders,
-      shipConfirmation: redesignCopy.shipConfirmation,
     },
   },
-  dueOnly: false,
   cards: [] as ShippingCard[],
   list: null as PagedList<ShippingCard> | null,
   onLoad(query: Record<string, string | undefined>) {
-    this.dueOnly = query.dueOnly === 'true'
-    this.setData({ filter: { ...emptyFilter, status: statusOf(query.status ?? '') ?? '' } })
+    this.setData({
+      filter: {
+        ...emptyFilter,
+        status: statusOf(query.status ?? '') ?? '',
+        picks: query.dueOnly === 'true' ? { [DUE]: 'true' } : {},
+      },
+    })
     this.list = listOf(
       this,
       async (cursor) => {
-        const { q } = listQueryOf(this.data.filter)
+        const { q, picks } = listQueryOf(this.data.filter)
         const status = statusOf(this.data.filter.status)
         const result = await request(contract.listShippingOrders, {
-          query: { status, q, cursor, dueOnly: this.dueOnly ? 'true' : undefined },
+          query: { status, q, cursor, dueOnly: picks[DUE] ? 'true' : undefined },
         })
         if (result.ok) {
           this.cards = cursor ? [...this.cards, ...result.data.items] : result.data.items
@@ -89,8 +94,8 @@ Page({
           ? [
               {
                 label: redesignCopy.picking,
-                value: redesignCopy.packed(loadPicking(order.id).length, order.lineCount),
-                wide: true,
+                value: redesignCopy.packedState(loadPicking(order.id).length, order.lineCount),
+                good: loadPicking(order.id).length >= order.lineCount,
               },
             ]
           : []),
@@ -126,41 +131,47 @@ Page({
     })
     this.renderSelection()
   },
-  onOpenBatch() {
-    if (!this.data.selected.length) return
-    this.setData({
-      batchSheet: true,
-      batchError: '',
-      batchNos: [
-        ...this.data.selected.slice(0, BATCH_PREVIEW_COUNT).map((row) => row.no),
-        ...(this.data.selected.length > BATCH_PREVIEW_COUNT
-          ? [redesignCopy.moreOrders(this.data.selected.length)]
-          : []),
-      ],
+  async onOpenBatch() {
+    const { selected } = this.data
+    if (!selected.length || this.data.batchBusy) return
+    const lines = selected.slice(0, BATCH_PREVIEW_COUNT).map((row) => {
+      const order = this.cards.find((card) => card.id === row.id)
+      return [order ? copy.org.store(order.customerName, order.storeName) : '', row.no].join(
+        copy.separator,
+      )
     })
-  },
-  onCloseBatch() {
-    if (!this.data.batchBusy) this.setData({ batchSheet: false })
+    if (selected.length > BATCH_PREVIEW_COUNT) lines.push(redesignCopy.moreOrders(selected.length))
+    const confirmed = await confirmAsk(this, {
+      title: redesignCopy.shipOrders,
+      body: [
+        ...lines,
+        redesignCopy.shipSummary(selected.length),
+        redesignCopy.shipDifferenceHint,
+      ].join('\n'),
+      cancel: copy.action.back,
+      confirm: redesignCopy.shipOrders,
+    })
+    if (confirmed) await this.onConfirmBatch()
   },
   async onConfirmBatch() {
     if (this.data.batchBusy) return
-    this.setData({ batchBusy: true, batchError: '' })
+    this.setData({ batchBusy: true })
     const result = await request(contract.batchShipOrders, {
       body: { orders: this.data.selected.map(({ id, version }) => ({ id, version })) },
     })
     this.setData({ batchBusy: false })
     if (!result.ok) {
-      this.setData({ batchError: failureOf(result.failure, 'submit')?.message ?? '' })
+      void wx.showToast({ title: failureOf(result.failure, 'submit')?.message ?? '', icon: 'none' })
       return
     }
     for (const row of result.data.succeeded) clearPicking(row.id)
     const message = result.data.failed.length
       ? redesignCopy.shipmentResult(
           result.data.failed.length,
-          result.data.failed.map((row) => `${row.no} ${row.reason}`).join(copy.separator),
+          [...new Set(result.data.failed.map((row) => row.reason))].join(copy.separator),
         )
-      : copy.order.shipped
-    this.setData({ selected: [], batchSheet: false })
+      : redesignCopy.shippedMany(result.data.succeeded.length)
+    this.setData({ selected: [], batchText: redesignCopy.shipMany(0) })
     await this.list?.refresh()
     void wx.showToast({ title: message, icon: 'none' })
   },

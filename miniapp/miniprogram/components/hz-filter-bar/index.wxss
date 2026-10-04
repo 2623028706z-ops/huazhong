@@ -23,12 +23,14 @@
   position: relative;
   display: flex;
   flex: none;
+  gap: 4px;
   align-items: center;
-  justify-content: center;
-  width: var(--hz-tap);
+  justify-content: flex-end;
+  min-width: var(--hz-tap);
   height: var(--hz-tap);
-  font-size: var(--hz-font-sm);
-  color: var(--hz-muted);
+  padding-left: 12px;
+  font-size: var(--hz-font-row);
+  color: var(--hz-ink);
 }
 
 .hz-filter-bar__button--bare {
@@ -45,12 +47,11 @@
   border-radius: 50%;
 }
 
-/* 状态标签行：没有外框，两端不留内边距；下面一条细线；高 44px（点击区域，2026-10-05 从 40px 改） */
+/* 状态标签行：没有外框、没有底线，两端不留内边距；高 44px（点击区域）；「筛选」在最右 */
 .hz-filter-bar__tabs {
   display: flex;
   align-items: stretch;
   height: var(--hz-tap);
-  border-bottom: 1px solid var(--hz-rule);
 }
 
 .hz-filter-bar__scroll {
@@ -62,7 +63,8 @@
 
 .hz-filter-bar__track {
   display: inline-flex;
-  gap: 12px;
+  gap: 22px;
+  padding-left: 4px;
   height: var(--hz-tap);
 }
 
@@ -83,18 +85,25 @@
 
 .hz-filter-bar__tab--on::after {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  bottom: 4px;
+  left: 50%;
+  width: 18px;
   height: 2px;
+  margin-left: -9px;
   content: '';
   background: var(--hz-brand);
+  border-radius: var(--hz-radius-line);
 }
 
+/* 等待类的数：品牌红小号上标 */
 .hz-filter-bar__count {
-  margin-left: 3px;
-  color: var(--hz-danger);
-  font-size: var(--hz-font-sm);
+  align-self: flex-start;
+  margin-top: 9px;
+  margin-left: 2px;
+  font-family: var(--hz-serif);
+  font-size: var(--hz-font-xs);
+  font-weight: 700;
+  color: var(--hz-brand);
 }
 
 /* 条件胶囊：高 28px、亮格底、细线，× 的点击区域 44px */
@@ -170,18 +179,14 @@
   min-width: 0;
 }
 
-.hz-filter-bar__row,
-.hz-filter-bar__option {
+.hz-filter-bar__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   min-height: var(--hz-tap);
-  font-size: var(--hz-font);
-}
-
-.hz-filter-bar__row {
   padding-top: 0;
   padding-bottom: 0;
+  font-size: var(--hz-font);
 }
 
 .hz-filter-bar__row-value {
@@ -191,19 +196,7 @@
   color: var(--hz-muted);
 }
 
-.hz-filter-bar__option + .hz-filter-bar__option {
-  border-top: 1px solid var(--hz-line);
-}
-
-.hz-filter-bar__option--on {
-  font-weight: 600;
-}
-
-.hz-filter-bar__check {
-  font-size: var(--hz-icon);
-  color: var(--hz-brand);
-}
-
 .hz-filter-bar__button--active {
+  font-weight: 600;
   color: var(--hz-brand);
 }

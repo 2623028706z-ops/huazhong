@@ -5,7 +5,7 @@ import {
   type StatementSource,
   type StatementCard,
 } from '@huazhong/shared'
-import { and, inArray, isNull } from 'drizzle-orm'
+import { and, inArray, isNull, or } from 'drizzle-orm'
 import type { Db, Tx } from '../../../db/client.ts'
 import type { statements } from '../../../db/schema/index.ts'
 import {
@@ -20,7 +20,7 @@ import {
 import type { Viewer } from '../../common/domain/viewer.ts'
 import { actionOf, enabledAction } from '../../common/domain/actions.ts'
 import { sumOf, exactNumber } from '../../common/domain/units.ts'
-import { actors, overdueDays, owns } from '../../common/statements.ts'
+import { actors, overdueDays } from '../../common/statements.ts'
 import { found } from '../../common/scope.ts'
 export type StatementRow = typeof statements.$inferSelect
 type SourceLine = typeof statementLines.$inferSelect
@@ -88,11 +88,21 @@ async function partyNames(tx: Db | Tx, rows: StatementRow[]) {
     ...ss.map((p) => [`supplier:${p.id}`, p.name] as const),
   ])
 }
-async function settlementRows(tx: Db | Tx, ids: number[]) {
-  const links = await tx
-    .select()
-    .from(settlementLinks)
-    .where(inArray(settlementLinks.statementId, ids))
+type Link = typeof settlementLinks.$inferSelect
+// 一笔收付款一次核销了几张对账单时，优惠按对账单从早到晚先抵，抵完剩下的才算实收
+function discountShares(live: Link[], discountOf: (link: Link) => number) {
+  const left = new Map<string, number>()
+  const shares = new Map<number, number>()
+  for (const l of [...live].sort((a, b) => a.statementId - b.statementId)) {
+    const fund = l.receiptId === null ? `p${l.paymentId}` : `r${l.receiptId}`
+    const rest = left.get(fund) ?? discountOf(l)
+    const share = Math.min(rest, l.amountCents)
+    left.set(fund, rest - share)
+    shares.set(l.id, share)
+  }
+  return shares
+}
+async function fundsOf(tx: Db | Tx, links: Link[]) {
   const receiptIds = links.flatMap((l) => (l.receiptId === null ? [] : [l.receiptId]))
   const paymentIds = links.flatMap((l) => (l.paymentId === null ? [] : [l.paymentId]))
   const rs = receiptIds.length
@@ -101,24 +111,52 @@ async function settlementRows(tx: Db | Tx, ids: number[]) {
   const ps = paymentIds.length
     ? await tx.select().from(payments).where(inArray(payments.id, paymentIds))
     : []
-  const result = new Map<number, Settlement[]>()
-  for (const l of links) {
-    const f = found(
+  const fundOf = (l: Link) =>
+    found(
       l.receiptId === null
         ? ps.find((p) => p.id === l.paymentId)
         : rs.find((r) => r.id === l.receiptId),
     )
+  const sameFund = [
+    ...(receiptIds.length ? [inArray(settlementLinks.receiptId, receiptIds)] : []),
+    ...(paymentIds.length ? [inArray(settlementLinks.paymentId, paymentIds)] : []),
+  ]
+  const live = sameFund.length
+    ? await tx
+        .select()
+        .from(settlementLinks)
+        .where(and(or(...sameFund), isNull(settlementLinks.reversedAt)))
+    : []
+  return { fundOf, shares: discountShares(live, (l) => fundOf(l).discountCents) }
+}
+type FundRow = typeof receipts.$inferSelect | typeof payments.$inferSelect
+function settlementOf(l: Link, f: FundRow, share: number): Settlement {
+  return {
+    id: String(f.id),
+    no: f.no,
+    kind: l.receiptId === null ? 'payment' : 'receipt',
+    date: 'receiptDate' in f ? f.receiptDate : f.payDate,
+    amountCents: f.amountCents,
+    discountCents: f.discountCents,
+    creditCents: f.creditCents,
+    coveredCents: l.amountCents,
+    appliedDiscountCents: share,
+    receivedCents: l.amountCents - share,
+    methodName: f.methodName,
+    status: f.status,
+    reversedAt: l.reversedAt?.toISOString() ?? null,
+  }
+}
+async function settlementRows(tx: Db | Tx, ids: number[]) {
+  const links = await tx
+    .select()
+    .from(settlementLinks)
+    .where(inArray(settlementLinks.statementId, ids))
+  const { fundOf, shares } = await fundsOf(tx, links)
+  const result = new Map<number, Settlement[]>()
+  for (const l of links) {
     const list = result.get(l.statementId) ?? []
-    list.push({
-      id: String(f.id),
-      no: f.no,
-      kind: l.receiptId === null ? 'payment' : 'receipt',
-      date: 'receiptDate' in f ? f.receiptDate : f.payDate,
-      amountCents: l.amountCents,
-      methodName: f.methodName,
-      status: f.status,
-      reversedAt: l.reversedAt?.toISOString() ?? null,
-    })
+    list.push(settlementOf(l, fundOf(l), shares.get(l.id) ?? 0))
     result.set(l.statementId, list)
   }
   return result
@@ -153,18 +191,15 @@ function voidReason(row: StatementRow, s: Snapshot) {
     return statementCopy.receivedLocked
   return s.used.has(row.id) ? statementCopy.creditUsed : null
 }
-function actionsOf(row: StatementRow, s: Snapshot, viewer: Viewer) {
+function actionsOf(row: StatementRow, s: Snapshot) {
   if (row.status === 'voided') return []
   return [
     enabledAction('shareStatement', null),
     ...(row.status === 'unsettled'
       ? [enabledAction(row.kind === 'customer' ? 'registerReceipt' : 'registerPayment', null)]
       : []),
-    actionOf(
-      'voidStatement',
-      owns(viewer, row.createdBy) ? voidReason(row, s) : statementCopy.ownerOnly,
-      true,
-    ),
+    // 作废对账单所有财务都能做（2026-10-04 用户定），不限开单人
+    actionOf('voidStatement', voidReason(row, s), true),
   ]
 }
 function cardOf(
@@ -192,7 +227,7 @@ function cardOf(
     status: row.status,
     overdueDays: row.status === 'unsettled' ? overdueDays(row.dueDate, context.today) : 0,
     lockedReason: voidReason(row, s),
-    actions: actionsOf(row, s, context.viewer),
+    actions: actionsOf(row, s),
   }
 }
 function detailOf(
@@ -204,6 +239,9 @@ function detailOf(
   const returnCents = -sumOf(
     sources.filter((s) => s.type === 'purchase_return'),
     (s) => s.amountCents,
+  )
+  const liveSettlements = (s.settlements.get(row.id) ?? []).filter(
+    (l) => l.status === 'valid' && l.reversedAt === null,
   )
   return {
     ...cardOf(row, s, context),
@@ -227,7 +265,8 @@ function detailOf(
     ),
     receivedCents: row.kind === 'supplier' ? exactNumber(row.grossCents + returnCents) : 0,
     returnCents,
-    settledCents: row.status === 'settled' ? row.dueCents : 0,
+    settledCents: sumOf(liveSettlements, (l) => l.receivedCents),
+    settledDiscountCents: sumOf(liveSettlements, (l) => l.appliedDiscountCents),
     groups: groupsOf(sources),
     settlements: s.settlements.get(row.id) ?? [],
   }

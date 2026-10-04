@@ -1,16 +1,19 @@
 .hz-tag {
-  color: var(--hz-muted);
-  box-shadow: inset 0 0 0 1px var(--hz-hair);
+  color: var(--hz-grey);
+  background: var(--hz-grey-bg);
 }
 
 .hz-tag--warn {
   color: var(--hz-amber);
   background: var(--hz-amber-bg);
-  box-shadow: none;
 }
 
 .hz-tag--danger {
   color: var(--hz-danger);
   background: var(--hz-danger-bg);
-  box-shadow: none;
+}
+
+.hz-tag--done {
+  color: var(--hz-green);
+  background: var(--hz-green-bg);
 }

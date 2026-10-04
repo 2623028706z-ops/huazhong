@@ -2,7 +2,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import subsetFont from 'subset-font'
-import { copy, labels } from '@huazhong/shared'
+import * as shared from '@huazhong/shared'
 import { cacheDir, miniprogramDir, type Output } from './generated.ts'
 
 const FONT_URL =
@@ -15,6 +15,8 @@ const AMOUNT_EXTRA = '¥,.−'
 
 function stringsOf(value: unknown): string[] {
   if (typeof value === 'string') return [value]
+  // 带参数的文案是函数，取函数体里的字
+  if (typeof value === 'function') return [String(value)]
   if (value && typeof value === 'object') return Object.values(value).flatMap(stringsOf)
   return []
 }
@@ -26,23 +28,14 @@ function uniqueChars(text: string): string {
     .join('')
 }
 
-// 标题字：模块名 + 页面标题 + 衬线显示的整页状态和确认框、首页主卡 + 全部文案里出现的标点
+// 标题字：全部文案和标签里的字（分组标题、空状态、确认框等都用宋体，只收一部分会一半宋体一半黑体）。
+// 名字、店名等用户填写的内容不在子集里，iOS 回退到系统宋体
 function titleCharset(): string {
-  const serifCopy = [
-    copy.title,
-    copy.screen.title,
-    copy.screen.empty,
-    copy.state,
-    copy.confirm,
-    copy.error,
-    copy.network,
-    copy.hub,
-  ]
-  const titles = [...stringsOf(labels.module), ...serifCopy.flatMap(stringsOf)].join('')
-  const punctuation = stringsOf(copy)
+  const texts = Object.entries(shared)
+    .filter(([name]) => /^(copy|labels)$|Copy$/.test(name))
+    .flatMap(([, value]) => stringsOf(value))
     .join('')
-    .replace(/[^\p{P}\p{S}]/gu, '')
-  return uniqueChars(DIGITS + AMOUNT_EXTRA + titles + punctuation)
+  return uniqueChars(DIGITS + AMOUNT_EXTRA + texts)
 }
 
 function amountCharset(): string {

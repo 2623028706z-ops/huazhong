@@ -54,7 +54,53 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
+  min-width: 0;
   min-height: var(--hz-tap);
+}
+
+/* 订货结算条（定稿 .cb）：购物车图标带款数角标 + 宋体金额 + 小字件数 */
+.u-cart {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.u-cart__icon {
+  position: relative;
+  display: flex;
+  font-size: var(--hz-icon-tab);
+}
+
+.u-cart__badge {
+  position: absolute;
+  top: -6px;
+  right: -9px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--hz-ink);
+  border-radius: var(--hz-radius-pill);
+  background: var(--hz-brand);
+  color: var(--hz-on-brand);
+  font-size: var(--hz-font-xs);
+  line-height: 14px;
+  text-align: center;
+}
+
+.u-bar-total__amount {
+  font-family: var(--hz-serif);
+  font-size: var(--hz-font-total);
+  font-weight: 700;
+  color: var(--hz-on-brand);
+}
+
+.u-bar-total__meta {
+  margin-top: 1px;
+  font-size: var(--hz-font-xs);
+  opacity: 0.7;
 }
 
 /* 信息行里的金额：15px 墨色加粗，不靠继承字号（02 章第 6 节第 4 条） */
@@ -72,29 +118,36 @@
   border-radius: var(--hz-radius);
 }
 
-/* 11px 胶囊：hz-status、hz-tag 共用尺寸 */
+/* 11px 小方标签（定稿 .tag：行高 19、左右 7、圆角 4）：hz-status、hz-tag 共用尺寸 */
 .u-pill {
   display: inline-block;
-  height: 20px;
-  padding: 0 8px;
+  height: 19px;
+  padding: 0 7px;
   font-size: var(--hz-font-xs);
-  line-height: 20px;
+  font-weight: 500;
+  line-height: 19px;
   white-space: nowrap;
-  border-radius: var(--hz-radius-pill);
+  border-radius: var(--hz-radius-check);
 }
 
-/* 表单字段外框：hz-field、hz-picker 共用（02 章第 4 节） */
+/* 表单字段：hz-field、hz-picker、hz-choices 共用（02 章第 4 节）。
+   页面卡片里是定稿 .cell 一行：字段名在左、值靠右、行间细线，选择项右边 ›，金额是右边小框；
+   弹层里（.u-sheet-form）换回整条输入框——行样子靠下面这组变量切换 */
 .u-field {
   display: flex;
   flex-flow: row wrap;
   align-items: center;
-  gap: var(--hz-line-gap);
+  column-gap: 10px;
+  min-height: var(--hz-field-row, 48px);
+  margin-top: -1px;
+  font-size: var(--hz-font);
+  border-top: 1px solid var(--hz-field-line, var(--hz-line));
 }
 
 .u-field__label {
   width: 72px;
   flex: none;
-  font-size: var(--hz-font-sm);
+  font-size: var(--hz-field-label, var(--hz-font));
   color: var(--hz-muted);
 }
 
@@ -103,22 +156,41 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  min-height: var(--hz-input);
-  padding: 0 var(--hz-row-pad);
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: var(--hz-field-box, 48px);
+  padding: 0 var(--hz-field-pad, 0);
   color: var(--hz-ink);
-  background: var(--hz-paper);
+  text-align: var(--hz-field-align, right);
+  background: var(--hz-field-bg, transparent);
   border-radius: var(--hz-radius);
-  box-shadow: inset 0 0 0 1px var(--hz-hair);
+  box-shadow: var(--hz-field-ring, none);
+}
+
+/* 弹层里（hz-sheet 面板带 u-boxed）：整条带框输入，字段名小字 */
+.u-boxed {
+  --hz-field-row: auto;
+  --hz-field-line: transparent;
+  --hz-field-label: var(--hz-font-sm);
+  --hz-field-box: var(--hz-input);
+  --hz-field-pad: var(--hz-row-pad);
+  --hz-field-align: left;
+  --hz-field-bg: var(--hz-paper);
+  --hz-field-ring: inset 0 0 0 1px var(--hz-hair);
+  --hz-field-ring-on: inset 0 0 0 1.5px var(--hz-brand);
+  --hz-field-num: auto;
+  --hz-field-num-flex: 1;
+  --hz-field-num-h: var(--hz-input);
+  --hz-field-area: var(--hz-textarea);
+  --hz-field-area-pad: 10px;
 }
 
 .u-field__box--focus {
-  box-shadow: inset 0 0 0 1.5px var(--hz-brand);
+  box-shadow: var(--hz-field-ring-on, none);
 }
 
 .u-field__box--error {
-  background: var(--hz-danger-bg);
-  box-shadow: inset 0 0 0 1px var(--hz-danger);
+  color: var(--hz-danger);
 }
 
 .u-field__box--placeholder {
@@ -126,12 +198,13 @@
 }
 
 .u-field__icon {
-  font-size: var(--hz-icon);
+  font-size: var(--hz-icon-sm);
   color: var(--hz-muted);
 }
 
 .u-field__error {
   flex-basis: 100%;
+  padding-bottom: 8px;
   font-size: var(--hz-font-sm);
   color: var(--hz-danger);
 }
@@ -269,10 +342,22 @@
 /* 组标题只一种（02 章第 6 节第 2 条）：页面卡片外 13px 墨色加粗。
    列表组头（操作日志按天、产品按分类）和详情、表单里的一组共用 */
 .u-list__group,
+/* 分组标题（待办、常用、放久了 · 先用、发货单…）：宋体 15px 加粗，后面可跟灰色小字个数 */
 .u-section__title {
-  font-size: var(--hz-font-sm);
+  font-family: var(--hz-serif);
+  font-size: var(--hz-font-group);
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 1px;
+  color: var(--hz-ink);
+}
+
+.u-section__count {
+  margin-left: 8px;
+  font-family: var(--hz-sans);
+  font-size: var(--hz-font-sm);
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--hz-muted);
 }
 
 .u-list__group {
@@ -296,8 +381,8 @@
 }
 
 .u-section__title {
-  margin-bottom: calc(var(--hz-line-gap) - var(--hz-card-gap));
-  padding: 0 2px;
+  margin: 8px 0 calc(var(--hz-line-gap) - var(--hz-card-gap));
+  padding: 0 4px;
 }
 
 /* 一张卡里多行、行间细线（订货目录、配方）：比一行一张卡紧凑 */
@@ -425,15 +510,19 @@
   display: flex;
   flex-direction: column;
   gap: var(--hz-line-gap);
-  padding: var(--hz-row-pad) var(--hz-card-pad);
+  padding: 14px var(--hz-card-pad);
   font-size: var(--hz-font-sm);
 }
 
+/* 抬头下一条细线再接字段（定稿 .dc .hd + .kvs，和列表卡片一致） */
 .u-info__head {
   display: flex;
   gap: var(--hz-line-gap);
   align-items: center;
   justify-content: space-between;
+  padding-bottom: var(--hz-line-gap);
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--hz-line);
 }
 
 .u-info__title {
@@ -473,32 +562,60 @@
   border-radius: var(--hz-radius-inner);
 }
 
-/* 选择弹层里的一行（选订单、选产品）：整行可点 */
-.u-pick-row {
+/* 选一个（定稿 108）：一行一个，名称下可有一行小字；选中红字 + 右边对勾。hz-picker、筛选选客户共用 */
+.u-choice {
   display: flex;
   gap: var(--hz-row-pad);
   align-items: center;
   justify-content: space-between;
   min-height: var(--hz-tap);
-  padding: var(--hz-line-gap) var(--hz-gap-sheet);
+  padding: var(--hz-line-gap) 0;
   font-size: var(--hz-font);
+  color: var(--hz-ink);
+}
+
+.u-choice + .u-choice {
   border-top: 1px solid var(--hz-line);
 }
 
-/* 右边的日期、库存不断行，名称长了自己换行 */
-.u-pick-row__sub {
-  flex: none;
-  white-space: nowrap;
+.u-choice__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.u-choice__sub {
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);
+}
+
+.u-choice--on {
+  font-weight: 600;
+  color: var(--hz-brand);
+}
+
+.u-choice__check {
+  flex: none;
+  font-size: var(--hz-icon);
+  color: var(--hz-brand);
 }
 
 /* 表单里一行一张卡片、行里有多个字段（申请售后、售后表单、配方） */
 .u-form-card {
   display: flex;
   flex-direction: column;
-  gap: var(--hz-row-pad);
-  padding: var(--hz-row-pad) var(--hz-card-pad);
+  padding: 0 var(--hz-card-pad);
+  overflow: hidden;
+}
+
+/* 表单卡里的只读一行（例如从对账单进来的客户）：和字段行同一个样子 */
+.u-form-card .u-sheet-row {
+  align-items: center;
+  min-height: 48px;
+  margin-top: -1px;
+  font-size: var(--hz-font);
+  border-top: 1px solid var(--hz-line);
 }
 
 /* 左侧列表 + 右侧内容（客户门店、订货目录） */
@@ -580,17 +697,24 @@
   color: var(--hz-amber);
 }
 
+/* 页面最下面一行灰字操作，居中（详情第三个操作、取消邀请、作废采购单等） */
 .u-detail-third {
   display: flex;
-  justify-content: flex-end;
-  padding: 4px var(--hz-gap-page);
+  justify-content: center;
+  padding: 14px var(--hz-gap-page) 6px;
   color: var(--hz-muted);
 }
 
+/* 单据图片取色用的隐藏元素：画布读它的计算样式，颜色只在 tokens 里定 */
 .u-document-canvas {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+  visibility: hidden;
   color: var(--hz-ink);
   background-color: var(--hz-paper);
-  border-top-color: var(--hz-green);
+  border-color: var(--hz-brand) var(--hz-hair) var(--hz-muted) var(--hz-bg);
 }
 
 .u-count-table {
@@ -612,4 +736,23 @@
 .u-count-table--head {
   background: var(--hz-tint);
   color: var(--hz-muted);
+}
+
+/* 勾选框：方框，选中品牌红底白勾（卡片多选、配货打勾、对账单选单共用） */
+.u-check {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: var(--hz-icon-xs);
+  color: var(--hz-on-brand);
+  border-radius: var(--hz-radius-check);
+  box-shadow: inset 0 0 0 1.5px var(--hz-hair);
+}
+
+.u-check--on {
+  background: var(--hz-brand);
+  box-shadow: none;
 }

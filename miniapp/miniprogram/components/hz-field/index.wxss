@@ -1,4 +1,4 @@
-/* 外框由 u-field__box 画，TDesign 输入框只改主题变量，底色透明、不留内边距 */
+/* 行和外框由 u-field 画（卡片里一行、弹层里整条框），TDesign 输入框只改主题变量，底色透明、不留内边距 */
 .hz-field__box {
   --td-input-bg-color: transparent;
   --td-input-vertical-padding: 0;
@@ -12,14 +12,50 @@
   --td-spacer-2: 0;
 }
 
+/* 备注这类多行：字段名和内容都顶上对齐，内容靠左（定稿 .cell.ta） */
+.u-field--area {
+  align-items: flex-start;
+}
+
+.u-field--area .u-field__label {
+  padding-top: var(--hz-field-area-pad, 14px);
+  line-height: 21px;
+}
+
 .hz-field__box--area {
   align-items: flex-start;
-  height: var(--hz-textarea);
-  padding-top: 10px;
-  padding-bottom: 10px;
+  min-height: var(--hz-field-area, 48px);
+  padding-top: var(--hz-field-area-pad, 14px);
+  padding-bottom: var(--hz-field-area-pad, 14px);
+  box-sizing: border-box;
+}
+
+/* 金额、数量：卡片里是右边一个小框（定稿登记收款），弹层里整条 */
+.hz-field__box--num {
+  flex: var(--hz-field-num-flex, none);
+  width: var(--hz-field-num, 120px);
+  min-height: var(--hz-field-num-h, 34px);
+  margin-left: auto;
+  padding: 0 10px;
+  background: var(--hz-paper);
+  border-radius: var(--hz-radius-button);
+  box-shadow: inset 0 0 0 1px var(--hz-hair);
+}
+
+.hz-field__box--num.u-field__box--focus {
+  box-shadow: inset 0 0 0 1.5px var(--hz-brand);
+}
+
+.hz-field__box--num.u-field__box--error {
+  box-shadow: inset 0 0 0 1px var(--hz-danger);
 }
 
 .hz-field__control {
   flex: 1;
   height: 100%;
+}
+
+/* 一行输入：卡片里靠右（定稿「优惠原因　填了优惠必填」），弹层里靠左 */
+.hz-field__input {
+  text-align: var(--hz-field-align, right);
 }

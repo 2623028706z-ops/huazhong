@@ -44,11 +44,11 @@ Page({
     texts: {
       ...copy.field,
       ...copy.screen.label,
-      phone: copy.field.storePhone,
+      phone: copy.screen.label.contactPhone,
       enabled: copy.statusValue.enabled,
       save: copy.screen.action.saveSupplier,
       orders: copy.screen.title.purchaseOrders,
-      invites: copy.screen.title.invites,
+      invites: copy.screen.label.inviteDocs,
     },
   },
   supplier: null as Supplier | null,

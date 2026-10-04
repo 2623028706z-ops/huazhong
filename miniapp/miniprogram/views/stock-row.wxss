@@ -1,0 +1,116 @@
+/* 库存行（W11、M5）：库存数右对齐，已放天数在右下 */
+.hz-stock-row__qty {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  align-items: baseline;
+}
+
+.hz-stock-row__unit {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+.hz-stock-row__num {
+  font-size: var(--hz-font-lg);
+  color: var(--hz-ink);
+}
+
+.hz-stock-row__age {
+  margin-left: auto;
+}
+
+.hz-stock-group {
+  display: flex;
+  gap: var(--hz-line-gap);
+  align-items: baseline;
+  padding: 0 2px;
+}
+
+.hz-stock-group__count {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+.hz-stock-row__name {
+  display: flex;
+  flex: 1;
+  gap: var(--hz-line-gap);
+  align-items: baseline;
+  min-width: 0;
+}
+
+.hz-stock-row__type {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+.hz-stock-row__num--in {
+  color: var(--hz-green);
+}
+
+.hz-stock-row__num--out {
+  color: var(--hz-danger);
+}
+
+/* 花材抬头卡 */
+.hz-stock-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-line-gap);
+  padding: var(--hz-card-pad);
+}
+
+.hz-stock-head__top,
+.hz-stock-head__bottom {
+  display: flex;
+  gap: var(--hz-line-gap);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hz-stock-head__name {
+  font-size: var(--hz-font-lg);
+}
+
+.hz-stock-head__num {
+  font-size: var(--hz-font-hero);
+  color: var(--hz-ink);
+}
+
+/* 卡片标题行（库存批次、最近出入库）：标题左，说明或链接右，下面一条细线 */
+.hz-stock-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--hz-row-pad) var(--hz-card-pad) var(--hz-line-gap);
+  border-bottom: 1px solid var(--hz-line);
+}
+
+.hz-stock-card__title {
+  font-size: var(--hz-font-md);
+  font-weight: 500;
+}
+
+.hz-stock-card__note {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+.hz-stock-batch {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--hz-row-pad) var(--hz-card-pad);
+}
+
+.hz-stock-batch__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-line-gap);
+}
+
+.hz-stock-batch__qty {
+  font-size: var(--hz-font-md);
+}

@@ -6,10 +6,9 @@
   <hz-error wx:if="{{formError}}" message="{{formError}}" />
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
   <block wx:else>
-    <template is="info" data="{{rows: info}}" />
+    <template is="info" data="{{title: infoTitle, rows: info, cols: true}}" />
     <block wx:if="{{isProcess}}"><view wx:for="{{lines}}" wx:key="id" class="u-card u-info"><text class="u-info__title">{{item.name}}</text><text>{{texts.reason}} {{item.readonlyMeta}}</text><text wx:if="{{item.description}}">{{texts.description}} {{item.description}}</text><view wx:if="{{item.images.length}}" class="u-thumbs"><image wx:for="{{item.images}}" wx:for-item="image" wx:key="url" class="u-thumbs__item" src="{{image.thumbUrl}}" mode="aspectFill" data-url="{{image.url}}" data-urls="{{item.urls}}" bindtap="onPreview" /></view></view></block>
-    <hz-line-item title="{{texts.lines}}" lines="{{lineViews}}" mode="custom" bind:edit="onEditLine" />
-    <hz-add-button wx:if="{{!isProcess}}" text="{{texts.add}}" bind:press="onOpenPick" />
+    <hz-line-item title="{{texts.lines}}" lines="{{lineViews}}" mode="custom" add-text="{{isProcess ? '' : texts.add}}" bind:edit="onEditLine" bind:add="onOpenPick" />
     <view class="u-card u-form-card"><hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{note}}" bind:change="onNote" /></view>
   </block>
 </view>

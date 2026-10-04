@@ -1,0 +1,12 @@
+.hz-reason-sheet__subject {
+  display: block;
+  text-align: center;
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+.hz-reason-sheet__hint {
+  display: block;
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}

@@ -15,19 +15,29 @@ const menuPages = {
     url: '/packages/finance/pages/methods/index',
   },
   inventory: { icon: 'boxes', text: copy.title.inventory, url: '/pages/inventory/index' },
-  logs: { icon: 'scroll-text', text: copy.title.logs, url: '/pages/logs/index' },
-  staff: { icon: 'users-round', text: copy.title.staff, url: '/pages/staff/index' },
+  logs: { icon: 'file-text', text: copy.title.logs, url: '/pages/logs/index' },
+  staff: { icon: 'user-round', text: copy.title.staff, url: '/pages/staff/index' },
   gallery: { icon: 'image', text: copy.title.devGallery, url: '/pages/dev-gallery/index' },
 }
 type MenuKey = keyof typeof menuPages
 
+// 入口顺序照定稿：库存查询、操作日志、收付款方式、员工与岗位；管理员也有库存查询
+const menuOrder: MenuKey[] = ['inventory', 'logs', 'methods', 'staff']
+
 function menusOf(me: Me) {
-  const keys: MenuKey[] = [
-    ...me.menus,
-    ...(me.modules.includes('finance') ? (['methods'] as const) : []),
-    ...(isDevelop() ? (['gallery'] as const) : []),
-  ]
-  return keys.map((key) => ({ key, icon: menuPages[key].icon, text: menuPages[key].text }))
+  const keys = new Set<MenuKey>(me.menus)
+  if (me.type === 'admin') keys.add('inventory')
+  if (me.modules.includes('finance')) keys.add('methods')
+  return menuOrder
+    .filter((key) => keys.has(key))
+    .map((key) => ({ key, icon: menuPages[key].icon, text: menuPages[key].text }))
+}
+
+// 开发环境最下面多一个「组件总览」，正式版没有
+function devMenusOf() {
+  return isDevelop()
+    ? [{ key: 'gallery', icon: menuPages.gallery.icon, text: menuPages.gallery.text }]
+    : []
 }
 
 function profileOf(me: Me) {
@@ -39,6 +49,7 @@ function profileOf(me: Me) {
     contactPhone: me.contactPhone,
     external: me.type === 'store' || me.type === 'supplier',
     menus: menusOf(me),
+    devMenus: devMenusOf(),
   }
 }
 

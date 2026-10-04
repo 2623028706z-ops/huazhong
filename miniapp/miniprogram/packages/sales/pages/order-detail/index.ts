@@ -1,7 +1,7 @@
 // X3 订单详情（06 章 X3）：状态区 → 单号、状态、来源 → 客户门店、下单日期、出货日期、备注 → 明细 → 金额 →
 // 发货信息 → 变更记录 → 原因行。确认订单弹层选出货日期（默认今天往后 SHIP_DATE_DEFAULT_OFFSET_DAYS 天）；
 // 取消按 cancel 的 reasonRequired，弹层开着时被确认返回 STALE，按 latest 换成原因框
-import { contract, copy, type OrderDetail } from '@huazhong/shared'
+import { contract, copy, redesignCopy, type OrderDetail } from '@huazhong/shared'
 import { buttonsOf, isReasonRequired, type ButtonView } from '../../../../core/actions'
 import type { CodeEvent, DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
@@ -30,8 +30,18 @@ const reasonTitles: Record<ReasonCode, string> = {
   rejectCancel: copy.rework.rejectCancel,
   voidOrder: copy.rework.voidOrder,
 }
+const INITIAL_BODY: string = redesignCopy.orderAction.cancel.body
 const sheetDefaults = { cancelMode: 'cancel' as ReasonCode }
+// 「客户 · 门店 · 单号」：弹层和确认框先写是哪一单
+const subjectOf = (order: OrderDetail): string =>
+  copy.org.store(copy.org.store(order.customerName, order.storeName), order.no)
 const CONFIRM_CANCEL: string = copy.screen.action.confirmCancel
+const confirmTexts: Record<ReasonCode, string> = {
+  cancel: CONFIRM_CANCEL,
+  approveCancel: copy.rework.approveCancel,
+  rejectCancel: copy.rework.rejectCancel,
+  voidOrder: copy.screen.action.confirmVoid,
+}
 function isReasonAction(code: string): code is ReasonCode {
   return Object.hasOwn(reasonTitles, code)
 }
@@ -52,7 +62,8 @@ Page({
     cancelError: '',
     texts: {
       cancelTitle: reasonTitles.cancel,
-      cancelBody: copy.screen.confirm.cancelOrder,
+      cancelBody: INITIAL_BODY,
+      cancelSubject: '',
       confirmCancel: CONFIRM_CANCEL,
     },
   },
@@ -108,15 +119,21 @@ Page({
         cancelRequired,
         cancelError: '',
         cancelMode: code,
-        texts: { ...this.data.texts, cancelTitle: title, confirmCancel: title },
+        texts: {
+          ...this.data.texts,
+          cancelTitle: title,
+          confirmCancel: confirmTexts[code],
+          cancelBody: redesignCopy.orderAction[code].body,
+          cancelSubject: subjectOf(order),
+        },
       })
       if (
         !cancelRequired &&
         (await confirmAsk(this, {
           title,
-          body: this.data.texts.cancelBody,
+          body: `${subjectOf(order)}\n${redesignCopy.orderAction[code].body}`,
           cancel: copy.confirm.cancel,
-          confirm: title,
+          confirm: confirmTexts[code],
         }))
       )
         await this.submitCancel('')
@@ -170,7 +187,7 @@ Page({
       params: { id: order.id },
       body: { ...body, reason: reason ?? '' },
     })
-    this.settle(result, copy.order.cancelled)
+    this.settle(result, redesignCopy.orderAction[this.data.cancelMode].done)
   },
   onFailureAction() {
     void this.load()

@@ -12,6 +12,8 @@ import { toNonZero } from './winding.ts'
 // 先放原型用到的；新页面要用新图标时加在这里，再跑 pnpm gen
 export const ICONS = [
   'house',
+  'arrow-up-from-line',
+  'arrow-down-to-line',
   'shopping-bag',
   'shopping-cart',
   'truck',
@@ -44,6 +46,10 @@ export const ICONS = [
   'id-card',
   'users-round',
   'scroll-text',
+  'phone',
+  'book-open',
+  'scale',
+  'arrow-left-right',
 ] as const
 
 // 24 网格上的线宽：显示 21px 时约 1.5px

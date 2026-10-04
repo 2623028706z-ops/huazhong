@@ -2,28 +2,29 @@ import {
   contract,
   financeCopy as f,
   financeTexts,
-  formatTime,
+  shanghaiDayOf,
   type OutputOf,
   type StatementSource,
 } from '@huazhong/shared'
-import type { KeyEvent } from '../core/events'
+import type { DetailEvent } from '../core/events'
 import type { FailureView } from '../core/failure-view'
 import { request } from '../core/request'
 import { failureOf } from '../core/session'
 import { watch, unwatchOnLeave } from '../core/live'
 import { stockViewOf } from './stock'
-import { sourceRowOf, settlementRowsOf } from './statement'
+import { periodTextOf, settlementListRowsOf, statementSectionsOf } from './statement'
 type Detail =
   OutputOf<typeof contract.storeStatementDetail> | OutputOf<typeof contract.supplierStatementDetail>
 type SupplierDetail = OutputOf<typeof contract.supplierStatementDetail>
 type StoreDetail = OutputOf<typeof contract.storeStatementDetail>
 function supplierCells(detail: SupplierDetail) {
+  const cell = (label: string, amountCents: number, due = false) => ({ label, amountCents, due })
   return [
-    { label: f.received, amountCents: detail.receivedCents, due: false },
-    { label: f.returned, amountCents: detail.returnCents, due: false },
-    { label: f.openingDebt, amountCents: detail.openingDebtCents, due: false },
-    { label: f.supplierDeducted, amountCents: detail.creditDeductedCents, due: false },
-    { label: f.receivable, amountCents: detail.amountCents, due: true },
+    cell(f.received, detail.receivedCents),
+    cell(f.returned, detail.returnCents),
+    ...(detail.openingDebtCents ? [cell(f.openingDebt, detail.openingDebtCents)] : []),
+    cell(f.supplierDeducted, detail.creditDeductedCents),
+    cell(f.receivable, detail.amountCents, true),
   ]
 }
 function storeCells(detail: StoreDetail) {
@@ -33,6 +34,7 @@ function storeCells(detail: StoreDetail) {
     { label: f.storeAmount, amountCents: detail.storeAmountCents ?? 0, due: true },
   ]
 }
+// 信息卡：单号、开单日期、付款截止、对账期间（已结清多一项结清日期）
 function externalInfo(detail: Detail) {
   return {
     title: 'storeName' in detail ? `${detail.partyName} · ${detail.storeName}` : detail.partyName,
@@ -40,23 +42,43 @@ function externalInfo(detail: Detail) {
     statusKind: 'statementStatus',
     rows: [
       { label: f.no, value: detail.no },
-      { label: f.period, value: `${detail.periodFrom} — ${detail.periodTo}` },
       { label: f.statementDate, value: detail.statementDate },
       ...(detail.dueDate ? [{ label: f.dueDate, value: detail.dueDate }] : []),
-      ...(detail.settledAt ? [{ label: f.settledDate, value: formatTime(detail.settledAt) }] : []),
+      { label: f.period, value: periodTextOf(detail.periodFrom, detail.periodTo), wide: true },
+      ...(detail.settledAt
+        ? [{ label: f.settledDate, value: shanghaiDayOf(detail.settledAt) }]
+        : []),
     ],
   }
 }
 function viewOf(detail: Detail) {
   const supplierDetail = 'receivedCents' in detail ? detail : null
+  const sections = statementSectionsOf(
+    detail.groups.flatMap((group) => group.sources),
+    { supplier: supplierDetail !== null, heads: false },
+  )
   return {
     info: externalInfo(detail),
-    cells: 'receivedCents' in detail ? supplierCells(detail) : storeCells(detail),
-    groups: detail.groups.map((group) => ({
-      title: group.storeName ?? detail.partyName,
-      rows: group.sources.map(sourceRowOf),
-    })),
-    settlements: supplierDetail ? settlementRowsOf(supplierDetail.settlements) : [],
+    cells: supplierDetail ? supplierCells(supplierDetail) : storeCells(detail as StoreDetail),
+    main: sections.main,
+    afterSection: sections.after,
+    receiptSection: supplierDetail
+      ? {
+          title: f.receipts,
+          meta: '',
+          emptyText: f.noReceipt,
+          groups: supplierDetail.settlements.length
+            ? [
+                {
+                  key: '',
+                  head: '',
+                  meta: '',
+                  rows: settlementListRowsOf(supplierDetail.settlements, false),
+                },
+              ]
+            : [],
+        }
+      : null,
     notice: detail.overdueDays ? f.overdue(detail.overdueDays) : '',
   }
 }
@@ -119,10 +141,10 @@ const methods = {
   onFailureAction(this: ExternalStatementHost) {
     void this.load()
   },
-  async onSource(this: ExternalStatementHost, event: KeyEvent) {
+  async onSource(this: ExternalStatementHost, event: DetailEvent<string>) {
     const source = this.detail?.groups
       .flatMap((group) => group.sources)
-      .find((item) => `${item.type}:${item.id}` === event.currentTarget.dataset.key)
+      .find((item) => `${item.type}:${item.id}` === event.detail)
     if (!source) return
     if (this.data.supplier) {
       await supplierSource(this, source)

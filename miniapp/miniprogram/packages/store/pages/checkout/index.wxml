@@ -8,7 +8,7 @@
   <hz-notice wx:if="{{notice}}" text="{{notice}}" />
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
   <block wx:else>
-    <template is="info" data="{{rows: info}}" />
+    <template is="info" data="{{...info}}" />
     <view class="u-section">
       <hz-line-item lines="{{rows}}" mode="view" removable bind:remove="onRemove" />
     </view>
@@ -18,10 +18,13 @@
   </block>
 </view>
 <hz-action-bar settlement>
-  <view wx:if="{{rows.length}}" class="u-bar-total">
-    <text class="u-serif-amount">{{format.formatMoney(totalCents)}}</text>
-    <text class="u-info__meta">{{totalMeta}}</text>
+  <view class="u-cart">
+    <view class="u-cart__icon"><text class="hz-icon hz-icon--shopping-cart"></text><text wx:if="{{rows.length}}" class="u-cart__badge">{{rows.length}}</text></view>
+    <view class="u-bar-total">
+      <text class="u-bar-total__amount">{{format.formatMoney(totalCents)}}</text>
+      <text wx:if="{{totalMeta}}" class="u-bar-total__meta">{{totalMeta}}</text>
+    </view>
   </view>
-  <hz-button text="{{needsReview ? texts.recheck : isEdit ? texts.confirmEdit : texts.submit}}" loading="{{saving}}" disabled="{{rows.length === 0 && !isEdit}}" bind:press="onSubmit" />
+  <hz-button kind="round" text="{{needsReview ? texts.recheck : isEdit ? texts.confirmEdit : texts.submit}}" loading="{{saving}}" disabled="{{rows.length === 0 && !isEdit}}" bind:press="onSubmit" />
 </hz-action-bar>
 <hz-confirm id="hz-confirm" />

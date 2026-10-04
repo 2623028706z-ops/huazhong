@@ -1,1 +1,1 @@
-<text class="u-pill hz-tag {{danger?'hz-tag--danger':warn ? 'hz-tag--warn' : ''}}">{{text}}</text>
+<text class="u-pill hz-tag {{danger ? 'hz-tag--danger' : warn ? 'hz-tag--warn' : done ? 'hz-tag--done' : ''}}">{{text}}</text>

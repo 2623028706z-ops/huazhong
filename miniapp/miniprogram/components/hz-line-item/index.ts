@@ -33,6 +33,8 @@ Component({
     quantityReadonly: { type: Boolean, value: false },
     title: { type: String, value: '' },
     picking: { type: Boolean, value: false },
+    // 有值就在合计上面放一行「+ 添加产品」，点了发 add
+    addText: { type: String, value: '' },
   },
   data: {
     showEditor: false,
@@ -108,6 +110,9 @@ Component({
     },
     onEdit(event: IndexEvent) {
       this.edit(event.currentTarget.dataset.index)
+    },
+    onAdd() {
+      this.triggerEvent('add')
     },
     onClose() {
       this.setData({ showEditor: false })

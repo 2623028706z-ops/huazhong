@@ -15,6 +15,7 @@
     "hz-picker": "/components/hz-picker/index",
     "hz-confirm": "/components/hz-confirm/index",
     "hz-realtime-bar": "/components/hz-realtime-bar/index",
-    "hz-add-button": "/components/hz-add-button/index"
+    "hz-add-button": "/components/hz-add-button/index",
+    "hz-tag": "/components/hz-tag/index"
   }
 }

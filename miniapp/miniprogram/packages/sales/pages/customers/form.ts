@@ -87,7 +87,7 @@ export function storeRowsOf(customer: CustomerItem | undefined) {
     id: store.id,
     fields: [
       { label: copy.field.contact, value: store.contact },
-      { label: copy.field.phone, value: maskPhone(store.phone), wide: true },
+      { label: copy.screen.label.contactPhone, value: maskPhone(store.phone), wide: true },
     ],
     title: store.name,
     total: store.contact,

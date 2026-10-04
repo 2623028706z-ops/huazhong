@@ -83,8 +83,9 @@ function callOnce(method: string, path: string, body: unknown, header: Record<st
       success: (response) => {
         resolve({ statusCode: response.statusCode, data: response.data, header: response.header })
       },
-      // 断网、超时：交给界面按「网络不太好」处理（02 章第 5.2 节）
-      fail: () => {
+      // 断网、超时：交给界面按「网络不太好」处理（02 章第 5.2 节）；真实原因记进实时日志，真机排查用
+      fail: (error) => {
+        wx.getRealtimeLogManager().warn('callContainer', method, path, error.errMsg)
         resolve(null)
       },
     })

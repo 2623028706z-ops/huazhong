@@ -75,8 +75,11 @@ Page({
   key: '',
   editId: '',
   categoryKey: '',
+  // 从库存页底栏进来：直接打开「管理分类」或「新建花材」
+  openAction: '',
   onLoad(query: Record<string, string | undefined>) {
     this.editId = query.editId ?? ''
+    this.openAction = query.open ?? ''
     this.list = listOf(
       this,
       async (cursor) => {
@@ -95,6 +98,12 @@ Page({
             canCreate: canDo(result.data.actions, 'create'),
             canManage: canDo(result.data.actions, 'manageCategories'),
           })
+        if (result.ok && this.openAction) {
+          const action = this.openAction
+          this.openAction = ''
+          if (action === 'create') this.onCreate()
+          else if (action === 'categories') this.onCategories()
+        }
         return result
       },
       rowOf,

@@ -1,6 +1,13 @@
 // S8 申请售后（06 章 S8）：原订单、出货日期 → 明细（数量上限 maxQty；问题原因、问题说明、图片）→「添加产品」。
 // 提交后进 S7，并打开这张售后的详情弹层
-import { contract, copy, financeCopy, labels, type OrderDetail } from '@huazhong/shared'
+import {
+  contract,
+  copy,
+  financeCopy,
+  labels,
+  redesignCopy,
+  type OrderDetail,
+} from '@huazhong/shared'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
 import { unplacedErrorOf } from '../../../../core/form'
 import type { FailureView } from '../../../../core/failure-view'
@@ -34,7 +41,7 @@ Page({
     editInitial: null as FormLine | null,
     editLine: null as FormLine | null,
     editError: { qty: '', reason: '', description: '', images: '' },
-    tableRows: [] as (FormLine & { reasonText: string; imageCount: number })[],
+    tableRows: [] as (FormLine & { reasonText: string; imageText: string })[],
     texts: {
       lines: copy.screen.section.afterLines,
       code: copy.screen.label.customerCode,
@@ -44,6 +51,7 @@ Page({
       add: copy.screen.action.addProduct,
       submit: copy.screen.action.submitAfter,
       qty: financeCopy.afterQty,
+      unit: redesignCopy.unit,
       remove: copy.screen.action.delete,
       confirm: financeCopy.confirm,
       pickTitle: copy.screen.title.pickProduct,
@@ -86,7 +94,7 @@ Page({
         reasonText: line.reason
           ? labels.afterReason[line.reason as keyof typeof labels.afterReason]
           : '',
-        imageCount: line.images.length,
+        imageText: redesignCopy.imageCountText(line.images.length),
       })),
       lineErrors: lineErrorsOf({}, lines.length),
       formError: '',
@@ -107,8 +115,13 @@ Page({
   onQty(event: IndexDetail<number>) {
     this.update(event.currentTarget.dataset.index, { qty: event.detail })
   },
-  onReason(event: IndexDetail<string>) {
-    this.update(event.currentTarget.dataset.index, { reason: event.detail })
+  // 四选一：hz-choices 给的是选中的数组，点已选中的不取消，点新的换成新的
+  onReason(event: IndexDetail<string[]>) {
+    const { index } = event.currentTarget.dataset
+    const line = this.data.editIndex === index ? this.data.editLine : this.data.lines[index]
+    const current = line?.reason
+    const next = event.detail.find((id) => id !== current)
+    if (next) this.update(index, { reason: next })
   },
   onDescription(event: IndexDetail<string>) {
     this.update(event.currentTarget.dataset.index, { description: event.detail })

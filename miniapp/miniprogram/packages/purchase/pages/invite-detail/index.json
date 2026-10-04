@@ -13,6 +13,7 @@
     "hz-records": "/components/hz-records/index",
     "hz-confirm": "/components/hz-confirm/index",
     "hz-progress": "/components/hz-progress/index",
-    "hz-info-rows": "/components/hz-info-rows/index"
+    "hz-info-rows": "/components/hz-info-rows/index",
+    "hz-cover": "/components/hz-cover/index"
   }
 }

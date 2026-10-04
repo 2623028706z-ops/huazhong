@@ -23,7 +23,7 @@ export type Query = {
   to?: string | undefined
   status?: 'unsettled' | 'settled' | 'voided' | undefined
   q?: string | undefined
-  filter?: 'outstanding' | 'overdue' | undefined
+  filter?: 'outstanding' | 'overdue' | 'unsettled' | undefined
   tab?: 'statements' | 'unstatemented' | undefined
 }
 type PartyRef = { kind: StatementKind; id: number }
@@ -82,7 +82,8 @@ export class StatementReads {
       version: party.version,
       termDays: party.termDays,
       openingDebtCents: party.openingDebtCents,
-      openingDebtEditable: rows.length === 0,
+      // 没有未作废的对账单才能改（作废后期初欠款回到待入单，可以再改）
+      openingDebtEditable: !rows.some((r) => r.status !== 'voided'),
     }
   }
   async draft(
@@ -177,11 +178,12 @@ export class StatementReads {
       parties: rows.filter((r) => !query.q || r.name.includes(query.q)),
       today: this.clock.today(),
     })
-    const filtered = summaries.filter((r) =>
-      !query.filter || query.filter === 'outstanding'
-        ? !query.filter || r.outstandingCents > 0
-        : r.overdueCents > 0,
-    )
+    const filtered = summaries.filter((r) => {
+      if (query.filter === 'outstanding') return r.outstandingCents > 0
+      if (query.filter === 'overdue') return r.overdueCents > 0
+      // 首页「待收款 / 待付款」：有没结清的对账单
+      return query.filter !== 'unsettled' || r.unsettledCount > 0
+    })
     const result = page(
       filtered.map((r) => ({ ...r, id: r.partyId })),
       query,

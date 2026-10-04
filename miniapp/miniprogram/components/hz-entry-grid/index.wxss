@@ -12,8 +12,8 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: 104px;
-  padding: var(--hz-card-pad);
+  min-height: 118px;
+  padding: 18px var(--hz-card-pad) var(--hz-card-pad);
   border-top: 1px solid var(--hz-rule);
 }
 
@@ -32,7 +32,7 @@
   gap: var(--hz-card-pad);
   align-items: center;
   justify-content: flex-start;
-  height: 64px;
+  min-height: 72px;
 }
 
 /* 不能用：格子里的东西变淡，窗格线不变 */
@@ -45,9 +45,11 @@
   color: var(--hz-brand);
 }
 
+/* 定稿 .pane .nm：宋体 500 18、字距 3 */
 .hz-entry-grid__name {
   font-size: var(--hz-font-lg);
-  letter-spacing: 0;
+  font-weight: 500;
+  letter-spacing: 3px;
 }
 
 .hz-entry-grid__go {
@@ -64,7 +66,7 @@
 
 /* 模块首页：小一号 */
 .hz-entry-grid--compact .hz-entry-grid__cell {
-  height: 56px;
+  min-height: 56px;
   padding: 14px;
   flex-direction: row;
   align-items: center;
@@ -73,15 +75,17 @@
 }
 
 .hz-entry-grid--compact .hz-entry-grid__cell--wide {
-  height: 56px;
+  min-height: 56px;
 }
 
 .hz-entry-grid--compact .hz-entry-grid__icon {
   font-size: var(--hz-icon-nav);
 }
 
+/* 定稿 .window.docs：资料小格用正文字体 14 */
 .hz-entry-grid--compact .hz-entry-grid__name {
-  font-size: var(--hz-font-md);
+  font-family: var(--hz-sans);
+  font-size: var(--hz-font);
   letter-spacing: 0;
 }
 

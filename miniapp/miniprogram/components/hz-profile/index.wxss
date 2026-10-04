@@ -14,18 +14,10 @@
   color: var(--hz-muted);
 }
 
-.hz-profile__phone {
-  display: flex;
-  justify-content: space-between;
-  font-size: var(--hz-font);
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--hz-rule);
-}
-
-.hz-profile__phone > text:first-child {
-  color: var(--hz-muted);
-}
-
 .hz-profile__logout {
   margin-top: 24px;
+}
+
+.hz-profile__dev {
+  margin-top: 16px;
 }

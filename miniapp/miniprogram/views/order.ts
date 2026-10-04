@@ -26,6 +26,7 @@ export interface InfoRow {
   value: string
   url?: string
   phone?: string
+  wide?: boolean
 }
 
 // 待确认的门店单没有出货日期：「待销售安排」
@@ -56,10 +57,9 @@ export function orderRowOf(order: OrderCard, forStore: boolean) {
     id: order.id,
     version: order.version,
     fields: [
-      { label: redesignCopy.no, value: order.no, wide: true },
+      { label: redesignCopy.no, value: order.no },
       { label: redesignCopy.orderDate, value: order.orderDate },
       { label: redesignCopy.shipDate, value: shipDateText(order.shipDate) },
-      { label: redesignCopy.qty, value: formatUnitTotals(order.units) },
       {
         label: order.status === 'shipped' ? redesignCopy.shippedAmount : redesignCopy.orderAmount,
         value: formatMoney(order.amountCents),
@@ -79,7 +79,13 @@ export function orderRowOf(order: OrderCard, forStore: boolean) {
 function lineTagsOf(line: OrderLine, shipped: boolean): Tag[] {
   const tags: Tag[] = []
   if (line.repriced) tags.push({ text: copy.screen.tag.repriced, warn: true })
-  if (line.short) tags.push({ text: copy.screen.tag.short, warn: true })
+  if (line.short) {
+    const gap = line.shippedQty === null ? 0 : line.qty - line.shippedQty
+    tags.push({
+      text: gap > 0 ? `${copy.screen.tag.short} ${gap} ${line.unit}` : copy.screen.tag.short,
+      warn: true,
+    })
+  }
   if (line.over) tags.push({ text: copy.rework.overShipped, warn: true })
   if (line.discontinued && !shipped) tags.push({ text: copy.screen.tag.discontinued, warn: true })
   return tags
@@ -103,11 +109,11 @@ function orderLinesOf(order: OrderDetail) {
 
 // 有值才显示的「标签 + 值」
 export function rowsOf(
-  rows: readonly [string, string | null, { url?: string; phone?: string }?][],
+  rows: readonly [string, string | null, { url?: string; phone?: string; wide?: boolean }?][],
 ): InfoRow[] {
   return rows
     .filter(
-      (row): row is [string, string, { url?: string; phone?: string }?] =>
+      (row): row is [string, string, { url?: string; phone?: string; wide?: boolean }?] =>
         row[1] !== null && row[1] !== '',
     )
     .map(([label, value, link]) => ({ label, value, ...link }))
@@ -167,9 +173,6 @@ export function orderViewOf(order: OrderDetail, forStore: boolean, finance = fal
       rows: rowsOf([[copy.screen.label.shipNote, order.shipNote]]),
     },
     changes: changesOf(order.changes),
-    showChanges: order.status === 'to_ship' || order.status === 'shipped',
-    changesHeading: copy.records.orderChange,
-    noChange: redesignCopy.noChange,
     cancelNotice: cancelNoticeOf(order),
     requests: cancelRequestRowsOf(order.cancelRequests),
     void: voidInfoOf(order, forStore),
@@ -214,10 +217,9 @@ export function shippingRowOf(order: ShippingCard) {
     id: order.id,
     version: order.version,
     fields: [
-      { label: redesignCopy.no, value: order.no, wide: true },
-      { label: redesignCopy.orderDate, value: order.orderDate },
+      { label: redesignCopy.no, value: order.no },
       { label: redesignCopy.shipDate, value: shipDateText(order.shipDate) },
-      { label: redesignCopy.qty, value: formatUnitTotals(order.units), wide: true },
+      { label: redesignCopy.product, value: formatUnitTotals(order.units) },
     ],
     date: order.orderDate,
     status: order.status,
@@ -261,9 +263,6 @@ export function shippingViewOf(order: ShippingDetail) {
       ]),
     },
     changes: changesOf(order.changes),
-    showChanges: order.status === 'to_ship' || order.status === 'shipped',
-    changesHeading: copy.records.orderChange,
-    noChange: redesignCopy.noChange,
     cancelNotice: cancelNoticeOf(order),
     requests: cancelRequestRowsOf(order.cancelRequests),
     reason: {
@@ -274,41 +273,37 @@ export function shippingViewOf(order: ShippingDetail) {
       ]),
     },
     void: voidInfoOf(order),
+    noteNotice: order.note && order.status === 'to_ship' ? redesignCopy.orderNote(order.note) : '',
     notice: order.lockedReason ?? '',
   }
 }
 
-function shippingInfoOf(order: ShippingDetail) {
+export function shippingInfoOf(order: ShippingDetail) {
   return {
     title: copy.org.store(order.customerName, order.storeName),
     statusKind: 'orderStatus',
     status: order.status,
     rows: rowsOf([
       [redesignCopy.no, order.no],
-      [copy.screen.label.customerStore, copy.org.store(order.customerName, order.storeName)],
       [copy.field.shipDate, shipDateText(order.shipDate)],
       [redesignCopy.shipper, order.shippedBy],
       [redesignCopy.shippedAt, order.shippedAt ? formatTime(order.shippedAt) : null],
       [
         redesignCopy.contact,
-        [order.contactName, order.contactPhone].filter(Boolean).join(copy.separator) ||
-          redesignCopy.notFilled,
-        { phone: order.contactPhone },
+        [order.contactName, order.contactPhone].filter(Boolean).join(' ') || redesignCopy.notFilled,
+        order.contactPhone ? { wide: true, phone: order.contactPhone } : { wide: true },
       ],
-      [redesignCopy.address, order.address || redesignCopy.notFilled],
+      [redesignCopy.address, order.address || redesignCopy.notFilled, { wide: true }],
     ]),
+    cols: true,
   }
 }
 
 function orderInfoOf(order: OrderDetail, forStore: boolean, finance: boolean) {
-  const staffRows: [string, string | null, { url?: string; phone?: string }?][] = forStore
-    ? []
-    : [
-        [copy.screen.label.origin, labels.orderOrigin[order.origin]],
-        [copy.screen.label.customerStore, copy.org.store(order.customerName, order.storeName)],
-      ]
+  const staffRows: [string, string | null, { url?: string; phone?: string; wide?: boolean }?][] =
+    forStore ? [] : [[copy.screen.label.origin, labels.orderOrigin[order.origin]]]
   return {
-    title: forStore ? order.storeName : copy.org.store(order.customerName, order.storeName),
+    title: copy.org.store(order.customerName, order.storeName),
     statusKind: 'orderStatus',
     status: forStore && order.status === 'voided' ? 'cancelled' : order.status,
     rows: rowsOf([
@@ -316,20 +311,22 @@ function orderInfoOf(order: OrderDetail, forStore: boolean, finance: boolean) {
       ...staffRows,
       [copy.screen.label.orderDate, order.orderDate],
       [copy.field.shipDate, shipDateText(order.shipDate)],
-      [redesignCopy.shipper, order.shippedBy],
+      [redesignCopy.shipper, forStore ? null : order.shippedBy],
       [redesignCopy.shippedAt, order.shippedAt ? formatTime(order.shippedAt) : null],
       [
         redesignCopy.statement,
-        statementText(order.statement),
+        order.status === 'shipped' ? statementText(order.statement) : null,
         order.statement
           ? {
+              wide: true,
               url: forStore
                 ? `/packages/store/pages/statement-detail/index?id=${order.statement.id}`
                 : `/packages/finance/pages/statement-detail/index?scope=${finance ? 'finance' : 'internal'}&id=${order.statement.id}`,
             }
-          : {},
+          : { wide: true },
       ],
-      [copy.field.note, order.note],
+      [copy.field.note, order.note, { wide: true }],
     ]),
+    cols: true,
   }
 }

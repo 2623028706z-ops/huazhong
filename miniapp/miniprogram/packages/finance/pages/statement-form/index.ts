@@ -5,34 +5,37 @@ import {
   shanghaiDateOf,
   monthStartOf,
   addDays,
+  formatMoney,
   type StatementDraft,
 } from '@huazhong/shared'
-import type { DetailEvent, KeyEvent } from '../../../../core/events'
+import type { DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { markChanged, syncUnloadAlert } from '../../../../core/guard'
 import { watch, unwatchOnLeave } from '../../../../core/live'
 import { newIdempotencyKey, request, type Failure } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
-import { sourceRowOf, sourceRoute } from '../../../../views/statement'
-import { draftTotalsOf, checkStatement, selectedSourcesOf } from './form'
-type SelectedRow = ReturnType<typeof sourceRowOf> & { selected: boolean }
-function sourceGroupsOf(rows: SelectedRow[], partyName: string) {
-  const groups = new Map<string, { id: string; title: string; rows: SelectedRow[] }>()
-  for (const row of rows) {
-    const id = row.source?.storeId ?? ''
-    if (!groups.has(id)) groups.set(id, { id, title: row.source?.storeName ?? partyName, rows: [] })
-    groups.get(id)?.rows.push(row)
-  }
-  return [...groups.values()]
+import {
+  periodTextOf,
+  sourceRoute,
+  statementSectionsOf,
+  type ListSection,
+} from '../../../../views/statement'
+import { draftTotalsOf, draftCellsOf, checkStatement } from './form'
+function sectionsOf(draft: StatementDraft, selected: string[], supplier: boolean) {
+  return statementSectionsOf(draft.sources, {
+    supplier,
+    emptyAfter: supplier ? f.noReturnInPeriod : f.noAfterInPeriod,
+    selected: new Set(selected),
+  })
 }
-function statementKindOf(): 'customer' | 'supplier' {
+function initialKind(): 'customer' | 'supplier' {
   return 'customer'
 }
 Page({
   ...unwatchOnLeave,
   data: {
     title: f.statementCreate,
-    kind: statementKindOf(),
+    kind: initialKind(),
     partyId: '',
     partyName: '',
     today: shanghaiDateOf(Date.now()),
@@ -41,9 +44,12 @@ Page({
     note: '',
     dueDate: '',
     selected: [] as string[],
-    rows: [] as SelectedRow[],
-    sourceGroups: [] as ReturnType<typeof sourceGroupsOf>,
-    cells: [] as { label: string; amountCents: number; due: boolean }[],
+    main: null as ListSection | null,
+    afterSection: null as ListSection | null,
+    periodSheet: false,
+    periodText: '',
+    cells: [] as ReturnType<typeof draftCellsOf>,
+    dueText: '',
     loaded: false,
     changed: false,
     needsReview: false,
@@ -134,42 +140,17 @@ Page({
     if (!this.draft) return
     const totals = draftTotalsOf(this.draft, this.data.selected),
       supplier = this.data.kind === 'supplier'
-    const selectedSources = selectedSourcesOf(this.draft, this.data.selected)
-    const primary = selectedSources
-      .filter((item) => item.carriesAmount && item.amountCents >= 0)
-      .reduce((sum, item) => sum + item.amountCents, 0)
-    const negative = selectedSources
-      .filter((item) => item.carriesAmount && item.amountCents < 0)
-      .reduce((sum, item) => sum - item.amountCents, 0)
-    const supplierReturns = selectedSources
-      .filter((item) => item.type === 'purchase_return')
-      .reduce((sum, item) => sum + Math.abs(item.amountCents), 0)
-    const rows = this.draft.sources.map((item) => ({
-      ...sourceRowOf(item),
-      selected: this.data.selected.includes(`${item.type}:${item.id}`),
-    }))
+    const sections = sectionsOf(this.draft, this.data.selected, supplier)
     this.setData({
-      rows,
-      sourceGroups: sourceGroupsOf(rows, this.data.partyName),
-      cells: [
-        { label: supplier ? f.received : f.shipped, amountCents: primary, due: false },
-        {
-          label: supplier ? f.returned : f.after,
-          amountCents: supplier ? supplierReturns : negative,
-          due: false,
-        },
-        {
-          label: supplier ? f.supplierDeducted : f.deducted,
-          amountCents: totals.creditDeductedCents,
-          due: false,
-        },
-        { label: f.openingDebt, amountCents: this.draft.openingDebtCents, due: false },
-        { label: supplier ? f.payable : f.receivable, amountCents: totals.dueCents, due: true },
-      ],
+      main: sections.main,
+      afterSection: sections.after,
+      periodText: periodTextOf(this.data.periodFrom, this.data.periodTo),
+      cells: draftCellsOf(this.draft, this.data.selected, supplier),
+      dueText: formatMoney(totals.dueCents),
     })
   },
-  onSource(event: KeyEvent) {
-    const id = event.currentTarget.dataset.key,
+  onToggle(event: DetailEvent<string>) {
+    const id = event.detail,
       source = this.draft?.sources.find((item) => `${item.type}:${item.id}` === id)
     if (!source || !source.carriesAmount) return
     this.setData({
@@ -180,14 +161,19 @@ Page({
     markChanged(this, true)
     this.render()
   },
-  onSourceDetail(event: KeyEvent) {
-    const source = this.draft?.sources.find(
-      (item) => `${item.type}:${item.id}` === event.currentTarget.dataset.key,
-    )
+  onSourceDetail(event: DetailEvent<string>) {
+    const source = this.draft?.sources.find((item) => `${item.type}:${item.id}` === event.detail)
     if (source) void wx.navigateTo({ url: sourceRoute(source) })
+  },
+  onOpenPeriod() {
+    this.setData({ periodSheet: true })
+  },
+  onClosePeriod() {
+    this.setData({ periodSheet: false })
   },
   async onPeriod(event: DetailEvent<string, { key: 'periodFrom' | 'periodTo' }>) {
     this.setData({ [event.currentTarget.dataset.key]: event.detail, error: '' })
+    this.setData({ periodText: periodTextOf(this.data.periodFrom, this.data.periodTo) })
     markChanged(this, true)
     await this.load(true)
   },

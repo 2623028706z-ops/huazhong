@@ -1,41 +1,64 @@
 import {
   contract,
   copy,
+  financeCopy,
   redesignCopy,
   formatTime,
-  formatUnitTotals,
   type ShippingDetail,
 } from '@huazhong/shared'
 import {
   renderDocumentImage,
   saveDocumentImage,
   shareDocumentImage,
-  type DocumentImageRow,
+  type DocumentImage,
 } from '../../../../core/document-image'
 import type { FailureView } from '../../../../core/failure-view'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
-function rowsOf(order: ShippingDetail): DocumentImageRow[] {
+const line = (...pairs: [string, string][]) =>
+  pairs.map(([label, value]) => `${label} ${value}`).join(financeCopy.gap)
+function imageOf(order: ShippingDetail): DocumentImage {
+  return {
+    title: redesignCopy.delivery,
+    brand: financeCopy.company,
+    meta: [
+      line([redesignCopy.stores, copy.org.store(order.customerName, order.storeName)]),
+      line(
+        [redesignCopy.contact, `${order.contactName} ${order.contactPhone}`.trim()],
+        [redesignCopy.address, order.address || '—'],
+      ),
+      line(
+        [redesignCopy.no, order.no],
+        [redesignCopy.shipDate, order.shipDate ?? redesignCopy.waiting],
+      ),
+      line(
+        [redesignCopy.shipper, order.shippedBy ?? '—'],
+        [redesignCopy.shippedAt, order.shippedAt ? formatTime(order.shippedAt) : '—'],
+      ),
+    ],
+    blocks: [
+      {
+        kind: 'table',
+        columns: [
+          { weight: 6, align: 'left' },
+          { weight: 2, align: 'right' },
+          { weight: 2, align: 'right' },
+        ],
+        head: [redesignCopy.product, redesignCopy.actual, redesignCopy.unit],
+        rows: [
+          ...order.lines.map((item) => [item.name, String(item.shippedQty ?? item.qty), item.unit]),
+          { cells: [redesignCopy.totalQty, ...unitTotalsCells(order)], strong: true as const },
+        ],
+      },
+      { kind: 'note', text: `${copy.screen.label.shipNote} ${order.shipNote || '—'}` },
+      { kind: 'sign', labels: [redesignCopy.signature, redesignCopy.signedDate] },
+    ],
+  }
+}
+function unitTotalsCells(order: ShippingDetail): [string, string] {
   return [
-    { label: redesignCopy.stores, value: copy.org.store(order.customerName, order.storeName) },
-    { label: redesignCopy.contact, value: order.contactName },
-    { label: copy.field.storePhone, value: order.contactPhone },
-    { label: redesignCopy.address, value: order.address || redesignCopy.notFilled },
-    { label: redesignCopy.no, value: order.no },
-    { label: redesignCopy.shipDate, value: order.shipDate ?? redesignCopy.waiting },
-    { label: redesignCopy.shipper, value: order.shippedBy ?? '' },
-    { label: redesignCopy.shippedAt, value: order.shippedAt ? formatTime(order.shippedAt) : '' },
-    '',
-    { label: redesignCopy.productLines, value: `${redesignCopy.actual} / ${redesignCopy.unit}` },
-    ...order.lines.map((line) => ({
-      label: line.name,
-      value: `${line.shippedQty ?? line.qty} ${line.unit}`,
-    })),
-    { label: redesignCopy.totalQty, value: formatUnitTotals(order.units) },
-    { label: copy.screen.label.shipNote, value: order.shipNote ?? '' },
-    '',
-    { label: redesignCopy.signature, value: '__________________' },
-    { label: redesignCopy.signedDate, value: '__________________' },
+    order.units.map((total) => String(total.qty)).join('\n'),
+    order.units.map((total) => total.unit).join('\n'),
   ]
 }
 
@@ -60,10 +83,15 @@ Page({
       this.setData({ failure: failureOf(result.failure, 'load') })
       return
     }
-    if (result.data.status !== 'shipped') return
+    if (result.data.status !== 'shipped') {
+      this.setData({
+        failure: { kind: 'inline', requestId: null, message: redesignCopy.notShippedYet },
+      })
+      return
+    }
     try {
       this.setData({
-        image: await renderDocumentImage(this, rowsOf(result.data), redesignCopy.delivery),
+        image: await renderDocumentImage(this, imageOf(result.data)),
         failure: null,
       })
     } catch {

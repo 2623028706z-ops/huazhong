@@ -8,7 +8,7 @@
   <hz-skeleton wx:if="{{!loaded}}" type="form" />
   <block wx:else>
     <view wx:if="{{kind === 'in'}}" class="u-card u-form-card"><hz-picker id="doc-supplier" label="{{texts.supplier}}" options="{{supplierOptions}}" value="{{form.supplierId}}" error="{{fields.supplierId}}" bind:change="onSupplier" /></view>
-    <view wx:if="{{kind === 'out'}}" class="u-card u-form-card"><hz-picker id="doc-category" label="{{texts.outCategory}}" options="{{categoryOptions}}" value="{{form.outCategoryId}}" error="{{fields.outCategoryId}}" bind:change="onCategory" /><hz-button kind="text" text="{{texts.manage}}" bind:press="onManageCategories" /></view>
+    <view wx:if="{{kind === 'out'}}" class="u-card u-form-card"><view class="hz-form-row" bindtap="onOpenCategoryPick"><text class="hz-form-row__label">{{texts.outCategory}}</text><view class="hz-form-row__value"><text class="u-ellipsis {{categoryName ? '' : 'hz-form-row__hint'}}">{{categoryName || texts.pickHint}}</text><text class="hz-icon hz-icon--chevron-right hz-form-row__icon"></text></view></view><text wx:if="{{fields.outCategoryId}}" class="u-field__error">{{fields.outCategoryId}}</text></view>
     <view class="u-section"><hz-line-item title="{{texts.materials}}" lines="{{lines}}" mode="price" edit-key="{{editKey}}" quantity-only="{{kind !== 'in'}}" min="1" removable bind:qty="onQty" bind:price="onPrice" bind:remove="onRemove" /><hz-add-button id="add-material" text="{{texts.add}}" bind:press="onOpenPick" /><text wx:if="{{fields.lines}}" class="u-field__error">{{fields.lines}}</text></view>
     <view class="u-card u-form-card"><hz-field id="doc-reason" label="{{kind === 'loss' ? texts.lossReason : texts.reason}}" value="{{form.reason}}" type="textarea" error="{{fields.reason}}" bind:change="onReason" /></view>
     <view wx:if="{{kind === 'loss'}}" class="u-section"><text class="u-section__title">{{texts.images}}</text><hz-upload files="{{form.images}}" bind:add="onAddImages" bind:remove="onRemoveImage" /><text wx:if="{{fields.imageFileIds}}" class="u-field__error">{{fields.imageFileIds}}</text></view>
@@ -18,3 +18,7 @@
 <template is="pick-sheet" data="{{show:pickSheet,title:texts.pick,picks,empty:texts.noPick,error:pickError}}" />
 <hz-category-sheet wx:if="{{kind === 'out'}}" show="{{categorySheet}}" title="{{texts.manage}}" categories="{{categories}}" sortable="{{false}}" removable="{{false}}" toggleable error="{{categoryError}}" loading="{{categorySaving}}" bind:save="onSaveCategory" bind:close="onCloseCategories" />
 <hz-confirm id="hz-confirm" />
+<hz-sheet show="{{categoryPick}}" title="{{texts.pickOne}}" footer bind:close="onCloseCategoryPick">
+  <view class="u-sheet-section"><view wx:for="{{categoryOptions}}" wx:key="id" class="u-choice {{item.id === form.outCategoryId ? 'u-choice--on' : ''}}" data-key="{{item.id}}" bindtap="onCategory"><text>{{item.name}}</text><text wx:if="{{item.id === form.outCategoryId}}" class="hz-icon hz-icon--check u-choice__check"></text></view></view>
+  <hz-button slot="footer" kind="quiet" text="{{texts.manage}}" bind:press="onManageCategories" />
+</hz-sheet>

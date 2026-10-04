@@ -2,7 +2,6 @@
   "usingComponents": {
     "hz-cover": "/components/hz-cover/index",
     "hz-navbar": "/components/hz-navbar/index",
-    "hz-brand": "/components/hz-brand/index",
     "hz-profile": "/components/hz-profile/index",
     "hz-confirm": "/components/hz-confirm/index",
     "hz-state": "/components/hz-state/index",

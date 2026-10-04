@@ -1,3 +1,40 @@
 .hz-info-rows__link {
-  color: var(--hz-green);
+  color: var(--hz-brand);
+}
+
+/* 两列并排（订单、发货单信息卡）：字段名 4 字宽、值紧跟，wide 占整行 */
+.hz-info-rows__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 2px 14px;
+}
+
+.hz-info-rows__cell {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--hz-font-row);
+  line-height: 26px;
+  white-space: nowrap;
+}
+
+.hz-info-rows__cell--wide {
+  grid-column: 1 / -1;
+  white-space: normal;
+}
+
+.hz-info-rows__label {
+  flex: none;
+  width: 4em;
+  color: var(--hz-muted);
+  white-space: nowrap;
+}
+
+.hz-info-rows__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }

@@ -1,1 +1,10 @@
-<import src="/views/list.wxml" /><hz-navbar title="{{title}}" back /><view class="u-list"><view class="u-segments"><view wx:for="{{['','in','out']}}" wx:key="*this" class="u-segments__item {{filter.status===item?'u-segments__item--on':''}}" data-key="{{item}}" bindtap="onDirection">{{item===''?texts.all:item==='in'?texts.in:texts.out}}</view></view><hz-filter-bar date-label="{{dateLabel}}" value="{{filter}}" bind:change="onFilter" /><template is="list-state" data="{{failure,skeleton,loaded,rows,emptyObject}}" /><view wx:for="{{groups}}" wx:key="day" wx:for-item="group" class="u-section"><text class="u-section__title">{{group.title}}</text><template is="cards" data="{{rows:group.rows}}" /></view><text wx:if="{{done && rows.length}}" class="u-list__end">{{allLoaded}}</text></view>
+<import src="/views/list.wxml" />
+<import src="/views/stock.wxml" />
+<hz-navbar title="{{title}}" back />
+<view class="u-list">
+  <template is="material-head" data="{{...head}}" />
+  <hz-filter-bar sections="{{sections}}" section="{{filter.status}}" date-label="{{dateLabel}}" dimensions="{{dimensions}}" value="{{filter}}" bind:change="onFilter" bind:section="onDirection" />
+  <template is="list-state" data="{{failure,skeleton,loaded,rows,emptyObject}}" />
+  <view wx:for="{{groups}}" wx:key="day" wx:for-item="group" class="u-section"><text class="u-section__title">{{group.title}}</text><view class="u-card u-rows"><template wx:for="{{group.rows}}" wx:key="id" is="hz-stock-row" data="{{...item, openable: true}}" /></view></view>
+  <text wx:if="{{done && rows.length}}" class="u-list__end">{{allLoaded}}</text>
+</view>

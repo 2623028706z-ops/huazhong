@@ -10,7 +10,7 @@ const spinnerTimers = new WeakMap<object, ReturnType<typeof setTimeout>>()
 
 Component({
   properties: {
-    // primary | secondary | text
+    // primary | secondary | text | quiet；round 是订货结算条上的红色胶囊主按钮
     kind: { type: String, value: 'primary' },
     text: { type: String, value: '' },
     disabled: { type: Boolean, value: false },

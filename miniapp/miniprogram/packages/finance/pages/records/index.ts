@@ -2,6 +2,7 @@ import {
   contract,
   copy,
   financeCopy as f,
+  statementCopy,
   type ReceiptDetail,
   type PaymentDetail,
 } from '@huazhong/shared'
@@ -25,8 +26,8 @@ Page({
     counts: {},
     kind: fundKindOf(),
     kindTabs: [
-      { key: 'receipt', text: f.receipts },
-      { key: 'payment', text: f.payments },
+      { key: 'receipt', text: statementCopy.receiptDetail },
+      { key: 'payment', text: statementCopy.paymentDetail },
     ],
     dateLabel: DEFAULT_DATE_LABEL,
     dimensions: [] as FilterDimension[],
@@ -38,7 +39,7 @@ Page({
     failure: null as FailureView | null,
     emptyObject: copy.screen.empty.records,
     allLoaded: copy.state.allLoaded,
-    searchPlaceholder: copy.filter.search(f.customer),
+    searchPlaceholder: f.recordSearch(f.customer),
   },
   list: null as PagedList<ReceiptDetail | PaymentDetail> | null,
   onLoad() {
@@ -85,7 +86,7 @@ Page({
       filter: emptyFilter,
       counts: {},
       rows: [],
-      searchPlaceholder: copy.filter.search(event.detail === 'payment' ? f.supplier : f.customer),
+      searchPlaceholder: f.recordSearch(event.detail === 'payment' ? f.supplier : f.customer),
     })
     void this.list?.refresh()
     void this.loadDimensions()

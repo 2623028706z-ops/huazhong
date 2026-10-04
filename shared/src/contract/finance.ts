@@ -60,7 +60,16 @@ export const settlementSchema = z.object({
   no: z.string(),
   kind: z.enum(['receipt', 'payment']),
   date: businessDateSchema,
+  // 收付款本身的金额（不含优惠），一行收款记录显示这个
   amountCents: centsSchema,
+  // 这一笔的优惠和多收（整笔的，不是分到这张对账单的）
+  discountCents: centsSchema,
+  creditCents: centsSchema,
+  // 这笔钱核销了这张对账单多少（= 这张的应收）
+  coveredCents: centsSchema,
+  // 其中算优惠的部分（一笔核销几张时，优惠按对账单从早到晚先抵）和实收部分
+  appliedDiscountCents: centsSchema,
+  receivedCents: centsSchema,
   methodName: z.string(),
   status: z.enum(['valid', 'voided']),
   reversedAt: timestampSchema.nullable(),
@@ -101,7 +110,9 @@ export const statementDetailSchema = statementCardSchema.extend({
   afterCents: centsSchema,
   receivedCents: centsSchema,
   returnCents: centsSchema,
+  // 实际收到（付出）的钱，不含优惠；优惠单列
   settledCents: centsSchema,
+  settledDiscountCents: centsSchema,
   groups: z.array(statementGroupSchema),
   settlements: z.array(settlementSchema),
 })
@@ -190,7 +201,7 @@ export const partyLedgerSchema = statementListSchema.extend({
 export type PartyLedger = z.infer<typeof partyLedgerSchema>
 const partyQuery = pageQuerySchema.extend({
   q: z.string().trim().optional(),
-  filter: z.enum(['outstanding', 'overdue']).optional(),
+  filter: z.enum(['outstanding', 'overdue', 'unsettled']).optional(),
 })
 const ledgerQuery = pageQuerySchema
   .extend({

@@ -1,0 +1,30 @@
+/* 选一项的行：字段名在左，选中的值和箭头在右（和定稿 W5「出库分类」一致） */
+.hz-form-row {
+  display: flex;
+  gap: var(--hz-row-pad);
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--hz-tap);
+}
+
+.hz-form-row__label {
+  flex: none;
+  color: var(--hz-muted);
+}
+
+.hz-form-row__value {
+  display: flex;
+  gap: var(--hz-line-gap);
+  align-items: center;
+  min-width: 0;
+}
+
+.hz-form-row__hint {
+  color: var(--hz-muted);
+}
+
+.hz-form-row__icon {
+  flex: none;
+  font-size: var(--hz-icon);
+  color: var(--hz-muted);
+}

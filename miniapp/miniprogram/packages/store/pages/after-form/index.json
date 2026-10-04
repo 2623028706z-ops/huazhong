@@ -6,13 +6,16 @@
     "hz-skeleton": "/components/hz-skeleton/index",
     "hz-status": "/components/hz-status/index",
     "hz-stepper": "/components/hz-stepper/index",
-    "hz-picker": "/components/hz-picker/index",
+    "hz-choices": "/components/hz-choices/index",
     "hz-field": "/components/hz-field/index",
     "hz-upload": "/components/hz-upload/index",
     "hz-add-button": "/components/hz-add-button/index",
     "hz-action-bar": "/components/hz-action-bar/index",
     "hz-button": "/components/hz-button/index",
     "hz-sheet": "/components/hz-sheet/index",
-    "hz-confirm": "/components/hz-confirm/index"
+    "hz-confirm": "/components/hz-confirm/index",
+    "hz-line-item": "/components/hz-line-item/index",
+    "hz-notice": "/components/hz-notice/index",
+    "hz-records": "/components/hz-records/index"
   }
 }

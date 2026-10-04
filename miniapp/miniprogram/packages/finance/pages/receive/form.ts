@@ -22,15 +22,33 @@ export interface ReceiveForm {
 export function selectedTotalOf(form: ReceiveForm): number {
   return form.statements.reduce((sum, item) => sum + item.dueCents, 0)
 }
-export function settlementSummaryOf(form: ReceiveForm, payment = false): string {
+// 底栏：应收 = 勾的对账单合计；下面一行写「收款 + 优惠」合计，不够写还差多少，多了写多收（含优惠，和后台一致）
+export function fundTotalsOf(form: ReceiveForm) {
   const selected = selectedTotalOf(form),
     amount = centsOfText(form.amountText) ?? 0,
-    discount = centsOfText(form.discountText) || 0
-  return [
-    `${f.unsettled} ${formatMoney(selected)}`,
-    `${f.discount} ${formatMoney(discount)}`,
-    `${payment ? f.supplierCredited : f.credited} ${formatMoney(Math.max(0, amount - selected))}`,
-  ].join(copy.separator)
+    discount = (form.discountText.trim() ? centsOfText(form.discountText) : 0) ?? 0,
+    funded = amount + discount
+  return {
+    selected,
+    funded,
+    shortCents: form.statements.length ? Math.max(0, selected - funded) : 0,
+    creditCents: form.statements.length ? Math.max(0, funded - selected) : amount,
+  }
+}
+export function settlementSummaryOf(form: ReceiveForm, payment = false) {
+  const { selected, funded, shortCents, creditCents } = fundTotalsOf(form)
+  const base = `${f.fundPlusDiscount(payment)} ${formatMoney(funded)}`
+  return {
+    due: `${payment ? f.payable : f.receivable} ${formatMoney(selected)}`,
+    meta: shortCents
+      ? f.insufficient(formatMoney(shortCents))
+      : creditCents
+        ? [base, `${payment ? f.supplierCredited : f.credited} ${formatMoney(creditCents)}`].join(
+            f.gap,
+          )
+        : base,
+    short: shortCents > 0,
+  }
 }
 function fieldsOf(form: ReceiveForm, today: string): Record<string, string> {
   const fields: Record<string, string> = {}

@@ -10,6 +10,7 @@
     "hz-action-bar": "/components/hz-action-bar/index",
     "hz-button": "/components/hz-button/index",
     "hz-status": "/components/hz-status/index",
-    "hz-confirm": "/components/hz-confirm/index"
+    "hz-confirm": "/components/hz-confirm/index",
+    "hz-records": "/components/hz-records/index"
   }
 }

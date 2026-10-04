@@ -122,9 +122,11 @@ export function chipsOf(
   value: FilterValue,
   dimensions: FilterDimension[],
   today: string,
+  base: DatePreset = 'all',
 ): FilterChip[] {
   const chips: FilterChip[] = []
-  const date = dateChip(value, today)
+  // 日期和页面默认一样不算条件（例如采购需求默认「未来 7 天」）
+  const date = value.date === base ? null : dateChip(value, today)
   if (date) chips.push(date)
   for (const dimension of dimensions) {
     const picked = dimension.options.find((option) => option.id === value.picks[dimension.key])
@@ -139,15 +141,15 @@ export function hasConditions(value: FilterValue): boolean {
 }
 
 // 点胶囊的 ×：去掉这一项
-export function removeChip(value: FilterValue, key: string): FilterValue {
-  if (key === DATE_KEY) return { ...value, date: 'all', range: null }
+export function removeChip(value: FilterValue, key: string, base: DatePreset = 'all'): FilterValue {
+  if (key === DATE_KEY) return { ...value, date: base, range: null }
   const picks = Object.fromEntries(Object.entries(value.picks).filter(([name]) => name !== key))
   return { ...value, picks }
 }
 
-// 点「清除」：去掉全部日期和对象条件，不动状态和搜索
-export function clearConditions(value: FilterValue): FilterValue {
-  return { ...value, date: 'all', range: null, picks: {} }
+// 点「清除」：日期回到默认、去掉对象条件，不动状态和搜索
+export function clearConditions(value: FilterValue, base: DatePreset = 'all'): FilterValue {
+  return { ...value, date: base, range: null, picks: {} }
 }
 
 // 选对象：选「全部」（id 为 ''）等于去掉这一项

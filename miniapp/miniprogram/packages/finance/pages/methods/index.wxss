@@ -1,0 +1,9 @@
+.hz-methods__add {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--hz-tap);
+  font-size: var(--hz-font);
+  color: var(--hz-brand);
+}

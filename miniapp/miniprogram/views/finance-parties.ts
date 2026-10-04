@@ -47,7 +47,7 @@ export const financePartiesPage = {
             filter:
               this.data.partyFilter === 'all'
                 ? undefined
-                : (this.data.partyFilter as 'outstanding' | 'overdue'),
+                : (this.data.partyFilter as 'outstanding' | 'overdue' | 'unsettled'),
             cursor,
           },
         }),

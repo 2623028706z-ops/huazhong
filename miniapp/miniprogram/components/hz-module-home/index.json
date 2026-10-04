@@ -7,8 +7,6 @@
     "hz-state": "../hz-state/index",
     "hz-error": "../hz-error/index",
     "hz-tabbar": "../hz-tabbar/index",
-    "hz-entry-grid": "../hz-entry-grid/index",
-    "hz-card": "../hz-card/index",
-    "hz-button": "/components/hz-button/index"
+    "hz-entry-grid": "../hz-entry-grid/index"
   }
 }

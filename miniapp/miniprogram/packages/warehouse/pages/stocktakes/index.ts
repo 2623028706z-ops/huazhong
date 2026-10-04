@@ -11,8 +11,10 @@ function rowOf(doc: StocktakeCard) {
   return {
     id: doc.id,
     fields: [
-      { label: redesignCopy.no, value: doc.no, wide: true },
-      { label: copy.screen.label.date, value: doc.checkDate },
+      { label: redesignCopy.no, value: doc.no },
+      { label: copy.stock.screen.actor, value: doc.actorName },
+      { label: copy.stock.screen.checkDate, value: doc.checkDate },
+      { label: copy.stock.screen.lineCountLabel, value: copy.stock.lineCount(doc.lineCount) },
       {
         label: copy.stock.screen.difference,
         value: doc.diffCount ? copy.stock.diffCount(doc.diffCount) : copy.stock.screen.noDifference,
@@ -28,6 +30,13 @@ function rowOf(doc: StocktakeCard) {
     ].join(copy.separator),
     amount: null,
     tags: [],
+  }
+}
+function pickedOf(categories: { selected: boolean }[]) {
+  const count = categories.filter((row) => row.selected).length
+  return {
+    allSelected: categories.length > 0 && count === categories.length,
+    startText: count ? copy.stock.startCount(count) : copy.stock.screen.startStocktake,
   }
 }
 Page({
@@ -47,10 +56,13 @@ Page({
     categories: [] as { id: string; name: string; selected: boolean }[],
     categoryError: '',
     texts: {
+      selectAll: copy.stock.screen.selectAll,
       create: copy.stock.screen.create.stocktake,
       select: copy.stock.screen.selectCategories,
       start: copy.stock.screen.startStocktake,
     },
+    startText: '',
+    allSelected: false,
   },
   list: null as PagedList<StocktakeCard> | null,
   onLoad() {
@@ -84,16 +96,19 @@ Page({
           name: row.name,
           selected: false,
         })),
+        ...pickedOf([]),
       })
     else this.setData({ failure: failureOf(result.failure, 'refresh') })
   },
   onCategory(event: DetailEvent<boolean, { key: string }>) {
-    this.setData({
-      categoryError: '',
-      categories: this.data.categories.map((row) =>
-        row.id === event.currentTarget.dataset.key ? { ...row, selected: event.detail } : row,
-      ),
-    })
+    const categories = this.data.categories.map((row) =>
+      row.id === event.currentTarget.dataset.key ? { ...row, selected: event.detail } : row,
+    )
+    this.setData({ categoryError: '', categories, ...pickedOf(categories) })
+  },
+  onAll(event: DetailEvent<boolean>) {
+    const categories = this.data.categories.map((row) => ({ ...row, selected: event.detail }))
+    this.setData({ categoryError: '', categories, ...pickedOf(categories) })
   },
   onClose() {
     this.setData({ sheet: false })

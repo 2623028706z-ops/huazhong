@@ -6,11 +6,14 @@ import {
   formatQty,
   type OutputOf,
 } from '@huazhong/shared'
+import { moveDocUrl, moveRowOf } from '../../../../views/stock'
+import type { KeyEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { unwatchOnLeave, watch } from '../../../../core/live'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
 import { canDo } from '../../../../core/actions'
+const RECENT_MOVES = 3
 Page({
   ...unwatchOnLeave,
   data: {
@@ -18,7 +21,8 @@ Page({
     loaded: false,
     failure: null as FailureView | null,
     material: null as OutputOf<typeof contract.getMaterial> | null,
-    rows: [] as { label: string; value: string }[],
+    head: { name: '', qty: '', unit: '', sub: '', disabled: false, disabledText: '', edit: '' },
+    recent: [] as ReturnType<typeof moveRowOf>[],
     batches: [] as { id: string; date: string; qty: string; age: string; aged: boolean }[],
     canEdit: false,
     canStockIn: false,
@@ -31,6 +35,12 @@ Page({
       stockIn: copy.stock.screen.stockIn,
       moves: copy.stock.screen.titles.moves,
       stock: copy.screen.title.stock,
+      fifo: copy.screen.fifo,
+      inDate: copy.screen.inDate,
+      remaining: copy.screen.remaining,
+      recent: copy.screen.recentMoves,
+      allMoves: copy.screen.allOfThisFlower,
+      noMoves: copy.stock.screen.empty.moves,
       batches: copy.screen.section.batches,
     },
   },
@@ -40,7 +50,26 @@ Page({
   },
   onShow() {
     void this.load()
-    watch(this, ['stock'], () => void this.load())
+    void this.loadRecent()
+    watch(this, ['stock'], () => {
+      void this.load()
+      void this.loadRecent()
+    })
+  },
+  async loadRecent() {
+    const result = await request(contract.listStockMoves, {
+      query: { materialId: this.id },
+    })
+    if (result.ok)
+      this.setData({
+        recent: result.data.items
+          .slice(0, RECENT_MOVES)
+          .map((move) => moveRowOf(move, { withName: true, date: true })),
+      })
+  },
+  onOpen(event: KeyEvent) {
+    const row = this.data.recent.find((item) => item.id === event.currentTarget.dataset.key)
+    if (row) void wx.navigateTo({ url: moveDocUrl(row) })
   },
   async load() {
     const result = await request(contract.getMaterial, { params: { id: this.id } })
@@ -57,16 +86,19 @@ Page({
       canStockIn: canDo(m.actions, 'stockIn'),
       canStockOut: canDo(m.actions, 'stockOut'),
       canLoss: canDo(m.actions, 'reportLoss'),
-      rows: [
-        { label: copy.field.code, value: m.code },
-        { label: copy.field.category, value: m.categoryName },
-        { label: copy.field.unit, value: m.unit },
-        {
-          label: copy.field.status,
-          value: m.enabled ? copy.statusValue.enabled : copy.statusValue.disabled,
-        },
-        { label: copy.screen.title.stock, value: formatQty(m.stockQty, m.unit) },
-      ],
+      head: {
+        name: m.name,
+        qty: String(m.stockQty),
+        unit: m.unit,
+        sub: [
+          `${copy.field.code} ${m.code}`,
+          `${copy.field.category} ${m.categoryName}`,
+          `${copy.field.unit} ${m.unit}`,
+        ].join(copy.separator),
+        disabled: !m.enabled,
+        disabledText: copy.statusValue.disabled,
+        edit: canDo(m.actions, 'edit') ? redesignCopy.editMaterial : '',
+      },
       batches: m.batches.map((b) => ({
         id: b.id,
         date: b.inDate,

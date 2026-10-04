@@ -38,13 +38,24 @@ page {
   flex: 1;
   min-width: 0;
   padding: 0 var(--hz-gap-page) 0 var(--hz-line-gap);
+  background: var(--hz-paper);
+  border-top-left-radius: var(--hz-radius);
 }
 
 .hz-shop__product {
   display: flex;
   gap: var(--hz-row-pad);
-  padding: var(--hz-row-pad);
-  margin-bottom: var(--hz-card-gap);
+  padding: var(--hz-row-pad) 0;
+  border-bottom: 1px solid var(--hz-line);
+}
+
+.hz-shop__product:last-child {
+  border-bottom: 0;
+}
+
+.hz-shop__price {
+  flex: 1;
+  min-width: 0;
 }
 
 .hz-shop__info {
@@ -61,7 +72,7 @@ page {
   gap: 2px;
 }
 
-/* 价格「¥68.00/束」在上面单独一行，步进器靠右（窄栏里放一行会挤出卡片） */
+/* 价格在左、步进器靠右同一行 */
 .hz-shop__buy {
   display: flex;
   justify-content: flex-end;
@@ -94,4 +105,9 @@ page {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.hz-shop__clear {
+  display: flex;
+  justify-content: flex-end;
 }

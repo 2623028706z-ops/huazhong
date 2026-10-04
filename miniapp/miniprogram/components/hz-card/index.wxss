@@ -1,5 +1,5 @@
 .hz-card {
-  padding: 12px var(--hz-card-pad);
+  padding: 14px var(--hz-card-pad);
 }
 
 .hz-card__head {
@@ -15,28 +15,31 @@
   flex: 1;
   min-width: 0;
   font-size: var(--hz-font-md);
-  font-weight: 500;
+  font-weight: 600;
 }
 
+/* 抬头右边的提醒（往来账「未结清 n 张」）：琥珀小标签，同状态标签 */
 .hz-card__status {
-  color: var(--hz-muted);
-  font-size: var(--hz-font-sm);
+  color: var(--hz-amber);
+  background: var(--hz-amber-bg);
 }
 
+/* 字段左右一行：字段名固定 4 字宽、值紧跟（02 章卡片写法）；两列并排，wide 占整行。
+   左列放单号、日期，比右列宽（定稿 164px : 其余，约 1.25 : 1），值不换行（定稿 .kv nowrap），太长省略 */
 .hz-card__fields {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px 14px;
-  margin-top: 10px;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 2px 14px;
+  margin-top: 8px;
 }
 
 .hz-card__field {
   display: flex;
-  justify-content: space-between;
   align-items: baseline;
   gap: 8px;
   min-width: 0;
-  font-size: var(--hz-font-sm);
+  font-size: var(--hz-font-row);
+  line-height: 26px;
 }
 
 .hz-card__field--wide {
@@ -45,17 +48,27 @@
 
 .hz-card__label {
   flex: none;
+  width: 4em;
   color: var(--hz-muted);
+  white-space: nowrap;
 }
 
 .hz-card__value {
+  flex: 1;
   min-width: 0;
-  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hz-card__field--wide .hz-card__value {
   overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .hz-card__amount {
-  font-weight: 600;
+  font-size: var(--hz-font);
+  font-weight: 700;
   color: var(--hz-ink);
 }
 
@@ -67,14 +80,14 @@
 
 .hz-card__check {
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
-  font-size: var(--hz-font-hero);
-  color: var(--hz-brand);
+  margin: -6px 0 -6px -6px;
 }
 
-.hz-card__check--disabled {
-  color: var(--hz-rule);
+.hz-card__value--good {
+  color: var(--hz-green);
 }

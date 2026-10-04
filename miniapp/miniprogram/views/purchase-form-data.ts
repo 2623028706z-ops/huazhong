@@ -22,7 +22,7 @@ export function purchaseTitles(mode: PurchaseMode, editing: boolean) {
   if (mode === 'invite')
     return {
       title: editing ? copy.screen.title.editInvite : copy.screen.title.createInvite,
-      submitText: editing ? copy.screen.action.saveEdit : copy.screen.title.createInvite,
+      submitText: editing ? copy.screen.action.saveEdit : copy.screen.action.sendInvite,
     }
   return {
     title: editing ? copy.screen.title.editPo : copy.screen.title.createPo,

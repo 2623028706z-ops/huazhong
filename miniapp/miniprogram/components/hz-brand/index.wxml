@@ -3,6 +3,6 @@
   <image class="hz-brand__logo" src="/assets/logo.png" mode="heightFix" />
   <view class="hz-brand__identity">
     <text><text class="hz-brand__lead">{{lead}}</text><text wx:if="{{person}}" class="hz-brand__person"> · {{person}}</text></text>
-    <text wx:if="{{today}}" class="hz-brand__date">{{format.formatNavDate(today)}}</text>
+    <text wx:if="{{today && !noDate}}" class="hz-brand__date">{{format.formatNavDate(today)}}</text>
   </view>
 </view>

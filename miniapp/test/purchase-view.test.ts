@@ -106,7 +106,7 @@ describe('邀请详情展示', () => {
     expect(inviteViewOf(invite)).toMatchObject({
       submitted: false,
       poLink: '',
-      lines: [{ qty: 70, subText: '' }],
+      lines: [{ qty: 70 }],
     })
   })
   it('已提交合并需求供货，采购单已取消不改变邀请状态', () => {
@@ -128,10 +128,9 @@ describe('邀请详情展示', () => {
       }),
     )
     expect(view.info.status).toBe('submitted')
-    expect(view.poLink).toBe('采购单 PO-260929-006　　已取消')
+    expect(view.poLink).toBe('PO-260929-006　　已取消')
     expect(view.lines[0]).toMatchObject({
       meta: '需求 70 枝',
-      subText: '供 65 枝 × ¥3.50',
       amountCents: 22750,
     })
     expect(view.info.rows).not.toContainEqual(expect.objectContaining({ label: '状态' }))
@@ -153,8 +152,8 @@ describe('邀请详情展示', () => {
       }),
     )
     expect(view.lines).toMatchObject([
-      { subText: '未供', hideAmount: true },
-      { tags: [{ text: '另报', warn: false }], subText: '供 10 枝 × ¥2.00' },
+      { tags: [{ text: '未供', warn: true }], hideAmount: true },
+      { tags: [{ text: '另报', warn: false }] },
     ])
   })
   it('取消页显示原因和时间，手动取消无原因时写取消说明', () => {

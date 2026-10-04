@@ -24,7 +24,9 @@ Page({
     share: null as { title: string; path: string; imageUrl: string } | null,
     texts: {
       share: copy.screen.action.supplyLink,
-      send: copy.screen.action.sendSupply,
+      shareTitle: copy.finance.inviteShareTitle,
+      miniApp: copy.screen.miniAppName,
+      send: copy.screen.action.sendToSupplier,
       copy: copy.screen.action.copyLink,
     },
   },

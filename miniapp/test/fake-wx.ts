@@ -56,6 +56,7 @@ export function installFakeWx() {
   const sockets: FakeSocket[] = []
   const wx = {
     getAccountInfoSync: () => ({ miniProgram: { envVersion: 'develop' } }),
+    getRealtimeLogManager: () => ({ warn: () => undefined, error: () => undefined }),
     cloud: {
       callContainer(param: CallParam) {
         calls.push({

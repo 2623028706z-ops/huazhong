@@ -56,13 +56,12 @@ function shipmentStep(order: OrderProgress): ProgressStep {
     return { label: redesignCopy.cancelled, date: dayOf(order.cancelledAt), state: 'ended' }
   if (order.status === 'shipped' || order.status === 'voided')
     return { label: redesignCopy.shipped, date: dayOf(order.shippedAt), state: 'current' }
+  // 还没确认时第三格写最终的「已发货」（灰），确认后才变成当前的「待发货」
+  if (order.status !== 'to_ship') return { label: redesignCopy.shipped, date: '', state: 'pending' }
   return {
     label: redesignCopy.toShip,
-    date:
-      order.status === 'to_ship'
-        ? `${redesignCopy.shipDate} / ${order.shipDate ?? redesignCopy.waiting}`
-        : '',
-    state: order.status === 'to_ship' ? 'current' : 'pending',
+    date: `${redesignCopy.shipDate} / ${order.shipDate ?? redesignCopy.waiting}`,
+    state: 'current',
   }
 }
 export function orderProgress(order: OrderProgress): ProgressStep[] {
@@ -87,6 +86,23 @@ export function afterProgress(after: AfterProgress): ProgressStep[] {
       date: dayOf(after.status === 'closed' ? after.closedAt : after.processedAt),
       state: after.status === 'closed' ? 'ended' : processed ? 'current' : 'pending',
     },
+  ]
+  return after.status === 'voided' ? appendVoid(steps, after.voidedAt) : steps
+}
+// 销售看的售后进度（050）：已提交 → 待处理（处理完换成「已处理」，关闭 / 作废在最后一格）
+export function afterStaffProgress(after: AfterProgress): ProgressStep[] {
+  const submitted: ProgressStep = {
+    label: redesignCopy.submitted,
+    date: after.afterDate,
+    state: 'done',
+  }
+  if (after.status === 'pending')
+    return [submitted, { label: redesignCopy.pending, date: '', state: 'current' }]
+  if (after.status === 'closed')
+    return [submitted, { label: redesignCopy.closed, date: dayOf(after.closedAt), state: 'ended' }]
+  const steps: ProgressStep[] = [
+    submitted,
+    { label: redesignCopy.processed, date: dayOf(after.processedAt), state: 'current' },
   ]
   return after.status === 'voided' ? appendVoid(steps, after.voidedAt) : steps
 }

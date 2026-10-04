@@ -2,10 +2,11 @@ import {
   contract,
   financeCopy as f,
   financeTexts,
+  statementCopy,
   type ReceiptDetail,
   type PaymentDetail,
 } from '@huazhong/shared'
-import type { DetailEvent, KeyEvent } from '../../../../core/events'
+import type { DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
@@ -53,9 +54,9 @@ Page({
   onFailureAction() {
     void this.load()
   },
-  onStatement(event: KeyEvent) {
+  onStatement(event: DetailEvent<string>) {
     void wx.navigateTo({
-      url: `/packages/finance/pages/statement-detail/index?id=${event.currentTarget.dataset.key}`,
+      url: `/packages/finance/pages/statement-detail/index?id=${event.detail}`,
     })
   },
   onVoid() {
@@ -68,7 +69,7 @@ Page({
     if (!this.fund || this.data.busy) return
     const reason = event.detail.trim()
     if (!reason) {
-      this.setData({ error: f.voidReason })
+      this.setData({ error: statementCopy.voidReasonRequired })
       return
     }
     this.setData({ busy: true, error: '' })

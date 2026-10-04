@@ -4,11 +4,11 @@
   <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
   <view class="u-section">
-    <view wx:if="{{rows.length > 0 || listError}}" class="u-card u-form-card">
+    <view class="u-card u-form-card">
       <hz-error wx:if="{{listError}}" message="{{listError}}" />
       <hz-switch wx:for="{{rows}}" wx:key="id" label="{{item.name}}" value="{{item.enabled}}" data-id="{{item.id}}" bind:change="onEnabled" />
+      <view class="hz-methods__add u-tap" bindtap="onOpenAdd"><text class="hz-icon hz-icon--plus"></text><text>{{addTitle}}</text></view>
     </view>
-    <hz-add-button text="{{addTitle}}" bind:press="onOpenAdd" />
   </view>
 </view>
 <hz-sheet show="{{adding}}" title="{{addTitle}}" guard="{{newName !== ''}}" footer bind:close="onCloseAdd">

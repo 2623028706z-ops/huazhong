@@ -11,7 +11,6 @@ Page({
     filterTabs: [
       { key: 'all', text: f.all },
       { key: 'outstanding', text: f.hasPayable },
-      { key: 'overdue', text: f.hasOverdue },
     ],
   },
 })

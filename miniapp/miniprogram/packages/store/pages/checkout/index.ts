@@ -49,7 +49,7 @@ Page({
     formError: '',
     notice: '',
     rows: [] as ReturnType<typeof cartLinesOf>,
-    info: [] as { label: string; value: string }[],
+    info: { title: '', rows: [] as { label: string; value: string }[] },
     note: '',
     initialNote: '',
     totalCents: 0,
@@ -98,13 +98,15 @@ Page({
       loaded: true,
       failure: null,
       notice: home.lockedReason ?? '',
-      info: [
-        {
-          label: copy.screen.label.orderDate,
-          value: draft?.orderDate ?? shanghaiDateOf(Date.now()),
-        },
-        { label: copy.screen.label.customerStore, value: me.orgLabel ?? '' },
-      ],
+      info: {
+        title: me.orgLabel ?? '',
+        rows: [
+          {
+            label: copy.screen.label.orderDate,
+            value: draft?.orderDate ?? shanghaiDateOf(Date.now()),
+          },
+        ],
+      },
     })
     this.show(syncWithCatalog(this.source, catalog?.items ?? null, this.data.isEdit))
   },

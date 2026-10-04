@@ -6,7 +6,6 @@
   <hz-error wx:if="{{failure}}" message="{{failure.message}}" request-id="{{failure.requestId}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="detail" /></block>
   <block wx:elif="{{view}}">
-    <hz-notice wx:if="{{view.notice}}" text="{{view.notice}}" />
     <template is="after-body" data="{{...view}}" />
   </block>
 </view>

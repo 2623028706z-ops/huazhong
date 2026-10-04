@@ -1,1 +1,6 @@
+<view wx:if="{{cols}}" class="hz-info-rows__grid">
+  <view wx:for="{{rows}}" wx:key="label" class="hz-info-rows__cell {{item.wide ? 'hz-info-rows__cell--wide' : ''}}" data-url="{{item.url}}" data-phone="{{item.phone}}" bindtap="onLink"><text class="hz-info-rows__label">{{item.label}}</text><text class="hz-info-rows__value {{item.url || item.phone ? 'hz-info-rows__link' : ''}} {{item.amount || item.value[0]==='¥' ? 'u-serif-amount' : ''}}">{{item.value}}<text wx:if="{{item.url}}"> ›</text></text></view>
+</view>
+<block wx:else>
 <view wx:for="{{rows}}" wx:key="label" class="u-sheet-row" data-url="{{item.url}}" data-phone="{{item.phone}}" bindtap="onLink"><text class="u-sheet-row__label">{{item.label}}</text><text class="u-sheet-row__value {{item.url || item.phone ? 'hz-info-rows__link' : ''}} {{item.amount || item.value[0]==='¥' ? 'u-serif-amount' : ''}}">{{item.value}}<text wx:if="{{item.url}}"> ›</text></text></view>
+</block>

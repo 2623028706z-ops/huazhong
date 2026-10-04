@@ -1,6 +1,8 @@
 // Generated file, do not edit. Source: scripts/src/gen-icons.ts (pnpm gen)
 export const iconNames = [
   'house',
+  'arrow-up-from-line',
+  'arrow-down-to-line',
   'shopping-bag',
   'shopping-cart',
   'truck',
@@ -33,4 +35,8 @@ export const iconNames = [
   'id-card',
   'users-round',
   'scroll-text',
+  'phone',
+  'book-open',
+  'scale',
+  'arrow-left-right',
 ] as const
