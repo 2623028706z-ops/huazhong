@@ -15,7 +15,7 @@
         <text class="u-info__title">{{customerName}}</text>
         <hz-button kind="text" text="{{texts.editCustomer}}" bind:press="onEditCustomer" />
       </view>
-      <hz-tabs items="{{sections}}" value="{{section}}" bind:change="onSection" />
+      <hz-tabs class="u-split__tabs" items="{{sections}}" value="{{section}}" bind:change="onSection" />
       <block wx:if="{{section==='stores'}}">      <text wx:if="{{stores.length === 0}}" class="u-info__meta">{{texts.noStores}}</text>
       <view wx:for="{{stores}}" wx:key="id" data-key="{{item.id}}" bindtap="onOpen">
         <hz-card row="{{item}}" />

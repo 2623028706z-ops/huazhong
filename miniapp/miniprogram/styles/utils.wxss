@@ -650,7 +650,7 @@
   margin-bottom: var(--hz-card-gap);
 }
 
-.u-split__main > .u-info__head + * {
+.u-split__main > .u-split__tabs {
   display: block;
   margin-bottom: var(--hz-card-gap);
 }
