@@ -28,6 +28,7 @@ import type { inviteViewOf } from './invite-detail'
 import {
   loadInventory,
   loadPendingInvites,
+  pendingNoticeOf,
   loadMaterials,
   loadSuppliers,
   loadSupplyMaterials,
@@ -95,7 +96,7 @@ export interface PurchaseFormHost {
   key: string
   po: PoDetail | null
   invite: InviteDetail | null
-  pendingMaterialNames: string[]
+  pendingSuppliersByMaterial: Map<string, string[]>
   loadInviteWarnings(): Promise<boolean>
   materials: MaterialOption[]
   draft: PurchaseDraft | null
@@ -131,7 +132,7 @@ const methods = {
   po: null as PoDetail | null,
   invite: null as InviteDetail | null,
   materials: [] as MaterialOption[],
-  pendingMaterialNames: [] as string[],
+  pendingSuppliersByMaterial: new Map<string, string[]>(),
   draft: null as PurchaseDraft | null,
   onLoad(this: Host, query: Record<string, string | undefined>) {
     if (query.poId && this.data.mode === 'supply')
@@ -208,12 +209,9 @@ const methods = {
   },
   async loadInviteWarnings(this: Host) {
     const result = await loadPendingInvites()
-    if (!result.ok) {
-      this.setData({ failure: failureOf(result.failure, 'load') })
-      return false
-    }
-    this.pendingMaterialNames = result.data.flatMap((invite) => invite.materialNames)
-    return true
+    if (result.ok) this.pendingSuppliersByMaterial = result.data
+    else this.setData({ failure: failureOf(result.failure, 'load') })
+    return result.ok
   },
   async loadExternalMaterials(this: Host) {
     const result = await loadSupplyMaterials()
@@ -260,7 +258,7 @@ const methods = {
       changed,
       lineViews: purchaseLineViews(form.lines, this.data.mode, this.data.fields).map((line) => ({
         ...line,
-        notice: this.pendingMaterialNames.includes(line.name) ? copy.screen.invitedPending : '',
+        notice: pendingNoticeOf(this.pendingSuppliersByMaterial, line.name),
       })),
     })
     syncUnloadAlert(changed)

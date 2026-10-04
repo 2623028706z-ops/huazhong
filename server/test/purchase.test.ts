@@ -148,6 +148,28 @@ describe('采购单', () => {
     expect(detail.actions).toEqual([])
     expect(detail.changes).toEqual(edited.changes)
   })
+  test('供应商端采购单搜索：按单号、花材名，只在自家单里找', async () => {
+    const api = await s.as('p1')
+    const all = dataOf<OutputOf<typeof contract.supplierPurchaseOrders>>(
+      await api.get('/supplier/purchase-orders'),
+    )
+    expect(all.items.length).toBeGreaterThan(0)
+    const first = all.items[0] ?? expect.fail('没有采购单')
+    const byNo = dataOf<OutputOf<typeof contract.supplierPurchaseOrders>>(
+      await api.get(`/supplier/purchase-orders?q=${encodeURIComponent(first.no)}`),
+    )
+    expect(byNo.items.map((row) => row.id)).toEqual([first.id])
+    const name = first.materialNames[0] ?? expect.fail('没有花材')
+    const byMaterial = dataOf<OutputOf<typeof contract.supplierPurchaseOrders>>(
+      await api.get(`/supplier/purchase-orders?q=${encodeURIComponent(name)}`),
+    )
+    expect(byMaterial.items.map((row) => row.id)).toContain(first.id)
+    expect(byMaterial.items.every((row) => row.materialNames.includes(name))).toBe(true)
+    const none = dataOf<OutputOf<typeof contract.supplierPurchaseOrders>>(
+      await api.get('/supplier/purchase-orders?q=不存在的花材'),
+    )
+    expect(none.items).toEqual([])
+  })
   test('B04 B12 取消三端可见、邀请关联状态及仓库过滤', async () => {
     const purchase = await s.as('u4'),
       po = await poOf(s, 'PO-260929-006')

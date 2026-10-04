@@ -292,6 +292,8 @@ async function insertStatements(
           periodFrom: '2026-09-01',
           periodTo: '2026-09-29',
           statementDate: '2026-09-29',
+          // 账期：晨曦月结 30 天、拾光 15 天，开单日 2026-09-29 往后推
+          dueDate: example.customer === 'c1' ? '2026-10-29' : '2026-10-14',
           grossCents: amount,
           dueCents: amount,
           status: example.settled ? 'settled' : 'unsettled',

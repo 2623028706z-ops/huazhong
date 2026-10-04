@@ -1,5 +1,5 @@
 // 客户、门店列表项和门店账号的变更（纯函数，03 章第 8.1 节、05 章第 1.5 节）
-import { copy, type Action, type CustomerItem, type StoreItem } from '@huazhong/shared'
+import { copy, maskPhone, type Action, type CustomerItem, type StoreItem } from '@huazhong/shared'
 import { actionOf } from '../../../common/domain/actions.ts'
 
 export interface StoreRow {
@@ -32,17 +32,19 @@ function storeActionsOf(row: StoreRow, isSales: boolean): Action[] {
   return actions
 }
 
+// 手机号：能维护门店的（销售、管理员）看完整，编辑弹层要用；只读的（财务）服务端就打码
 export function toStoreItem(row: StoreRow, isSales: boolean): StoreItem {
+  const shown = (phone: string) => (isSales ? phone : maskPhone(phone))
   return {
     id: String(row.id),
     version: row.version,
     customerId: String(row.customerId),
     name: row.name,
     contact: row.contact,
-    phone: row.phone,
+    phone: shown(row.phone),
     address: row.address,
     enabled: row.enabled,
-    loginPhone: row.loginPhone,
+    loginPhone: row.loginPhone === null ? null : shown(row.loginPhone),
     accountVersion: row.accountVersion,
     actions: storeActionsOf(row, isSales),
   }

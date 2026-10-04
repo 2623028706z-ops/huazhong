@@ -8,7 +8,7 @@ import {
   type StatementRef,
 } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
-import { and, asc, count, desc, eq, inArray, ne, sql, type SQL } from 'drizzle-orm'
+import { and, asc, count, desc, eq, ilike, inArray, ne, or, sql, type SQL } from 'drizzle-orm'
 import type { Db, Tx } from '../../../db/client.ts'
 import {
   accounts,
@@ -207,6 +207,16 @@ async function recordsOf(executor: Executor, poId: number) {
   }
 }
 
+// 搜索：员工按单号、供应商名；供应商端只看自家单，改按单号、花材名
+function keywordOf(viewer: Viewer, q: string | undefined): SQL | undefined {
+  if (viewer.type !== 'supplier') return searchAny(q, [purchaseOrders.no, suppliers.name])
+  if (!q) return undefined
+  const pattern = `%${q.replace(/[\\%_]/g, (char) => `\\${char}`)}%`
+  return or(
+    ilike(purchaseOrders.no, pattern),
+    sql`EXISTS (SELECT 1 FROM ${purchaseOrderLines} WHERE ${purchaseOrderLines.poId} = ${purchaseOrders.id} AND ${purchaseOrderLines.name} ILIKE ${pattern})`,
+  )
+}
 @Injectable()
 export class PoReads {
   constructor(@Inject(DB) private readonly db: Db) {}
@@ -282,7 +292,7 @@ export class PoReads {
   ): Promise<OutputOf<typeof contract.listPurchaseOrders>> {
     const base = and(
       scopeOf(viewer),
-      searchAny(query.q, [purchaseOrders.no, suppliers.name]),
+      keywordOf(viewer, query.q),
       dateBetween(purchaseOrders.orderDate, query),
       query.supplierId ? eq(purchaseOrders.supplierId, Number(query.supplierId)) : undefined,
     )

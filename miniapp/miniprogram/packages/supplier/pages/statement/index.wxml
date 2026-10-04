@@ -1,1 +1,1 @@
-<import src="/views/external-business.wxml" /><template is="external-business" data="{{title,supplier,segment,segmentTabs,statusKind,statuses,dateLabel,emptyObject,tabs,allLoaded,texts,filter,rows,counts,loaded,skeleton,done,failure,cells}}" />
+<import src="/views/external-business.wxml" /><template is="external-business" data="{{title,supplier,segment,segmentTabs,searchPlaceholder,statusKind,statuses,dateLabel,emptyObject,tabs,allLoaded,texts,filter,rows,counts,loaded,skeleton,done,failure,cells}}" />

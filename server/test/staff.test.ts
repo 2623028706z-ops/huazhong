@@ -23,7 +23,8 @@ interface StaffPage {
   actions: { code: string }[]
 }
 
-const list = (openid = admin) => call(t, 'GET', contract.listStaff.path, { openid })
+const list = (openid = admin, query = '') =>
+  call(t, 'GET', contract.listStaff.path + query, { openid })
 const create = (body: unknown) =>
   call(t, 'POST', contract.createStaff.path, {
     openid: admin,
@@ -78,6 +79,34 @@ describe('员工列表', () => {
 
   test('不是管理员 → FORBIDDEN', async () => {
     expect((await list(await t.bind('u2'))).status).toBe(403)
+  })
+
+  test('管理员看到完整手机号', async () => {
+    const page = (await list()).body.data as StaffPage
+    for (const item of page.items) expect(item.phone).toMatch(/^1\d{10}$/)
+  })
+
+  test('关键字搜全部员工：按姓名、手机号，配合分页', async () => {
+    const byName = (await list(admin, '?q=李')).body.data as StaffPage
+    expect(byName.items.map((item) => item.name)).toEqual(['李敏'])
+    const phone = byName.items[0]?.phone ?? ''
+    const byPhone = (await list(admin, `?q=${phone.slice(-4)}`)).body.data as StaffPage
+    expect(byPhone.items.map((item) => item.name)).toContain('李敏')
+    const none = (await list(admin, '?q=不存在的人')).body.data as StaffPage
+    expect(none.items).toEqual([])
+    // 搜索词里的 % 当普通字符，不是通配
+    const percent = (await list(admin, '?q=%25')).body.data as StaffPage
+    expect(percent.items).toEqual([])
+    // 分页：第一页 1 条，翻页取下一位匹配的员工，不重复
+    const first = (await list(admin, '?q=1&limit=2')).body.data as StaffPage & {
+      nextCursor: string | null
+    }
+    expect(first.items).toHaveLength(2)
+    expect(first.nextCursor).not.toBeNull()
+    const second = (await list(admin, `?q=1&limit=2&cursor=${first.nextCursor}`)).body
+      .data as StaffPage
+    expect(second.items[0]?.name).not.toBe(first.items[0]?.name)
+    expect(second.items.every((i) => !first.items.some((f) => f.id === i.id))).toBe(true)
   })
 })
 

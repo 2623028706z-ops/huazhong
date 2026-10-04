@@ -1,14 +1,14 @@
 <wxs src="../../core/format.wxs" module="format" />
 <view wx:if="{{mode !== 'after'}}" class="u-card hz-line-item__table {{mode !== 'view' ? 'hz-line-item__table--edit' : ''}}">
-  <view class="hz-line-item__tr hz-line-item__tr--head {{quantityOnly ? (lines[0].orderedQty !== undefined ? 'hz-line-item__tr--actual' : 'hz-line-item__tr--qty') : 'hz-line-item__tr--price'}}">
+  <view class="hz-line-item__tr hz-line-item__tr--head {{quantityOnly ? (lines[0].orderedQty !== undefined ? 'hz-line-item__tr--actual' : 'hz-line-item__tr--qty') : (lines[0].purchaseQty !== undefined ? 'hz-line-item__tr--received' : 'hz-line-item__tr--price')}}">
     <text class="hz-line-item__name">{{title || texts.lines}}<text wx:if="{{picking}}" class="hz-line-item__meta"> {{packedText}}</text></text>
-    <text>{{qtyLabel || texts.qty}}</text><text wx:if="{{quantityOnly && lines[0].orderedQty !== undefined}}">{{texts.actual}}</text><text>{{texts.unit}}</text>
+    <text wx:if="{{lines[0].purchaseQty !== undefined}}">{{texts.purchaseQty}}</text><text>{{qtyLabel || texts.qty}}</text><text wx:if="{{quantityOnly && lines[0].orderedQty !== undefined}}">{{texts.actual}}</text><text>{{texts.unit}}</text>
     <block wx:if="{{!quantityOnly}}"><text>{{texts.price}}</text><text>{{texts.subtotal}}</text></block>
   </view>
   <view wx:for="{{lines}}" wx:key="key" class="hz-line-item__row" data-index="{{index}}" bindtap="onEdit"><text wx:if="{{mode !== 'view' && !item.readonly}}" class="hz-icon hz-icon--chevron-right hz-line-item__go"></text>
-    <view class="hz-line-item__tr {{quantityOnly ? (lines[0].orderedQty !== undefined ? 'hz-line-item__tr--actual' : 'hz-line-item__tr--qty') : 'hz-line-item__tr--price'}}">
+    <view class="hz-line-item__tr {{quantityOnly ? (lines[0].orderedQty !== undefined ? 'hz-line-item__tr--actual' : 'hz-line-item__tr--qty') : (lines[0].purchaseQty !== undefined ? 'hz-line-item__tr--received' : 'hz-line-item__tr--price')}}">
       <view class="hz-line-item__name"><view wx:if="{{picking}}" class="hz-line-item__check" data-index="{{index}}" catchtap="onPacked"><view class="u-check {{item.packed ? 'u-check--on' : ''}}"><text wx:if="{{item.packed}}" class="hz-icon hz-icon--check"></text></view></view><text>{{item.name}}</text></view>
-      <text>{{item.orderedQty === undefined ? item.qty : item.orderedQty}}</text><text wx:if="{{quantityOnly && item.orderedQty !== undefined}}">{{item.qty}}</text><text>{{item.unit}}</text>
+      <text wx:if="{{item.purchaseQty !== undefined}}">{{item.purchaseQty}}</text><text>{{item.orderedQty === undefined ? item.qty : item.orderedQty}}</text><text wx:if="{{quantityOnly && item.orderedQty !== undefined}}">{{item.qty}}</text><text>{{item.unit}}</text>
       <block wx:if="{{!quantityOnly}}"><text>{{item.hideAmount ? '—' : format.formatMoney(item.priceCents)}}</text><text>{{item.hideAmount ? '—' : format.formatMoney(item.amountCents)}}</text></block>
     </view>
     <view wx:if="{{item.code || item.meta || item.tags.length}}" class="hz-line-item__sub">

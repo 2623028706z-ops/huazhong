@@ -135,13 +135,12 @@ function poLinesOf(po: PoDetail) {
       priceCents: line.priceCents,
       priceText: '',
       amountCents: lineCents((line.receivedQty ?? line.qty) - line.returnedQty, line.priceCents),
-      // 收货后：采购数量写在编码那行，和实收不一样、改过价的标出来
-      meta: received
-        ? [
-            copy.screen.purchaseQty(line.qty, line.unit),
-            ...(line.returnedQty > 0 ? [copy.screen.returnedQty(line.returnedQty, line.unit)] : []),
-          ].join(copy.separator)
-        : '',
+      // 收货后：采购数量和实收数量并排成两列，差多少一眼看出；退货另写在编码那行
+      ...(received ? { purchaseQty: line.qty } : {}),
+      meta:
+        received && line.returnedQty > 0
+          ? copy.screen.returnedQty(line.returnedQty, line.unit)
+          : '',
       tags: received ? lineTagsOf(line) : [],
     }
   })
@@ -271,7 +270,7 @@ export function poViewOf(po: PoDetail, supplier = false, finance = false) {
   return {
     notice: supplier ? '' : (po.lockedReason ?? po.notice ?? ''),
     progress: supplier ? externalProgressOf(poProgress(po)) : poProgress(po),
-    qtyLabel: po.receivedAt ? redesignCopy.receivedQty : redesignCopy.qty,
+    qtyLabel: po.receivedAt ? redesignCopy.receivedQtyFull : redesignCopy.qty,
     info: poInfoOf(po, supplier, finance),
     linesHeading: copy.screen.section.materials,
     reason: { heading: '', rows: [] },

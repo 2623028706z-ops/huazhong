@@ -89,7 +89,7 @@ describe('当前账号', () => {
       supplierId: null,
       modules: ['sales', 'shipping', 'purchase', 'warehouse', 'finance'],
       landing: 'home',
-      menus: ['logs', 'staff'],
+      menus: ['inventory', 'logs', 'staff'],
     })
     expect(data.id).toMatch(/^[1-9][0-9]*$/)
   })

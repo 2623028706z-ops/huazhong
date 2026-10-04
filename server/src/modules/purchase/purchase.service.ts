@@ -64,7 +64,7 @@ export class PurchaseService {
       .where(
         and(
           gt(stockBatches.leftQty, 0),
-          sql`${stockBatches.inDate} <= ${this.clock.today()}::date - ${STOCK_AGE_WARNING_DAYS}`,
+          sql`${stockBatches.inDate} <= ${this.clock.today()}::date - ${STOCK_AGE_WARNING_DAYS}::int`,
         ),
       )
     const rows = [

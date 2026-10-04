@@ -64,6 +64,8 @@ export const redesignCopy = {
   closed: '已关闭',
   received: '已收货',
   receivedQty: '实收',
+  receivedQtyFull: '实收数量',
+  purchaseQty: '采购数量',
   toReceive: '待收货',
   rejected: '已拒收',
   invited: '已邀请',

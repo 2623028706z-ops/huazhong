@@ -3,6 +3,7 @@ export const purchaseScreen = {
   receiveQty: (qty: number, received: number, returned: number, unit: string) =>
     `采购 ${qty} ${unit}\u3000\u3000实收 ${received} ${unit}\u3000\u3000退货 ${returned} ${unit}`,
   invitedPending: '已邀请（未提交，不算在途）',
+  invitedLinePending: (suppliers: string[]) => `已邀请 ${suppliers.join('、')} 填报，还没提交`,
   supplierPlaceholder: '请选择供应商',
   notSupplied: '未供',
   extraSupply: '另报',
@@ -44,6 +45,7 @@ export const purchaseScreen = {
   continueReview: '核对后继续',
   withCount: (text: string, count: number) => `${text}（${count}）`,
   poSearch: '搜索单号、供应商',
+  supplierPoSearch: '搜索单号、花材',
   supplyAmount: '供货金额',
   supplyLabel: '供货',
   receivedDate: '收货日期',

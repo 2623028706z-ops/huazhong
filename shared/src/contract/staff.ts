@@ -46,7 +46,8 @@ export const listStaff = {
   method: 'GET',
   path: '/staff',
   grants: ['admin'],
-  query: pageQuerySchema,
+  // q：按姓名、手机号模糊搜索全部员工
+  query: pageQuerySchema.extend({ q: z.string().trim().optional() }),
   response: pageSchema(staffItemSchema),
   errors: [],
 } as const satisfies Endpoint

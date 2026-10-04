@@ -3,8 +3,8 @@
 import type { AccountType, ModuleKey } from '@huazhong/shared'
 
 export const seedCustomers = [
-  { key: 'c1', name: '晨曦花艺' },
-  { key: 'c2', name: '拾光花店' },
+  { key: 'c1', name: '晨曦花艺', termDays: 30 },
+  { key: 'c2', name: '拾光花店', termDays: 15 },
   { key: 'c3', name: '一间花房' },
 ] as const
 
@@ -61,6 +61,7 @@ export const seedSuppliers = [
   {
     key: 'sp1',
     name: '春禾花材',
+    termDays: 30,
     contact: '林先生',
     phone: '13900139001',
     address: '昆明市斗南花卉市场 A 区 12 号',
@@ -68,6 +69,7 @@ export const seedSuppliers = [
   {
     key: 'sp2',
     name: '云岭花卉',
+    termDays: 15,
     contact: '杨女士',
     phone: '13900139002',
     address: '昆明市呈贡区斗南街道 86 号',

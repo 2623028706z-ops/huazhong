@@ -328,3 +328,10 @@ test('C26 and idempotency: loss images reject cross-user, wrong purpose and dupl
   expect(second.body.data).toEqual(first.body.data)
   expect(await quantity(values.materialId)).toBe(before - 1)
 })
+test('仓库首页待办：待收货和库龄超期都能统计', async () => {
+  const todo = dataOf<{ count: number; rows: { key: string; count: number }[] }>(
+    await (await app.as('u5')).get('/modules/warehouse/todos'),
+  )
+  expect(todo.rows.map((row) => row.key)).toEqual(['pendingReceives', 'agedStock'])
+  expect(todo.count).toBe(todo.rows.reduce((n, row) => n + row.count, 0))
+})

@@ -49,8 +49,25 @@ export function loadSupplyMaterials() {
   return loadPages((cursor) => request(contract.supplierMaterials, { query: { cursor } }))
 }
 
-export function loadPendingInvites() {
-  return loadPages((cursor) =>
+export async function loadPendingInvites(): Promise<Result<Map<string, string[]>>> {
+  const result = await loadPages((cursor) =>
     request(contract.listInvites, { query: { status: 'pending', cursor } }),
   )
+  return result.ok ? { ok: true, data: suppliersByMaterial(result.data) } : result
+}
+
+// 待填报邀请按花材名归集供应商名（去重），新建采购单 / 邀请时给明细行提醒
+function suppliersByMaterial(invites: { supplierName: string; materialNames: string[] }[]) {
+  const result = new Map<string, string[]>()
+  for (const invite of invites)
+    for (const name of invite.materialNames) {
+      const names = result.get(name) ?? []
+      if (!names.includes(invite.supplierName)) names.push(invite.supplierName)
+      result.set(name, names)
+    }
+  return result
+}
+export function pendingNoticeOf(map: Map<string, string[]>, name: string) {
+  const suppliers = map.get(name)
+  return suppliers ? copy.screen.invitedLinePending(suppliers) : ''
 }

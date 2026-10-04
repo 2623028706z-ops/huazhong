@@ -28,8 +28,12 @@ function statementActions(detail: StatementDetail, internal: boolean) {
     canShare: !internal && canDo(detail.actions, 'shareStatement'),
     canRegister:
       !internal && canDo(detail.actions, supplier ? 'registerPayment' : 'registerReceipt'),
-    // 作废对账单是页面最下面的灰字；已结清的底栏只有「分享」，不显示作废
-    canVoid: !internal && detail.status === 'unsettled' && voidAction !== undefined,
+    // 作废对账单是页面最下面的灰字；已结清且能作废时不显示，
+    // 但作废被挡住（已收过款等）时一定显示灰字并写明原因
+    canVoid:
+      !internal &&
+      voidAction !== undefined &&
+      (detail.status === 'unsettled' || !canDo(detail.actions, 'voidStatement')),
     voidDisabled: !canDo(detail.actions, 'voidStatement'),
     voidReason: voidAction?.disabledReason ?? '',
   }

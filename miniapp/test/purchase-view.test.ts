@@ -1,7 +1,8 @@
-import type { InviteDetail } from '@huazhong/shared'
+import type { InviteDetail, PoDetail } from '@huazhong/shared'
 import { describe, expect, it } from 'vitest'
 import { formTotalOf, unplacedErrorOf } from '../miniprogram/core/form'
 import { inviteViewOf } from '../miniprogram/views/invite-detail'
+import { poViewOf } from '../miniprogram/views/purchase'
 import { inviteFormOf, purchaseLineViews } from '../miniprogram/views/purchase-form-data'
 
 function inviteOf(patch: Partial<InviteDetail> = {}): InviteDetail {
@@ -165,5 +166,44 @@ describe('邀请详情展示', () => {
       { label: '取消时间', value: '2026-09-29 09:00' },
     ])
     expect(inviteViewOf(inviteOf(patch)).reason.rows[0]?.value).toBe('采购已取消这次邀请')
+  })
+})
+
+describe('采购单详情收货后数量', () => {
+  it('采购数量和实收数量并排，少收标出差额，未收货不出现采购数量列', () => {
+    const line = {
+      id: '1',
+      materialId: '1',
+      code: 'HC-0001',
+      name: '白玫瑰',
+      unit: '枝',
+      qty: 150,
+      orderPriceCents: 100,
+      priceCents: 100,
+      receivedQty: 140,
+      returnedQty: 0,
+      maxReturnQty: 140,
+    }
+    const po = (patch: Partial<PoDetail['lines'][number]>, receivedAt: string | null) =>
+      ({
+        no: 'PO-1',
+        orderDate: '2026-09-29',
+        buyerName: '周宁',
+        buyerPhone: '1',
+        supplierName: '春禾花材',
+        status: receivedAt ? 'received' : 'to_receive',
+        actions: [],
+        changes: [],
+        priceChanges: [],
+        returns: [],
+        receivedAt,
+        lines: [{ ...line, ...patch }],
+      }) as unknown as PoDetail
+    const done = poViewOf(po({}, '2026-09-30T08:00:00Z'), true).lines[0]
+    expect(done).toMatchObject({ purchaseQty: 150, qty: 140 })
+    expect(done?.tags.map((tag) => tag.text)).toContain('少收 10')
+    const pending = poViewOf(po({ receivedQty: null }, null), true)
+    expect(pending.lines[0]).not.toHaveProperty('purchaseQty')
+    expect(pending.qtyLabel).toBe('数量')
   })
 })

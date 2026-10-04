@@ -25,3 +25,7 @@ test('只有仓库模块的员工：落在仓库首页，没有库存查询入�
   expect(landingOf(viewer)).toBe('module:warehouse')
   expect(menusOf(viewer)).toEqual(['logs'])
 })
+
+test('管理员的「我的」入口：库存查询、操作日志、员工与岗位', () => {
+  expect(menusOf({ ...base, type: 'admin' })).toEqual(['inventory', 'logs', 'staff'])
+})

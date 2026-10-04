@@ -53,6 +53,7 @@ const data = {
   statusKind: '',
   statuses: [] as string[],
   dateLabel: '',
+  searchPlaceholder: '',
   emptyObject: '',
   tabs: [] as ReturnType<typeof tabsOf>,
   allLoaded: copy.state.allLoaded,
@@ -72,6 +73,7 @@ function metaOf(segment: Segment, supplier: boolean) {
       statusKind: 'statementStatus',
       statuses: ['unsettled', 'settled'],
       dateLabel: f.statementDate,
+      searchPlaceholder: '',
       emptyObject: f.statements,
     }
   if (segment === 'afters')
@@ -79,6 +81,7 @@ function metaOf(segment: Segment, supplier: boolean) {
       statusKind: 'afterStatus',
       statuses: ['pending', 'processed', 'closed', 'voided'],
       dateLabel: copy.screen.label.afterDate,
+      searchPlaceholder: '',
       emptyObject: copy.screen.empty.afters,
     }
   return supplier
@@ -86,12 +89,14 @@ function metaOf(segment: Segment, supplier: boolean) {
         statusKind: 'poStatus',
         statuses: ['to_receive', 'received', 'rejected', 'cancelled'],
         dateLabel: copy.screen.label.orderDate,
+        searchPlaceholder: copy.screen.supplierPoSearch,
         emptyObject: copy.screen.empty.purchaseOrders,
       }
     : {
         statusKind: 'orderStatus',
         statuses: ['pending_confirm', 'to_ship', 'shipped', 'cancelled'],
         dateLabel: copy.screen.label.orderDate,
+        searchPlaceholder: '',
         emptyObject: copy.screen.empty.orders,
       }
 }

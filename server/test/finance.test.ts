@@ -81,7 +81,7 @@ test('D01 新种子使用整张DZ，首页只算已开对账单，门店只见�
     creditDeductedCents: 0,
     status: 'unsettled',
     sourceCount: 2,
-    dueDate: null,
+    dueDate: '2026-10-29',
   })
   expect(await ledger()).toMatchObject({
     unsettledCents: 358800,

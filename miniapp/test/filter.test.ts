@@ -111,21 +111,18 @@ describe('状态标签行', () => {
       to_ship: 0,
     })
     expect(tabs).toEqual([
-      { code: '', text: '全部', count: 0 },
-      { code: 'pending_confirm', text: '待确认', count: 2 },
-      { code: 'to_ship', text: '待发货', count: 0 },
-      { code: 'shipped', text: '已发货', count: 0 },
+      { code: '', text: '全部', count: 0, showCount: false },
+      { code: 'pending_confirm', text: '待确认', count: 2, showCount: true },
+      { code: 'to_ship', text: '待发货', count: 0, showCount: true },
+      { code: 'shipped', text: '已发货', count: 0, showCount: false },
     ])
   })
   it('状态表里没有的码不出标签', () => {
     expect(tabsOf('orderStatus', ['nope'], {})).toHaveLength(1)
   })
-  it('收付款记录可显示全部状态的独立计数，其他列表规则不变', () => {
-    expect(tabsOf('recordStatus', ['valid', 'voided'], { valid: 3, voided: 2 }, true)).toEqual([
-      { code: '', text: '全部', count: 0 },
-      { code: 'valid', text: '有效', count: 3 },
-      { code: 'voided', text: '已作废', count: 2 },
-    ])
+  it('完成、结束类即使接口给了数也不带', () => {
+    const tabs = tabsOf('recordStatus', ['valid', 'voided'], { valid: 3, voided: 2 })
+    expect(tabs.map((tab) => tab.showCount)).toEqual([false, false, false])
   })
 })
 

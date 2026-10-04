@@ -21,12 +21,11 @@ const menuPages = {
 }
 type MenuKey = keyof typeof menuPages
 
-// 入口顺序照定稿：库存查询、操作日志、收付款方式、员工与岗位；管理员也有库存查询
+// 入口顺序照定稿：库存查询、操作日志、收付款方式、员工与岗位
 const menuOrder: MenuKey[] = ['inventory', 'logs', 'methods', 'staff']
 
 function menusOf(me: Me) {
   const keys = new Set<MenuKey>(me.menus)
-  if (me.type === 'admin') keys.add('inventory')
   if (me.modules.includes('finance')) keys.add('methods')
   return menuOrder
     .filter((key) => keys.has(key))

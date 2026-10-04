@@ -1,12 +1,12 @@
 // X8 客户：左侧客户，右侧门店 / 订货目录；门店资料和目录产品分别进入 X12 / X13 整页。
-import { contract, copy, redesignCopy, type CustomerItem } from '@huazhong/shared'
+import { contract, copy, redesignCopy, type Action, type CustomerItem } from '@huazhong/shared'
 import { hasAction } from '../../../../core/actions'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
 import { unplacedErrorOf } from '../../../../core/form'
 import type { FailureView } from '../../../../core/failure-view'
 import { isChanged, syncUnloadAlert } from '../../../../core/guard'
 import { firstFailure, newIdempotencyKey, request, type Result } from '../../../../core/request'
-import { failureOf } from '../../../../core/session'
+import { failureOf, loadMe } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
 import { unwatch } from '../../../../core/live'
 import { catalogPanelData } from './catalog-state'
@@ -65,6 +65,7 @@ Page({
     },
   },
   customers: [] as CustomerItem[],
+  isAdmin: false,
   idempotencyKey: '',
   onLoad() {
     void wx.hideShareMenu({})
@@ -80,25 +81,34 @@ Page({
     syncUnloadAlert(false)
   },
   async load(selectId = ''): Promise<void> {
-    const [customers, page] = await Promise.all([
+    const [customers, page, me] = await Promise.all([
       loadCustomers(),
       request(contract.listCustomers, { query: {} }),
+      loadMe(),
     ])
-    if (!customers.ok || !page.ok) {
-      const failure = firstFailure([customers, page])
+    if (!customers.ok || !page.ok || !me.ok) {
+      const failure = firstFailure([customers, page, me])
       if (failure)
         this.setData({ failure: failureOf(failure, this.data.loaded ? 'refresh' : 'load') })
       return
     }
-    this.customers = customers.data
+    this.isAdmin = me.data.type === 'admin'
+    await this.show(customers.data, page.data.actions, selectId)
+  },
+  async show(
+    customers: CustomerItem[],
+    actions: readonly Action[],
+    selectId: string,
+  ): Promise<void> {
+    this.customers = customers
     const keep = selectId || this.data.customerId
-    const selected = customers.data.find((c) => c.id === keep) ?? customers.data[0]
+    const selected = customers.find((c) => c.id === keep) ?? customers[0]
     this.setData({
       loaded: true,
       failure: null,
-      side: customerSideOf(customers.data),
-      canCreate: hasAction(page.data.actions, 'create'),
-      canCreateCustomer: hasAction(page.data.actions, 'createCustomer'),
+      side: customerSideOf(customers),
+      canCreate: hasAction(actions, 'create'),
+      canCreateCustomer: hasAction(actions, 'createCustomer'),
     })
     this.select(selected?.id ?? '')
     await this.loadCatalogPanel()
@@ -108,7 +118,7 @@ Page({
     this.setData({
       customerId,
       customerName: customer?.name ?? '',
-      stores: storeRowsOf(customer),
+      stores: storeRowsOf(customer, this.isAdmin),
       groups: [],
     })
   },

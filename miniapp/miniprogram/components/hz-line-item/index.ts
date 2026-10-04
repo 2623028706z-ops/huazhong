@@ -10,6 +10,7 @@ interface Line {
   amountCents?: number
   qty: number
   orderedQty?: number
+  purchaseQty?: number
   unit: string
   priceCents?: number
   priceText?: string
@@ -54,6 +55,7 @@ Component({
       lines: redesignCopy.productLines,
       qty: redesignCopy.qty,
       actual: redesignCopy.actual,
+      purchaseQty: redesignCopy.purchaseQty,
       unit: redesignCopy.unit,
       price: redesignCopy.price,
       subtotal: redesignCopy.subtotal,

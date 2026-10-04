@@ -3,7 +3,6 @@ import {
   contract,
   copy,
   labels,
-  maskPhone,
   moduleKeys,
   redesignCopy,
   roleLabelOf,
@@ -33,10 +32,9 @@ function rowOf(item: StaffItem) {
     id: item.id,
     name: item.name,
     disabled: !item.enabled,
-    sub: [
-      `${copy.field.phone} ${maskPhone(item.phone)}`,
-      `${copy.field.role} ${roleLabelOf(item)}`,
-    ].join(copy.separator),
+    sub: [`${copy.field.phone} ${item.phone}`, `${copy.field.role} ${roleLabelOf(item)}`].join(
+      copy.separator,
+    ),
   }
 }
 
@@ -85,7 +83,8 @@ Page({
   onLoad() {
     this.list = new PagedList(
       async (cursor) => {
-        const result = await request(contract.listStaff, { query: { cursor } })
+        const q = this.data.keyword.trim() || undefined
+        const result = await request(contract.listStaff, { query: { q, cursor } })
         // 底栏「新增员工」只看列表级 actions（05 章第 1.5 节）
         if (result.ok)
           this.setData({ canCreate: result.data.actions.some((a) => a.code === 'create') })
@@ -103,17 +102,13 @@ Page({
   onShow() {
     void this.refresh()
   },
-  // 接口没有搜索：在已取回的员工里按姓名、手机号过滤
   showRows() {
-    const keyword = this.data.keyword.trim()
-    const items = this.data.items.filter(
-      (item) => !keyword || item.name.includes(keyword) || item.phone.includes(keyword),
-    )
-    this.setData({ rows: items.map(rowOf) })
+    this.setData({ rows: this.data.items.map(rowOf) })
   },
+  // 搜索由后端按姓名、手机号查全部员工，配合分页
   onSearch(event: DetailEvent<string>) {
     this.setData({ keyword: event.detail })
-    this.showRows()
+    void this.refresh()
   },
   async refresh(): Promise<void> {
     await this.list?.refresh()

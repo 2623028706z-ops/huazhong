@@ -9,7 +9,7 @@ import {
   type StaffUpdate,
 } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
-import { and, asc, eq, inArray, ne, sql } from 'drizzle-orm'
+import { and, asc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm'
 import type { Db, Tx } from '../../../db/client.ts'
 import { accountModules, accounts } from '../../../db/schema/index.ts'
 import { DB } from '../../common/db.ts'
@@ -43,6 +43,13 @@ const STAFF_TYPES = ['admin', 'staff'] as const
 // 并发新增同一个手机号时，部分唯一索引兜底（04 章第 3.1 节）
 const PHONE_FIELDS = { [ENABLED_PHONE_INDEX]: { phone: copy.staff.phoneTaken } }
 
+// 搜索词里的 % _ \ 当普通字符；按姓名、手机号模糊匹配
+function searchOf(q: string | undefined) {
+  if (!q) return undefined
+  const pattern = `%${q.replace(/[\\%_]/g, (char) => `\\${char}`)}%`
+  return or(ilike(accounts.name, pattern), ilike(accounts.phone, pattern))
+}
+
 @Injectable()
 export class StaffService {
   constructor(
@@ -53,6 +60,7 @@ export class StaffService {
   async list(query: {
     cursor?: string | undefined
     limit: number
+    q?: string | undefined
   }): Promise<OutputOf<typeof contract.listStaff>> {
     const rows: StaffRow[] = await this.db
       .select(accountColumns(this.db))
@@ -60,6 +68,7 @@ export class StaffService {
       .where(
         and(
           inArray(accounts.type, STAFF_TYPES),
+          searchOf(query.q),
           afterCursor(accounts.id, accounts.id, query.cursor),
         ),
       )

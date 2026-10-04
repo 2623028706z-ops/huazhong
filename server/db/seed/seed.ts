@@ -69,7 +69,10 @@ async function insertFirstAdmin(tx: Tx, admin: Admin): Promise<number> {
 async function insertOrg(tx: Tx, createdBy: number) {
   const customerIds = new Map<string, number>()
   for (const c of seedCustomers) {
-    const [row] = await tx.insert(customers).values({ name: c.name, createdBy }).returning()
+    const [row] = await tx
+      .insert(customers)
+      .values({ name: c.name, termDays: 'termDays' in c ? c.termDays : null, createdBy })
+      .returning()
     if (row) customerIds.set(c.key, row.id)
   }
   const storeIds = new Map<string, number>()

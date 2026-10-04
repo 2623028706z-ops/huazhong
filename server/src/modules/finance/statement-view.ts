@@ -188,7 +188,7 @@ async function snapshot(tx: Db | Tx, rows: StatementRow[]): Promise<Snapshot> {
 }
 function voidReason(row: StatementRow, s: Snapshot) {
   if ((s.settlements.get(row.id) ?? []).some((l) => l.status === 'valid' && l.reversedAt === null))
-    return statementCopy.receivedLocked
+    return row.kind === 'customer' ? statementCopy.receivedLocked : statementCopy.paidLocked
   return s.used.has(row.id) ? statementCopy.creditUsed : null
 }
 function actionsOf(row: StatementRow, s: Snapshot) {

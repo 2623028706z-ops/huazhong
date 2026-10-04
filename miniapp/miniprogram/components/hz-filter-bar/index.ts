@@ -25,7 +25,6 @@ Component({
     statusKind: { type: String, value: '' },
     statuses: { type: Array, value: [] as string[] },
     counts: { type: Object, value: {} },
-    countAll: { type: Boolean, value: false },
     endedTabs: { type: Boolean, value: false },
     // 有值才出搜索框
     searchPlaceholder: { type: String, value: '' },
@@ -70,10 +69,10 @@ Component({
     toLabel: copy.filter.dateTo,
   },
   observers: {
-    'statusKind, statuses, counts, countAll, endedTabs'() {
-      const { statusKind: kind, statuses, counts, countAll, endedTabs } = this.data
+    'statusKind, statuses, counts, endedTabs'() {
+      const { statusKind: kind, statuses, counts, endedTabs } = this.data
       this.setData({
-        tabs: tabsOf(kind, statuses, counts, countAll).filter(
+        tabs: tabsOf(kind, statuses, counts).filter(
           (tab) => endedTabs || !tab.code || statusOf(kind, tab.code)?.tone !== 'ended',
         ),
       })

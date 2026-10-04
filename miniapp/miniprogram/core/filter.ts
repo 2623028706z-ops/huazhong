@@ -161,23 +161,19 @@ export function pick(value: FilterValue, key: string, id: string): FilterValue {
 export interface StatusTab {
   code: string
   text: string
-  // 只有等待类状态、而且大于 0 才有数
+  // 只有等待类状态（待确认、待发货、待收货、待填报等需要人处理的）才带数，「全部」和完成、结束类不带
   count: number
+  showCount: boolean
 }
 
 // 状态标签行：「全部」+ 各状态；数量来自列表接口的 counts（只含等待类）
-export function tabsOf(
-  kind: string,
-  codes: string[],
-  counts: Record<string, number>,
-  countAll = false,
-): StatusTab[] {
-  const tabs: StatusTab[] = [{ code: '', text: copy.filter.all, count: 0 }]
+export function tabsOf(kind: string, codes: string[], counts: Record<string, number>): StatusTab[] {
+  const tabs: StatusTab[] = [{ code: '', text: copy.filter.all, count: 0, showCount: false }]
   for (const code of codes) {
     const status = statusOf(kind, code)
     if (!status) continue
-    const count = countAll || status.tone === 'wait' ? (counts[code] ?? 0) : 0
-    tabs.push({ code, text: status.text, count })
+    const wait = status.tone === 'wait' && counts[code] !== undefined
+    tabs.push({ code, text: status.text, count: wait ? (counts[code] ?? 0) : 0, showCount: wait })
   }
   return tabs
 }

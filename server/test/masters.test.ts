@@ -35,6 +35,28 @@ const storeEdit = (store: StoreItem, change: Partial<StoreItem>) => ({
 const tokenOf = (path: string) => new URL(path, 'https://x.invalid').searchParams.get('token') ?? ''
 const stranger = () => apiOf(s.t, `openid-stranger-${Math.random()}`)
 
+describe('门店手机号按角色显示', () => {
+  test('管理员、销售看完整；只读的财务服务端打码', async () => {
+    const phones = async (key: 'u1' | 'u2' | 'u6') => {
+      const page = dataOf<{ items: CustomerItem[] }>(await (await s.as(key)).get('/customers'))
+      return page.items.flatMap((c) => c.stores)
+    }
+    const full = (await phones('u1')).filter((x) => x.phone !== '')
+    expect(full.length).toBeGreaterThan(0)
+    expect(full.every((x) => /^\d{11}$/.test(x.phone))).toBe(true)
+    expect((await phones('u2')).map((x) => x.phone)).toEqual(
+      (await phones('u1')).map((x) => x.phone),
+    )
+    const masked = await phones('u6')
+    for (const store of masked.filter((x) => x.phone.length === 11)) {
+      expect(store.phone).toMatch(/^\d{3}\*{4}\d{4}$/)
+    }
+    for (const store of masked.filter((x) => x.loginPhone !== null)) {
+      expect(store.loginPhone).toMatch(/\*{4}/)
+    }
+  })
+})
+
 describe('客户、门店、产品资料', () => {
   test('A38 名称校验、联系人、分类删除', async () => {
     const sales = await s.as('u2')

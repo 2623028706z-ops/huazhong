@@ -4,6 +4,7 @@ import type {
   OrderDetail,
   OutputOf,
   PoDetail,
+  StatementDetail,
   ShippingDetail,
 } from '@huazhong/shared'
 import { eq } from 'drizzle-orm'
@@ -325,4 +326,17 @@ test('财务专用采购只读详情能从退货和改价记录解析原采购�
     expect(detail.id).toBe(id)
     expect(detail.actions).toEqual([])
   }
+})
+
+describe('种子账期与已收款对账单', () => {
+  test('已收过款的对账单作废动作禁用并写明原因；种子对账单带付款截止', async () => {
+    const finance = await s.as('u6')
+    const id = await idBy(s.t, 'statements.no', 'DZ-260929-002')
+    const paid = dataOf<StatementDetail>(await finance.get(`/finance/statements/${id}`))
+    expect(paid.dueDate).toBe('2026-10-14')
+    expect(paid.actions.find((a) => a.code === 'voidStatement')).toMatchObject({
+      enabled: false,
+      disabledReason: '已收过款，不能作废；请先作废这笔收款，再作废对账单',
+    })
+  })
 })
