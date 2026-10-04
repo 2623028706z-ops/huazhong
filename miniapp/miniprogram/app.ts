@@ -15,4 +15,8 @@ App({
   onHide() {
     realtime.stop()
   },
+  // 旧版本地址（体验版路径、最近使用、旧分享）在新版不存在时回登录页重新分流
+  onPageNotFound() {
+    void wx.reLaunch({ url: '/pages/login/index' })
+  },
 })
