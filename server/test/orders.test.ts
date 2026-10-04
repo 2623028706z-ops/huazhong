@@ -1,4 +1,4 @@
-// 订单：改单、确认、修改并确认、取消（07 章 A06、A07、A10–A16、A31、J17、J25）
+// 订单：改单、确认、编辑后确认、取消（07 章 A06、A07、A10–A16、A31、J17、J25）
 import type { OrderDetail } from '@huazhong/shared'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { codesOf, dataOf, idBy, startSales, TOMORROW, type SalesApp } from './support/sales.ts'
@@ -51,12 +51,8 @@ function storeEdit(order: OrderDetail, qtys: Record<string, number>) {
 }
 
 describe('actions 按账号和状态', () => {
-  test('J17 待确认：销售取消 / 修改并确认 / 确认，门店取消 / 修改，发货读不到', async () => {
-    expect(codesOf((await detail('u2', o018)).actions)).toEqual([
-      'cancel',
-      'editAndConfirm',
-      'confirm',
-    ])
+  test('J17 待确认：销售取消 / 编辑后确认 / 确认，门店取消 / 修改，发货读不到', async () => {
+    expect(codesOf((await detail('u2', o018)).actions)).toEqual(['cancel', 'confirm'])
     expect(codesOf((await detail('s1', o018)).actions)).toEqual(['storeCancel', 'storeEdit'])
     expect((await (await s.as('u7')).get(`/orders/${o018}`)).status).toBe(403)
     expect((await (await s.as('u7')).get(`/shipping/orders/${o018}`)).status).toBe(404)
@@ -111,22 +107,25 @@ describe('销售修改订单', () => {
     expect((await detail('u2', o012)).changes).toHaveLength(1)
   })
 
-  test('A15 修改并确认不写原因报「请填写修改原因」', async () => {
+  test('A15 编辑后确认不写原因报「请填写修改原因」', async () => {
     const res = await (
       await s.as('u2')
-    ).put(`/orders/${o018}`, salesEdit(await detail('u2', o018), { 粉玫瑰日常花束: 25 }, ''))
+    ).post(
+      `/orders/${o018}/confirm`,
+      salesEdit(await detail('u2', o018), { 粉玫瑰日常花束: 25 }, ''),
+    )
     expect(res.status).toBe(422)
     expect(res.body.error?.fields?.['reason']).toBe('请填写修改原因')
   })
 
-  test('A16 修改并确认途中门店改单 → STALE 带最新数量；再保存变成待发货、变更记录 2 条', async () => {
+  test('A16 编辑后确认途中门店改单 → STALE 带最新数量；再保存变成待发货、变更记录 2 条', async () => {
     const sales = await s.as('u2')
     const opened = await detail('u2', o018)
     await (
       await s.as('s1')
     ).put(`/store/orders/${o018}`, storeEdit(await detail('s1', o018), { 粉玫瑰日常花束: 21 }))
-    const stale = await sales.put(
-      `/orders/${o018}`,
+    const stale = await sales.post(
+      `/orders/${o018}/confirm`,
       salesEdit(opened, { 粉玫瑰日常花束: 25 }, '按电话沟通加量'),
     )
     expect(stale.status).toBe(409)
@@ -137,8 +136,8 @@ describe('销售修改订单', () => {
     const latest = stale.body.error?.latest as OrderDetail
     expect(latest.lines.find((l) => l.name === '粉玫瑰日常花束')?.qty).toBe(21)
     const saved = dataOf<OrderDetail>(
-      await sales.put(
-        `/orders/${o018}`,
+      await sales.post(
+        `/orders/${o018}/confirm`,
         salesEdit(latest, { 粉玫瑰日常花束: 25 }, '按电话沟通加量'),
       ),
     )

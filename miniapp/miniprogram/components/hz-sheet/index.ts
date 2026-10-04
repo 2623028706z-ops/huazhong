@@ -12,6 +12,7 @@ Component({
     back: { type: Boolean, value: false },
     guard: { type: Boolean, value: false },
     footer: { type: Boolean, value: false },
+    center: { type: Boolean, value: false },
   },
   methods: {
     leave(event: 'close' | 'back') {

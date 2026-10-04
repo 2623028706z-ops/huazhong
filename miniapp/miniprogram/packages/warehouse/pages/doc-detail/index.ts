@@ -20,6 +20,7 @@ import { stockViewOf } from '../../../../views/stock'
 interface PriceLine {
   lineId: string
   name: string
+  code: string
   unit: string
   qty: number
   priceText: string
@@ -43,6 +44,7 @@ Page({
     lines: [] as {
       key: string
       name: string
+      code: string
       unit: string
       qty: number
       priceText: string
@@ -55,12 +57,20 @@ Page({
     error: '',
     saving: false,
     realtime: '',
-    texts: { reason: copy.screen.label.reason, repriceReason: copy.screen.label.repriceReason },
+    texts: {
+      reason: copy.screen.label.reason,
+      repriceReason: copy.screen.label.repriceReason,
+      materials: copy.screen.section.materials,
+    },
   },
   id: '',
+  financeScope: false,
+  readonlyScope: false,
   document: null as WhDocDetail | null,
   onLoad(query: Record<string, string | undefined>) {
     this.id = query.id ?? ''
+    this.financeScope = query.scope === 'finance'
+    this.readonlyScope = query.scope === 'internal'
   },
   onShow() {
     syncUnloadAlert(this.data.changed)
@@ -68,7 +78,9 @@ Page({
     watch(this, [`wh_doc:${this.id}`], () => void this.load())
   },
   async load(replace = false) {
-    const result = await request(contract.getWhDoc, { params: { id: this.id } })
+    const result = await request(this.financeScope ? contract.getFinanceWhDoc : contract.getWhDoc, {
+      params: { id: this.id },
+    })
     if (!result.ok) {
       this.setData({ failure: failureOf(result.failure, this.data.loaded ? 'refresh' : 'load') })
       return
@@ -79,11 +91,10 @@ Page({
       loaded: true,
       failure: null,
       realtime: '',
-      view: stockViewOf(result.data),
-      buttons: buttonsOf(result.data.actions, [
-        { code: 'void', secondary: true },
-        { code: 'reprice' },
-      ]),
+      view: stockViewOf(result.data, this.financeScope),
+      buttons: this.readonlyScope
+        ? []
+        : buttonsOf(result.data.actions, [{ code: 'void', secondary: true }, { code: 'reprice' }]),
     })
   },
   preserve(doc: WhDocDetail) {
@@ -118,6 +129,7 @@ Page({
           ? this.document.lines.map((line) => ({
               lineId: line.id,
               name: line.name,
+              code: line.code,
               unit: line.unit,
               qty: line.qty,
               priceText: textOfCents(line.priceCents ?? 0),

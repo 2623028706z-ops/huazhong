@@ -1,7 +1,1 @@
-<import src="/views/list.wxml" />
-<hz-navbar title="{{title}}" back />
-<view class="u-list">
-  <hz-filter-bar status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" date-label="{{dateLabel}}" value="{{filter}}" bind:change="onFilter" />
-  <template is="list-state" data="{{failure, skeleton, loaded, rows, emptyObject}}" />
-  <template is="cards" data="{{rows, statusKind, done, allLoaded}}" />
-</view>
+<import src="/views/external-business.wxml" /><template is="external-business" data="{{title,supplier,segment,segmentTabs,statusKind,statuses,dateLabel,emptyObject,tabs,allLoaded,texts,filter,rows,counts,loaded,skeleton,done,failure,cells}}" />

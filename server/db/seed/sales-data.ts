@@ -253,37 +253,28 @@ export const seedAfters: readonly {
   },
 ]
 
-export const seedReceipts: readonly {
-  no: string
-  receiptDate: string
-  createdAt: string
-  customer: CustomerKey
-  amount: number
-  method: string
-  note: string
-  allocs: readonly { order: string; amount: number }[]
-}[] = [
+export const seedStatementRows = [
   {
-    no: 'SK-260928-001',
-    receiptDate: '2026-09-28',
-    createdAt: '2026-09-28T08:20:00.000Z',
-    customer: 'c1',
-    amount: 100000,
-    method: '转账',
-    note: '门店转账',
-    allocs: [{ order: 'SO-260927-021', amount: 100000 }],
+    no: 'DZ-260929-001',
+    customer: 'c1' as const,
+    orders: ['SO-260927-021', 'SO-260927-026'],
+    settled: false,
   },
+  { no: 'DZ-260929-002', customer: 'c2' as const, orders: ['SO-260928-030'], settled: true },
+] as const
+export const seedReceipts = [
   {
     no: 'SK-260929-001',
     receiptDate: '2026-09-29',
     createdAt: '2026-09-29T01:10:00.000Z',
-    customer: 'c2',
+    customer: 'c2' as const,
     amount: 100000,
     method: '微信',
     note: '',
-    allocs: [{ order: 'SO-260928-030', amount: 93600 }],
+    creditCents: 6400,
+    statements: ['DZ-260929-002'],
   },
-]
+] as const
 
-// 收款方式、付款方式各一份，都启用
+// 收付款方式共用一份，都启用
 export const seedMethodNames = ['转账', '微信', '支付宝', '现金'] as const

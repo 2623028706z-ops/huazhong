@@ -75,6 +75,7 @@ export class InviteWrites {
         return detail
       },
       { endpoint: contract.createInvite, key },
+      { exclusive: true },
     )
   }
   update(viewer: Viewer, id: number, input: In<'updateInvite'>) {

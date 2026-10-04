@@ -2,6 +2,7 @@
 import * as z from 'zod'
 import { AFTER_IMAGE_MAX_COUNT } from '../config.ts'
 import { copy } from '../copy.ts'
+import { redesignCopy } from '../copy-redesign.ts'
 import { afterOrigins, afterReasons, afterStatuses } from '../enums.ts'
 import {
   businessDateSchema,
@@ -14,7 +15,9 @@ import {
   timestampSchema,
   unitTotalSchema,
   versionSchema,
+  STORED_INT_MAX,
 } from '../rules.ts'
+import { statementRefSchema } from './statement-ref.ts'
 import { actionSchema } from './actions.ts'
 import type { Endpoint } from './endpoint.ts'
 import {
@@ -45,6 +48,7 @@ export const afterCardSchema = z.object({
   amountCents: centsSchema.nullable(),
   actions: z.array(actionSchema),
   lockedReason: z.string().nullable(),
+  statement: statementRefSchema.nullable(),
 })
 export type AfterCard = z.infer<typeof afterCardSchema>
 
@@ -76,6 +80,8 @@ export const afterDetailSchema = afterCardSchema.extend({
   lines: z.array(afterLineSchema),
   processedAt: timestampSchema.nullable(),
   closeReason: z.string().nullable(),
+  // 关闭日志的真实时间；未关闭或历史缺少关闭日志时为空。
+  closedAt: timestampSchema.nullable(),
   voidReason: z.string().nullable(),
   voidedAt: timestampSchema.nullable(),
   // 提示条：已处理时「发货单应收已减去售后金额」
@@ -85,8 +91,9 @@ export type AfterDetail = z.infer<typeof afterDetailSchema>
 
 export const afterQuerySchema = pageQuerySchema
   .extend({
-    status: z.enum(afterStatuses).optional(),
+    status: z.enum([...afterStatuses, 'cancelled']).optional(),
     customerId: idSchema.optional(),
+    q: z.string().trim().optional(),
     ...dateRangeShape,
   })
   .superRefine(checkDateRange)
@@ -98,7 +105,7 @@ export const listAfters = {
   path: '/afters',
   grants: ['sales', 'finance', 'store'],
   query: afterQuerySchema,
-  // 列表级 actions ⊆ createAfter（销售）、applyAfter（门店）
+  // 列表级 actions ⊆ createAfter（销售）；门店申请只从订单详情进入。
   response: countedPageSchema(afterCardSchema, afterStatuses),
   errors: [],
 } as const satisfies Endpoint
@@ -130,6 +137,15 @@ function checkAfterLines(value: { lines: { orderLineId: string }[] }, ctx: z.Ref
   })
 }
 
+function checkAfterAmount(
+  value: { lines: { qty: number; priceCents: number }[] },
+  ctx: z.RefinementCtx,
+) {
+  const total = value.lines.reduce((sum, line) => sum + line.qty * line.priceCents, 0)
+  if (!Number.isSafeInteger(total) || total > STORED_INT_MAX)
+    ctx.addIssue({ code: 'custom', path: ['lines'], message: copy.error.numericRange })
+}
+
 export const afterCreateSchema = z
   .object({
     orderId: idSchema,
@@ -147,6 +163,7 @@ export const afterCreateSchema = z
       .min(1, { error: copy.after.salesLinesRequired }),
   })
   .superRefine(checkAfterLines)
+  .superRefine(checkAfterAmount)
 export type AfterCreate = z.infer<typeof afterCreateSchema>
 
 export const createAfter = {
@@ -159,17 +176,19 @@ export const createAfter = {
   idempotent: true,
 } as const satisfies Endpoint
 
-export const afterProcessSchema = z.object({
-  version: versionSchema,
-  note: z.string().trim(),
-  lines: z.array(
-    z.object({
-      id: idSchema,
-      qty: nonNegativeIntSchema(copy.after.processQtyInvalid),
-      priceCents: centsInputSchema(copy.order.priceRequired),
-    }),
-  ),
-})
+export const afterProcessSchema = z
+  .object({
+    version: versionSchema,
+    note: z.string().trim(),
+    lines: z.array(
+      z.object({
+        id: idSchema,
+        qty: nonNegativeIntSchema(copy.after.processQtyInvalid),
+        priceCents: centsInputSchema(copy.order.priceRequired),
+      }),
+    ),
+  })
+  .superRefine(checkAfterAmount)
 export type AfterProcess = z.infer<typeof afterProcessSchema>
 
 export const processAfter = {
@@ -205,7 +224,7 @@ export const voidAfter = {
     reason: requiredTextSchema(copy.after.voidReasonRequired),
   }),
   response: afterDetailSchema,
-  errors: ['NOT_FOUND', 'STALE'],
+  errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
 } as const satisfies Endpoint
 
 export const storeAfterCreateSchema = z
@@ -228,13 +247,10 @@ export const storeAfterCreateSchema = z
   .superRefine((value, ctx) => {
     checkAfterLines(value, ctx)
     value.lines.forEach((line, index) => {
-      if (
-        (line.reason === 'damaged' || line.reason === 'quality') &&
-        line.imageFileIds.length === 0
-      )
+      if (line.imageFileIds.length === 0)
         ctx.addIssue({
           code: 'custom',
-          message: copy.rework.afterImageRequired,
+          message: redesignCopy.afterImageRequired,
           path: ['lines', index, 'imageFileIds'],
         })
     })

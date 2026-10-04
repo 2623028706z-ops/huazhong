@@ -10,6 +10,7 @@
     "hz-field": "/components/hz-field/index",
     "hz-line-item": "/components/hz-line-item/index",
     "hz-notice": "/components/hz-notice/index",
+    "hz-records": "/components/hz-records/index",
     "hz-status": "/components/hz-status/index",
     "hz-confirm": "/components/hz-confirm/index"
   }

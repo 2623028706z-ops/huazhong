@@ -9,11 +9,18 @@
     "hz-error": "/components/hz-error/index",
     "hz-notice": "/components/hz-notice/index",
     "hz-status": "/components/hz-status/index",
+    "hz-action-bar": "/components/hz-action-bar/index",
     "hz-button": "/components/hz-button/index",
     "hz-sheet": "/components/hz-sheet/index",
     "hz-reason-sheet": "/components/hz-reason-sheet/index",
+    "hz-line-item": "/components/hz-line-item/index",
     "hz-field": "/components/hz-field/index",
+    "hz-picker": "/components/hz-picker/index",
     "hz-confirm": "/components/hz-confirm/index",
-    "hz-picker": "/components/hz-picker/index"
+    "hz-statement": "/components/hz-statement/index",
+    "hz-tabbar": "/components/hz-tabbar/index",
+    "hz-brand": "/components/hz-brand/index",
+    "hz-cover": "/components/hz-cover/index",
+    "hz-progress": "/components/hz-progress/index"
   }
 }

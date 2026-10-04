@@ -3,13 +3,10 @@
     <view class="hz-filter-bar__search-box">
       <hz-search value="{{value.keyword}}" placeholder="{{searchPlaceholder}}" bind:search="onSearch" />
     </view>
-    <view wx:if="{{hasFilter}}" class="u-card hz-filter-bar__button" bindtap="onOpen">
-      <text class="hz-icon hz-icon--sliders-horizontal"></text>
-      <view wx:if="{{dot}}" class="hz-filter-bar__dot"></view>
-    </view>
+
   </view>
 
-  <view wx:if="{{tabs.length > 1}}" class="hz-filter-bar__tabs">
+  <view wx:if="{{tabs.length > 1 || hasFilter}}" class="hz-filter-bar__tabs">
     <scroll-view class="hz-filter-bar__scroll" scroll-x enhanced show-scrollbar="{{false}}">
       <view class="hz-filter-bar__track">
         <view
@@ -20,17 +17,17 @@
           bindtap="onTab"
         >
           <text>{{item.text}}</text>
-          <text wx:if="{{item.count > 0}}" class="hz-filter-bar__count">{{format.formatCount(item.count)}}</text>
+          <text wx:if="{{item.code && counts[item.code] !== undefined}}" class="hz-filter-bar__count">{{format.formatCount(item.count)}}</text>
         </view>
       </view>
     </scroll-view>
     <view
-      wx:if="{{!searchPlaceholder && hasFilter}}"
-      class="hz-filter-bar__button hz-filter-bar__button--bare"
+      wx:if="{{hasFilter}}"
+      class="hz-filter-bar__button hz-filter-bar__button--bare {{dot?'hz-filter-bar__button--active':''}}"
       bindtap="onOpen"
     >
-      <text class="hz-icon hz-icon--sliders-horizontal"></text>
-      <view wx:if="{{dot}}" class="hz-filter-bar__dot"></view>
+      <text class="hz-filter-bar__label">{{filterText}}</text>
+      <text wx:if="{{filterCount}}">{{filterCount}}</text><text class="hz-icon hz-icon--sliders-horizontal"></text>
     </view>
   </view>
 
@@ -47,14 +44,7 @@
       </view>
       <hz-button wx:if="{{chips.length > 0}}" kind="text" text="{{clearText}}" bind:press="onClear" />
     </view>
-    <view
-      wx:if="{{!searchPlaceholder && tabs.length <= 1 && hasFilter}}"
-      class="u-card hz-filter-bar__button"
-      bindtap="onOpen"
-    >
-      <text class="hz-icon hz-icon--sliders-horizontal"></text>
-      <view wx:if="{{dot}}" class="hz-filter-bar__dot"></view>
-    </view>
+
   </view>
 </view>
 

@@ -18,14 +18,19 @@ Component({
     type: { type: String, value: 'orderChange' },
     items: { type: Array, value: [] as RecordItem[] },
   },
-  data: { title: '', rows: [] as (RecordItem & { reasonText: string })[] },
+  data: {
+    title: '',
+    timeLabel: '',
+    actorLabel: copy.records.actor,
+    rows: [] as (RecordItem & { reasonText: string })[],
+  },
   observers: {
     'type, items'(type: RecordType, items: RecordItem[]) {
       const rows = items.map((item) => ({
         ...item,
         reasonText: item.reason ? copy.records.reason(item.reason) : '',
       }))
-      this.setData({ title: copy.records[type], rows })
+      this.setData({ title: copy.records[type], timeLabel: copy.records.time[type], rows })
     },
   },
 })

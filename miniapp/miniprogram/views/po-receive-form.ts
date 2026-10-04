@@ -1,10 +1,11 @@
 import { copy, formatMoney, type PoDetail } from '@huazhong/shared'
-import { centsOfText, lineCents, sumCents, textOfCents } from '../core/money'
+import { centsOfText, lineCents, textOfCents } from '../core/money'
 
 export interface ReceiveLine {
   key: string
   materialId: string
   name: string
+  code?: string
   unit: string
   qty: number
   priceText: string
@@ -20,6 +21,7 @@ export function receiveLinesOf(
     key: line.id,
     materialId: line.materialId,
     name: line.name,
+    code: line.code,
     unit: line.unit,
     qty: mode === 'return' ? 0 : (line.receivedQty ?? line.qty) - line.returnedQty,
     priceText: textOfCents(line.priceCents),
@@ -64,9 +66,6 @@ function receiveTagsOf(line: ReceiveLine) {
         ]
       : []),
   ]
-}
-export function receiveAmountOf(lines: ReceiveLine[]): number {
-  return sumCents(lines, (line) => lineCents(line.qty, centsOfText(line.priceText)))
 }
 export function receiveInputOf(lines: ReceiveLine[]) {
   return lines.map((line) => ({

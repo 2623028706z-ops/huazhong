@@ -35,6 +35,7 @@ export const materialBatchSchema = z.object({
   inDate: businessDateSchema,
   qty: z.number().int().positive(),
   leftQty: z.number().int().nonnegative(),
+  ageDays: z.number().int().nonnegative(),
 })
 export const getMaterial = {
   method: 'GET',
@@ -44,7 +45,9 @@ export const getMaterial = {
   response: materialSchema.extend({
     stockQty: z.number().int().nonnegative(),
     batches: z.array(materialBatchSchema),
-    // 仓库：stockIn、stockOut（阶段 5，花材详情直接新建并带上这种花材）
+    oldestAgeDays: z.number().int().nonnegative().nullable(),
+    aged: z.boolean(),
+    // 仓库：edit 放抬头卡、stockIn 放灰字；stockOut/reportLoss 在底栏，均携带这种花材。
     actions: z.array(actionSchema),
   }),
   errors: ['NOT_FOUND'],
@@ -113,10 +116,12 @@ export const warehouseStock = {
   method: 'GET',
   path: '/warehouse/stock',
   grants: ['warehouse'],
-  query: inventoryQuerySchema,
+  query: inventoryQuerySchema.extend({ aged: z.stringbool().optional() }),
   response: pageSchema(
     inventoryItemSchema.extend({
       batches: z.array(materialBatchSchema),
+      oldestAgeDays: z.number().int().nonnegative().nullable(),
+      aged: z.boolean(),
       actions: z.array(actionSchema),
     }),
   ),

@@ -1,6 +1,8 @@
 // 订单写接口（05 章第 4、6 节）：销售新建、确认（定出货日期）、修改、取消；发货确认发货
 import * as z from 'zod'
 import { copy } from '../copy.ts'
+import { redesignCopy } from '../copy-redesign.ts'
+import { ORDER_BATCH_MAX_COUNT } from '../config.ts'
 import {
   centsInputSchema,
   idSchema,
@@ -48,7 +50,7 @@ export const orderCreateSchema = z
   .superRefine(checkProductLines)
 export type OrderCreate = z.infer<typeof orderCreateSchema>
 
-// 修改订单（待发货）和修改并确认（待确认，保存后待发货）
+// 修改待发货订单；待确认统一通过 confirmOrder 的可编辑确认页。
 export const orderUpdateSchema = z
   .object({
     version: versionSchema,
@@ -75,7 +77,17 @@ export const confirmOrder = {
   path: '/orders/:id/confirm',
   grants: ['sales'],
   params: idParamsSchema,
-  body: z.object({ version: versionSchema, shipDate: shipDateSchema }),
+  body: z
+    .object({
+      version: versionSchema,
+      shipDate: shipDateSchema,
+      note: z.string().trim().optional(),
+      reason: z.string().trim().optional(),
+      lines: salesLinesSchema.optional(),
+    })
+    .superRefine((value, ctx) => {
+      if (value.lines) checkProductLines({ lines: value.lines }, ctx)
+    }),
   response: orderDetailSchema,
   errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
 } as const satisfies Endpoint
@@ -164,4 +176,42 @@ export const voidOrder = {
   body: versionBody.extend({ reason: requiredTextSchema(copy.rework.voidReasonRequired) }),
   response: orderDetailSchema,
   errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
+} as const satisfies Endpoint
+
+// 多单逐单事务，明细不可在批量里修改；失败单不回滚已成功的单。
+const batchOrdersSchema = z
+  .array(z.object({ id: idSchema, version: versionSchema }))
+  .min(1)
+  .max(ORDER_BATCH_MAX_COUNT)
+  .superRefine((orders, ctx) => {
+    const seen = new Set<string>()
+    orders.forEach((order, index) => {
+      if (seen.has(order.id))
+        ctx.addIssue({
+          code: 'custom',
+          message: redesignCopy.duplicateOrder,
+          path: [index, 'id'],
+        })
+      seen.add(order.id)
+    })
+  })
+const batchResultSchema = z.object({
+  succeeded: z.array(z.object({ id: idSchema, no: z.string() })),
+  failed: z.array(z.object({ id: idSchema, no: z.string(), reason: z.string() })),
+})
+export const batchConfirmOrders = {
+  method: 'POST',
+  path: '/orders/batch-confirm',
+  grants: ['sales'],
+  body: z.object({ orders: batchOrdersSchema, shipDate: shipDateSchema }),
+  response: batchResultSchema,
+  errors: [],
+} as const satisfies Endpoint
+export const batchShipOrders = {
+  method: 'POST',
+  path: '/orders/batch-ship',
+  grants: ['shipping'],
+  body: z.object({ orders: batchOrdersSchema }),
+  response: batchResultSchema,
+  errors: [],
 } as const satisfies Endpoint

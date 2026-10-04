@@ -3,7 +3,7 @@
 import * as z from 'zod'
 import { AFTER_IMAGE_MAX_COUNT } from '../config.ts'
 import { copy } from '../copy.ts'
-import { apStatuses, moveTypes, stocktakeStatuses, whDocKinds, whDocStatuses } from '../enums.ts'
+import { moveTypes, stocktakeStatuses, whDocKinds, whDocStatuses } from '../enums.ts'
 import {
   businessDateSchema,
   centsInputSchema,
@@ -16,10 +16,11 @@ import {
   timestampSchema,
   unitTotalSchema,
   versionSchema,
+  STORED_INT_MAX,
 } from '../rules.ts'
 import { actionSchema } from './actions.ts'
 import type { Endpoint } from './endpoint.ts'
-import { externalAllocationSchema, paymentAllocationSchema } from './ledger.ts'
+import { statementRefSchema } from './statement-ref.ts'
 import {
   checkDateRange,
   checkDistinct,
@@ -49,18 +50,17 @@ export const whDocCardSchema = z.object({
   actorName: z.string(),
   // 手工入库才有金额和财务状态；出库、报损为 null
   amountCents: centsSchema.nullable(),
-  paidCents: centsSchema.nullable(),
-  unpaidCents: centsSchema.nullable(),
-  apStatus: z.enum(apStatuses).nullable(),
   repriced: z.boolean(),
   actions,
   lockedReason: z.string().nullable(),
+  statement: statementRefSchema.nullable(),
 })
 export type WhDocCard = z.infer<typeof whDocCardSchema>
 
 const whDocLineSchema = z.object({
   id: idSchema,
   materialId: idSchema,
+  code: z.string(),
   name: z.string(),
   unit: z.string(),
   qty: z.number().int().positive(),
@@ -83,7 +83,6 @@ export const whDocDetailSchema = whDocCardSchema.extend({
   voidReason: z.string().nullable(),
   voidedAt: timestampSchema.nullable(),
   voidedBy: z.string().nullable(),
-  allocations: z.array(paymentAllocationSchema),
 })
 export type WhDocDetail = z.infer<typeof whDocDetailSchema>
 
@@ -202,10 +201,10 @@ export const voidWhDoc = {
   errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
 } as const satisfies Endpoint
 
-// 供应商端入库单详情（P5 点手工入库单）：只看本家，明细、改价记录、付款核销（日期、金额）
+// 供应商端入库单详情（P5 点手工入库单）：只看本家，明细、改价记录、所属对账单（无资金核销）
 export const supplierStockInSchema = whDocDetailSchema
-  .omit({ allocations: true, outCategoryId: true, outCategoryName: true, images: true })
-  .extend({ title: z.string(), allocations: z.array(externalAllocationSchema) })
+  .omit({ outCategoryId: true, outCategoryName: true, images: true })
+  .extend({ title: z.string() })
 export const getSupplierStockIn = {
   method: 'GET',
   path: '/supplier/stock-ins/:id',
@@ -336,7 +335,11 @@ export const createStocktake = {
       lines: z.array(
         z.object({
           materialId: idSchema,
-          bookQty: z.number().int().nonnegative(),
+          bookQty: z
+            .number()
+            .int()
+            .nonnegative()
+            .max(STORED_INT_MAX, { error: copy.error.numericRange }),
           actualQty: nonNegativeIntSchema(copy.stock.actualQtyInvalid),
         }),
       ),
@@ -351,7 +354,7 @@ export const createStocktake = {
   idempotent: true,
 } as const satisfies Endpoint
 
-// 出入库记录：时间倒序；批次显示「MM-DD 入库」
+// 出入库记录：单种花材、时间倒序；批次显示完整入库日期。
 export const stockMoveSchema = z.object({
   id: idSchema,
   movedAt: timestampSchema,
@@ -373,11 +376,20 @@ export const listStockMoves = {
   grants: ['warehouse'],
   query: pageQuerySchema
     .extend({
-      type: z.enum(moveTypes).optional(),
-      materialId: idSchema.optional(),
+      direction: z.enum(['in', 'out']).optional(),
+      materialId: idSchema,
       ...dateRangeShape,
     })
     .superRefine(checkDateRange),
   response: pageSchema(stockMoveSchema),
   errors: [],
+} as const satisfies Endpoint
+
+export const getFinanceWhDoc = {
+  method: 'GET',
+  path: '/finance/warehouse-docs/:id',
+  grants: ['finance'],
+  params: idParamsSchema,
+  response: whDocDetailSchema.extend({ actions: z.array(actionSchema).length(0) }),
+  errors: ['NOT_FOUND'],
 } as const satisfies Endpoint

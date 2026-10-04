@@ -13,7 +13,7 @@ import {
 } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
 import { enabledAction } from '../../common/domain/actions.ts'
-import { ledgerToken } from '../../common/ledger.ts'
+import { snapshotToken } from '../../common/domain/token.ts'
 import { lockCustomer } from '../../common/org.ts'
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import type { Db } from '../../../db/client.ts'
@@ -162,7 +162,7 @@ export class CatalogService {
     const preview = {
       copyCount: items.length,
       skipCount: source.items.length - items.length,
-      previewToken: ledgerToken({ source, target }),
+      previewToken: snapshotToken({ source, target }),
     }
     return { source, target, items, preview }
   }
@@ -196,7 +196,7 @@ export class CatalogService {
           targetType: 'customers',
           targetId: customerId,
           targetLabel: snapshot.target.customerName,
-          after: { 来源: snapshot.source.customerName, 产品数: snapshot.items.length },
+          after: { 来源: snapshot.source.customerName, 产品数: String(snapshot.items.length) },
         })
         ctx.notify([{ topic: `catalog:${customerId}`, version: null }])
         return catalogOf(ctx.tx, customerId)

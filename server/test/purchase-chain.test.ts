@@ -34,12 +34,14 @@ test('D09 付款状态数量只按日期统计，状态筛选和分页不改变�
   const firstPo = dataOf<PoDetail>(
     await warehouse.post(`/purchase-orders/${source.id}/receive`, receiveInput(source)),
   )
-  const first = dataOf<PaymentDetail>(await finance.post('/finance/payments', payInput(firstPo)))
+  const first = dataOf<PaymentDetail>(
+    await finance.post('/finance/payments', await payInput(s, firstPo)),
+  )
   const secondSource = await createPo(s)
   const secondPo = dataOf<PoDetail>(
     await warehouse.post(`/purchase-orders/${secondSource.id}/receive`, receiveInput(secondSource)),
   )
-  dataOf(await finance.post('/finance/payments', payInput(secondPo)))
+  dataOf(await finance.post('/finance/payments', await payInput(s, secondPo)))
   dataOf(
     await finance.post(`/finance/payments/${first.id}/void`, {
       version: first.version,
@@ -114,20 +116,19 @@ test('B02–B09 完整采购、少收链路三家应付和模块日志一致', a
   const suppliers = dataOf<OutputOf<typeof contract.listFinanceSuppliers>>(
     await finance.get('/finance/suppliers'),
   )
-  expect(suppliers.items.map((row) => [row.supplierName, row.unpaidCents])).toEqual(
+  expect(suppliers.items.map((row) => [row.partyName, row.unstatementedCents])).toEqual(
     expect.arrayContaining([
       ['春禾花材', 241400],
       ['云岭花卉', 96000],
       ['滇花源', 79000],
     ]),
   )
-  const payable = dataOf<OutputOf<typeof contract.getApDocument>>(
-    await finance.get(`/finance/ap-documents/po/${spring.id}`),
+  const payable = dataOf<OutputOf<typeof contract.getFinancePurchaseOrder>>(
+    await finance.get(`/finance/purchase-orders/${spring.id}`),
   )
   expect(payable).toMatchObject({
-    payableCents: 241400,
-    amountCents: 255600,
-    apStatus: 'unpaid',
+    amountCents: 241400,
+    statement: null,
     lines: [{ qty: 180, receivedQty: 170 }],
   })
   const extra = await createPo(s)
@@ -163,7 +164,8 @@ test('B02–B09 完整采购、少收链路三家应付和模块日志一致', a
 test('D10 D11 收付款方式停用后不改历史记录、不能再付款，付款日志可见', async () => {
   const finance = await s.as('u6'),
     po = await poOf(s, 'PO-260928-004')
-  const payment = dataOf<PaymentDetail>(await finance.post('/finance/payments', payInput(po)))
+  const input = await payInput(s, po)
+  const payment = dataOf<PaymentDetail>(await finance.post('/finance/payments', input))
   const methods = dataOf<OutputOf<typeof contract.listMethods>>(
     await finance.get('/finance/methods'),
   )
@@ -178,7 +180,7 @@ test('D10 D11 收付款方式停用后不改历史记录、不能再付款，付
       reason: '付错供应商账户',
     }),
   )
-  expect((await finance.post('/finance/payments', payInput(po))).body.error).toMatchObject({
+  expect((await finance.post('/finance/payments', input)).body.error).toMatchObject({
     code: 'BUSINESS_RULE',
     message: copy.finance.methodDisabled,
   })
@@ -221,7 +223,7 @@ test('F05 停用供应商保留绑定、取消邀请、旧单可收货，重新�
   )
   expect(dataOf<Me>(await external.get('/me'))).toMatchObject({
     id: supplier.account.id,
-    landing: 'supplier_home',
+    landing: 'supplier_invites',
   })
   const restored = await connect(s.t, external.openid)
   await restored.sync()

@@ -2,18 +2,17 @@
      数据都由 views/*.ts 换好成文字，这里不做格式化 -->
 <!-- 信息卡：单号 + 状态，下面「标签　值」一行一项；传了 heading 就是一组（小标题 + 卡片） -->
 <template name="info-card">
+  <!-- 可不传：title、status、statusKind -->
   <view class="u-card u-info">
     <view wx:if="{{title}}" class="u-info__head">
       <text class="u-info__title">{{title}}</text>
       <hz-status wx:if="{{status}}" kind="{{statusKind}}" code="{{status}}" />
     </view>
-    <view wx:for="{{rows}}" wx:key="label" class="u-sheet-row">
-      <text class="u-sheet-row__label">{{item.label}}</text>
-      <text class="u-sheet-row__value">{{item.value}}</text>
-    </view>
+    <hz-info-rows rows="{{rows}}" />
   </view>
 </template>
 <template name="info">
+  <!-- 可不传：heading、title、status、statusKind -->
   <view wx:if="{{heading}}" class="u-section">
     <text class="u-section__title">{{heading}}</text>
     <template is="info-card" data="{{title, status, statusKind, rows}}" />
@@ -29,10 +28,13 @@
 </template>
 <!-- 底部操作区：按 core/actions 的 buttonsOf 显示，点了发 onAction（data-code 是操作码） -->
 <template name="buttons">
+  <!-- 可不传：busy（按钮只打开弹层或跳页时） -->
+  <view wx:for="{{buttons}}" wx:key="code" wx:if="{{index >= 2}}" class="u-detail-third"><hz-button kind="text" text="{{item.text}}" disabled="{{item.disabled}}" reason="{{item.reason}}" data-code="{{item.code}}" bind:press="onAction" /></view>
   <hz-action-bar wx:if="{{buttons.length > 0}}">
     <hz-button
       wx:for="{{buttons}}"
       wx:key="code"
+      wx:if="{{index < 2}}"
       kind="{{item.kind}}"
       text="{{item.text}}"
       disabled="{{item.disabled}}"
@@ -43,42 +45,24 @@
     />
   </hz-action-bar>
 </template>
-<!-- 收款详情（F3、F8）：信息卡 → 核销明细 → 作废后的提示 -->
-<template name="receipt">
-  <hz-notice wx:if="{{notice}}" text="{{notice}}" />
-  <template is="info" data="{{...info}}" />
-  <view wx:if="{{allocs.length > 0}}" class="u-section">
-    <text class="u-section__title">{{allocsHeading}}</text>
-    <view class="u-card u-info">
-      <view wx:for="{{allocs}}" wx:key="id" class="u-info__line">
-        <view class="u-info__head">
-          <text>{{item.name}}</text>
-          <text class="u-serif-amount u-amount">{{item.amount}}</text>
-        </view>
-        <text class="u-info__meta">{{item.sub}}</text>
-      </view>
-    </view>
-  </view>
-</template>
 <!-- 订单只读内容（S6、X3、H3 只读）：数据是 views/order.ts 的 orderViewOf。
      信息卡 → 产品明细（明细 + 金额）→ 发货信息 → 变更记录 → 取消信息 -->
 <template name="order-body">
-  <hz-notice wx:if="{{notice}}" text="{{notice}}" />
+  <hz-notice wx:if="{{cancelNotice}}" text="{{cancelNotice}}" /><hz-notice wx:if="{{notice}}" text="{{notice}}" />
+  <hz-progress steps="{{progress}}" />
   <template is="info" data="{{...info}}" />
   <view class="u-section">
-    <text class="u-section__title">{{linesHeading}}</text>
-    <hz-line-item lines="{{lines}}" quantity-only="{{!amountRows.length}}" />
-    <template wx:if="{{amountRows.length > 0}}" is="info-card" data="{{rows: amountRows}}" />
+    <hz-line-item title="{{linesHeading}}" qty-label="{{qtyLabel}}" note="{{shipNote}}" note-label="{{shipNoteLabel}}" lines="{{lines}}" quantity-only="{{quantityOnly}}" />
+
   </view>
-  <template wx:if="{{ship.rows.length > 0}}" is="info" data="{{...ship}}" />
-  <hz-records wx:if="{{changes.length > 0}}" type="orderChange" items="{{changes}}" />
+  <hz-records wx:if="{{changes.length > 0}}" type="orderChange" items="{{changes}}" /><view wx:elif="{{showChanges}}" class="u-card u-info"><text class="u-section__title">{{changesHeading}}</text><text class="u-info__meta">{{noChange}}</text></view>
   <template wx:if="{{reason.rows.length > 0}}" is="info" data="{{...reason}}" />
   <template wx:if="{{void.rows.length > 0}}" is="info" data="{{...void}}" />
   <template wx:for="{{requests}}" wx:key="id" is="info-card" data="{{rows: item.rows}}" />
-  <view wx:if="{{allocations.length}}" class="u-section"><text class="u-section__title">核销记录</text><view class="u-card u-info"><view wx:for="{{allocations}}" wx:key="index" class="u-sheet-row"><text>{{item.date}}</text><text class="u-serif-amount">{{item.amount}}</text></view></view></view>
 </template>
 <!-- 售后只读内容（S7 弹层、X6、F3 弹层）：信息卡 → 售后明细 → 关闭或作废信息 -->
 <template name="after-body">
+  <hz-notice wx:if="{{notice}}" text="{{notice}}" /><hz-progress steps="{{progress}}" />
   <template is="info" data="{{...info}}" />
   <template is="after-lines" data="{{lines, heading: linesHeading}}" />
   <template wx:if="{{reason.rows.length > 0}}" is="info" data="{{...reason}}" />

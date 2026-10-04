@@ -9,8 +9,9 @@ import type {
 } from 'miniprogram-automator/out/Element.js'
 import { afterAll, afterEach, beforeAll, beforeEach, expect } from 'vitest'
 import type { SeedAccountKey } from '../../db/seed/data.ts'
-import { dataOf, startSales, TODAY, type SalesApp } from '../support/sales.ts'
-import type { contract, OutputOf, PoDetail } from '@huazhong/shared'
+import { startSales, type SalesApp } from '../support/sales.ts'
+import type { PoDetail } from '@huazhong/shared'
+import { payInput } from '../support/purchase.ts'
 
 export type MiniProgram = Awaited<ReturnType<typeof automator.connect>>
 export type Page = NonNullable<Awaited<ReturnType<MiniProgram['currentPage']>>>
@@ -33,36 +34,9 @@ declare const wx: {
 declare function getApp(): { uiRequests: unknown[] }
 export const screenshotDir = process.env.HZ_UI_SCREENSHOTS ?? resolve('.artifacts/stage4-screens')
 
-export async function paymentInput(
-  server: SalesApp,
-  document: PoDetail,
-  amountCents = document.payableCents,
-) {
-  const finance = await server.as('u6')
-  const ledger = dataOf<OutputOf<typeof contract.listUnpaidDocuments>>(
-    await finance.get(`/finance/suppliers/${document.supplierId}/unpaid-docs`),
-  )
-  return {
-    supplierId: document.supplierId,
-    ledgerToken: ledger.ledgerToken,
-    expected: ledger.items.map((item) => ({
-      docType: item.docType,
-      docId: item.docId,
-      version: item.version,
-      unpaidCents: item.unpaidCents,
-    })),
-    allocs: [
-      {
-        docType: 'po',
-        docId: document.id,
-        amountCents: Math.min(document.unpaidCents, amountCents),
-      },
-    ],
-    amountCents,
-    payDate: TODAY,
-    methodName: '微信',
-    note: '',
-  }
+export async function paymentInput(server: SalesApp, document: PoDetail, amountCents?: number) {
+  const input = await payInput(server, document)
+  return { ...input, amountCents: amountCents ?? input.amountCents }
 }
 
 export async function connectMini(): Promise<MiniProgram> {

@@ -1,14 +1,13 @@
 // 筛选栏（02 章第 4 节，方案丙）：搜索 + 筛选按钮；状态标签行（等待类带数）；设了条件出圆点和胶囊；
 // 筛选弹层里日期分段和对象单选。改一项立即发 change（detail 是新的 FilterValue），弹层不关。
 // 页面拿到 value 后用 core/filter 的 queryOf 换成列表接口的条件，并把新 value 传回来
-import { copy, shanghaiDateOf } from '@huazhong/shared'
+import { copy, redesignCopy, statusOf, shanghaiDateOf } from '@huazhong/shared'
 import type { DetailEvent, IndexEvent, KeyEvent } from '../../core/events'
 import {
   chipsOf,
   clearConditions,
   dimensionRowsOf,
   emptyFilter,
-  hasConditions,
   optionRowsOf,
   pick,
   removeChip,
@@ -27,9 +26,14 @@ Component({
     statuses: { type: Array, value: [] as string[] },
     counts: { type: Object, value: {} },
     countAll: { type: Boolean, value: false },
+    endedTabs: { type: Boolean, value: false },
     // 有值才出搜索框
     searchPlaceholder: { type: String, value: '' },
     // 有值才有日期筛选，例如「下单日期」
+    datePresets: {
+      type: Array,
+      value: ['all', 'today', 'last7Days', 'thisMonth', 'custom'] as string[],
+    },
     dateLabel: { type: String, value: '' },
     dimensions: { type: Array, value: [] as FilterDimension[] },
     value: { type: Object, value: emptyFilter },
@@ -39,6 +43,7 @@ Component({
     tabs: [] as StatusTab[],
     chips: [] as { key: string; text: string }[],
     dot: false,
+    filterCount: 0,
     hasFilter: false,
     show: false,
     // main：日期和对象；pick：某个对象的单选列表
@@ -54,18 +59,19 @@ Component({
     pickKeyword: '',
     options: [] as { id: string; name: string; picked: boolean }[],
     title: copy.title.filter,
+    filterText: redesignCopy.filter,
     clearText: copy.action.clear,
     fromLabel: copy.filter.dateFrom,
     toLabel: copy.filter.dateTo,
   },
   observers: {
-    'statusKind, statuses, counts, countAll'(
-      kind: string,
-      statuses: string[],
-      counts: Record<string, number>,
-      countAll: boolean,
-    ) {
-      this.setData({ tabs: tabsOf(kind, statuses, counts, countAll) })
+    'statusKind, statuses, counts, countAll, endedTabs'() {
+      const { statusKind: kind, statuses, counts, countAll, endedTabs } = this.data
+      this.setData({
+        tabs: tabsOf(kind, statuses, counts, countAll).filter(
+          (tab) => endedTabs || !tab.code || statusOf(kind, tab.code)?.tone !== 'ended',
+        ),
+      })
     },
     'value, dimensions, dateLabel'() {
       this.refresh()
@@ -78,19 +84,47 @@ Component({
     },
   },
   methods: {
+    endedStatus() {
+      return (
+        !this.data.endedTabs &&
+        statusOf(this.data.statusKind, this.data.value.status)?.tone === 'ended'
+      )
+    },
+    allDimensions(): FilterDimension[] {
+      const options = (this.data.endedTabs ? [] : this.data.statuses)
+        .filter((code) => statusOf(this.data.statusKind, code)?.tone === 'ended')
+        .map((id) => ({ id, name: statusOf(this.data.statusKind, id)?.text ?? id }))
+      return [
+        ...this.data.dimensions,
+        ...(options.length ? [{ key: '__status', label: copy.field.status, options }] : []),
+      ]
+    },
+    filterValue(): FilterValue {
+      return {
+        ...this.current(),
+        picks: {
+          ...this.current().picks,
+          ...(this.endedStatus() ? { __status: this.current().status } : {}),
+        },
+      }
+    },
     current(): FilterValue {
       return this.data.value
     },
     refresh() {
       const value = this.current()
-      const dimensions = this.data.dimensions
+      const dimensions = this.allDimensions()
       const { today, show, active } = this.data
       this.setData({
-        chips: chipsOf(value, dimensions, today),
-        dot: hasConditions(value),
+        chips: chipsOf(this.filterValue(), dimensions, today),
+        dot: value.date !== 'all' || Object.values(value.picks).some(Boolean) || this.endedStatus(),
+        filterCount:
+          Number(value.date !== 'all') +
+          Object.values(value.picks).filter(Boolean).length +
+          Number(this.endedStatus()),
         hasFilter: Boolean(this.data.dateLabel) || dimensions.length > 0,
-        segments: segmentsOf(value, today),
-        rows: dimensionRowsOf(value, dimensions),
+        segments: segmentsOf(value, today).filter((row) => this.data.datePresets.includes(row.key)),
+        rows: dimensionRowsOf(this.filterValue(), dimensions),
         // 弹层开着、正在选自定义日期时保持「自定义」选中
         active: show && active === 'custom' ? 'custom' : value.date,
       })
@@ -143,7 +177,7 @@ Component({
       this.emit({ ...this.current(), date: 'custom', range: { from: draftFrom, to: draftTo } })
     },
     onDimension(event: KeyEvent) {
-      const dimension = this.data.dimensions.find(
+      const dimension = this.allDimensions().find(
         (item) => item.key === event.currentTarget.dataset.key,
       )
       if (!dimension) return
@@ -158,9 +192,10 @@ Component({
     },
     refreshOptions() {
       const { pickKey, pickKeyword } = this.data
-      const dimension = this.data.dimensions.find((item) => item.key === pickKey)
+      const dimension = this.allDimensions().find((item) => item.key === pickKey)
       if (!dimension) return
-      const pickedId = this.current().picks[pickKey] ?? ''
+      const pickedId =
+        pickKey === '__status' ? this.current().status : (this.current().picks[pickKey] ?? '')
       this.setData({ options: optionRowsOf(dimension, pickedId, pickKeyword) })
     },
     onPickSearch(event: DetailEvent<string>) {
@@ -169,13 +204,24 @@ Component({
     },
     onPick(event: KeyEvent) {
       this.setData({ view: 'main' })
-      this.emit(pick(this.current(), this.data.pickKey, event.currentTarget.dataset.key))
+      this.emit(
+        this.data.pickKey === '__status'
+          ? { ...this.current(), status: event.currentTarget.dataset.key }
+          : pick(this.current(), this.data.pickKey, event.currentTarget.dataset.key),
+      )
     },
     onRemoveChip(event: KeyEvent) {
-      this.emit(removeChip(this.current(), event.currentTarget.dataset.key))
+      this.emit(
+        event.currentTarget.dataset.key === '__status'
+          ? { ...this.current(), status: '' }
+          : removeChip(this.current(), event.currentTarget.dataset.key),
+      )
     },
     onClear() {
-      this.emit(clearConditions(this.current()))
+      this.emit({
+        ...clearConditions(this.current()),
+        status: this.endedStatus() ? '' : this.current().status,
+      })
     },
   },
 })

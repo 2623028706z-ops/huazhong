@@ -55,7 +55,7 @@ describe('员工列表', () => {
   test('只列员工和管理员，按新增先后；列表级有「新增员工」', async () => {
     const page = (await list()).body.data as StaffPage
     expect(page.items.map((item) => item.name)).toEqual([
-      '周总',
+      '瑞瑞',
       '李敏',
       '王芳',
       '周宁',
@@ -131,7 +131,7 @@ describe('新增员工', () => {
 
 describe('修改员工', () => {
   test('唯一的管理员不能降级、不能停用', async () => {
-    const zhou = await staffNamed('周总')
+    const zhou = await staffNamed('瑞瑞')
     const demote = await update(zhou.id, { ...edit(zhou), admin: false, modules: ['sales'] })
     expect(demote.body.error?.message).toBe('至少要保留一个启用的管理员')
     const disable = await update(zhou.id, { ...edit(zhou), enabled: false })

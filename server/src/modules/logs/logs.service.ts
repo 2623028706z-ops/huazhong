@@ -17,6 +17,7 @@ import { pageOf } from '../../common/domain/cursor.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import { DB } from '../../common/db.ts'
 import { beforeCursor } from '../../common/page.ts'
+import { logViewOf } from '../../common/domain/log-view.ts'
 
 interface LogQuery {
   module?: ModuleKey | undefined
@@ -25,8 +26,6 @@ interface LogQuery {
   cursor?: string | undefined
   limit: number
 }
-
-type LogView = Record<string, string> | null
 
 // 能看哪些日志：管理员不限（module 为空 = 公共也在内）；员工只看自己模块，不含公共
 function visibleTo(viewer: Viewer): SQL | undefined {
@@ -133,8 +132,8 @@ export class LogsService {
     return {
       ...toItem(row),
       reason: row.reason,
-      before: row.before as LogView,
-      after: row.after as LogView,
+      before: logViewOf(row.before),
+      after: logViewOf(row.after),
     }
   }
 }

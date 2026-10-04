@@ -1,6 +1,2 @@
-import { copy } from '@huazhong/shared'
-import { apStatementPage } from '../../../../views/ap-statement'
-Page({
-  ...apStatementPage,
-  data: { ...apStatementPage.data, own: true, title: copy.screen.title.statement },
-})
+import { externalBusinessPage } from '../../../../views/external-business'
+Page(externalBusinessPage(true, 'statements'))

@@ -21,6 +21,11 @@ function formOf(m: Material) {
 function rowOf(m: Material) {
   return {
     id: m.id,
+    fields: [
+      { label: copy.field.code, value: m.code },
+      { label: copy.field.unit, value: m.unit },
+      { label: copy.field.category, value: m.categoryName, wide: true },
+    ],
     title: m.name,
     total: m.unit,
     meta: [m.code, m.categoryName].join(copy.separator),
@@ -68,8 +73,10 @@ Page({
   list: null as PagedList<Material> | null,
   material: null as Material | null,
   key: '',
+  editId: '',
   categoryKey: '',
-  onLoad() {
+  onLoad(query: Record<string, string | undefined>) {
+    this.editId = query.editId ?? ''
     this.list = listOf(
       this,
       async (cursor) => {
@@ -95,6 +102,10 @@ Page({
   },
   onShow() {
     void this.loadCategories()
+    if (this.editId) {
+      void this.onOpen({ currentTarget: { dataset: { key: this.editId } } } as KeyEvent)
+      this.editId = ''
+    }
     showList(this, ['stock'])
   },
   onUnload() {

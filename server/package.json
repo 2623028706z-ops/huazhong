@@ -9,8 +9,7 @@
     "build": "tsc -b tsconfig.build.json && node -e \"require('node:fs').cpSync('db/migrations', 'dist/db/migrations', { recursive: true })\"",
     "start": "node dist/src/main.js",
     "db:generate": "drizzle-kit generate",
-    "db:reset": "node --env-file-if-exists=.env dist/db/seed/run.js",
-    "db:upgrade-finance:local": "node --conditions=source db/upgrade-finance.ts"
+    "db:reset": "node --env-file-if-exists=.env dist/db/seed/run.js"
   },
   "dependencies": {
     "@huazhong/shared": "workspace:*",

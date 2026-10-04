@@ -3,6 +3,7 @@ import {
   appError,
   contract,
   copy,
+  type OutputOf,
   type OrderCreate,
   type OrderDetail,
   type OrderShip,
@@ -10,7 +11,7 @@ import {
   type OrderUpdate,
   type ShippingDetail,
 } from '@huazhong/shared'
-import { Injectable } from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { and, eq } from 'drizzle-orm'
 import {
   customers,
@@ -20,6 +21,8 @@ import {
   orderCancelRequests,
 } from '../../../db/schema/index.ts'
 import { Clock } from '../../common/clock.ts'
+import { DB } from '../../common/db.ts'
+import type { Db } from '../../../db/client.ts'
 import { gateAction } from '../../common/domain/actions.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import { WriteService, type WriteContext } from '../../common/write.service.ts'
@@ -41,6 +44,8 @@ import { orderDetailOf } from './order-query.ts'
 import { lockOrder } from './order-rows.ts'
 import { shippingDetail } from './shipping-view.ts'
 import { found } from '../../common/scope.ts'
+import { confirmationOf, saveConfirmation, type ConfirmInput } from './order-confirm.ts'
+import { batchOrders } from './batch-order-writes.ts'
 
 // 这张单已经不能做这个操作时的一句话（按现在的状态）
 function closedMessage(status: OrderStatus): string {
@@ -65,6 +70,7 @@ function shipMissing(status: OrderStatus): string {
 @Injectable()
 export class SalesOrderWrites {
   constructor(
+    @Inject(DB) private readonly db: Db,
     private readonly writes: WriteService,
     private readonly clock: Clock,
   ) {}
@@ -113,11 +119,7 @@ export class SalesOrderWrites {
     )
   }
 
-  confirm(
-    viewer: Viewer,
-    id: number,
-    input: { version: number; shipDate: string },
-  ): Promise<OrderDetail> {
+  confirm(viewer: Viewer, id: number, input: ConfirmInput): Promise<OrderDetail> {
     return this.writes.run(viewer, async (ctx) => {
       await lockOrder(ctx.tx, viewer, id)
       const before = await this.detail(ctx, viewer, id)
@@ -127,24 +129,51 @@ export class SalesOrderWrites {
         missing: closedMessage(before.status),
         stale: copy.order.stale,
       })
-      await ctx.tx
-        .update(orders)
-        .set({
-          status: 'to_ship',
-          shipDate: input.shipDate,
-          confirmedBy: viewer.accountId,
-          confirmedAt: this.clock.now(),
-          version: orderVersionPlusOne,
-        })
-        .where(eq(orders.id, id))
+      const lines = await this.nextLines(ctx, before, {
+        lines:
+          input.lines ??
+          before.lines.map((line) => ({
+            productId: line.productId,
+            qty: line.qty,
+            priceCents: line.priceCents,
+          })),
+      })
+      const change = confirmationOf(before, input, lines)
+      await saveConfirmation(ctx, viewer, { id, input, change, now: this.clock.now() })
+      const { beforeState, afterState, items } = change
       const detail = await this.detail(ctx, viewer, id)
       await ctx.log({
         ...orderLog(detail, copy.log.action.confirmOrder),
-        after: { [copy.field.shipDate]: input.shipDate },
+        reason: input.reason ?? '',
+        before: items.length ? orderLogView(beforeState) : null,
+        after: items.length ? orderLogView(afterState) : { [copy.field.shipDate]: input.shipDate },
       })
       notifyOrder(ctx, detail, ['todo:sales', 'todo:shipping'])
       return detail
     })
+  }
+
+  async batchConfirm(
+    viewer: Viewer,
+    input: { orders: { id: string; version: number }[]; shipDate: string },
+  ): Promise<OutputOf<typeof contract.batchConfirmOrders>> {
+    return batchOrders(this.db, input.orders, (order) =>
+      this.confirm(viewer, Number(order.id), { version: order.version, shipDate: input.shipDate }),
+    )
+  }
+
+  async batchShip(
+    viewer: Viewer,
+    input: { orders: { id: string; version: number }[] },
+  ): Promise<OutputOf<typeof contract.batchShipOrders>> {
+    return batchOrders(this.db, input.orders, (order) =>
+      this.ship(
+        viewer,
+        Number(order.id),
+        { version: order.version, shipNote: '', lines: [] },
+        true,
+      ),
+    )
   }
 
   // 销售新建：直接是待发货，下单日期服务端写今天
@@ -175,14 +204,13 @@ export class SalesOrderWrites {
     return this.detail(ctx, viewer, row.id)
   }
 
-  // 待确认 → 修改并确认（保存后待发货）；待发货 → 修改订单
+  // 修改待发货订单；待确认统一走 confirm。
   update(viewer: Viewer, id: number, input: OrderUpdate): Promise<OrderDetail> {
     return this.writes.run(viewer, async (ctx) => {
       await lockOrder(ctx.tx, viewer, id)
       const before = await this.detail(ctx, viewer, id)
-      const confirming = before.status === 'pending_confirm'
       gateAction(before, {
-        code: confirming ? 'editAndConfirm' : 'edit',
+        code: 'edit',
         version: input.version,
         missing: closedMessage(before.status),
         stale: copy.order.stale,
@@ -204,20 +232,19 @@ export class SalesOrderWrites {
           shipDate: input.shipDate,
           note: input.note,
           version: orderVersionPlusOne,
-          ...(confirming ? { confirmedBy: viewer.accountId, confirmedAt: this.clock.now() } : {}),
         })
         .where(eq(orders.id, id))
       await replaceLines(ctx.tx, { id, createdBy: viewer.accountId }, lines)
       await insertChange(ctx, id, items, input.reason)
       const detail = await this.detail(ctx, viewer, id)
-      const action = confirming ? copy.log.action.editAndConfirm : copy.log.action.editOrder
+      const action = copy.log.action.editOrder
       await ctx.log({
         ...orderLog(detail, action),
         reason: input.reason,
         before: orderLogView(beforeState),
         after: orderLogView(afterState),
       })
-      notifyOrder(ctx, detail, confirming ? ['todo:sales', 'todo:shipping'] : ['todo:shipping'])
+      notifyOrder(ctx, detail, ['todo:shipping'])
       return detail
     })
   }
@@ -226,7 +253,7 @@ export class SalesOrderWrites {
   private async nextLines(
     ctx: WriteContext,
     before: OrderDetail,
-    input: OrderUpdate,
+    input: Pick<OrderUpdate, 'lines'>,
   ): Promise<NewLine[]> {
     const existing = new Map(before.lines.map((line) => [Number(line.productId), line]))
     const kept = input.lines.map((line) => existing.get(Number(line.productId)))
@@ -297,7 +324,12 @@ export class SalesOrderWrites {
   }
 
   // 出货日期到了才能发；打开后销售改过单或取消了 → STALE
-  ship(viewer: Viewer, id: number, input: OrderShip): Promise<ShippingDetail> {
+  ship(
+    viewer: Viewer,
+    id: number,
+    input: OrderShip,
+    originalQuantities = false,
+  ): Promise<ShippingDetail> {
     return this.writes.run(viewer, async (ctx) => {
       await lockOrder(ctx.tx, viewer, id)
       const before = await this.detail(ctx, viewer, id)
@@ -308,7 +340,13 @@ export class SalesOrderWrites {
         stale: copy.order.shipChanged,
       })
       const lines = before.lines.map((line) => ({ id: Number(line.id), qty: line.qty }))
-      const qtys = shippedQtysOf(lines, input.lines, input.shipNote)
+      const qtys = shippedQtysOf(
+        lines,
+        originalQuantities
+          ? lines.map((line) => ({ orderLineId: String(line.id), shippedQty: line.qty }))
+          : input.lines,
+        input.shipNote,
+      )
       for (const [lineId, shippedQty] of qtys) {
         await ctx.tx.update(orderLines).set({ shippedQty }).where(eq(orderLines.id, lineId))
       }

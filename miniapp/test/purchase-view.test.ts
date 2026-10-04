@@ -6,6 +6,7 @@ import { inviteFormOf, purchaseLineViews } from '../miniprogram/views/purchase-f
 
 function inviteOf(patch: Partial<InviteDetail> = {}): InviteDetail {
   return {
+    supplyAmountCents: null,
     id: '1',
     no: 'YQ-260929-001',
     version: 1,
@@ -13,6 +14,7 @@ function inviteOf(patch: Partial<InviteDetail> = {}): InviteDetail {
     supplierId: '1',
     supplierName: '春禾花材',
     buyerName: '周宁',
+    buyerPhone: '13700000004',
     status: 'pending',
     units: [{ unit: '枝', qty: 70 }],
     materialNames: ['向日葵'],
@@ -24,7 +26,17 @@ function inviteOf(patch: Partial<InviteDetail> = {}): InviteDetail {
     cancelNote: null,
     cancelledAt: null,
     submittedAt: null,
-    lines: [{ id: '1', materialId: '1', name: '向日葵', unit: '枝', needQty: 70, enabled: true }],
+    lines: [
+      {
+        id: '1',
+        materialId: '1',
+        name: '向日葵',
+        code: 'HC-0003',
+        unit: '枝',
+        needQty: 70,
+        enabled: true,
+      },
+    ],
     supply: [],
     ...patch,
   }
@@ -50,11 +62,35 @@ describe('表单错误和合计', () => {
         { unit: '盆', qty: 2 },
         { unit: '枝', qty: 50 },
       ]),
-    ).toBe('¥960.00 · 共 110 枝 · 2 盆')
+    ).toBe('¥960.00　　共 110 枝　　2 盆')
   })
 })
 
 describe('邀请详情展示', () => {
+  it('采购关联最后一行按查看身份跳整页，采购电话仅供应商侧可拨打', () => {
+    const invite = inviteOf({
+      status: 'submitted',
+      purchaseOrderId: '7',
+      purchaseOrderNo: 'PO-7',
+      purchaseOrderStatus: 'to_receive',
+    })
+    const supplier = inviteViewOf(invite, true).info.rows
+    expect(supplier).toContainEqual({
+      label: '采购',
+      value: invite.buyerName,
+      phone: invite.buyerPhone,
+    })
+    expect(supplier.at(-1)).toMatchObject({
+      label: '采购单',
+      url: '/packages/supplier/pages/po-detail/index?id=7',
+    })
+    const staff = inviteViewOf(invite).info.rows
+    expect(staff.find((row) => row.label === '采购')).not.toHaveProperty('phone')
+    expect(staff.at(-1)).toMatchObject({
+      label: '采购单',
+      url: '/packages/purchase/pages/order-detail/index?id=7',
+    })
+  })
   it('待填报保留需求数量，停用行只读且可标错', () => {
     const invite = inviteOf()
     invite.lines = invite.lines.map((line) => ({ ...line, enabled: false }))
@@ -79,13 +115,22 @@ describe('邀请详情展示', () => {
         status: 'submitted',
         purchaseOrderNo: 'PO-260929-006',
         purchaseOrderStatus: 'cancelled',
-        supply: [{ materialId: '1', name: '向日葵', unit: '枝', qty: 65, priceCents: 350 }],
+        supply: [
+          {
+            materialId: '1',
+            name: '向日葵',
+            code: 'HC-0003',
+            unit: '枝',
+            qty: 65,
+            priceCents: 350,
+          },
+        ],
       }),
     )
     expect(view.info.status).toBe('submitted')
-    expect(view.poLink).toBe('采购单 PO-260929-006 · 已取消')
+    expect(view.poLink).toBe('采购单 PO-260929-006　　已取消')
     expect(view.lines[0]).toMatchObject({
-      headMeta: '需求 70 枝',
+      meta: '需求 70 枝',
       subText: '供 65 枝 × ¥3.50',
       amountCents: 22750,
     })
@@ -95,7 +140,16 @@ describe('邀请详情展示', () => {
     const view = inviteViewOf(
       inviteOf({
         status: 'submitted',
-        supply: [{ materialId: '2', name: '尤加利', unit: '枝', qty: 10, priceCents: 200 }],
+        supply: [
+          {
+            materialId: '2',
+            name: '尤加利',
+            code: 'HC-0005',
+            unit: '枝',
+            qty: 10,
+            priceCents: 200,
+          },
+        ],
       }),
     )
     expect(view.lines).toMatchObject([

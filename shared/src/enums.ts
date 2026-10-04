@@ -21,9 +21,9 @@ export const storeInviteStatuses = ['pending', 'used', 'expired', 'voided'] as c
 export const afterStatuses = ['pending', 'processed', 'closed', 'voided'] as const
 export const afterOrigins = ['store', 'sales'] as const
 export const afterReasons = ['damaged', 'qty_mismatch', 'quality', 'other'] as const
+export const statementKinds = ['customer', 'supplier'] as const
+export const statementStatuses = ['unsettled', 'settled', 'voided'] as const
 export const recordStatuses = ['valid', 'voided'] as const
-export const allocKinds = ['direct', 'prepaid'] as const
-export const allocationStatuses = ['valid', 'revoked'] as const
 export const inviteStatuses = ['pending', 'submitted', 'cancelled'] as const
 export const poStatuses = ['to_receive', 'received', 'rejected', 'cancelled', 'voided'] as const
 export const whDocKinds = ['in', 'out', 'loss'] as const
@@ -51,8 +51,6 @@ export const filePurposes = ['after_image', 'product_image', 'loss_image'] as co
 export const todoModules = ['sales', 'shipping', 'purchase', 'warehouse', 'finance'] as const
 
 // 查询时算出来、不存库的状态
-export const payStatuses = ['unpaid', 'partial', 'paid'] as const
-export const apStatuses = ['unpaid', 'partial', 'paid', 'no_pay'] as const
 
 // 单号前缀（04 章第 1 节）
 export const docPrefixes = [
@@ -67,16 +65,14 @@ export const docPrefixes = [
   'PD',
   'FK',
   'TK',
+  'DZ',
 ] as const
 
 export type OrderStatus = (typeof orderStatuses)[number]
 export type OrderOrigin = (typeof orderOrigins)[number]
 export type AfterStatus = (typeof afterStatuses)[number]
 export type AfterReason = (typeof afterReasons)[number]
-export type PayStatus = (typeof payStatuses)[number]
 export type RecordStatus = (typeof recordStatuses)[number]
-export type AllocKind = (typeof allocKinds)[number]
-export type AllocationStatus = (typeof allocationStatuses)[number]
 export type FilePurpose = (typeof filePurposes)[number]
 export type TodoModule = (typeof todoModules)[number]
 export type AccountType = (typeof accountTypes)[number]

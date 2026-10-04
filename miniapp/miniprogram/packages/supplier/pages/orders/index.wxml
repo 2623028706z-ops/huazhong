@@ -1,2 +1,1 @@
-<import src="/views/po-list.wxml" />
-<template is="po-list" data="{{title, kind, statusKind, statuses, counts, dimensions, dateLabel, filter, failure, skeleton, loaded, rows, emptyObject, done, allLoaded, canCreate, createText, sheet, sheetError, view, detailButtons, cancelSheet, cancelBusy}}" />
+<import src="/views/external-business.wxml" /><template is="external-business" data="{{title,supplier,segment,segmentTabs,statusKind,statuses,dateLabel,emptyObject,tabs,allLoaded,texts,filter,rows,counts,loaded,skeleton,done,failure,cells}}" />

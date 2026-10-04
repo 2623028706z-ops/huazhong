@@ -1,5 +1,5 @@
 // 售后写接口（05 章第 4、5 节）：门店申请、销售新建 / 处理 / 关闭、销售或财务作废。
-// 同一订单的售后先行锁订单（可申请数量串行）；作废先锁客户（和收款核销互斥）
+// 同一订单的售后先行锁订单（可申请数量串行）；作废先锁客户（和开对账单互斥）
 import {
   appError,
   contract,
@@ -20,7 +20,7 @@ import { Clock } from '../../common/clock.ts'
 import { gateAction } from '../../common/domain/actions.ts'
 import { sumOf } from '../../common/domain/units.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
-import { customerStoreIds, lockCustomer } from '../../common/org.ts'
+import { customerStoreIds } from '../../common/org.ts'
 import { found } from '../../common/scope.ts'
 import { WriteService, type WriteContext } from '../../common/write.service.ts'
 import { FilesService } from '../files/files.service.ts'
@@ -28,7 +28,7 @@ import { afterVisibleTo, AfterReads } from './after-query.ts'
 import { checkClaims, checkProcess, type ClaimLine } from './domain/order-rules.ts'
 import { orderDetailOf } from './order-query.ts'
 import { lockOrder } from './order-rows.ts'
-import { notifyCustomerFinance, owns } from '../../common/ledger.ts'
+import { notifyCustomerFinance, owns, assertSourceUnstatemented } from '../../common/statements.ts'
 
 const afterVersionPlusOne = sql`${afters.version} + 1`
 
@@ -83,6 +83,11 @@ function afterLogView(detail: AfterDetail): Record<string, string> {
 
 // 行锁售后（门店只能锁本店的），返回它挂的订单和客户
 async function lockAfter(tx: Tx, viewer: Viewer, id: number) {
+  const [pointer] = await tx
+    .select({ orderId: afters.orderId })
+    .from(afters)
+    .where(and(eq(afters.id, id), afterVisibleTo(viewer)))
+  await lockOrder(tx, viewer, found(pointer).orderId)
   const [row] = await tx
     .select({
       orderId: afters.orderId,
@@ -111,7 +116,7 @@ export class AfterWrites {
     return orderDetailOf(ctx.tx, viewer, id, this.clock.today())
   }
 
-  // 售后变了：应收可能变，推给这个客户的每家门店（核销会重算）
+  // 售后变了：未对账净额可能变，推给这个客户的每家门店
   private async notifyAr(ctx: WriteContext, detail: AfterDetail, customerId: number) {
     await notifyCustomerFinance(ctx, customerId)
     ctx.notify(
@@ -278,7 +283,6 @@ export class AfterWrites {
   process(viewer: Viewer, id: number, input: AfterProcess): Promise<AfterDetail> {
     return this.writes.run(viewer, async (ctx) => {
       const ref = await lockAfter(ctx.tx, viewer, id)
-      await lockOrder(ctx.tx, viewer, ref.orderId)
       const before = await this.reads.detail(ctx.tx, viewer, id)
       gateAction(before, {
         code: 'processAfter',
@@ -335,8 +339,8 @@ export class AfterWrites {
         .update(afters)
         .set({ status: 'closed', closeReason: input.reason, version: afterVersionPlusOne })
         .where(eq(afters.id, id))
+      await ctx.log({ ...afterLog(before, copy.log.action.closeAfter), reason: input.reason })
       const detail = await this.reads.detail(ctx.tx, viewer, id)
-      await ctx.log({ ...afterLog(detail, copy.log.action.closeAfter), reason: input.reason })
       ctx.notify(
         [
           { topic: `after:${detail.id}`, version: detail.version },
@@ -357,15 +361,11 @@ export class AfterWrites {
     input: { version: number; reason: string },
   ): Promise<AfterDetail> {
     return this.writes.run(viewer, async (ctx) => {
-      const [owner] = await ctx.tx
-        .select({ customerId: afters.customerId })
-        .from(afters)
-        .where(and(eq(afters.id, id), afterVisibleTo(viewer)))
-      await lockCustomer(ctx.tx, found(owner).customerId)
       const ref = await lockAfter(ctx.tx, viewer, id)
       const before = await this.reads.detail(ctx.tx, viewer, id)
       if (!owns(viewer, (ref.origin === 'store' ? ref.processedBy : ref.createdBy) ?? 0))
         throw appError.forbidden()
+      await assertSourceUnstatemented(ctx.tx, 'after', id)
       gateAction(before, {
         code: 'voidAfter',
         version: input.version,

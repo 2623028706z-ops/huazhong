@@ -4,8 +4,8 @@
   <view class="u-card hz-records">
     <view wx:for="{{rows}}" wx:key="id" class="hz-records__row">
       <view class="hz-records__who">
-        <text>{{format.formatTime(item.at)}}</text>
-        <text>{{item.actor}}</text>
+        <view class="u-info__line"><text>{{timeLabel}}</text><text>{{format.formatTime(item.at)}}</text></view>
+        <view class="u-info__line"><text>{{actorLabel}}</text><text>{{item.actor}}</text></view>
       </view>
       <view class="hz-records__what">
         <text wx:for="{{item.changes}}" wx:for-item="change" wx:key="*this">{{change}}</text>

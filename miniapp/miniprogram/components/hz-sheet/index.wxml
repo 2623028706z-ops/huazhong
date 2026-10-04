@@ -1,6 +1,6 @@
 <view class="hz-sheet">
-  <t-popup visible="{{show}}" placement="bottom" bind:visible-change="onVisibleChange">
-    <view class="hz-sheet__panel">
+  <t-popup visible="{{show}}" placement="{{center ? 'center' : 'bottom'}}" bind:visible-change="onVisibleChange">
+    <view class="hz-sheet__panel {{center ? 'hz-sheet__panel--center' : ''}}">
       <view class="hz-sheet__header">
         <view class="hz-sheet__corner u-tap" bindtap="onCorner">
           <text class="hz-icon hz-icon--{{back ? 'chevron-left' : 'x'}}"></text>

@@ -1,2 +1,2 @@
-import { apStatementPage } from '../../../../views/ap-statement'
-Page(apStatementPage)
+import { partyLedgerPage } from '../../../../views/party-ledger'
+Page({ ...partyLedgerPage, data: { ...partyLedgerPage.data, supplier: true } })

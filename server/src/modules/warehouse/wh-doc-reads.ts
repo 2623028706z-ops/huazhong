@@ -1,9 +1,9 @@
 // 手工入库、手工出库、报损：列表、详情、actions（05 章第 9 节、06 章 W4、W6、W7、W15）
 import {
   appError,
-  shanghaiDateOf,
   copy,
   type Action,
+  type StatementRef,
   type OutputOf,
   type WhDocCard,
   type WhDocDetail,
@@ -15,6 +15,7 @@ import { alias } from 'drizzle-orm/pg-core'
 import type { Db, Tx } from '../../../db/client.ts'
 import {
   accounts,
+  materials,
   outCategories,
   priceChanges,
   suppliers,
@@ -26,14 +27,18 @@ import { DB } from '../../common/db.ts'
 import { actionOf } from '../../common/domain/actions.ts'
 import { pageOf } from '../../common/domain/cursor.ts'
 import { orNull } from '../../common/domain/text.ts'
-import { unitTotalsOf } from '../../common/domain/units.ts'
+import { sumOf, unitTotalsOf } from '../../common/domain/units.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import type { ParsedInput } from '../../common/endpoint.ts'
-import { paymentHistory } from '../../common/finance-history.ts'
-import { owns } from '../../common/ledger.ts'
+import {
+  owns,
+  sourceStatement,
+  sourceStatements,
+  statementLockedReason,
+} from '../../common/statements.ts'
 import { beforeCursor, dateBetween } from '../../common/page.ts'
-import { apStatusOf, loadPaymentLedger, type PaymentLedger } from '../../common/payment-ledger.ts'
 import { found } from '../../common/scope.ts'
+import { stocktakeBlocksVoid } from '../../common/stock-count.ts'
 import { FilesService } from '../files/files.service.ts'
 
 type Executor = Db | Tx
@@ -46,6 +51,7 @@ function rowsQuery(executor: Executor) {
       outCategoryName: outCategories.name,
       actorName: accounts.name,
       voidedBy: voider.name,
+      counted: stocktakeBlocksVoid('wh', whDocs.id),
     })
     .from(whDocs)
     .leftJoin(suppliers, eq(suppliers.id, whDocs.supplierId))
@@ -54,16 +60,19 @@ function rowsQuery(executor: Executor) {
     .leftJoin(voider, eq(voider.id, whDocs.voidedBy))
 }
 type DocRow = Awaited<ReturnType<typeof rowsQuery>>[number]
-type Line = typeof whDocLines.$inferSelect
+type Line = typeof whDocLines.$inferSelect & { code: string }
 
-// 作废要录的人或管理员；手工入库已付（核销实际抵到钱）时改单价、作废都禁用（2026-10-03 确认）
-function actionsOf(row: DocRow, viewer: Viewer, paid: boolean): Action[] {
+// 作废只允许登记人或管理员；手工入库入有效对账单后，改价和作废都禁用。
+function actionsOf(row: DocRow, viewer: Viewer, statement: StatementRef | null): Action[] {
   const { doc } = row
   if (!viewer.modules.includes('warehouse') || doc.status === 'voided') return []
-  const paidBlock = paid ? copy.stock.voidPaid : null
+  const paidBlock = statement ? statementLockedReason(statement.no) : null
+  const countBlock = row.counted ? copy.stock.voidAfterStocktake : null
   const voidAction = actionOf(
     'void',
-    owns(viewer, doc.createdBy) ? (doc.kind === 'in' ? paidBlock : null) : copy.stock.notCreator,
+    owns(viewer, doc.createdBy)
+      ? ((doc.kind === 'in' ? paidBlock : null) ?? countBlock)
+      : copy.stock.notCreator,
     true,
   )
   return doc.kind === 'in' ? [voidAction, actionOf('reprice', paidBlock, true)] : [voidAction]
@@ -111,20 +120,15 @@ export class WhDocReads {
   }
 
   // 财务应付里的手工入库单卡片（同一供应商，账本已载入）
-  async cardsOf(executor: Executor, viewer: Viewer, ids: number[], ledger?: PaymentLedger) {
+  async cardsOf(executor: Executor, viewer: Viewer, ids: number[]) {
     if (ids.length === 0) return []
     const rows = await rowsQuery(executor)
       .where(inArray(whDocs.id, ids))
       .orderBy(desc(whDocs.docDate), desc(whDocs.id))
-    return this.cards(executor, viewer, rows, ledger)
+    return this.cards(executor, viewer, rows)
   }
 
-  private async cards(
-    executor: Executor,
-    viewer: Viewer,
-    rows: DocRow[],
-    given?: PaymentLedger,
-  ): Promise<WhDocCard[]> {
+  private async cards(executor: Executor, viewer: Viewer, rows: DocRow[]): Promise<WhDocCard[]> {
     const ids = rows.map((row) => row.doc.id)
     const lines = await lineRows(executor, ids)
     const repriced = new Set(
@@ -137,19 +141,13 @@ export class WhDocReads {
               .where(inArray(priceChanges.whDocId, ids))
           ).map((row) => row.id),
     )
-    const ledgers = new Map<number, PaymentLedger>()
-    if (given) ledgers.set(given.supplierId, given)
-    for (const row of rows) {
-      const supplierId = row.doc.supplierId
-      if (supplierId !== null && !ledgers.has(supplierId))
-        ledgers.set(supplierId, await loadPaymentLedger(executor, supplierId))
-    }
+    const statements = await sourceStatements(executor, 'wh', ids)
     return rows.map((row) =>
       cardOf(row, {
         viewer,
         lines: lines.filter((line) => line.docId === row.doc.id),
         repriced: repriced.has(row.doc.id),
-        ledger: row.doc.supplierId === null ? null : found(ledgers.get(row.doc.supplierId)),
+        statement: statements.get(row.doc.id) ?? null,
       }),
     )
   }
@@ -158,12 +156,11 @@ export class WhDocReads {
     const row = found((await rowsQuery(executor).where(eq(whDocs.id, id)))[0])
     // 纯财务只看手工入库单
     if (!viewer.modules.includes('warehouse') && row.doc.kind !== 'in') throw appError.notFound()
-    const ledger =
-      row.doc.supplierId === null ? null : await loadPaymentLedger(executor, row.doc.supplierId)
+    const statement = await sourceStatement(executor, 'wh', id)
     const lines = await lineRows(executor, [id])
     const prices = await this.pricesOf(executor, id)
     const images = await this.imagesOf(executor, id)
-    const card = cardOf(row, { viewer, lines, repriced: prices.length > 0, ledger })
+    const card = cardOf(row, { viewer, lines, repriced: prices.length > 0, statement })
     return {
       ...card,
       reason: orNull(row.doc.reason),
@@ -171,6 +168,7 @@ export class WhDocReads {
       lines: lines.map((line) => ({
         id: String(line.id),
         materialId: String(line.materialId),
+        code: line.code,
         name: line.name,
         unit: line.unit,
         qty: line.qty,
@@ -182,17 +180,12 @@ export class WhDocReads {
         actorLabel: price.actorLabel,
         createdAt: price.createdAt.toISOString(),
         reason: price.reason,
-        items: price.items,
+        items: price.items.map(({ name, fromCents, toCents }) => ({ name, fromCents, toCents })),
       })),
       images,
       voidReason: row.doc.voidReason,
       voidedAt: row.doc.voidedAt?.toISOString() ?? null,
       voidedBy: row.voidedBy,
-      allocations: ledger
-        ? (await paymentHistory(executor, ledger, viewer)).filter(
-            (item) => item.docType === 'wh' && item.docId === String(id),
-          )
-        : [],
     }
   }
 
@@ -266,9 +259,7 @@ function supplierViewOf(detail: WhDocDetail): OutputOf<typeof contract.getSuppli
     units: detail.units,
     actorName: detail.actorName,
     amountCents: detail.amountCents,
-    paidCents: detail.paidCents,
-    unpaidCents: detail.unpaidCents,
-    apStatus: detail.apStatus,
+    statement: detail.statement,
     repriced: detail.repriced,
     actions: detail.actions,
     lockedReason: detail.lockedReason,
@@ -280,31 +271,27 @@ function supplierViewOf(detail: WhDocDetail): OutputOf<typeof contract.getSuppli
     voidedAt: detail.voidedAt,
     voidedBy: detail.voidedBy,
     title: copy.stock.supplierStockIn,
-    allocations: detail.allocations
-      .filter((row) => row.status === 'valid' && row.effectiveCents > 0)
-      .map((row) => ({
-        date: shanghaiDateOf(Date.parse(row.createdAt)),
-        amountCents: row.effectiveCents,
-      })),
   }
 }
 
 async function lineRows(executor: Executor, ids: number[]) {
   if (ids.length === 0) return []
   return executor
-    .select()
+    .select({ line: whDocLines, code: materials.code })
     .from(whDocLines)
+    .innerJoin(materials, eq(materials.id, whDocLines.materialId))
     .where(inArray(whDocLines.docId, ids))
     .orderBy(asc(whDocLines.sort), asc(whDocLines.id))
+    .then((rows) => rows.map((row) => ({ ...row.line, code: row.code })))
 }
 
 function cardOf(
   row: DocRow,
-  input: { viewer: Viewer; lines: Line[]; repriced: boolean; ledger: PaymentLedger | null },
+  input: { viewer: Viewer; lines: Line[]; repriced: boolean; statement: StatementRef | null },
 ): WhDocCard {
   const { doc } = row
-  const financial = financialOf(doc, input.lines, input.ledger)
-  const live = (financial.paidCents ?? 0) > 0
+  const amountCents =
+    doc.kind === 'in' ? sumOf(input.lines, (line) => line.qty * (line.priceCents ?? 0)) : null
   return {
     id: String(doc.id),
     no: doc.no,
@@ -319,25 +306,10 @@ function cardOf(
     materials: input.lines.map((line) => ({ name: line.name, qty: line.qty })),
     units: unitTotalsOf(input.lines),
     actorName: row.actorName,
-    ...financial,
+    amountCents,
+    statement: input.statement,
     repriced: input.repriced,
-    actions: actionsOf(row, input.viewer, live),
+    actions: actionsOf(row, input.viewer, input.statement),
     lockedReason: lockedReasonOf(row),
   }
-}
-
-function financialOf(doc: typeof whDocs.$inferSelect, lines: Line[], ledger: PaymentLedger | null) {
-  const amountCents =
-    doc.kind === 'in'
-      ? lines.reduce((sum, line) => sum + line.qty * (line.priceCents ?? 0), 0)
-      : null
-  if (amountCents === null || doc.status === 'voided')
-    return { amountCents, paidCents: null, unpaidCents: null, apStatus: null }
-  const paidCents = ledger?.replay.received.get(`wh:${doc.id}`) ?? 0
-  const amounts = {
-    payableCents: amountCents,
-    paidCents,
-    unpaidCents: Math.max(amountCents - paidCents, 0),
-  }
-  return { amountCents, paidCents, unpaidCents: amounts.unpaidCents, apStatus: apStatusOf(amounts) }
 }

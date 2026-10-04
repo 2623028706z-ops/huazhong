@@ -1,6 +1,14 @@
-import type { contract, InviteDetail, PoDetail, Supplier } from '@huazhong/shared'
+import type {
+  contract,
+  InviteDetail,
+  PoDetail,
+  Supplier,
+  StatementDetail,
+  PaymentCreate,
+} from '@huazhong/shared'
 import type { ParsedInput } from '../../src/common/endpoint.ts'
 import { dataOf, idBy, TODAY, type SalesApp } from './sales.ts'
+import { openStatement } from './statements.ts'
 
 export async function poOf(s: SalesApp, no = 'PO-260929-007') {
   const id = await idBy(s.t, 'purchase_orders.no', no)
@@ -49,14 +57,21 @@ export function receiveInput(po: Pick<PoDetail, 'version' | 'lines'>) {
     })),
   }
 }
-export function payInput(po: PoDetail) {
+export async function payInput(s: SalesApp, po: PoDetail): Promise<PaymentCreate> {
+  const finance = await s.as('u6')
+  let statement: StatementDetail
+  if (po.statement)
+    statement = dataOf<StatementDetail>(await finance.get(`/finance/statements/${po.statement.id}`))
+  else statement = await openStatement(s, 'supplier', po.supplierId, [{ type: 'po', id: po.id }])
   return {
     supplierId: po.supplierId,
-    allocs: [{ docType: 'po' as const, docId: po.id, amountCents: po.unpaidCents }],
-    amountCents: po.unpaidCents,
+    statements: [{ id: statement.id, version: statement.version }],
+    amountCents: statement.dueCents,
     payDate: TODAY,
     methodName: '微信',
     note: '',
+    discountCents: 0,
+    discountReason: '',
   }
 }
 export async function createPo(

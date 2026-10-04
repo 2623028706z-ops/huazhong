@@ -12,6 +12,9 @@
     "hz-field": "/components/hz-field/index",
     "hz-picker": "/components/hz-picker/index",
     "hz-switch": "/components/hz-switch/index",
-    "hz-confirm": "/components/hz-confirm/index"
+    "hz-confirm": "/components/hz-confirm/index",
+    "hz-realtime-bar": "/components/hz-realtime-bar/index",
+    "hz-tag": "/components/hz-tag/index",
+    "hz-category-sheet": "/components/hz-category-sheet/index"
   }
 }

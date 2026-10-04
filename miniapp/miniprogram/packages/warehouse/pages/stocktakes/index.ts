@@ -1,4 +1,4 @@
-import { contract, copy, type StocktakeCard } from '@huazhong/shared'
+import { contract, copy, redesignCopy, type StocktakeCard } from '@huazhong/shared'
 import { canDo } from '../../../../core/actions'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
@@ -10,6 +10,14 @@ import { listHandlers, listOf, showList } from '../../../../views/list'
 function rowOf(doc: StocktakeCard) {
   return {
     id: doc.id,
+    fields: [
+      { label: redesignCopy.no, value: doc.no, wide: true },
+      { label: copy.screen.label.date, value: doc.checkDate },
+      {
+        label: copy.stock.screen.difference,
+        value: doc.diffCount ? copy.stock.diffCount(doc.diffCount) : copy.stock.screen.noDifference,
+      },
+    ],
     date: doc.checkDate,
     status: doc.status,
     title: doc.categories.join(copy.separator),
@@ -25,7 +33,7 @@ function rowOf(doc: StocktakeCard) {
 Page({
   ...listHandlers,
   data: {
-    title: copy.stock.screen.titles.stocktakes,
+    title: redesignCopy.stocktakeRecords,
     statusKind: 'stocktakeStatus',
     loaded: false,
     skeleton: false,

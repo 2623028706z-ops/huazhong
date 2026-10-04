@@ -4,6 +4,8 @@ import {
   SHIP_DATE_DEFAULT_OFFSET_DAYS,
   addDays,
   copy,
+  contract,
+  type InputOf,
   formatMoney,
   orderCreateSchema,
   orderUpdateSchema,
@@ -13,15 +15,15 @@ import {
   type OrderDetail,
   type OrderUpdate,
 } from '@huazhong/shared'
-import { centsOfText, lineCents, sumCents, textOfCents } from '../../../../core/money'
+import { centsOfText, lineCents, textOfCents } from '../../../../core/money'
 import { checkedOf, type Checked } from '../../../../core/form'
-import { formTotalOf } from '../../../../core/form'
 
-export type FormMode = 'create' | 'edit' | 'editAndConfirm'
+export type FormMode = 'create' | 'edit' | 'confirm'
 
 export interface FormLine {
   productId: string
   name: string
+  code?: string
   unit: string
   qty: number
   priceText: string
@@ -63,6 +65,7 @@ export function formOf(order: OrderDetail, reason: string): OrderForm {
     lines: order.lines.map((line) => ({
       productId: line.productId,
       name: line.name,
+      code: line.customerCode,
       unit: line.unit,
       qty: line.qty,
       priceText: textOfCents(line.priceCents),
@@ -75,6 +78,7 @@ export function lineOfCatalog(item: CatalogItem): FormLine {
   return {
     productId: item.productId,
     name: item.name,
+    code: item.customerCode,
     unit: item.unit,
     qty: 1,
     priceText: textOfCents(item.listPriceCents),
@@ -98,6 +102,7 @@ export function lineViewsOf(lines: readonly FormLine[]) {
   return lines.map((line) => ({
     key: line.productId,
     name: line.name,
+    code: line.code,
     tags: line.discontinued ? [{ text: copy.screen.tag.discontinued, warn: true }] : [],
     amountCents: lineCentsOf(line),
     qty: line.qty,
@@ -105,16 +110,6 @@ export function lineViewsOf(lines: readonly FormLine[]) {
     priceCents: centsOfText(line.priceText) ?? 0,
     priceText: line.priceText,
   }))
-}
-
-export function amountRowsOf(lines: readonly FormLine[]) {
-  if (lines.length <= 1) return []
-  return [
-    {
-      label: copy.screen.label.total,
-      value: formTotalOf(sumCents(lines, lineCentsOf), [...lines]),
-    },
-  ]
 }
 
 function bodyLinesOf(lines: readonly FormLine[]) {
@@ -135,4 +130,27 @@ export function checkUpdate(form: OrderForm, version: number): Checked<OrderUpda
   const { shipDate, note, reason } = form
   const lines = bodyLinesOf(form.lines)
   return checkedOf(orderUpdateSchema.safeParse({ version, shipDate, note, reason, lines }))
+}
+
+export function linesChanged(form: OrderForm, initial: OrderForm): boolean {
+  const snapshot = (value: OrderForm) =>
+    bodyLinesOf(value.lines).sort((a, b) => a.productId.localeCompare(b.productId))
+  return JSON.stringify(snapshot(form)) !== JSON.stringify(snapshot(initial))
+}
+export function checkConfirm(
+  form: OrderForm,
+  initial: OrderForm,
+  version: number,
+): Checked<InputOf<typeof contract.confirmOrder>['body']> {
+  if (linesChanged(form, initial) && !form.reason.trim())
+    return { ok: false, fields: { reason: copy.order.editReasonRequired } }
+  return checkedOf(
+    contract.confirmOrder.body.safeParse({
+      version,
+      shipDate: form.shipDate,
+      note: form.note,
+      lines: bodyLinesOf(form.lines),
+      reason: form.reason || undefined,
+    }),
+  )
 }

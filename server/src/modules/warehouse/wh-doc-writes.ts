@@ -13,8 +13,14 @@ import {
 import { Clock } from '../../common/clock.ts'
 import { gateAction } from '../../common/domain/actions.ts'
 import { actorLabelOf, type Viewer } from '../../common/domain/viewer.ts'
+import { priceChangesText } from '../../common/domain/log-view.ts'
 import type { ParsedInput } from '../../common/endpoint.ts'
-import { lockSupplierLedger, notifySupplierFinance, owns } from '../../common/ledger.ts'
+import {
+  lockSupplierLedger,
+  notifySupplierFinance,
+  owns,
+  assertSourceUnstatemented,
+} from '../../common/statements.ts'
 import { found } from '../../common/scope.ts'
 import { WriteService, type WriteContext } from '../../common/write.service.ts'
 import { FilesService } from '../files/files.service.ts'
@@ -100,7 +106,11 @@ export class WhDocWrites {
         await ctx.log({
           ...docLog(doc, CREATE_ACTION[doc.kind]),
           reason: input.reason,
-          after: lines.map((line) => `${line.name} ${line.qty} ${line.unit}`).join(copy.separator),
+          after: {
+            [copy.records.poChange]: lines
+              .map((line) => `${line.name} ${line.qty} ${line.unit}`)
+              .join(copy.separator),
+          },
         })
         await this.notify(ctx, doc)
         return this.reads.detail(ctx.tx, viewer, doc.id)
@@ -147,6 +157,7 @@ export class WhDocWrites {
   reprice(viewer: Viewer, id: number, input: In<'repriceWhDoc'>) {
     return this.writes.run(viewer, async (ctx) => {
       const doc = await this.lock(ctx, id)
+      if (doc.kind === 'in') await assertSourceUnstatemented(ctx.tx, 'wh', id)
       const detail = await this.reads.detail(ctx.tx, viewer, id)
       gateAction(detail, {
         code: 'reprice',
@@ -159,7 +170,14 @@ export class WhDocWrites {
       const changes = detail.lines.flatMap((old) => {
         const line = input.lines.find((row) => row.lineId === old.id)
         return line && old.priceCents !== line.priceCents
-          ? [{ name: old.name, fromCents: old.priceCents ?? 0, toCents: line.priceCents }]
+          ? [
+              {
+                name: old.name,
+                fromCents: old.priceCents ?? 0,
+                toCents: line.priceCents,
+                qty: old.qty,
+              },
+            ]
           : []
       })
       if (changes.length === 0) throw appError.businessRule(copy.error.noChange)
@@ -179,7 +197,7 @@ export class WhDocWrites {
       await ctx.log({
         ...docLog(doc, copy.stock.log.reprice),
         reason: input.reason,
-        after: { [copy.records.priceChange]: changes },
+        after: { [copy.records.priceChange]: priceChangesText(changes) },
       })
       await this.notify(ctx, { ...doc, version: doc.version + 1 })
       return this.reads.detail(ctx.tx, viewer, id)
@@ -190,6 +208,7 @@ export class WhDocWrites {
     return this.writes.run(viewer, async (ctx) => {
       const doc = await this.lock(ctx, id)
       if (!owns(viewer, doc.createdBy)) throw appError.forbidden()
+      if (doc.kind === 'in') await assertSourceUnstatemented(ctx.tx, 'wh', id)
       const detail = await this.reads.detail(ctx.tx, viewer, id)
       gateAction(detail, {
         code: 'void',

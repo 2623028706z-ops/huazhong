@@ -41,33 +41,9 @@
   </view>
 
   <view class="hz-gallery__section">
-    <view class="u-caption">主格 + 小格 hz-hub：门店、供应商首页；主格带待办数</view>
-    <hz-hub hero="{{hub.hero}}" minis="{{hub.minis}}" />
-  </view>
-
-  <view class="hz-gallery__section">
     <view class="u-caption">列表卡片 hz-card：没有金额的列表（库存）总数加粗，库存 0 次要色</view>
-    <hz-card
-      wx:for="{{stockCards}}"
-      wx:key="id"
-      title="{{item.title}}"
-      total="{{item.total}}"
-      key-total="{{item.key}}"
-      meta="{{item.meta}}"
-      tags="{{item.tags}}"
-    />
-    <hz-card
-      wx:for="{{cards}}"
-      wx:key="id"
-      date="{{item.date}}"
-      status-kind="orderStatus"
-      status="{{item.status}}"
-      title="{{item.title}}"
-      total="{{item.total}}"
-      meta="{{item.meta}}"
-      amount="{{item.amount}}"
-      tags="{{item.tags}}"
-    />
+    <hz-card wx:for="{{stockCards}}" wx:key="id" row="{{item}}" />
+    <hz-card wx:for="{{cards}}" wx:key="id" row="{{item}}" status-kind="orderStatus" />
   </view>
 
   <view class="hz-gallery__section">

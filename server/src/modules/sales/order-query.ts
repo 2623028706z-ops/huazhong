@@ -2,8 +2,8 @@
 import {
   appError,
   copy,
+  redesignCopy,
   waitCodesOf,
-  shanghaiDateOf,
   type contract,
   type OrderCard,
   type OrderDetail,
@@ -11,7 +11,7 @@ import {
   type OutputOf,
 } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
-import { and, asc, desc, eq, sql, type SQL } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, sql, type SQL } from 'drizzle-orm'
 import type { Db } from '../../../db/client.ts'
 import {
   accounts,
@@ -22,7 +22,7 @@ import {
   orderCancelRequests,
 } from '../../../db/schema/index.ts'
 import { shippingCard, shippingDetail } from './shipping-view.ts'
-import { loadLedger } from '../../common/customer-ledger.ts'
+import { sourceStatement, sourceStatements, customerOverdue } from '../../common/statements.ts'
 import { Clock } from '../../common/clock.ts'
 import { DB } from '../../common/db.ts'
 import { actionOf } from '../../common/domain/actions.ts'
@@ -52,6 +52,7 @@ interface OrderQuery {
   customerId?: string | undefined
   q?: string | undefined
   afterable?: boolean | undefined
+  cancelRequested?: boolean | undefined
   from?: string | undefined
   to?: string | undefined
   cursor?: string | undefined
@@ -63,6 +64,14 @@ const orderSearch = (q: string | undefined) =>
 
 // 发货单的两段：待发货在前、已发货在后
 type ShippingSegment = 'to_ship' | 'shipped'
+function shippingSegmentsOf(query: {
+  dueOnly?: boolean | undefined
+  status?: ShippingSegment | undefined
+}): readonly ShippingSegment[] {
+  if (query.dueOnly) return ['to_ship']
+  return query.status === undefined ? SHIPPING_SEGMENTS : [query.status]
+}
+
 const SHIPPING_SEGMENTS: readonly ShippingSegment[] = ['to_ship', 'shipped']
 
 // 发货单游标的排序键写成「段|排序键」：待发货是出货日期，已发货是发货时间
@@ -91,7 +100,7 @@ function afterableWhere(executor: Executor, viewer: Viewer, today: string): SQL 
 }
 
 // 一页订单的卡片：明细一次查完
-export async function orderCardsOf(
+async function orderCardsOf(
   executor: Executor,
   rows: readonly OrderRow[],
   viewer: Viewer,
@@ -102,9 +111,14 @@ export async function orderCardsOf(
     rows.map((row) => row.id),
   )
   const roles = rolesOf(viewer)
+  const statements = await sourceStatements(
+    executor,
+    'order',
+    rows.map((row) => row.id),
+  )
   return rows.map((row) =>
     toOrderCard(
-      row,
+      { ...row, statement: statements.get(row.id) ?? null },
       lines.filter((line) => line.orderId === row.id),
       roles,
       today,
@@ -117,6 +131,10 @@ async function detailExtraOf(executor: Executor, id: number) {
   const [extra] = await executor
     .select({
       note: orders.note,
+      confirmedAt: orders.confirmedAt,
+      contactName: stores.contact,
+      contactPhone: stores.phone,
+      address: stores.address,
       shipNote: orders.shipNote,
       cancelReason: orders.cancelReason,
       cancelledAt: orders.cancelledAt,
@@ -126,10 +144,15 @@ async function detailExtraOf(executor: Executor, id: number) {
     })
     .from(orders)
     .leftJoin(accounts, eq(accounts.id, orders.shippedBy))
+    .innerJoin(stores, eq(stores.id, orders.storeId))
     .where(eq(orders.id, id))
   const row = found(extra)
   return {
     note: orNull(row.note),
+    confirmedAt: row.confirmedAt?.toISOString() ?? null,
+    contactName: row.contactName,
+    contactPhone: row.contactPhone,
+    address: row.address,
     shippedBy: row.shippedBy,
     shipNote: orNull(row.shipNote),
     cancelReason: row.cancelReason,
@@ -158,15 +181,18 @@ async function orderChangesOf(executor: Executor, id: number) {
 async function cancelRequestsOf(executor: Executor, id: number) {
   return (
     await executor
-      .select()
+      .select({ request: orderCancelRequests, storeName: stores.name })
       .from(orderCancelRequests)
+      .innerJoin(accounts, eq(accounts.id, orderCancelRequests.requestedBy))
+      .innerJoin(stores, eq(stores.id, accounts.storeId))
       .where(eq(orderCancelRequests.orderId, id))
       .orderBy(asc(orderCancelRequests.requestedAt), asc(orderCancelRequests.id))
-  ).map((row) => ({
+  ).map(({ request: row, storeName }) => ({
     id: String(row.id),
     status: row.status,
     reason: row.reason,
     requestedAt: row.requestedAt.toISOString(),
+    requestedBy: redesignCopy.storeActor(storeName),
     handledAt: row.handledAt?.toISOString() ?? null,
     rejectReason: row.rejectReason,
   }))
@@ -183,9 +209,17 @@ export async function orderDetailOf(
   const order = found(row)
   const extra = await detailExtraOf(executor, id)
   const lineRows = await loadLineRows(executor, [id])
-  const ledger = await loadLedger(executor, null, order.customerId)
+  const statement = await sourceStatement(executor, 'order', id)
   return {
-    ...toOrderCard(order, lineRows, rolesOf(viewer), today),
+    ...toOrderCard({ ...order, statement }, lineRows, rolesOf(viewer), today),
+    statement,
+    overdue: viewer.modules.includes('sales')
+      ? await customerOverdue(executor, order.customerId, today)
+      : null,
+    confirmedAt: extra.confirmedAt,
+    contactName: extra.contactName,
+    contactPhone: extra.contactPhone,
+    address: extra.address,
     note: extra.note,
     customerEnabled: order.customerEnabled,
     storeEnabled: order.storeEnabled,
@@ -200,17 +234,6 @@ export async function orderDetailOf(
     voidedAt: extra.voidedAt,
     cancelRequests: await cancelRequestsOf(executor, id),
     afters: order.status === 'shipped' ? await orderAfterCards(executor, id, viewer) : [],
-    allocations: ledger.allocations
-      .filter(
-        (row) =>
-          row.orderId === id &&
-          row.revokedAt === null &&
-          (ledger.replay.effective.get(row.id) ?? 0) > 0,
-      )
-      .map((row) => ({
-        date: shanghaiDateOf(row.createdAt.getTime()),
-        amountCents: ledger.replay.effective.get(row.id) ?? 0,
-      })),
   }
 }
 
@@ -229,12 +252,19 @@ export class OrderReads {
       orderSearch(query.q),
       dateBetween(orders.orderDate, query),
       query.afterable === true ? afterableWhere(this.db, viewer, today) : undefined,
+      query.cancelRequested === undefined
+        ? undefined
+        : sql`EXISTS (SELECT 1 FROM order_cancel_requests cr WHERE cr.order_id = ${orders.id} AND cr.status = 'pending') = ${query.cancelRequested}`,
     )
     const rows = await orderRowsQuery(this.db)
       .where(
         and(
           base,
-          query.status === undefined ? undefined : eq(orders.status, query.status),
+          query.status === undefined
+            ? undefined
+            : viewer.type === 'store' && query.status === 'cancelled'
+              ? inArray(orders.status, ['cancelled', 'voided'])
+              : eq(orders.status, query.status),
           beforeCursor(orders.orderDate, orders.id, query.cursor),
         ),
       )
@@ -277,13 +307,19 @@ export class OrderReads {
     query: {
       status?: ShippingSegment | undefined
       q?: string | undefined
+      dueOnly?: boolean | undefined
       cursor?: string | undefined
       limit: number
     },
   ): Promise<OutputOf<typeof contract.listShippingOrders>> {
     const today = this.clock.today()
-    const search = orderSearch(query.q)
-    const segments = query.status === undefined ? SHIPPING_SEGMENTS : [query.status]
+    const search = and(
+      orderSearch(query.q),
+      query.dueOnly
+        ? and(eq(orders.status, 'to_ship'), sql`${orders.shipDate} <= ${today}`)
+        : undefined,
+    )
+    const segments = shippingSegmentsOf(query)
     const cursor = query.cursor === undefined ? null : decodeShippingCursor(query.cursor)
     const start = cursor === null ? 0 : segments.indexOf(cursor.segment)
     if (start < 0) throw appError.validation({ cursor: copy.error.validationFallback })

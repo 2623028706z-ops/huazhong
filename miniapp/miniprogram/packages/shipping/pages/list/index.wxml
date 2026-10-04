@@ -3,5 +3,7 @@
 <view class="u-list">
   <hz-filter-bar status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" search-placeholder="{{searchPlaceholder}}" value="{{filter}}" bind:change="onFilter" />
   <template is="list-state" data="{{failure, skeleton, loaded, rows, emptyObject}}" />
-  <template is="cards" data="{{rows, statusKind, done, allLoaded}}" />
+  <template is="cards" data="{{rows, statusKind, done, allLoaded,selection:true}}" />
 </view>
+
+<hz-action-bar wx:if="{{filter.status !== 'shipped'}}"><hz-button kind="secondary" text="{{texts.allSelected}}" bind:press="onSelectAll" /><hz-button text="{{batchText}}" disabled="{{!selected.length}}" bind:press="onOpenBatch" /></hz-action-bar><hz-sheet show="{{batchSheet}}" title="{{texts.shipOrders}}" footer bind:close="onCloseBatch"><view class="u-sheet-form"><hz-error wx:if="{{batchError}}" message="{{batchError}}" /><text>{{texts.shipConfirmation}}</text><text wx:for="{{batchNos}}" wx:key="index">{{item}}</text></view><hz-button slot="footer" text="{{batchText}}" loading="{{batchBusy}}" bind:press="onConfirmBatch" /></hz-sheet>

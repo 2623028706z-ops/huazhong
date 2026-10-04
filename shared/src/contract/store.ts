@@ -4,34 +4,9 @@ import * as z from 'zod'
 import { copy } from '../copy.ts'
 import { centsSchema, idSchema, positiveIntSchema, versionSchema } from '../rules.ts'
 import type { Endpoint } from './endpoint.ts'
-import { arCardSchema } from './finance.ts'
 import { checkProductLines } from './order-writes.ts'
 import { orderDetailSchema } from './orders.ts'
-import {
-  checkDateRange,
-  dateRangeShape,
-  idParamsSchema,
-  pageQuerySchema,
-  pageSchema,
-} from './page.ts'
-
-export const storeHomeSchema = z.object({
-  // 订阅 catalog、ar 用
-  customerId: idSchema,
-  // 本客户启用的目录项数（产品本身也须启用），和订货目录的可订款数同一口径
-  orderableCount: z.number().int().nonnegative(),
-  // 客户停用时的一句提示，否则 null
-  lockedReason: z.string().nullable(),
-})
-export type StoreHome = z.infer<typeof storeHomeSchema>
-
-export const storeHome = {
-  method: 'GET',
-  path: '/store/home',
-  grants: ['store'],
-  response: storeHomeSchema,
-  errors: [],
-} as const satisfies Endpoint
+import { idParamsSchema } from './page.ts'
 
 export const storeCatalogItemSchema = z.object({
   productId: idSchema,
@@ -48,6 +23,11 @@ export type StoreCatalogItem = z.infer<typeof storeCatalogItemSchema>
 
 // 全部可订产品一次给全（购物车要核对停用）；分类、搜索在页面里筛
 export const storeCatalogSchema = z.object({
+  customerId: idSchema,
+  customerName: z.string(),
+  storeId: idSchema,
+  storeName: z.string(),
+  lockedReason: z.string().nullable(),
   categories: z.array(z.object({ id: idSchema, name: z.string() })),
   items: z.array(storeCatalogItemSchema),
 })
@@ -104,19 +84,4 @@ export const cancelStoreOrder = {
   body: z.object({ version: versionSchema }),
   response: orderDetailSchema,
   errors: ['NOT_FOUND', 'STALE'],
-} as const satisfies Endpoint
-
-// 门店对账：只看本店发货单，不显示预收；按出货日期筛（默认全部）
-export const storeStatement = {
-  method: 'GET',
-  path: '/store/statement',
-  grants: ['store'],
-  query: pageQuerySchema.extend(dateRangeShape).superRefine(checkDateRange),
-  response: pageSchema(arCardSchema).extend({
-    shippedCents: centsSchema,
-    afterCents: centsSchema,
-    paidCents: centsSchema,
-    unpaidCents: centsSchema,
-  }),
-  errors: [],
 } as const satisfies Endpoint

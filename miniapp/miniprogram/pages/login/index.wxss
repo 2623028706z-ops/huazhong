@@ -1,6 +1,6 @@
 /* 字标在上部；隐私勾选和登录按钮贴底，按钮底边离屏幕底 58px，落在渐亮的墙色上（docs/design/mock-login.html） */
 .hz-login {
-  padding: 0 var(--hz-gap-home);
+  padding: 0 var(--hz-gap-page);
 }
 
 .hz-login__logo {
@@ -11,9 +11,9 @@
 
 .hz-login__panel {
   position: fixed;
-  right: var(--hz-gap-home);
+  right: var(--hz-gap-page);
   bottom: 58px;
-  left: var(--hz-gap-home);
+  left: var(--hz-gap-page);
   display: flex;
   flex-direction: column;
   gap: 16px;

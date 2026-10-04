@@ -1,9 +1,10 @@
-import { copy, type contract, type OutputOf, type WhDocDetail } from '@huazhong/shared'
+import { copy, type StatementDetail, type PaymentDetail, type WhDocDetail } from '@huazhong/shared'
 import { expect, test } from 'vitest'
 import type { CustomElement } from 'miniprogram-automator/out/Element.js'
-import { emptyFilter } from '../../../miniapp/miniprogram/core/filter.ts'
 import { dataOf, idBy, TODAY } from '../support/sales.ts'
 import { stockQtyOf, whDocOf, whIds } from '../support/warehouse.ts'
+import { openStatement } from '../support/statements.ts'
+import { editWarehouseLine } from './warehouse-lines.ts'
 import {
   asMini,
   enter,
@@ -19,51 +20,33 @@ import {
 const suite = setupMiniSuite()
 const warehouse = '/packages/warehouse/pages'
 
-test('C11: empty manual inbound list, create, return, filter, details, reprice and void', async () => {
+test('C11: 花材详情新建手工入库后进入本张详情，改价和作废留页', async () => {
   const { mini, server } = suite()
   await asMini(mini, server, 'u5')
   const ids = await whIds(server)
-  let page = await enter(mini, `${warehouse}/docs/index?kind=in`)
+  let page = await enter(mini, `${warehouse}/material/index?id=${ids.materialId}`)
   await waitData(page, 'loaded', true)
-  expect(await page.data('rows')).toEqual([])
-  await snap(mini, 'stock-in-empty')
-  await tapText(page, copy.stock.screen.create.in)
+  await page.callMethod('onStockIn')
   page = await waitPage(mini, 'packages/warehouse/pages/doc-form/index')
   await waitData(page, 'loaded', true)
+  await waitData(page, 'form.lines.0.materialId', ids.materialId)
   await pickOption(page, '#doc-supplier', ids.supplierId)
-  const add = await page.$('#add-material')
-  if (!add) throw new Error('no add material control')
-  await (await add.$('.hz-add-button'))?.tap()
-  await waitData(page, 'pickSheet', true)
-  await page.callMethod('onPick', { currentTarget: { dataset: { key: ids.materialId } } })
-  await page.callMethod('onQty', { detail: { index: 0, qty: 5 } })
-  await page.callMethod('onPrice', { detail: { index: 0, text: '2.00' } })
+  await editWarehouseLine(page, 0, { qty: 5, price: '2.00' })
   await inputField(page, '#doc-reason', '临时采购')
   await snap(mini, 'stock-in-form')
   await tapText(page, copy.stock.screen.submit.in)
-  page = await waitPage(mini, 'packages/warehouse/pages/docs/index')
-  await expect.poll(async () => ((await page.data('rows')) as unknown[]).length).toBe(1)
-  const rows = (await page.data('rows')) as { id: string; amount: number }[]
-  expect(rows[0]?.amount).toBe(1000)
-  await page.callMethod('onFilter', { detail: { ...emptyFilter, status: 'voided' } })
-  await waitData(page, 'rows', [])
-  await page.callMethod('onFilter', { detail: emptyFilter })
-  await expect.poll(async () => ((await page.data('rows')) as unknown[]).length).toBe(1)
-  await page.callMethod('onOpen', { currentTarget: { dataset: { key: rows[0]?.id } } })
   page = await waitPage(mini, 'packages/warehouse/pages/doc-detail/index')
   await waitData(page, 'loaded', true)
+  expect(await page.data('view.lines.0.amountCents')).toBe(1000)
   expect(await page.data('view.notice')).toBe('')
   await page.callMethod('onAction', { currentTarget: { dataset: { code: 'reprice' } } })
-  await page.callMethod('onPrice', { detail: { index: 0, text: '3.00' } })
+  await editWarehouseLine(page, 0, { price: '3.00' })
   await page.callMethod('onSave')
   await waitData(page, 'fields.reason', copy.finance.repriceReason)
   await page.callMethod('onReason', { detail: '供应商调整报价' })
   await page.callMethod('onSave')
   await waitData(page, 'sheet', '')
-  expect(await page.data('view.amountRows')).toContainEqual({
-    label: copy.stock.screen.amount,
-    value: '¥15.00',
-  })
+  await waitData(page, 'view.lines.0.amountCents', 1500)
   await snap(mini, 'stock-in-repriced')
   await page.callMethod('onAction', { currentTarget: { dataset: { code: 'void' } } })
   await page.callMethod('onReason', { detail: '重复录入' })
@@ -72,41 +55,25 @@ test('C11: empty manual inbound list, create, return, filter, details, reprice a
   expect(await page.data('buttons')).toEqual([])
 })
 
-test('C12-F/C20-F/C21: material shortcut, category management preserves quantity draft, save returns to list', async () => {
+test('C12-F/C20-F/C21: 花材出库入口与分类管理保留草稿，保存进入本张详情', async () => {
   const { mini, server } = suite()
-  const api = await asMini(mini, server, 'u5')
+  await asMini(mini, server, 'u5')
   const materialId = await idBy(server.t, 'materials.name', '尤加利'),
     ids = await whIds(server)
   const before = await stockQtyOf(server, materialId)
   let page = await enter(mini, `${warehouse}/material/index?id=${materialId}`)
   await waitData(page, 'loaded', true)
-  await page.callMethod('onAction', { currentTarget: { dataset: { code: 'stockOut' } } })
+  await page.callMethod('onStockOut')
   page = await waitPage(mini, 'packages/warehouse/pages/doc-form/index')
   await waitData(page, 'loaded', true)
   await waitData(page, 'form.lines.0.materialId', materialId)
-  await page.callMethod('onQty', { detail: { index: 0, qty: 2 } })
+  await editWarehouseLine(page, 0, { qty: 2 })
   await page.callMethod('onSubmit')
   await waitData(page, 'fields.outCategoryId', copy.stock.outCategoryRequired)
   await tapText(page, copy.screen.action.manageCategories)
-  const categories = await waitPage(mini, 'packages/warehouse/pages/out-categories/index')
-  await waitData(categories, 'loaded', true)
-  await tapText(categories, copy.screen.action.addCategory)
-  await waitData(categories, 'sheet', true)
-  await inputField(categories, '#category-name', '活动布置')
-  await waitData(categories, 'form.name', '活动布置')
-  await categories.callMethod('onSave')
-  await waitData(categories, 'sheet', false)
-  const sampleId = await idBy(server.t, 'out_categories.name', '样品')
-  await categories.callMethod('onEdit', { currentTarget: { dataset: { key: sampleId } } })
-  await categories.callMethod('onEnabled', { detail: false })
-  await categories.callMethod('onSave')
-  await waitData(categories, 'sheet', false)
-  await snap(mini, 'stock-out-categories')
-  const navbar = await categories.$('#category-navbar')
-  if (!navbar) throw new Error('no category navbar')
-  await (await navbar.$('.hz-navbar__back'))?.tap()
-  page = await waitPage(mini, 'packages/warehouse/pages/doc-form/index')
-  await waitData(page, 'form.lines.0.qty', 2)
+  // 管理分类是表单上的弹层（W5），不离开表单
+  await waitData(page, 'categorySheet', true)
+  await page.callMethod('onSaveCategory', { detail: { id: '', name: '活动布置', enabled: true } })
   await expect
     .poll(async () =>
       ((await page.data('categoryOptions')) as { name: string }[]).some(
@@ -114,18 +81,22 @@ test('C12-F/C20-F/C21: material shortcut, category management preserves quantity
       ),
     )
     .toBe(true)
-  expect(await page.data('categoryOptions')).not.toContainEqual(
-    expect.objectContaining({ id: sampleId }),
-  )
+  const sampleId = await idBy(server.t, 'out_categories.name', '样品')
+  await page.callMethod('onSaveCategory', {
+    detail: { id: sampleId, name: '样品', enabled: false },
+  })
+  await expect
+    .poll(async () =>
+      ((await page.data('categoryOptions')) as { id: string }[]).some((row) => row.id === sampleId),
+    )
+    .toBe(false)
+  await snap(mini, 'stock-out-categories')
+  await page.callMethod('onCloseCategories')
+  await waitData(page, 'categorySheet', false)
+  expect(await page.data('form.lines.0.qty')).toBe(2)
   await pickOption(page, '#doc-category', ids.outCategoryId)
   await snap(mini, 'stock-out-form')
   await tapText(page, copy.stock.screen.submit.out)
-  page = await waitPage(mini, 'packages/warehouse/pages/docs/index')
-  await waitData(page, 'loaded', true)
-  const docs = dataOf<OutputOf<typeof contract.listWhDocs>>(
-    await api.get('/warehouse/docs?kind=out'),
-  )
-  await page.callMethod('onOpen', { currentTarget: { dataset: { key: docs.items[0]?.id } } })
   page = await waitPage(mini, 'packages/warehouse/pages/doc-detail/index')
   await waitData(page, 'loaded', true)
   expect(await page.data('view.info.rows')).toContainEqual({
@@ -137,28 +108,20 @@ test('C12-F/C20-F/C21: material shortcut, category management preserves quantity
 
 test('C15/C24: loss requires reason; saves without photos and original-batch void restores stock', async () => {
   const { mini, server } = suite()
-  const api = await asMini(mini, server, 'u5'),
-    ids = await whIds(server)
+  await asMini(mini, server, 'u5')
+  const ids = await whIds(server)
   const before = await stockQtyOf(server, ids.materialId)
   let page = await enter(mini, `${warehouse}/doc-form/index?kind=loss&materialId=${ids.materialId}`)
   await waitData(page, 'loaded', true)
-  await page.callMethod('onQty', { detail: { index: 0, qty: 5 } })
+  await editWarehouseLine(page, 0, { qty: 5 })
   await tapText(page, copy.stock.screen.submit.loss)
   await waitData(page, 'fields.reason', copy.stock.lossReasonRequired)
   await inputField(page, '#doc-reason', '花头发黑')
   await snap(mini, 'stock-loss-form')
   await tapText(page, copy.stock.screen.submit.loss)
-  page = await waitPage(mini, 'packages/warehouse/pages/docs/index')
-  await waitData(page, 'loaded', true)
-  const docs = dataOf<OutputOf<typeof contract.listWhDocs>>(
-    await api.get('/warehouse/docs?kind=loss'),
-  )
-  const lost = docs.items[0]
-  if (!lost) throw new Error('no loss document')
-  expect(await stockQtyOf(server, ids.materialId)).toBe(before - 5)
-  await page.callMethod('onOpen', { currentTarget: { dataset: { key: lost.id } } })
   page = await waitPage(mini, 'packages/warehouse/pages/doc-detail/index')
   await waitData(page, 'loaded', true)
+  expect(await stockQtyOf(server, ids.materialId)).toBe(before - 5)
   expect(await page.data('view.images')).toEqual([])
   await page.callMethod('onAction', { currentTarget: { dataset: { code: 'void' } } })
   await page.callMethod('onReason', { detail: '报错品种' })
@@ -185,6 +148,22 @@ test('C13-F/C22-F: category selection, zero difference, stale preserves actual q
   await page.callMethod('onStart')
   page = await waitPage(mini, 'packages/warehouse/pages/stocktake-form/index')
   await waitData(page, 'loaded', true)
+  const book = (await page.data('form.lines.0.bookQty')) as number
+  await page.callMethod('onEdit', { currentTarget: { dataset: { index: 0 } } })
+  await page.callMethod('onDraftActual', { detail: '' })
+  await page.callMethod('onConfirmEditor')
+  await page.callMethod('onSubmit')
+  const invalid = (await page.data('fields')) as Record<string, string>
+  expect(invalid['lines.0.actualQty']).toMatch(/\S+/)
+  await page.callMethod('onEdit', { currentTarget: { dataset: { index: 0 } } })
+  await page.callMethod('onDraftActual', { detail: '0' })
+  await page.callMethod('onConfirmEditor')
+  expect(await page.data('rows.0.actualText')).toBe('0')
+  expect(await page.data('rows.0.diffQty')).toBe(String(-book))
+  await snap(mini, 'redesign-stocktake-table')
+  await page.callMethod('onEdit', { currentTarget: { dataset: { index: 0 } } })
+  await page.callMethod('onDraftActual', { detail: String(book) })
+  await page.callMethod('onConfirmEditor')
   await page.callMethod('onSubmit')
   page = await waitPage(mini, 'packages/warehouse/pages/stocktake-detail/index')
   await waitData(page, 'loaded', true)
@@ -221,54 +200,73 @@ test('C13-F/C22-F: category selection, zero difference, stale preserves actual q
   expect(await stockQtyOf(server, first.materialId)).toBe(Number(actual))
 })
 
-test('D28/F04: manual inbound financial and supplier detail, payment locks and withdrawal refreshes actions', async () => {
+test('D28/F04: 手工入库经DZ付款，作废资金仍锁定、作废DZ后解锁，供应商只读', async () => {
   const { mini, server } = suite()
   const incoming = await whDocOf(server, 'in')
-  await asMini(mini, server, 'u6')
-  let page = await enter(mini, `/packages/finance/pages/supplier/index?id=${incoming.supplierId}`)
+  if (!incoming.supplierId) throw new Error('expected supplier')
+  const statement = await openStatement(server, 'supplier', incoming.supplierId, [
+    { type: 'wh', id: incoming.id },
+  ])
+  const finance = await asMini(mini, server, 'u6')
+  let page = await enter(mini, `/packages/finance/pages/statement-detail/index?id=${statement.id}`)
   await waitData(page, 'loaded', true)
-  expect(await page.data('rows')).toContainEqual(
-    expect.objectContaining({ id: `wh:${incoming.id}`, docType: 'wh' }),
-  )
-  await page.callMethod('onOpen', { currentTarget: { dataset: { key: `wh:${incoming.id}` } } })
-  page = await waitPage(mini, 'packages/finance/pages/payable/index')
+  await page.callMethod('onSource', { currentTarget: { dataset: { key: `wh:${incoming.id}` } } })
+  page = await waitPage(mini, 'packages/warehouse/pages/doc-detail/index')
   await waitData(page, 'loaded', true)
-  expect(await page.data('stockView.info.title')).toBe(incoming.no)
-  expect(await page.data('view')).toBeFalsy()
-  await snap(mini, 'finance-manual-payable')
+  expect(await page.data('buttons')).toEqual([])
+  await snap(mini, 'finance-manual-inbound-readonly')
   await mini.navigateTo(
-    `/packages/finance/pages/receive/index?kind=payment&supplierId=${incoming.supplierId}`,
+    `/packages/finance/pages/receive/index?kind=payment&supplierId=${incoming.supplierId}&statementId=${statement.id}`,
   )
   page = await waitPage(mini, 'packages/finance/pages/receive/index')
   await waitData(page, 'loaded', true)
-  await page.callMethod('onDate', { detail: TODAY })
-  await page.callMethod('onAmount', { detail: '20.00' })
-  await page.callMethod('onMethod', { detail: '微信' })
-  const allocs = (await page.data('form.allocs')) as {
-    orderId: string
-    docType: string
-    docId: string
-  }[]
-  expect(allocs).toContainEqual(
-    expect.objectContaining({ orderId: `wh:${incoming.id}`, docType: 'wh', docId: incoming.id }),
+  expect(await page.data('form.statements')).toContainEqual(
+    expect.objectContaining({ id: statement.id }),
   )
-  for (const [index, row] of allocs.entries())
-    await page.callMethod('onAlloc', {
-      currentTarget: { dataset: { index } },
-      detail: row.orderId === `wh:${incoming.id}` ? '20.00' : '',
-    })
+  await page.callMethod('onField', {
+    currentTarget: { dataset: { key: 'receiptDate' } },
+    detail: TODAY,
+  })
+  await page.callMethod('onField', {
+    currentTarget: { dataset: { key: 'methodName' } },
+    detail: '微信',
+  })
   await page.callMethod('onSubmit')
-  await waitPage(mini, 'packages/finance/pages/payable/index')
-  const finance = await server.as('u6'),
-    api = await asMini(mini, server, 'u5')
+  await waitPage(mini, 'packages/finance/pages/supplier/index')
+  const settled = dataOf<StatementDetail>(await finance.get(`/finance/statements/${statement.id}`))
+  expect(settled.status).toBe('settled')
+  await asMini(mini, server, 'p1')
+  page = await enter(mini, `/packages/supplier/pages/statement-detail/index?id=${statement.id}`)
+  await waitData(page, 'loaded', true)
+  await page.callMethod('onSource', { currentTarget: { dataset: { key: `wh:${incoming.id}` } } })
+  await waitData(page, 'sourceSheet', true)
+  await expect
+    .poll(async () => page.data('stockView.info.rows') as Promise<unknown>)
+    .toContainEqual(expect.objectContaining({ value: incoming.no }))
+  await snap(mini, 'supplier-manual-inbound')
+  const api = await asMini(mini, server, 'u5')
   page = await enter(mini, `${warehouse}/doc-detail/index?id=${incoming.id}`)
   await waitData(page, 'loaded', true)
   expect(
     ((await page.data('buttons')) as { disabled: boolean }[]).every((row) => row.disabled),
   ).toBe(true)
-  const detail = dataOf<WhDocDetail>(await api.get(`/warehouse/docs/${incoming.id}`))
+  const settlement = settled.settlements.find((row) => row.kind === 'payment')
+  if (!settlement) throw new Error('expected payment')
+  const payment = dataOf<PaymentDetail>(await finance.get(`/finance/payments/${settlement.id}`))
   dataOf(
-    await finance.post(`/finance/payment-allocations/${detail.allocations[0]?.id}/revoke`, {
+    await finance.post(`/finance/payments/${payment.id}/void`, {
+      version: payment.version,
+      reason: '重新核对',
+    }),
+  )
+  const locked = dataOf<WhDocDetail>(await api.get(`/warehouse/docs/${incoming.id}`))
+  expect(locked.actions.find((row) => row.code === 'reprice')?.enabled).toBe(false)
+  const refreshed = dataOf<StatementDetail>(
+    await finance.get(`/finance/statements/${statement.id}`),
+  )
+  dataOf(
+    await finance.post(`/finance/statements/${statement.id}/void`, {
+      version: refreshed.version,
       reason: '重新核对',
     }),
   )
@@ -280,21 +278,6 @@ test('D28/F04: manual inbound financial and supplier detail, payment locks and w
         )?.disabled,
     )
     .toBe(false)
-  await asMini(mini, server, 'p1')
-  page = await enter(mini, '/packages/supplier/pages/statement/index')
-  await waitData(page, 'loaded', true)
-  await page.callMethod('onOpen', { currentTarget: { dataset: { key: `wh:${incoming.id}` } } })
-  await waitData(page, 'sheet', true)
-  await expect
-    .poll(async () => page.data('stockView.info.title') as Promise<unknown>)
-    .toBe(incoming.no)
-  await waitData(page, 'stockView.heading', copy.stock.supplierStockIn)
-  const sheet = (await page.$('#ap-document-sheet')) as CustomElement | null
-  if (!sheet) throw new Error('no supplier document sheet')
-  await expect
-    .poll(async () => sheet.data('title') as Promise<unknown>)
-    .toBe(copy.stock.supplierStockIn)
-  await snap(mini, 'supplier-manual-inbound')
 })
 
 test('warehouse entries and stock moves: filter records and open the source document', async () => {
@@ -304,38 +287,38 @@ test('warehouse entries and stock moves: filter records and open the source docu
   let page = await enter(mini, `${warehouse}/home/index`)
   const entries = () =>
     mini.evaluate(
-      'function () { var page = getCurrentPages().slice(-1)[0]; var home = page.selectComponent("#warehouse-home"); return home ? home.data.entries : [] }',
+      'function () { var page = getCurrentPages().slice(-1)[0]; var home = page.selectComponent("#warehouse-home"); return home ? home.data.common : [] }',
     ) as Promise<unknown>
   await expect
     .poll(entries)
     .toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ key: 'stock-in' }),
-        expect.objectContaining({ key: 'stock-out' }),
+        expect.objectContaining({ key: 'in' }),
+        expect.objectContaining({ key: 'receive' }),
+        expect.objectContaining({ key: 'out' }),
         expect.objectContaining({ key: 'loss' }),
-        expect.objectContaining({ key: 'stocktakes' }),
+        expect.objectContaining({ key: 'stocktake' }),
       ]),
     )
   page = await enter(mini, `${warehouse}/moves/index?materialId=${incoming.lines[0]?.materialId}`)
   await waitData(page, 'loaded', true)
-  await page.callMethod('onFilter', {
-    detail: {
-      ...emptyFilter,
-      picks: { type: 'manual_in', material: incoming.lines[0]?.materialId },
-    },
-  })
+  await page.callMethod('onDirection', { currentTarget: { dataset: { key: 'in' } } })
   await expect.poll(async () => ((await page.data('rows')) as unknown[]).length).toBe(1)
-  const rows = (await page.data('rows')) as { id: string; docId: string; total: string }[]
+  const rows = (await page.data('rows')) as {
+    id: string
+    docId: string
+    fields: { label: string; value: string }[]
+  }[]
   expect(rows[0]?.docId).toBe(incoming.id)
-  expect(rows[0]?.total).toBe('+10 枝')
+  expect(rows[0]?.fields).toContainEqual({ label: '数量', value: '+10 枝' })
   const card = (await page.$('components\\/hz-card\\/index')) as CustomElement | null
   if (!card) throw new Error('no movement card')
-  expect(await card.data('headText')).toBe('手工入库')
-  const total = await card.$('.hz-card__total--gain')
-  expect(await total?.style('color')).toMatch(/^(?:rgb\(76,\s*106,\s*72\)|#4c6a48)$/i)
+  expect(await card.data('row.headText')).toBe('手工入库')
   await snap(mini, 'stock-moves')
   await page.callMethod('onOpen', { currentTarget: { dataset: { key: rows[0]?.id } } })
   page = await waitPage(mini, 'packages/warehouse/pages/doc-detail/index')
   await waitData(page, 'loaded', true)
-  expect(await page.data('view.info.title')).toBe(incoming.no)
+  expect(await page.data('view.info.rows')).toContainEqual(
+    expect.objectContaining({ value: incoming.no }),
+  )
 })

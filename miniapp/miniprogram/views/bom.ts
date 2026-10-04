@@ -1,4 +1,4 @@
-// 配方明细的编辑（06 章 X10、X11）：产品表单和订货目录弹层共用。只做数据换算，不发请求以外的事
+// 配方明细的编辑（06 章 X10、X11）：产品表单和目录产品整页共用。只做数据换算，不发请求以外的事
 import {
   contract,
   copy,
@@ -24,6 +24,15 @@ export function bomLinesOf(bom: ProductItem['bom']): BomLine[] {
   }))
 }
 
+export function bomTableRowsOf(bom: readonly BomLine[], materials: readonly InventoryItem[] = []) {
+  return bom.map((line) => ({
+    ...line,
+    code: materials.find((item) => item.id === line.materialId)?.code ?? '',
+    key: line.materialId,
+    tags: [],
+    removable: true,
+  }))
+}
 export function bomBodyOf(bom: readonly BomLine[]) {
   return bom.map(({ materialId, qty }) => ({ materialId, qty }))
 }

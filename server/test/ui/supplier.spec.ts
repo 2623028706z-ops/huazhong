@@ -1,9 +1,10 @@
 import {
   copy,
+  statementCopy,
+  financeCopy as f,
   type InviteDetail,
   type PoDetail,
   type Supplier,
-  type SupplierPoDetail,
 } from '@huazhong/shared'
 import { eq } from 'drizzle-orm'
 import type { CustomElement } from 'miniprogram-automator/out/Element.js'
@@ -15,7 +16,7 @@ import { asMini, enter, paymentInput, setupMiniSuite, snap, waitData, waitPage }
 
 const suite = setupMiniSuite()
 
-test('B31 供应商删停用行后直接提交，已提交合并需求、未供和另报', async () => {
+test('B31 供应商删停用行后提交，已提交合并明细并跳整页采购详情', async () => {
   const { mini, server: s } = suite()
   await asMini(mini, s, 'p1')
   const invite = await inviteOf(s)
@@ -41,30 +42,62 @@ test('B31 供应商删停用行后直接提交，已提交合并需求、未供�
     { subText: '供 1 枝 × ¥2.00', tags: [{ text: '另报', warn: false }] },
   ])
   await snap(mini, 'supplier-submitted-unsupplied-extra')
-  await asMini(mini, s, 'u4')
-  const list = await enter(mini, '/packages/purchase/pages/invites/index')
-  await waitData(list, 'loaded', true)
-  await list.callMethod('open', invite.id)
-  await waitData(list, 'view.info.status', 'submitted')
-  await snap(mini, 'invite-detail-submitted')
+  const submitted = await inviteOf(s)
+  await page.callMethod('onPo')
+  const detail = await waitPage(mini, 'packages/supplier/pages/po-detail/index')
+  await waitData(detail, 'loaded', true)
+  expect(await detail.data('view.info.title')).toBe(submitted.supplierName)
+  expect(await detail.data('view.info.rows')).toContainEqual(
+    expect.objectContaining({ label: '单号', value: submitted.purchaseOrderNo }),
+  )
+  expect(await detail.data('canEdit')).toBe(true)
+  await snap(mini, 'supplier-submitted-purchase-detail')
 })
 
-test('供应商已付款采购单详情不显示财务和仓库锁定提示', async () => {
+test('F07-F 供应商已结清DZ按整页采购详情进入，只读对账与收款记录', async () => {
   const { mini, server: s } = suite()
   const po = await poOf(s, 'PO-260928-004')
-  dataOf(await (await s.as('u6')).post('/finance/payments', await paymentInput(s, po)))
+  const input = await paymentInput(s, po)
+  dataOf(await (await s.as('u6')).post('/finance/payments', input))
   const api = await asMini(mini, s, 'p2')
-  expect(
-    dataOf<SupplierPoDetail>(await api.get(`/supplier/purchase-orders/${po.id}`)).lockedReason,
-  ).toBeNull()
-  const page = await enter(mini, `/packages/supplier/pages/orders/index?id=${po.id}`)
-  await waitData(page, 'sheet', true)
-  await waitData(page, 'view.info.title', po.no)
-  expect(await page.data('view.notice')).toBe('')
-  expect(await page.data('view.amountRows')).not.toContainEqual(
-    expect.objectContaining({ label: '财务' }),
+  const projected = dataOf<PoDetail>(await api.get(`/supplier/purchase-orders/${po.id}`))
+  if (!projected.statement) throw new Error('expected settled statement')
+  expect(projected.lockedReason).toBe(statementCopy.sourceLocked(projected.statement.no))
+  const page = await enter(mini, '/packages/supplier/pages/orders/index')
+  await waitData(page, 'loaded', true)
+  expect(await page.data('segmentTabs')).toMatchObject([{ key: 'orders' }, { key: 'statements' }])
+  await page.callMethod('onOpen', { currentTarget: { dataset: { key: po.id } } })
+  const detail = await waitPage(mini, 'packages/supplier/pages/po-detail/index')
+  await waitData(detail, 'loaded', true)
+  expect(await detail.data('view.info.title')).toBe(po.supplierName)
+  expect(await detail.data('view.notice')).toBe('')
+  expect(await detail.data('canCancel')).toBe(false)
+  expect(await detail.data('canEdit')).toBe(false)
+  expect(await detail.data('view.info.rows')).toContainEqual(
+    expect.objectContaining({
+      label: '对账单',
+      value: `${projected.statement.no} · 已结清`,
+      url: `/packages/supplier/pages/statement-detail/index?id=${projected.statement.id}`,
+    }),
   )
-  await snap(mini, 'supplier-purchase-paid-detail')
+  expect(JSON.stringify(await detail.data('view.info.rows'))).not.toMatch(/财务|应付|未付|付款进度/)
+  await snap(mini, 'supplier-purchase-statement-link')
+  await detail.callMethod('onStatement')
+  const statement = await waitPage(mini, 'packages/supplier/pages/statement-detail/index')
+  await waitData(statement, 'loaded', true)
+  expect(await statement.data('view.info.title')).toBe(po.supplierName)
+  expect(await statement.data('view.info.status')).toBe('settled')
+  expect(await statement.data('view.cells')).toContainEqual(
+    expect.objectContaining({ label: f.receivable, amountCents: 96000 }),
+  )
+  expect(await statement.data('view.settlements')).toHaveLength(1)
+  await snap(mini, 'supplier-statement-settled')
+  await statement.callMethod('onSource', { currentTarget: { dataset: { key: `po:${po.id}` } } })
+  const source = await waitPage(mini, 'packages/supplier/pages/po-detail/index')
+  await waitData(source, 'loaded', true)
+  expect(await source.data('view.info.rows')).toContainEqual(
+    expect.objectContaining({ label: '单号', value: po.no }),
+  )
 })
 
 test('自动取消邀请的供应商只读页显示自动取消说明和时间', async () => {
@@ -96,8 +129,8 @@ test.each([
 ])('F05-F $field 停用状态与重新启用后的直接登录', async ({ field, message }) => {
   const { mini, server: s } = suite()
   await asMini(mini, s, 'p1')
-  const home = await enter(mini, '/packages/supplier/pages/home/index')
-  await waitData(home, 'hero.badge', 1)
+  const invites = await enter(mini, '/packages/supplier/pages/invites/index')
+  await waitData(invites, 'tabs.0.badge', 1)
   const purchase = await s.as('u4'),
     supplier = await supplierOf(s)
   const disabled = dataOf<Supplier>(
@@ -125,19 +158,20 @@ test.each([
     }),
   )
   await login.callMethod('check')
-  const restored = await waitPage(mini, 'packages/supplier/pages/home/index')
-  await waitData(restored, 'hero.badge', 0)
+  const restored = await waitPage(mini, 'packages/supplier/pages/invites/index')
+  await waitData(restored, 'tabs.0.badge', 0)
   await snap(mini, `${field}-restored`)
 })
 
-test('F01-F H05 供应商首页填报入口、底栏角标随新邀请刷新', async () => {
+test('F01-F H05 供应商填报落点、采购单底栏与新邀请角标刷新', async () => {
   const { mini, server: s } = suite()
   await asMini(mini, s, 'p1')
-  const page = await enter(mini, '/packages/supplier/pages/home/index')
-  await waitData(page, 'hero.badge', 1)
+  const page = await enter(mini, '/packages/supplier/pages/invites/index')
+  await waitData(page, 'tabs.0.badge', 1)
+  expect(await page.data('filter.status')).toBe('pending')
   expect(await page.data('tabs')).toMatchObject([
-    { key: 'home' },
     { key: 'supply', badge: 1 },
+    { key: 'orders' },
     { key: 'my' },
   ])
   const invite = await inviteOf(s)
@@ -149,9 +183,9 @@ test('F01-F H05 供应商首页填报入口、底栏角标随新邀请刷新', a
       lines: [{ materialId: invite.lines[0]?.materialId, needQty: 10 }],
     }),
   )
-  await waitData(page, 'hero.badge', 2)
-  await waitData(page, 'tabs.1.badge', 2)
-  await snap(mini, 'supplier-home')
+  await waitData(page, 'counts.pending', 2)
+  await waitData(page, 'tabs.0.badge', 2)
+  await snap(mini, 'supplier-invites')
 })
 
 test('B27 F02-F I01-F 填报默认需求量、校验、编辑保护、提交后只读', async () => {
@@ -195,31 +229,46 @@ test('B27 F02-F I01-F 填报默认需求量、校验、编辑保护、提交后�
   await page.callMethod('onSubmit')
   await waitData(page, 'editable', false)
   expect(await page.data('inviteView.lines')).toMatchObject([
-    { qty: 70, priceCents: 350, headMeta: '需求 70 枝', subText: '供 70 枝 × ¥3.50' },
+    { qty: 70, priceCents: 350, meta: '需求 70 枝', subText: '供 70 枝 × ¥3.50' },
   ])
   expect((await inviteOf(s)).version).toBeGreaterThan(edited.version)
   await snap(mini, 'supplier-submitted')
 })
 
-test('F03 B12-F 供应商采购只读弹层及邀请卡片关联状态实时更新', async () => {
+test('F03 B12-F 供应商整页采购修改、实时详情与填报关联状态', async () => {
   const { mini, server: s } = suite()
   await asMini(mini, s, 'p1')
   const po = await poOf(s, 'PO-260929-006')
   const page = await enter(mini, '/packages/supplier/pages/orders/index')
   await waitData(page, 'loaded', true)
   await page.callMethod('onOpen', { currentTarget: { dataset: { key: po.id } } })
-  await waitData(page, 'sheet', true)
-  await waitData(page, 'view.info.title', po.no)
+  const detail = await waitPage(mini, 'packages/supplier/pages/po-detail/index')
+  await waitData(detail, 'loaded', true)
+  expect(await detail.data('view.info.title')).toBe(po.supplierName)
+  expect(await detail.data('view.info.rows')).toContainEqual(
+    expect.objectContaining({ label: '采购', value: po.buyerName, phone: po.buyerPhone }),
+  )
+  await detail.callMethod('onEdit')
+  const edit = await waitPage(mini, 'packages/supplier/pages/supply/index')
+  await waitData(edit, 'loaded', true)
+  expect(await edit.data('supplierEditing')).toBe(true)
+  await edit.callMethod('onQty', { detail: { index: 0, qty: (po.lines[0]?.qty ?? 0) + 1 } })
+  await edit.callMethod('onSubmit')
+  await waitPage(mini, 'packages/supplier/pages/po-detail/index')
+  const current = await poOf(s, po.no)
+  await expect
+    .poll(async () => detail.data('view.lines.0.qty') as Promise<unknown>)
+    .toBe(current.lines[0]?.qty)
   const api = await s.as('u4')
   const changed = dataOf<PoDetail>(
     await api.put(`/purchase-orders/${po.id}`, {
-      ...poInput(po),
+      ...poInput(current),
       note: '临时补充',
       reason: '联系供应商',
     }),
   )
   await expect
-    .poll(async () => page.data('view.info.rows') as Promise<unknown>)
+    .poll(async () => detail.data('view.info.rows') as Promise<unknown>)
     .toContainEqual({ label: '备注', value: '临时补充' })
   await snap(mini, 'supplier-purchase-detail')
   const list = await enter(mini, '/packages/supplier/pages/invites/index')
@@ -230,10 +279,15 @@ test('F03 B12-F 供应商采购只读弹层及邀请卡片关联状态实时更�
       reason: '客户取消订单',
     }),
   )
-  await expect
-    .poll(async () =>
-      ((await list.data('rows')) as { meta: string }[]).some((r) => r.meta.includes('已取消')),
-    )
-    .toBe(true)
+  await list.callMethod('onFilter', {
+    detail: { status: '', keyword: '', date: 'all', range: null, picks: {} },
+  })
+  const submitted = await inviteOf(s, 'YQ-260928-001')
+  await list.callMethod('onOpen', { currentTarget: { dataset: { key: submitted.id } } })
+  const supply = await waitPage(mini, 'packages/supplier/pages/supply/index')
+  await waitData(supply, 'loaded', true)
+  expect(await supply.data('editable')).toBe(false)
+  expect(await supply.data('inviteView.info.status')).toBe('submitted')
+  expect(await supply.data('inviteView.poLink')).toBe(`采购单 ${po.no}${copy.separator}已取消`)
   await snap(mini, 'supplier-invites-cancelled')
 })

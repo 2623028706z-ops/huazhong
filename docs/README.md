@@ -2,6 +2,10 @@
 
 整理日期：2026-09-30。花众正式微信小程序从零重写，代码按这份规格书写，不参考老小程序的任何代码。
 
+## 当前任务（2026-10-04）
+
+前端重新设计已定稿（画稿 `audit/2026-10-03-redesign/v33.html`）。按 [spec-redesign-changes.md](spec-redesign-changes.md) 先同步 02~07 章（先 03，再 04 / 05 / 06 / 07），再改代码；财务后台按单核销那套重写成「对账单」。清单用户已过目确认，改完规格不用停下来等确认。背景和过程见 [frontend-redesign-handoff.md](frontend-redesign-handoff.md) 第八节，和清单冲突时以清单为准。
+
 ## 依据
 
 - 冻结原型：`~/Documents/Codex/2026-09-29/n-b-w/outputs/huazhong-unified/`，提交 `5dd7d7c`。页面、交互、视觉以它为参考，可以直接打开 `index.html` 点着看。

@@ -5,8 +5,10 @@
   <hz-error wx:elif="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <hz-skeleton wx:if="{{!loaded}}" type="detail" />
   <block wx:else>
-    <template is="info" data="{{title:material.name,rows}}" />
-    <view class="u-section"><text class="u-section__title">{{texts.batches}}</text><view class="u-card u-info"><view wx:for="{{batches}}" wx:key="id" class="u-sheet-row"><text>{{item.date}}</text><text>{{item.qty}}</text></view></view></view>
+    <template is="info" data="{{title:material.name,rows}}" /><hz-button wx:if="{{canEdit}}" kind="text" text="{{texts.edit}}" bind:press="onEdit" />
+    <view class="u-section"><text class="u-section__title">{{texts.batches}}</text><view class="u-card u-info"><view wx:for="{{batches}}" wx:key="id" class="u-sheet-row"><text>{{item.date}}</text><text>{{item.qty}}</text><text class="{{item.aged ? 'u-aged' : 'u-info__meta'}}">{{item.age}}</text></view></view></view>
   </block>
 </view>
-<template is="buttons" data="{{buttons}}" />
+<view class="u-list"><hz-button kind="text" text="{{texts.moves}}" bind:press="onMoves" /><hz-button wx:if="{{canStockIn}}" kind="text" text="{{texts.stockIn}}" bind:press="onStockIn" /></view>
+
+<hz-action-bar wx:if="{{canLoss || canStockOut}}"><hz-button wx:if="{{canLoss}}" kind="secondary" text="{{texts.loss}}" bind:press="onLoss" /><hz-button wx:if="{{canStockOut}}" text="{{texts.stockOut}}" bind:press="onStockOut" /></hz-action-bar>

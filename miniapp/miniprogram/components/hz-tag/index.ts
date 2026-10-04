@@ -3,5 +3,6 @@ Component({
   properties: {
     text: { type: String, value: '' },
     warn: { type: Boolean, value: false },
+    danger: { type: Boolean, value: false },
   },
 })

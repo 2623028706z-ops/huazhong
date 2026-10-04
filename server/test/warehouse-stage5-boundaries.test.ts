@@ -1,9 +1,10 @@
 import { copy, type contract, type OutputOf, type WhDocDetail } from '@huazhong/shared'
 import { sql } from 'drizzle-orm'
 import { afterEach, beforeEach, expect, test } from 'vitest'
-import { dataOf, idBy, startSales, TODAY, type SalesApp } from './support/sales.ts'
+import { dataOf, idBy, startSales, type SalesApp } from './support/sales.ts'
 import { poOf } from './support/purchase.ts'
-import { paymentForDocs, stockQtyOf, whDocOf, whIds } from './support/warehouse.ts'
+import { openStatement } from './support/statements.ts'
+import { stockQtyOf, whDocOf, whIds } from './support/warehouse.ts'
 
 let app: SalesApp
 beforeEach(async () => {
@@ -101,98 +102,79 @@ test('C05-S5/C20/C23: disabled materials allow outbound/loss; only creator or ad
   expect(await stockQtyOf(app, ids.materialId)).toBe(before)
 })
 
-test('C08/D28: mixed purchase/manual IDs never collide; manual docs pay whole, payment locks, withdrawal unlocks; prepaid supports manual docs', async () => {
+test('C08/D28: 同ID采购和手工单来源不碰撞；未付款DZ也锁定，作废DZ解锁', async () => {
   const warehouse = await app.as('u5'),
     finance = await app.as('u6')
   const po = await poOf(app, 'PO-260928-004')
   await app.t.db.execute(sql`SELECT setval('wh_docs_id_seq',${Number(po.id)},false)`)
   const incoming = await whDocOf(app, 'in', 10, po.supplierId)
   expect(incoming.id).toBe(po.id)
-  const partial = await finance.post(
-    '/finance/payments',
-    await paymentForDocs(app, po.supplierId, [
-      { docType: 'wh', docId: incoming.id, amountCents: 200 },
-    ]),
-  )
-  expect(partial.status).toBe(422)
-  expect(JSON.stringify(partial.body)).toContain(copy.stock.stockInPayWhole)
-  const allocs = [
-    { docType: 'po' as const, docId: po.id, amountCents: 100 },
-    { docType: 'wh' as const, docId: incoming.id, amountCents: incoming.amountCents ?? 0 },
-  ]
-  const payment = dataOf<OutputOf<typeof contract.createPayment>>(
-    await finance.post(
-      '/finance/payments',
-      await paymentForDocs(app, po.supplierId, allocs, 100 + (incoming.amountCents ?? 0)),
-    ),
-  )
-  expect(payment.allocations.map((row) => `${row.docType}:${row.docId}`)).toEqual([
-    'po:' + po.id,
-    'wh:' + incoming.id,
+  const statement = await openStatement(app, 'supplier', po.supplierId, [
+    { type: 'po', id: po.id },
+    { type: 'wh', id: incoming.id },
   ])
-  const detail = dataOf<WhDocDetail>(await warehouse.get(`/warehouse/docs/${incoming.id}`))
-  expect(detail).toMatchObject({ paidCents: incoming.amountCents, apStatus: 'paid' })
-  expect(detail.allocations).toHaveLength(1)
+  expect(statement.dueCents).toBe(po.amountCents + (incoming.amountCents ?? 0))
   expect(
-    detail.actions
-      .filter((row) => row.code === 'void' || row.code === 'reprice')
-      .every((row) => !row.enabled),
-  ).toBe(true)
-  const row = detail.allocations[0]
-  if (!row) throw new Error('no manual allocation')
-  dataOf(
-    await finance.post(`/finance/payment-allocations/${row.id}/revoke`, { reason: '重新核对' }),
+    statement.groups
+      .flatMap((group) => group.sources)
+      .map((source) => `${source.type}:${source.id}`),
+  ).toEqual(expect.arrayContaining([`po:${po.id}`, `wh:${incoming.id}`]))
+  const detail = dataOf<WhDocDetail>(await warehouse.get(`/warehouse/docs/${incoming.id}`))
+  const purchase = dataOf<OutputOf<typeof contract.getPurchaseOrder>>(
+    await warehouse.get(`/purchase-orders/${po.id}`),
   )
-  const unlocked = dataOf<WhDocDetail>(await warehouse.get(`/warehouse/docs/${incoming.id}`))
-  expect(unlocked.actions.find((action) => action.code === 'reprice')?.enabled).toBe(true)
-  const body = await paymentForDocs(app, po.supplierId, [
-    { docType: 'wh', docId: incoming.id, amountCents: incoming.amountCents ?? 0 },
-  ])
-  expect((await finance.post('/finance/prepaid-payment-allocations', body)).status).toBe(200)
-  expect(dataOf<WhDocDetail>(await warehouse.get(`/warehouse/docs/${incoming.id}`)).paidCents).toBe(
-    incoming.amountCents,
-  )
+  expect(detail.statement?.id).toBe(statement.id)
+  expect(purchase.statement?.id).toBe(statement.id)
+  expect(detail.actions.every((action) => !action.enabled)).toBe(true)
+  expect(purchase.actions.every((action) => !action.enabled)).toBe(true)
   expect(
     (
-      await finance.post(`/finance/payments/${payment.id}/void`, {
-        version: payment.version,
-        reason: '录错',
+      await warehouse.post(`/warehouse/docs/${incoming.id}/reprice`, {
+        version: detail.version,
+        reason: '核对',
+        lines: detail.lines.map((line) => ({ lineId: line.id, priceCents: 300 })),
       })
-    ).status,
-  ).toBe(200)
-  const voided = await warehouse.post(`/warehouse/docs/${incoming.id}/void`, {
-    version: incoming.version,
-    reason: '误录',
-  })
-  expect(voided.status).toBe(200)
-})
-
-test('C08: an allocation that pays nothing no longer locks manual repricing and voiding', async () => {
-  const warehouse = await app.as('u5'),
-    finance = await app.as('u6')
-  const incoming = await whDocOf(app, 'in')
+    ).body.error?.code,
+  ).toBe('BUSINESS_RULE')
   dataOf(
-    await finance.post(
-      '/finance/payments',
-      await paymentForDocs(app, incoming.supplierId ?? '', [
-        { docType: 'wh', docId: incoming.id, amountCents: incoming.amountCents ?? 0 },
-      ]),
-    ),
+    await finance.post(`/finance/statements/${statement.id}/void`, {
+      version: statement.version,
+      reason: '重新核对',
+    }),
   )
-  await app.t.db.execute(
-    sql`UPDATE wh_doc_lines SET price_cents=0 WHERE doc_id=${Number(incoming.id)}`,
+  const unlocked = dataOf<WhDocDetail>(await warehouse.get(`/warehouse/docs/${incoming.id}`))
+  expect(unlocked.statement).toBeNull()
+  expect(unlocked.actions.every((action) => action.enabled)).toBe(true)
+  dataOf(
+    await warehouse.post(`/warehouse/docs/${incoming.id}/void`, {
+      version: unlocked.version,
+      reason: '误录',
+    }),
   )
-  const detail = dataOf<WhDocDetail>(await warehouse.get(`/warehouse/docs/${incoming.id}`))
-  expect(detail.paidCents).toBe(0)
-  expect(detail.allocations[0]?.effectiveCents).toBe(0)
-  expect(
-    detail.actions
-      .filter((row) => row.code === 'void' || row.code === 'reprice')
-      .every((row) => row.enabled),
-  ).toBe(true)
 })
 
-test('C09/C10: gifts become payable and back; supplier disable is enforced; void removes payable todos', async () => {
+test('C08/C09: 零元入库DZ立即结清，仍锁定来源且不改变库存', async () => {
+  const warehouse = await app.as('u5')
+  const incoming = await whDocOf(app, 'in')
+  const gift = dataOf<WhDocDetail>(
+    await warehouse.post(`/warehouse/docs/${incoming.id}/reprice`, {
+      version: incoming.version,
+      reason: '赠送',
+      lines: incoming.lines.map((line) => ({ lineId: line.id, priceCents: 0 })),
+    }),
+  )
+  const before = await stockQtyOf(app, gift.lines[0]?.materialId ?? '')
+  const statement = await openStatement(app, 'supplier', gift.supplierId ?? '', [
+    { type: 'wh', id: gift.id },
+  ])
+  expect(statement).toMatchObject({ status: 'settled', dueCents: 0 })
+  const detail = dataOf<WhDocDetail>(await warehouse.get(`/warehouse/docs/${gift.id}`))
+  expect(detail.statement?.status).toBe('settled')
+  expect(detail.actions.every((action) => !action.enabled)).toBe(true)
+  expect(await stockQtyOf(app, gift.lines[0]?.materialId ?? '')).toBe(before)
+})
+
+test('C09/C10: gifts keep zero-valued sources; repricing updates unstatemented amounts; void releases candidate; supplier disable is enforced', async () => {
   const api = await app.as('u5'),
     finance = await app.as('u6'),
     ids = await whIds(app)
@@ -204,7 +186,7 @@ test('C09/C10: gifts become payable and back; supplier disable is enforced; void
       lines: incoming.lines.map((line) => ({ lineId: line.id, priceCents: 0 })),
     }),
   )
-  expect(gift.apStatus).toBe('no_pay')
+  expect(gift.amountCents).toBe(0)
   const again = dataOf<WhDocDetail>(
     await api.post(`/warehouse/docs/${incoming.id}/reprice`, {
       version: gift.version,
@@ -212,14 +194,24 @@ test('C09/C10: gifts become payable and back; supplier disable is enforced; void
       lines: gift.lines.map((line) => ({ lineId: line.id, priceCents: 200 })),
     }),
   )
-  expect(again.apStatus).toBe('unpaid')
-  const todos = dataOf<OutputOf<typeof contract.moduleTodos>>(
-    await finance.get('/modules/finance/todos'),
+  expect(again.amountCents).toBe(2000)
+  const ledger = dataOf<OutputOf<typeof contract.getFinanceSupplier>>(
+    await finance.get(`/finance/suppliers/${incoming.supplierId}?tab=unstatemented`),
   )
-  expect(JSON.stringify(todos)).toContain(incoming.no)
-  await api.post(`/warehouse/docs/${incoming.id}/void`, { version: again.version, reason: '重复' })
-  expect(JSON.stringify(dataOf(await finance.get('/modules/finance/todos')))).not.toContain(
-    incoming.no,
+  expect(
+    ledger.sources.find((source) => source.type === 'wh' && source.id === incoming.id)?.amountCents,
+  ).toBe(2000)
+  dataOf(
+    await api.post(`/warehouse/docs/${incoming.id}/void`, {
+      version: again.version,
+      reason: '重复',
+    }),
+  )
+  const after = dataOf<OutputOf<typeof contract.getFinanceSupplier>>(
+    await finance.get(`/finance/suppliers/${incoming.supplierId}?tab=unstatemented`),
+  )
+  expect(after.sources.some((source) => source.type === 'wh' && source.id === incoming.id)).toBe(
+    false,
   )
   await app.t.db.execute(sql`UPDATE suppliers SET enabled=false WHERE id=${Number(ids.supplierId)}`)
   expect(
@@ -361,26 +353,12 @@ test('C17/C23: concurrent outgoing documents never oversell, duplicate void neve
   ).toBe(true)
 })
 
-test('C11/C20: document filters, composite payable pagination and stale prices do not lose or duplicate rows', async () => {
-  const api = await app.as('u5'),
-    finance = await app.as('u6')
+test('C11/C20: 单种花材记录按方向过滤，分页不重不漏，改价旧版本被拒', async () => {
+  const api = await app.as('u5')
   const incoming = await whDocOf(app, 'in'),
-    outgoing = await whDocOf(app, 'out', 1)
-  const inList = dataOf<OutputOf<typeof contract.listWhDocs>>(
-    await api.get(
-      `/warehouse/docs?kind=in&supplierId=${incoming.supplierId}&from=${TODAY}&to=${TODAY}`,
-    ),
-  )
-  expect(inList.items.map((row) => row.id)).toEqual([incoming.id])
-  expect(
-    dataOf<OutputOf<typeof contract.listWhDocs>>(
-      await api.get('/warehouse/docs?kind=in&status=voided'),
-    ).items,
-  ).toEqual([])
-  const outList = dataOf<OutputOf<typeof contract.listWhDocs>>(
-    await api.get(`/warehouse/docs?kind=out&outCategoryId=${outgoing.outCategoryId}`),
-  )
-  expect(outList.items.map((row) => row.id)).toEqual([outgoing.id])
+    outgoing = await whDocOf(app, 'out', 1),
+    ids = await whIds(app)
+  expect((await api.get('/warehouse/moves')).status).toBe(422)
   const reprice = {
     version: incoming.version,
     reason: '议价',
@@ -388,18 +366,31 @@ test('C11/C20: document filters, composite payable pagination and stale prices d
   }
   expect((await api.post(`/warehouse/docs/${incoming.id}/reprice`, reprice)).status).toBe(200)
   expect((await api.post(`/warehouse/docs/${incoming.id}/reprice`, reprice)).status).toBe(409)
-  const keys: string[] = []
+  for (const direction of ['in', 'out']) {
+    const page = dataOf<OutputOf<typeof contract.listStockMoves>>(
+      await api.get(`/warehouse/moves?materialId=${ids.materialId}&direction=${direction}`),
+    )
+    expect(
+      page.items.every(
+        (row) =>
+          row.materialId === ids.materialId && (direction === 'in' ? row.qty > 0 : row.qty < 0),
+      ),
+    ).toBe(true)
+    expect(page.items.every((row) => /^\d{4}-\d{2}-\d{2} 入库$/.test(row.batchLabel))).toBe(true)
+  }
+  const keys: string[] = [],
+    docs: string[] = []
   let cursor: string | null = null
   do {
-    const page: OutputOf<typeof contract.listPayables> = dataOf(
-      await finance.get(
-        `/finance/payables?limit=1${cursor ? '&cursor=' + encodeURIComponent(cursor) : ''}`,
+    const page: OutputOf<typeof contract.listStockMoves> = dataOf(
+      await api.get(
+        `/warehouse/moves?materialId=${ids.materialId}&limit=1${cursor ? '&cursor=' + encodeURIComponent(cursor) : ''}`,
       ),
     )
-    keys.push(...page.items.map((row) => `${row.docType}:${row.docId}`))
+    keys.push(...page.items.map((row) => row.id))
+    docs.push(...page.items.map((row) => `${row.docType}:${row.docId}`))
     cursor = page.nextCursor
   } while (cursor)
   expect(new Set(keys).size).toBe(keys.length)
-  expect(keys).toContain(`wh:${incoming.id}`)
-  expect(keys.some((key) => key.startsWith('po:'))).toBe(true)
+  expect(docs).toEqual(expect.arrayContaining([`wh:${incoming.id}`, `wh:${outgoing.id}`]))
 })

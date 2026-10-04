@@ -7,7 +7,7 @@ import {
   type OutputOf,
 } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
-import { and, asc, count, desc, eq, inArray, type SQL } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, sql, type SQL } from 'drizzle-orm'
 import type { Db, Tx } from '../../../db/client.ts'
 import {
   accounts,
@@ -24,7 +24,7 @@ import { pageOf } from '../../common/domain/cursor.ts'
 import { unitTotalsOf } from '../../common/domain/units.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import type { ParsedInput } from '../../common/endpoint.ts'
-import { beforeCursor } from '../../common/page.ts'
+import { beforeCursor, dateBetween } from '../../common/page.ts'
 import { found } from '../../common/scope.ts'
 
 type Executor = Db | Tx
@@ -32,8 +32,13 @@ function rowsQuery(executor: Executor) {
   return executor
     .select({
       invite: invites,
+      supplyAmountCents:
+        sql<number>`(SELECT coalesce(sum(qty::bigint * price_cents),0) FROM invite_supply_lines WHERE invite_id=${invites.id})`.mapWith(
+          Number,
+        ),
       supplierName: suppliers.name,
       buyerName: accounts.name,
+      buyerPhone: accounts.phone,
       purchaseOrderId: purchaseOrders.id,
       purchaseOrderNo: purchaseOrders.no,
       purchaseOrderStatus: purchaseOrders.status,
@@ -61,12 +66,14 @@ function cardOf(row: Row, lines: Line[], viewer: Viewer): InviteCard {
         : []
   return {
     id: String(row.invite.id),
+    supplyAmountCents: row.invite.status === 'submitted' ? row.supplyAmountCents : null,
     no: row.invite.no,
     version: row.invite.version,
     inviteDate: row.invite.inviteDate,
     supplierId: String(row.invite.supplierId),
     supplierName: row.supplierName,
     buyerName: row.buyerName,
+    buyerPhone: row.buyerPhone,
     status: row.invite.status,
     units: unitTotalsOf(lines.map((line) => ({ unit: line.unit, qty: line.needQty }))),
     materialNames: lines.map((line) => line.name),
@@ -126,6 +133,7 @@ export class InviteReads {
         and(
           base,
           query.status ? eq(invites.status, query.status) : undefined,
+          dateBetween(invites.inviteDate, query),
           beforeCursor(invites.inviteDate, invites.id, query.cursor),
         ),
       )
@@ -166,14 +174,15 @@ export class InviteReads {
     const [row] = await rowsQuery(executor).where(and(eq(invites.id, id), own(viewer)))
     const invite = found(row)
     const lines = await executor
-      .select({ line: inviteLines, enabled: materials.enabled })
+      .select({ line: inviteLines, enabled: materials.enabled, code: materials.code })
       .from(inviteLines)
       .innerJoin(materials, eq(materials.id, inviteLines.materialId))
       .where(eq(inviteLines.inviteId, id))
       .orderBy(asc(inviteLines.sort))
     const supply = await executor
-      .select()
+      .select({ line: inviteSupplyLines, code: materials.code })
       .from(inviteSupplyLines)
+      .innerJoin(materials, eq(materials.id, inviteSupplyLines.materialId))
       .where(eq(inviteSupplyLines.inviteId, id))
       .orderBy(asc(inviteSupplyLines.sort))
     return {
@@ -182,20 +191,22 @@ export class InviteReads {
         lines.map((row) => row.line),
         viewer,
       ),
-      lines: lines.map(({ line, enabled }) => ({
+      lines: lines.map(({ line, enabled, code }) => ({
         id: String(line.id),
         materialId: String(line.materialId),
         name: line.name,
         unit: line.unit,
         needQty: line.needQty,
+        code,
         enabled,
       })),
-      supply: supply.map((line) => ({
+      supply: supply.map(({ line, code }) => ({
         materialId: String(line.materialId),
         name: line.name,
         unit: line.unit,
         qty: line.qty,
         priceCents: line.priceCents,
+        code,
       })),
       cancelNote: invite.invite.cancelNote,
       cancelledAt: invite.invite.cancelledAt?.toISOString() ?? null,

@@ -38,6 +38,9 @@ export const customerItemSchema = z.object({
   name: z.string(),
   enabled: z.boolean(),
   stores: z.array(storeItemSchema),
+  overdue: z
+    .object({ amountCents: z.number().int().positive(), days: z.number().int().positive() })
+    .nullable(),
 })
 export type CustomerItem = z.infer<typeof customerItemSchema>
 

@@ -5,6 +5,7 @@ import { copy, type Action, type ActionCode } from '@huazhong/shared'
 const labels: Partial<Record<ActionCode, string>> = {
   stockIn: copy.stock.screen.stockIn,
   stockOut: copy.stock.screen.stockOut,
+  reportLoss: copy.stock.screen.titles.loss,
   void: copy.stock.screen.void,
   requestCancel: copy.rework.requestCancel,
   withdrawCancel: copy.rework.withdrawCancel,
@@ -12,11 +13,6 @@ const labels: Partial<Record<ActionCode, string>> = {
   rejectCancel: copy.rework.rejectCancel,
   voidOrder: copy.rework.voidOrder,
   registerPayment: copy.screen.action.pay,
-  allocatePrepaid: copy.rework.allocatePaymentPrepaid,
-  refundReceipt: copy.rework.registerRefund,
-  refundPayment: copy.rework.registerRefund,
-  revokeAllocation: copy.rework.revokeAllocation,
-  revokePaymentAllocation: copy.rework.revokeAllocation,
   voidRefund: copy.rework.voidRefund,
   voidPo: copy.rework.voidPurchaseOrder,
   copyCatalog: copy.rework.copyCatalog,
@@ -31,7 +27,7 @@ function textOf(code: ActionCode): string {
 export interface ButtonView {
   code: string
   text: string
-  kind: 'primary' | 'secondary'
+  kind: 'primary' | 'secondary' | 'text'
   disabled: boolean
   reason: string
 }
@@ -67,7 +63,7 @@ export function buttonsOf(actions: readonly Action[], specs: readonly ButtonSpec
     views.push({
       code: spec.code,
       text: textOf(spec.code),
-      kind: spec.secondary ? 'secondary' : 'primary',
+      kind: views.length >= 2 ? 'text' : spec.secondary ? 'secondary' : 'primary',
       disabled: !action.enabled,
       reason: action.disabledReason ?? '',
     })

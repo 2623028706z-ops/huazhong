@@ -1,7 +1,15 @@
 // H3 发货（06 章 H3）：actions 含 ship 时是表单：状态区 → 客户门店、出货日期、备注 → 明细（订单数量、实发，
-// 默认等于订单数量）→ 发货金额 → 发货备注 → 变更记录。出货日期还没到时按钮禁用、写 disabledReason，实发和备注不能填。
+// 默认等于订单数量）→ 合计数量 → 发货备注 → 变更记录。出货日期还没到时按钮禁用、写 disabledReason，实发和备注不能填。
 // 否则只读。确认后回进来的列表
-import { contract, copy, orderShipSchema, fieldsOf, type ShippingDetail } from '@huazhong/shared'
+import {
+  contract,
+  copy,
+  redesignCopy,
+  orderShipSchema,
+  fieldsOf,
+  type ShippingDetail,
+} from '@huazhong/shared'
+import { loadPicking, savePicking, clearPicking } from '../../../../core/picking'
 import { canDo, findAction } from '../../../../core/actions'
 import type { DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
@@ -15,26 +23,31 @@ import { shippingViewOf, rowsOf, shipDateText } from '../../../../views/order'
 interface ShipLine {
   id: string
   name: string
+  code: string
   unit: string
   qty: number
   shippedQty: number
+  packed: boolean
 }
 
 function shipLinesOf(order: ShippingDetail): ShipLine[] {
   return order.lines.map((line) => ({
     id: line.id,
     name: line.name,
+    code: line.customerCode,
     unit: line.unit,
     qty: line.qty,
     shippedQty: line.qty,
+    packed: loadPicking(order.id).includes(line.id),
   }))
 }
 
-// 实发少于订单数量标「少发」；金额按实发预览
+// 实发少于订单数量标「少发」；只预览数量
 function lineViewsOf(lines: readonly ShipLine[]) {
   return lines.map((line) => ({
     key: line.id,
     name: line.name,
+    code: line.code,
     tags:
       line.shippedQty < line.qty
         ? [{ text: copy.screen.tag.short, warn: true }]
@@ -43,19 +56,27 @@ function lineViewsOf(lines: readonly ShipLine[]) {
           : [],
     meta: `${copy.screen.label.orderQty} ${line.qty} ${line.unit}`,
     qty: line.shippedQty,
+    orderedQty: line.qty,
+    packed: line.packed,
     unit: line.unit,
   }))
 }
 
 function infoOf(order: ShippingDetail) {
   return {
-    title: order.no,
+    title: copy.org.store(order.customerName, order.storeName),
     statusKind: 'orderStatus',
     status: order.status,
     rows: rowsOf([
-      [copy.screen.label.customerStore, copy.org.store(order.customerName, order.storeName)],
+      [redesignCopy.no, order.no],
       [copy.field.shipDate, shipDateText(order.shipDate)],
-      [copy.field.note, order.note],
+      [
+        redesignCopy.contact,
+        [order.contactName, order.contactPhone].filter(Boolean).join(copy.separator) ||
+          redesignCopy.notFilled,
+        { phone: order.contactPhone },
+      ],
+      [redesignCopy.address, order.address || redesignCopy.notFilled],
     ]),
   }
 }
@@ -68,6 +89,7 @@ Page({
     failure: null as FailureView | null,
     formError: '',
     realtime: '',
+    orderNote: '',
     isForm: false,
     canShip: false,
     shipReason: '',
@@ -75,14 +97,16 @@ Page({
     view: null as ReturnType<typeof shippingViewOf> | null,
     lines: [] as ShipLine[],
     lineViews: [] as ReturnType<typeof lineViewsOf>,
-    amountRows: [] as { label: string; value: string }[],
     shipNote: '',
     saving: false,
     texts: {
+      contact: redesignCopy.contact,
+      address: redesignCopy.address,
       lines: copy.screen.section.lines,
       shipNote: copy.screen.label.shipNote,
       optional: copy.placeholder.optional,
       ship: copy.screen.action.ship,
+      delivery: redesignCopy.delivery,
     },
   },
   id: '',
@@ -134,6 +158,7 @@ Page({
   },
   show(order: ShippingDetail) {
     this.order = order
+    if (order.status === 'shipped') clearPicking(order.id)
     const action = findAction(order.actions, 'ship')
     this.setData({
       loaded: true,
@@ -144,6 +169,7 @@ Page({
       shipReason: action?.disabledReason ?? '',
       info: infoOf(order),
       view: shippingViewOf(order),
+      orderNote: order.note ?? '',
       shipNote: '',
     })
     this.setLines(shipLinesOf(order), false)
@@ -152,7 +178,6 @@ Page({
     this.setData({
       lines,
       lineViews: lineViewsOf(lines),
-      amountRows: [],
       formError: '',
     })
     markChanged(this, changed)
@@ -162,6 +187,19 @@ Page({
     this.setLines(
       this.data.lines.map((line, i) => (i === index ? { ...line, shippedQty: qty } : line)),
     )
+  },
+  onPacked(event: DetailEvent<number>) {
+    const lines = this.data.lines.map((line, index) =>
+      index === event.detail ? { ...line, packed: !line.packed } : line,
+    )
+    savePicking(
+      this.id,
+      lines.filter((line) => line.packed).map((line) => line.id),
+    )
+    this.setData({ lines, lineViews: lineViewsOf(lines) })
+  },
+  onDelivery() {
+    void wx.navigateTo({ url: `/packages/shipping/pages/delivery/index?id=${this.id}` })
   },
   onNote(event: DetailEvent<string>) {
     this.setData({ shipNote: event.detail, formError: '' })
@@ -195,6 +233,7 @@ Page({
     })
     this.setData({ saving: false })
     if (result.ok) {
+      clearPicking(order.id)
       markChanged(this, false)
       showSuccess(copy.order.shipped)
       void wx.navigateBack()

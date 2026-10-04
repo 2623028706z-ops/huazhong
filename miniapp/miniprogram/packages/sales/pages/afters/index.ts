@@ -1,42 +1,26 @@
 // X5 客户售后（06 章 X5）：筛选状态、客户、提交日期；三行卡片（没有金额写「—」）。
 // 底栏「新建售后」（createAfter）：弹层只列能新建售后的订单 → X7；点卡片 → X6
-import {
-  afterStatuses,
-  contract,
-  copy,
-  type AfterCard,
-  type AfterStatus,
-  type OrderCard,
-} from '@huazhong/shared'
+import { contract, copy, labels, type AfterCard, type AfterStatus } from '@huazhong/shared'
 import { hasAction } from '../../../../core/actions'
 import type { KeyEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { emptyFilter, type FilterDimension } from '../../../../core/filter'
 import type { PagedList } from '../../../../core/list'
 import { request } from '../../../../core/request'
-import { failureOf } from '../../../../core/session'
 import { afterRowOf } from '../../../../views/after'
 import { loadCustomers } from '../../../../views/customers'
 import { listHandlers, listOf, listQueryOf, showList } from '../../../../views/list'
-import { shipDateText } from '../../../../views/order'
 
 const CUSTOMER = 'customer'
 const PAGES = '/packages/sales/pages'
-
-function pickRowOf(order: OrderCard) {
-  return {
-    id: order.id,
-    name: [order.no, copy.org.store(order.customerName, order.storeName)].join(copy.separator),
-    sub: shipDateText(order.shipDate),
-  }
-}
 
 Page({
   ...listHandlers,
   data: {
     title: copy.screen.title.salesAfters,
     statusKind: 'afterStatus',
-    statuses: [...afterStatuses],
+    statuses: ['pending', 'processed'],
+    searchPlaceholder: copy.screen.label.searchOrders,
     counts: {},
     dateLabel: copy.screen.label.afterDate,
     dimensions: [] as FilterDimension[],
@@ -49,9 +33,6 @@ Page({
     emptyObject: copy.screen.empty.afters,
     allLoaded: copy.state.allLoaded,
     canCreate: false,
-    pickSheet: false,
-    picks: [] as ReturnType<typeof pickRowOf>[],
-    pickError: '',
     texts: {
       create: copy.screen.action.createAfter,
       pickTitle: copy.screen.title.pickOrder,
@@ -59,13 +40,23 @@ Page({
     },
   },
   list: null as PagedList<AfterCard> | null,
-  onLoad() {
+  onLoad(query: Record<string, string | undefined>) {
+    this.setData({ filter: { ...emptyFilter, status: query.status ?? '' } })
     this.list = listOf(
       this,
       async (cursor) => {
-        const { status, from, to, picks } = listQueryOf<AfterStatus>(this.data.filter)
+        const { status, from, to, q, picks } = listQueryOf<AfterStatus>(this.data.filter)
         const customerId = picks[CUSTOMER]
-        const input = { query: { status, from, to, customerId, cursor } }
+        const input = {
+          query: {
+            status: (picks.status || status) as AfterStatus | undefined,
+            from,
+            to,
+            q,
+            customerId,
+            cursor,
+          },
+        }
         const result = await request(contract.listAfters, input)
         if (result.ok) {
           this.setData({
@@ -86,28 +77,24 @@ Page({
     const result = await loadCustomers()
     if (!result.ok) return
     const options = result.data.map(({ id, name }) => ({ id, name }))
-    this.setData({ dimensions: [{ key: CUSTOMER, label: copy.screen.label.customer, options }] })
+    this.setData({
+      dimensions: [
+        { key: CUSTOMER, label: copy.screen.label.customer, options },
+        {
+          key: 'status',
+          label: copy.field.status,
+          options: [
+            { id: 'closed', name: labels.afterStatus.closed },
+            { id: 'voided', name: labels.afterStatus.voided },
+          ],
+        },
+      ],
+    })
   },
   onOpen(event: KeyEvent) {
     void wx.navigateTo({ url: `${PAGES}/after-detail/index?id=${event.currentTarget.dataset.key}` })
   },
-  async onCreate(): Promise<void> {
-    this.setData({ pickSheet: true, picks: [], pickError: '' })
-    const result = await request(contract.listOrders, { query: { afterable: 'true' } })
-    if (!result.ok) {
-      this.setData({ pickError: failureOf(result.failure, 'refresh')?.message ?? '' })
-      return
-    }
-    const orders = result.data.items.filter((order) => hasAction(order.actions, 'createAfter'))
-    this.setData({ picks: orders.map(pickRowOf) })
-  },
-  onClosePick() {
-    this.setData({ pickSheet: false })
-  },
-  onPick(event: KeyEvent) {
-    this.setData({ pickSheet: false })
-    void wx.navigateTo({
-      url: `${PAGES}/after-form/index?orderId=${event.currentTarget.dataset.key}`,
-    })
+  onCreate() {
+    void wx.navigateTo({ url: `${PAGES}/order-pick/index` })
   },
 })

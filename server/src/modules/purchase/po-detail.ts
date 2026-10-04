@@ -2,6 +2,7 @@ import { eq, inArray, sql } from 'drizzle-orm'
 import type { Db, Tx } from '../../../db/client.ts'
 import {
   accounts,
+  materials,
   invites,
   type purchaseOrderLines,
   type purchaseOrders,
@@ -9,10 +10,15 @@ import {
 } from '../../../db/schema/index.ts'
 
 type Line = typeof purchaseOrderLines.$inferSelect
-function lineView(line: Line, stock: ReadonlyMap<number, number>) {
+function lineView(
+  line: Line,
+  stock: ReadonlyMap<number, number>,
+  codes: ReadonlyMap<number, string>,
+) {
   return {
     id: String(line.id),
     materialId: String(line.materialId),
+    code: codes.get(line.materialId) ?? '',
     name: line.name,
     unit: line.unit,
     qty: line.qty,
@@ -44,6 +50,16 @@ export async function poExtras(
       ),
     )
     .groupBy(stockBatches.materialId)
+  const materialCodes = await executor
+    .select({ id: materials.id, code: materials.code })
+    .from(materials)
+    .where(
+      inArray(
+        materials.id,
+        lines.map((line) => line.materialId),
+      ),
+    )
+  const codeMap = new Map(materialCodes.map((row) => [row.id, row.code]))
   const stockMap = new Map(stocks.map((stock) => [stock.materialId, stock.qty]))
   const [invite] =
     po.inviteId === null
@@ -61,6 +77,6 @@ export async function poExtras(
     inviteNo: invite?.no ?? null,
     receivedAt: po.receivedAt?.toISOString() ?? null,
     receivedBy: receiver?.name ?? null,
-    lines: lines.map((line) => lineView(line, stockMap)),
+    lines: lines.map((line) => lineView(line, stockMap, codeMap)),
   }
 }

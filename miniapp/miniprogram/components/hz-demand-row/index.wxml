@@ -1,8 +1,8 @@
 <view class="u-card hz-demand-row {{!enabled ? 'hz-demand-row--disabled' : ''}}">
   <view class="u-tap" catchtap="onToggle"><text class="hz-demand-row__check {{selected ? 'hz-demand-row__check--on hz-icon hz-icon--check' : ''}}"></text></view>
   <view class="hz-demand-row__body" bindtap="onOpen">
-    <view class="hz-demand-row__line"><text>{{range}}</text><text class="hz-demand-row__left {{short ? 'hz-demand-row__left--short' : ''}}">{{left}}</text></view>
-    <view class="hz-demand-row__name"><text>{{name}}</text><hz-tag wx:for="{{tags}}" wx:key="text" text="{{item.text}}" warn="{{item.warn}}" /></view>
-    <text class="hz-demand-row__summary">{{summary}}</text>
+
+    <view class="hz-demand-row__name"><text>{{name}}</text><text class="hz-demand-row__left {{short ? 'hz-demand-row__left--short' : ''}}">{{left}}</text><hz-tag wx:for="{{tags}}" wx:key="text" text="{{item.text}}" warn="{{item.warn}}" /></view>
+    <text class="hz-demand-row__summary">{{range}}</text><view class="hz-demand-row__numbers"><view><text>{{texts.need}}</text><text>{{need}}</text></view><view><text>{{texts.stock}}</text><text>{{stock}}</text></view><view><text>{{texts.transit}}</text><text>{{transit}}</text></view></view>
   </view>
 </view>

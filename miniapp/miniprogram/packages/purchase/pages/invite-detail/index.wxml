@@ -1,0 +1,18 @@
+<import src="/views/purchase.wxml" />
+<hz-navbar title="{{title}}" back />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<view wx:else class="u-list">
+  <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
+  <hz-error wx:if="{{error}}" message="{{error}}" />
+  <hz-skeleton wx:if="{{!loaded}}" type="detail" />
+  <block wx:else>
+    <template is="invite-body" data="{{...view}}" />
+    <view wx:for="{{buttons}}" wx:key="code" wx:if="{{index >= 2}}" class="u-detail-third"><hz-button kind="text" text="{{item.text}}" disabled="{{item.disabled}}" reason="{{item.reason}}" data-code="{{item.code}}" bind:press="onAction" /></view>
+  </block>
+</view>
+<hz-action-bar wx:if="{{buttons.length}}" busy="{{busy !== ''}}"><hz-button wx:for="{{buttons}}" wx:key="code" wx:if="{{index < 2}}" text="{{item.text}}" kind="{{item.kind}}" loading="{{busy === item.code}}" disabled="{{item.disabled}}" reason="{{item.reason}}" data-code="{{item.code}}" bind:press="onAction" /></hz-action-bar>
+<hz-sheet show="{{shareSheet}}" title="{{texts.share}}" footer bind:close="onCloseShare">
+  <view class="u-sheet-form"><hz-error wx:if="{{shareError}}" message="{{shareError}}" /><hz-skeleton wx:elif="{{!share}}" type="detail" /><hz-button wx:else kind="secondary" text="{{texts.copy}}" bind:press="onCopyLink" /></view>
+  <hz-button wx:if="{{share}}" slot="footer" text="{{texts.send}}" open-type="share" />
+</hz-sheet>
+<hz-confirm id="hz-confirm" />

@@ -9,6 +9,7 @@ import { unwatchOnLeave, watchNewer } from '../../../../core/live'
 import { request } from '../../../../core/request'
 import { failureOf, messageOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
+import { afterProgress } from '../../../../views/progress'
 import { afterInfoOf, afterLinesOf, afterReasonsOf } from '../../../../views/after'
 
 type SheetCode = 'closeAfter' | 'voidAfter'
@@ -36,8 +37,9 @@ const NO_SHEET = '' as SheetCode | ''
 
 function viewOf(after: AfterDetail) {
   return {
+    progress: afterProgress(after),
     info: {
-      title: after.no,
+      title: copy.org.store(after.customerName, after.storeName),
       statusKind: 'afterStatus',
       status: after.status,
       rows: afterInfoOf(after),
@@ -66,9 +68,13 @@ Page({
     sheetError: '',
   },
   id: '',
+  financeScope: false,
+  readonlyScope: false,
   after: null as AfterDetail | null,
   onLoad(query: Record<string, string | undefined>) {
     this.id = query.id ?? ''
+    this.financeScope = query.scope === 'finance'
+    this.readonlyScope = query.scope === 'internal'
   },
   onShow() {
     void this.load()
@@ -80,7 +86,9 @@ Page({
     )
   },
   async load(pushed = false) {
-    const result = await request(contract.getAfter, { params: { id: this.id } })
+    const result = await request(this.financeScope ? contract.getFinanceAfter : contract.getAfter, {
+      params: { id: this.id },
+    })
     if (!result.ok) {
       this.setData({ failure: failureOf(result.failure, this.data.loaded ? 'refresh' : 'load') })
       return
@@ -94,7 +102,7 @@ Page({
       loaded: true,
       failure: null,
       view: viewOf(after),
-      buttons: buttonsOf(after.actions, buttonSpecs),
+      buttons: this.readonlyScope ? [] : buttonsOf(after.actions, buttonSpecs),
     })
   },
   onAction(event: CodeEvent) {

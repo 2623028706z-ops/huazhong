@@ -1,6 +1,7 @@
 // 当前账号：守卫按 openid 查出来的身份、归属、模块（纯函数，05 章第 1.2 节）
 import {
   appError,
+  redesignCopy,
   copy,
   moduleKeys,
   type AccountType,
@@ -19,6 +20,7 @@ export interface Viewer {
   readonly supplierId: number | null
   // 门店「客户 · 门店」、供应商名称；员工为 null
   readonly orgLabel: string | null
+  readonly storeName: string | null
 }
 
 export interface AccountRow {
@@ -83,6 +85,7 @@ export function viewerOf(row: AccountRow): Viewer {
     customerId: row.customerId,
     supplierId: row.supplierId,
     orgLabel: orgLabelOf(row),
+    storeName: row.storeName,
   }
 }
 
@@ -110,6 +113,7 @@ export function isGranted(viewer: Viewer, grants: 'any' | readonly Grant[]): boo
 // 日志、变更记录里的操作人快照（04 章第 3.3 节）
 export function actorLabelOf(viewer: Viewer | null): string {
   if (!viewer) return copy.actor.system
-  if (viewer.orgLabel === null) return viewer.name
-  return copy.actor.external(viewer.name, viewer.orgLabel)
+  if (viewer.type === 'store') return redesignCopy.storeActor(viewer.storeName ?? '')
+  if (viewer.type === 'supplier') return redesignCopy.supplierActor(viewer.orgLabel ?? '')
+  return viewer.name
 }

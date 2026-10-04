@@ -1,71 +1,28 @@
-/* 「我的」：身份格 + 入口行是一整块细线窗格，窗格外是退出登录（docs/design/mock-art.html） */
 .hz-profile {
-  overflow: hidden;
-  border: 1px solid var(--hz-rule);
-  border-radius: var(--hz-radius);
-}
-
-.hz-profile__who {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  padding: 18px var(--hz-card-pad);
-}
-
-.hz-profile__avatar {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  font-size: var(--hz-font-amount);
-  color: var(--hz-ink);
-  background: var(--hz-tint);
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1px var(--hz-rule);
-}
-
-.hz-profile__names {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-width: 0;
+  gap: 16px;
 }
 
-/* 名字是动态的，不在衬线字体子集里：用系统字加粗 */
 .hz-profile__name {
-  font-size: var(--hz-font-amount);
+  font-size: var(--hz-font-hero);
   font-weight: 600;
-  letter-spacing: 0.06em;
 }
 
 .hz-profile__sub {
-  font-size: var(--hz-font-sm);
+  font-size: var(--hz-font);
   color: var(--hz-muted);
 }
 
-.hz-profile__row {
+.hz-profile__phone {
   display: flex;
-  gap: 12px;
-  align-items: center;
-  height: 54px;
-  padding: 0 var(--hz-card-pad);
-  font-size: var(--hz-font-md);
-  border-top: 1px solid var(--hz-rule);
+  justify-content: space-between;
+  font-size: var(--hz-font);
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--hz-rule);
 }
 
-.hz-profile__icon {
-  font-size: var(--hz-icon-md);
-  color: var(--hz-brand);
-}
-
-.hz-profile__text {
-  flex: 1;
-}
-
-.hz-profile__go {
-  font-size: var(--hz-icon-sm);
+.hz-profile__phone > text:first-child {
   color: var(--hz-muted);
 }
 

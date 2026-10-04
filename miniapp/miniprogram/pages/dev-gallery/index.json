@@ -10,7 +10,6 @@
     "hz-error": "/components/hz-error/index",
     "hz-field": "/components/hz-field/index",
     "hz-filter-bar": "/components/hz-filter-bar/index",
-    "hz-hub": "/components/hz-hub/index",
     "hz-line-item": "/components/hz-line-item/index",
     "hz-navbar": "/components/hz-navbar/index",
     "hz-notice": "/components/hz-notice/index",

@@ -1,9 +1,9 @@
-import type { PoDetail } from '@huazhong/shared'
+import { copy, type PoDetail } from '@huazhong/shared'
 import type { CustomElement } from 'miniprogram-automator/out/Element.js'
 import { expect, test } from 'vitest'
 import { inviteOf, poInput, poOf } from '../support/purchase.ts'
 import { dataOf, TODAY, TOMORROW } from '../support/sales.ts'
-import { asMini, enter, setupMiniSuite, snap, waitData, waitPage } from './mini.ts'
+import { asMini, enter, setupMiniSuite, snap, tapText, waitData, waitPage } from './mini.ts'
 
 const suite = setupMiniSuite()
 
@@ -12,10 +12,11 @@ test('B01-F 采购首页只列入口、待办，一级页无返回', async () =>
   await asMini(mini, s, 'u4')
   const page = await enter(mini, '/packages/purchase/pages/home/index')
   const home = (await page.$('#module-home')) as CustomElement
-  await expect.poll(async () => home.data('person') as Promise<unknown>).toBe('周宁')
+  await expect.poll(async () => home.data('common') as Promise<unknown>).toHaveLength(2)
   expect(await home.data('back')).toBe(false)
-  expect(await home.data('entries')).toHaveLength(4)
-  expect(await home.data('todoCount')).toBe(1)
+  expect(await home.data('masters')).toMatchObject([{ key: 'suppliers' }])
+  await expect.poll(async () => home.data('todos') as Promise<unknown>).toHaveLength(2)
+  expect(await home.data('tabs')).toEqual([])
   await snap(mini, 'purchase-home')
 })
 
@@ -50,10 +51,19 @@ test('B21 B24-F B25-F G11 需求来源、缺口预填和日期校验', async () 
   const event = { currentTarget: { dataset: { key: sunflower } } }
   await page.callMethod('onSource', event)
   await expect.poll(async () => page.data('source.invites') as Promise<unknown>).toHaveLength(1)
-  expect(await page.data('sourceSummary')).toBe('需求 75 · 库存 60 · 在途 0')
+  expect(await page.data('sourceSummary')).toBe('需求 75　　库存 60　　在途 0')
   expect(await page.data('sourceLeft')).toBe('缺 15')
   expect(await page.data('source.invites')).toHaveLength(1)
   await snap(mini, 'demand-sources')
+  const invite = await inviteOf(s)
+  await page.callMethod('onOpenSourceInvite', { currentTarget: { dataset: { key: invite.id } } })
+  const inviteDetail = await waitPage(mini, 'packages/purchase/pages/invite-detail/index')
+  await waitData(inviteDetail, 'loaded', true)
+  expect(await inviteDetail.data('view.info.rows')).toContainEqual(
+    expect.objectContaining({ label: '单号', value: invite.no }),
+  )
+  await mini.navigateBack()
+  await waitPage(mini, 'packages/purchase/pages/demand/index')
   await page.callMethod('onCloseSource')
   await page.callMethod('onToggle', event)
   expect(await page.callMethod('draft')).toMatchObject({ lines: [{ qty: 15 }] })
@@ -70,7 +80,10 @@ test('B21 B24-F B25-F G11 需求来源、缺口预填和日期校验', async () 
     .poll(async () => form.data('form.lines') as Promise<unknown>)
     .toMatchObject([{ qty: 15, stockQty: 60 }])
   await snap(mini, 'invite-create')
-  await mini.navigateBack()
+  await tapText(form, copy.screen.title.createInvite)
+  await waitData(form, 'reviewSheet', true)
+  await form.callMethod('onReviewConfirm')
+  await waitPage(mini, 'packages/purchase/pages/demand/index')
   await waitData(page, 'selected', [])
   await page.callMethod('onTo', { detail: '2026-09-28' })
   await waitData(page, 'dateError', '结束日期不能早于开始日期')
@@ -106,27 +119,26 @@ test('G08 G09 采购错误标字段、输入清错、返回可继续填写', asy
     .toBe('packages/purchase/pages/order-detail/index')
 })
 
-test('B12-F B28-F G04-F I01 邀请弹层切换、修改返回重开、关联状态', async () => {
+test('B12-F B28-F G04-F I01 填报整页分享、修改返回与采购关联状态', async () => {
   const { mini, server: s } = suite()
   const api = await asMini(mini, s, 'u4')
   const invite = await inviteOf(s)
-  const page = await enter(mini, '/packages/purchase/pages/invites/index')
+  const page = await enter(mini, `/packages/purchase/pages/invite-detail/index?id=${invite.id}`)
   await waitData(page, 'loaded', true)
-  await page.callMethod('open', invite.id)
-  await waitData(page, 'view.info.title', invite.no)
+  await waitData(page, 'view.info.title', invite.supplierName)
   await snap(mini, 'invite-detail-pending')
   await page.callMethod('onAction', { currentTarget: { dataset: { code: 'shareInvite' } } })
-  await waitData(page, 'sheet', 'share')
+  await waitData(page, 'shareSheet', true)
   await expect.poll(async () => page.data('share.path') as Promise<unknown>).toContain('sig=')
   await snap(mini, 'invite-share')
-  await page.callMethod('onBackSheet')
+  await page.callMethod('onCloseShare')
   await page.callMethod('onAction', { currentTarget: { dataset: { code: 'editInvite' } } })
   const edit = await waitPage(mini, 'packages/purchase/pages/invite-form/index')
   await waitData(edit, 'loaded', true)
   await edit.callMethod('onQty', { detail: { index: 0, qty: 70 } })
   await edit.callMethod('onSubmit')
   await expect.poll(async () => (await mini.currentPage())?.path).toBe(page.path)
-  await waitData(page, 'sheet', 'detail')
+  await waitData(page, 'loaded', true)
   await waitData(page, 'view.lines.0.qty', 70)
   const po = await poOf(s, 'PO-260929-006')
   dataOf(
@@ -136,11 +148,37 @@ test('B12-F B28-F G04-F I01 邀请弹层切换、修改返回重开、关联状�
     }),
   )
   const submitted = await inviteOf(s, 'YQ-260928-001')
-  await page.callMethod('open', submitted.id)
-  await waitData(page, 'view.poLink', `采购单 ${po.no} · 已取消`)
-  expect(await page.data('view.info.status')).toBe('submitted')
-  expect(await page.data('buttons')).toEqual([])
+  const detail = await enter(
+    mini,
+    `/packages/purchase/pages/invite-detail/index?id=${submitted.id}`,
+  )
+  await waitData(detail, 'view.poLink', `采购单 ${po.no}${copy.separator}已取消`)
+  expect(await detail.data('view.info.status')).toBe('submitted')
+  expect(await detail.data('buttons')).toEqual([])
   await snap(mini, 'invite-submitted-cancelled')
+})
+
+test('C9 取消邀请留在整页，确认取消后保留取消说明和完整日期', async () => {
+  const { mini, server: s } = suite()
+  await asMini(mini, s, 'u4')
+  const invite = await inviteOf(s)
+  const page = await enter(mini, `/packages/purchase/pages/invite-detail/index?id=${invite.id}`)
+  await waitData(page, 'loaded', true)
+  await page.callMethod('onAction', { currentTarget: { dataset: { code: 'cancelInvite' } } })
+  const confirm = (await page.$('#hz-confirm')) as CustomElement
+  await expect.poll(async () => confirm.data('show') as Promise<unknown>).toBe(true)
+  await confirm.callMethod('onConfirm')
+  await waitData(page, 'view.info.status', 'cancelled')
+  expect((await mini.currentPage())?.path).toBe(page.path)
+  expect(await page.data('buttons')).toEqual([])
+  expect(await page.data('view.reason.rows')).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ label: '取消原因' }),
+      expect.objectContaining({ label: '取消时间' }),
+    ]),
+  )
+  expect(await page.data('view.progress.1')).toMatchObject({ label: '已取消', state: 'ended' })
+  await snap(mini, 'invite-cancelled-page')
 })
 
 test('阶段 4 单行采购修改保留原因但不重复合计', async () => {
@@ -189,7 +227,8 @@ test('B07 H02 收货输入受保护，查看最新数量后按最新单收货', 
   await page.callMethod('onReceive')
   await waitData(page, 'receiving', false)
   expect(await page.data('view.info.status')).toBe('received')
-  expect(await page.data('view.amountRows')).toContainEqual({ label: '应付', value: '¥2,414.00' })
+  const table = (await page.$('components\\/hz-line-item\\/index')) as CustomElement
+  await expect.poll(async () => table.data('totalAmount') as Promise<unknown>).toBe('¥2,414.00')
 })
 
 test('H07 收货页断线期间改单，重新连接后刷新', async () => {

@@ -1,18 +1,5 @@
-<wxs src="../../core/format.wxs" module="format" />
 <view class="u-card hz-card" bindtap="onTap">
-  <view wx:if="{{date || status || headText}}" class="hz-card__row hz-card__row--head">
-    <text wx:if="{{date && today}}">{{format.formatCardDate(date, today)}}</text>
-    <text wx:if="{{headText}}">{{headText}}</text>
-    <hz-status wx:else kind="{{statusKind}}" code="{{status}}" />
-  </view>
-  <view class="hz-card__row">
-    <text class="hz-card__title u-ellipsis">{{title}}</text>
-    <text class="hz-card__total {{keyTotal ? 'hz-card__total--key' : ''}} {{totalTone === 'gain' ? 'hz-card__total--gain' : totalTone === 'loss' ? 'hz-card__total--loss' : ''}}">{{total}}</text>
-  </view>
-  <view class="hz-card__row hz-card__row--foot">
-    <hz-tag wx:for="{{tags}}" wx:key="text" text="{{item.text}}" warn="{{item.warn}}" />
-    <text class="u-ellipsis">{{meta}}</text>
-    <text wx:if="{{amount !== null}}" class="hz-card__amount u-serif-amount">{{format.formatMoney(amount)}}</text>
-    <text wx:elif="{{amountText}}" class="hz-card__amount">{{amountText}}</text>
-  </view>
+  <view class="hz-card__head"><text wx:if="{{selectable}}" class="hz-card__check {{selectDisabled ? 'hz-card__check--disabled' : ''}}" catchtap="onToggle">{{selected ? '☑' : '☐'}}</text><text class="hz-card__title">{{row.title}}</text><text wx:if="{{row.headText}}" class="hz-card__status">{{row.headText}}</text><hz-status wx:elif="{{row.status}}" kind="{{statusKind}}" code="{{row.status}}" /></view>
+  <view class="hz-card__fields"><view wx:for="{{row.fields}}" wx:key="label" class="hz-card__field {{item.wide ? 'hz-card__field--wide' : ''}}"><text class="hz-card__label">{{item.label}}</text><text wx:if="{{item.phone}}" class="hz-card__value u-link" data-phone="{{item.phone}}" catchtap="onPhone">{{item.value}}</text><text wx:else class="hz-card__value {{item.amount ? 'u-serif-amount hz-card__amount' : ''}}">{{item.value}}</text></view></view>
+  <view wx:if="{{row.tags.length}}" class="hz-card__tags"><hz-tag wx:for="{{row.tags}}" wx:key="text" text="{{item.text}}" warn="{{item.warn}}" danger="{{item.danger}}" /></view>
 </view>

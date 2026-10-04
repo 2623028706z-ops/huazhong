@@ -16,6 +16,12 @@ const uniqueFields = { out_categories_name_unique: { name: copy.stock.categoryNa
 function view(row: typeof outCategories.$inferSelect) {
   return { id: String(row.id), name: row.name, enabled: row.enabled, sort: row.sort }
 }
+function logView(row: Fields) {
+  return {
+    [copy.field.name]: row.name,
+    [copy.field.status]: row.enabled ? copy.statusValue.enabled : copy.statusValue.disabled,
+  }
+}
 @Injectable()
 export class OutCategories {
   constructor(
@@ -60,7 +66,7 @@ export class OutCategories {
               targetType: 'out_categories',
               targetId: row.id,
               targetLabel: row.name,
-              after: input,
+              after: logView(input),
             })
             ctx.notify([{ topic: 'stock', version: null }])
             return view(row)
@@ -103,8 +109,8 @@ export class OutCategories {
             targetType: 'out_categories',
             targetId: id,
             targetLabel: saved.name,
-            before: view(before),
-            after: view(saved),
+            before: logView(before),
+            after: logView(saved),
           })
           ctx.notify([{ topic: 'stock', version: null }])
           return view(saved)

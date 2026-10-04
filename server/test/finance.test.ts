@@ -1,318 +1,407 @@
-// 财务收款：客户对账、登记收款、核销、预收、作废收款、作废售后、门店对账（07 章 A18、A22、D01–D07、D11–D13）
-import type { AfterDetail, ArCard, OrderDetail, ReceiptDetail, TodoItem } from '@huazhong/shared'
-import { afterEach, beforeEach, describe, expect, test } from 'vitest'
-import {
-  codesOf,
-  dataOf,
-  idBy,
-  startSales,
-  TODAY,
-  TOMORROW,
-  type SalesApp,
-} from './support/sales.ts'
-
+import type {
+  contract,
+  OutputOf,
+  StatementDetail,
+  StatementDraft,
+  ReceiptDetail,
+  PartyLedger,
+  AfterDetail,
+} from '@huazhong/shared'
+import { afterEach, beforeEach, expect, test } from 'vitest'
+import { dataOf, idBy, startSales, TODAY, TOMORROW, type SalesApp } from './support/sales.ts'
 let s: SalesApp
-let c1: string
-let o026: string
-let o021: string
+let customerId: string
+let statementId: string
 beforeEach(async () => {
   s = await startSales()
-  c1 = await idBy(s.t, 'customers.name', '晨曦花艺')
-  o026 = await idBy(s.t, 'orders.no', 'SO-260927-026')
-  o021 = await idBy(s.t, 'orders.no', 'SO-260927-021')
+  customerId = await idBy(s.t, 'customers.name', '晨曦花艺')
+  statementId = await idBy(s.t, 'statements.no', 'DZ-260929-001')
 })
 afterEach(async () => {
   await s.close()
 })
-
-interface ArCustomerPage {
-  items: ArCard[]
-  actions: { code: string }[]
-  shippedCents: number
-  afterCents: number
-  receivedCents: number
-  unpaidCents: number
-  prepaidCents: number
+async function detail() {
+  return dataOf<StatementDetail>(await (await s.as('u6')).get(`/finance/statements/${statementId}`))
 }
-
-async function ar(query = ''): Promise<ArCustomerPage> {
-  return dataOf<ArCustomerPage>(await (await s.as('u6')).get(`/finance/customers/${c1}${query}`))
+async function ledger() {
+  return dataOf<PartyLedger>(await (await s.as('u6')).get(`/finance/customers/${customerId}`))
 }
-
-// 客户对账五元组：发货金额 / 售后 / 已收 / 未收 / 预收
-async function tuple(): Promise<number[]> {
-  const page = await ar()
-  return [
-    page.shippedCents,
-    page.afterCents,
-    page.receivedCents,
-    page.unpaidCents,
-    page.prepaidCents,
-  ]
-}
-
-const arOrder = async (id: string) =>
-  dataOf<
-    ArCard & {
-      afters: { id: string; actions: { code: string }[] }[]
-      allocations: { kind: string }[]
-    }
-  >(await (await s.as('u6')).get(`/finance/ar-orders/${id}`))
-
-const receipt = (
+function receiptInput(
   amountCents: number,
-  allocs: { orderId: string; amountCents: number }[],
+  statements: { id: string; version: number }[] = [],
   extra = {},
-) => ({
-  customerId: c1,
-  receiptDate: TODAY,
-  amountCents,
-  methodName: '转账',
-  note: '',
-  allocs,
-  ...extra,
-})
-
-async function salesAfter(
-  orderId: string,
-  lines: { name: string; qty: number }[],
-): Promise<AfterDetail> {
-  const order = dataOf<OrderDetail>(await (await s.as('u2')).get(`/orders/${orderId}`))
-  const body = {
-    orderId,
+) {
+  return {
+    customerId,
+    receiptDate: TODAY,
+    amountCents,
+    statements,
+    methodName: '微信',
     note: '',
-    lines: lines.map((l) => {
-      const line = order.lines.find((ol) => ol.name === l.name)
-      return {
-        orderLineId: line?.id,
-        qty: l.qty,
-        priceCents: line?.priceCents,
-        reason: 'qty_mismatch',
-        description: '',
-      }
-    }),
+    discountCents: 0,
+    discountReason: '',
+    ...extra,
   }
-  return dataOf<AfterDetail>(await (await s.as('u2')).post('/afters', body))
+}
+async function draft(kind: 'customer' | 'supplier', partyId = customerId) {
+  return dataOf<StatementDraft>(
+    await (await s.as('u6')).get(`/finance/statements/draft?kind=${kind}&partyId=${partyId}`),
+  )
+}
+async function create(input: StatementDraft, sources = input.sources) {
+  const finance = await s.as('u6')
+  return dataOf<StatementDetail>(
+    await finance.post('/finance/statements', {
+      kind: input.kind,
+      partyId: input.partyId,
+      partyVersion: input.partyVersion,
+      periodFrom: input.periodFrom,
+      periodTo: input.periodTo,
+      note: '',
+      creditCents: input.creditCents,
+      sources,
+    }),
+  )
+}
+async function voidStatement(d: StatementDetail) {
+  const finance = await s.as('u6')
+  return dataOf<StatementDetail>(
+    await finance.post(`/finance/statements/${d.id}/void`, {
+      version: d.version,
+      reason: '登记错误',
+    }),
+  )
 }
 
-describe('对账起点和待办', () => {
-  test('D01 起点五元组、财务待办列有预收的客户', async () => {
-    expect(await tuple()).toEqual([358800, 0, 100000, 258800, 0])
-    const todos = dataOf<{ count: number; items: TodoItem[] }>(
-      await (await s.as('u6')).get('/modules/finance/todos'),
-    )
-    expect(todos.count).toBe(2)
-    expect(todos.items.find((item) => item.kind === 'payable')).toMatchObject({
-      payable: { no: 'PO-260928-004', unpaidCents: 96000, docType: 'po' },
-    })
-    expect(todos.items.filter((item) => item.kind === 'prepaid')).toEqual([
-      {
-        kind: 'prepaid',
-        customerId: await idBy(s.t, 'customers.name', '拾光花店'),
-        customerName: '拾光花店',
-        prepaidCents: 6400,
-      },
-    ])
+test('D01 新种子使用整张DZ，首页只算已开对账单，门店只见本店金额', async () => {
+  expect(await detail()).toMatchObject({
+    no: 'DZ-260929-001',
+    grossCents: 358800,
+    dueCents: 358800,
+    creditDeductedCents: 0,
+    status: 'unsettled',
+    sourceCount: 2,
+    dueDate: null,
   })
-
-  test('E09 门店对账只列本店发货单：发货金额 − 售后 − 已付 = 待付', async () => {
-    const page = dataOf<ArCustomerPage & { paidCents: number }>(
-      await (await s.as('s1')).get('/store/statement'),
-    )
-    expect(page.items.map((i) => i.orderNo)).toEqual(['SO-260927-021'])
-    expect([page.shippedCents, page.afterCents, page.paidCents, page.unpaidCents]).toEqual([
-      148800, 0, 100000, 48800,
-    ])
-    expect(page.items[0]?.payStatus).toBe('partial')
+  expect(await ledger()).toMatchObject({
+    unsettledCents: 358800,
+    outstandingCents: 358800,
+    creditCents: 0,
   })
+  const finance = await s.as('u6')
+  const todos = dataOf<OutputOf<typeof contract.moduleTodos>>(
+    await finance.get('/modules/finance/todos'),
+  )
+  expect(todos.rows).toEqual([
+    { key: 'receivable', label: '待收款', count: 1, amountCents: 358800 },
+    { key: 'overdueReceivable', label: '逾期未收', count: 0 },
+    { key: 'payable', label: '待付款', count: 0, amountCents: 0 },
+  ])
+  const page = dataOf<OutputOf<typeof contract.storeStatements>>(
+    await (await s.as('s1')).get('/store/statements'),
+  )
+  expect(page).toMatchObject({
+    unsettledCents: 148800,
+    unstatementedCents: 0,
+    items: [{ id: statementId, storeAmountCents: 148800, sourceCount: 1 }],
+  })
+  const storeDetail = dataOf<OutputOf<typeof contract.storeStatementDetail>>(
+    await (await s.as('s1')).get(`/store/statements/${statementId}`),
+  )
+  expect(storeDetail.groups.flatMap((g) => g.sources).map((item) => item.sourceNo)).toEqual([
+    'SO-260927-021',
+  ])
+  expect(storeDetail).not.toHaveProperty('settlements')
+  expect(storeDetail).not.toHaveProperty('openingDebtCents')
+  expect(storeDetail.actions).toEqual([])
+  const other = await idBy(s.t, 'statements.no', 'DZ-260929-002')
+  expect((await (await s.as('s1')).get(`/store/statements/${other}`)).status).toBe(404)
 })
 
-describe('收款、核销、作废', () => {
-  test('D02–D07 登记收款 → 收清后再售后转预收 → 作废收款 → 核销预收', async () => {
-    const finance = await s.as('u6')
-    const over = await finance.post(
+test('D02–D07 足额或优惠整张结清，作废收款恢复未结清，再作废DZ释放来源', async () => {
+  const finance = await s.as('u6'),
+    d = await detail()
+  const registered = dataOf<ReceiptDetail>(
+    await finance.post(
       '/finance/receipts',
-      receipt(300000, [{ orderId: o026, amountCents: 220000 }]),
-    )
-    expect(over.body.error?.fields).toEqual({
-      'allocs.0.amountCents': 'SO-260927-026 最多核销 ¥2,100.00',
-    })
-    const allocs = [
-      { orderId: o026, amountCents: 210000 },
-      { orderId: o021, amountCents: 48800 },
-    ]
-    const registered = dataOf<ReceiptDetail>(
-      await finance.post('/finance/receipts', receipt(300000, allocs)),
-    )
-    expect(registered).toMatchObject({ status: 'valid', prepaidCents: 41200 })
-    expect(await tuple()).toEqual([358800, 0, 358800, 0, 41200])
-    expect(codesOf((await ar()).actions)).toEqual(['registerReceipt'])
-
-    // D03 门店对账
-    const store = dataOf<ArCustomerPage & { paidCents: number }>(
-      await (await s.as('s1')).get('/store/statement'),
-    )
-    expect([store.shippedCents, store.paidCents, store.unpaidCents]).toEqual([148800, 148800, 0])
-
-    // D04 收清后处理售后：多出来的回到预收
-    const sales = await s.as('u2')
-    const asId = await idBy(s.t, 'afters.no', 'AS-260929-003')
-    const pending = dataOf<AfterDetail>(await sales.get(`/afters/${asId}`))
-    const lines = [{ id: pending.lines[0]?.id, qty: 2, priceCents: 6800 }]
-    dataOf(
-      await sales.post(`/afters/${asId}/process`, { version: pending.version, note: '', lines }),
-    )
-    expect(await tuple()).toEqual([358800, 13600, 345200, 0, 54800])
-    const card026 = await arOrder(o026)
-    expect(card026).toMatchObject({
-      shippedCents: 210000,
-      afterCents: 13600,
-      receivableCents: 196400,
-      receivedCents: 196400,
-    })
-    expect(card026.afters.map((a) => codesOf(a.actions))).toEqual([[]])
-
-    // D05 作废 SK-260928-001：核销撤回
-    const old = dataOf<ReceiptDetail>(
-      await finance.get(`/finance/receipts/${await idBy(s.t, 'receipts.no', 'SK-260928-001')}`),
-    )
-    const blank = await finance.post(`/finance/receipts/${old.id}/void`, {
-      version: old.version,
-      reason: '',
-    })
-    expect(blank.body.error?.fields).toEqual({ reason: '请填写作废原因' })
-    const voided = dataOf<ReceiptDetail>(
-      await finance.post(`/finance/receipts/${old.id}/void`, {
-        version: old.version,
-        reason: '重复登记',
+      receiptInput(360000, [{ id: d.id, version: d.version }], {
+        discountCents: 1000,
+        discountReason: '抹零',
       }),
-    )
-    expect(voided).toMatchObject({
-      status: 'voided',
-      voidReason: '重复登记',
-      actions: [],
-      prepaidCents: 0,
-    })
-    expect(voided.notice).toBe('已作废，核销已撤回。')
-    expect(await tuple()).toEqual([358800, 13600, 245200, 100000, 54800])
-
-    // D07 核销预收：不超过可用预收
-    const tooMuch = await finance.post('/finance/prepaid-allocations', {
-      customerId: c1,
-      allocs: [{ orderId: o021, amountCents: 60000 }],
-    })
-    expect(tooMuch.body.error).toMatchObject({
-      code: 'BUSINESS_RULE',
-      message: '可用预收只有 ¥548.00',
-    })
-    const used = await finance.post('/finance/prepaid-allocations', {
-      customerId: c1,
-      allocs: [{ orderId: o021, amountCents: 54800 }],
-    })
-    expect(dataOf(used)).toEqual({ customerId: c1, prepaidCents: 0 })
-    expect(await tuple()).toEqual([358800, 13600, 300000, 45200, 0])
-    const card021 = await arOrder(o021)
-    expect(card021).toMatchObject({ payStatus: 'partial', unpaidCents: 45200 })
-    expect(card021.allocations.map((a) => a.kind)).toEqual(['direct', 'direct', 'prepaid'])
-
-    const records = dataOf<{ items: unknown[]; counts: object }>(
-      await finance.get('/finance/records?status=voided'),
-    )
-    expect(records.items).toHaveLength(1)
-    expect(records.counts).toEqual({})
+    ),
+  )
+  expect(registered).toMatchObject({
+    creditCents: 2200,
+    creditBalanceCents: 2200,
+    discountCents: 1000,
+    statements: [{ id: d.id, amountCents: 358800, status: 'settled' }],
   })
-
-  test('D12 收款日期不能晚于今天，可以补录昨天', async () => {
-    const finance = await s.as('u6')
-    const future = await finance.post(
-      '/finance/receipts',
-      receipt(10000, [], { receiptDate: TOMORROW }),
-    )
-    expect(future.body.error?.fields).toEqual({ receiptDate: '收款日期不能晚于今天' })
-    const saved = dataOf<ReceiptDetail>(
-      await finance.post('/finance/receipts', receipt(10000, [], { receiptDate: '2026-09-28' })),
-    )
-    expect(saved).toMatchObject({ receiptDate: '2026-09-28', prepaidCents: 10000 })
-    expect(codesOf((await ar()).actions)).toEqual(['registerReceipt', 'allocate'])
+  expect(await detail()).toMatchObject({ status: 'settled', settledCents: 358800 })
+  expect(
+    (
+      await finance.post(`/finance/statements/${d.id}/void`, {
+        version: (await detail()).version,
+        reason: '错',
+      })
+    ).body.error?.code,
+  ).toBe('BUSINESS_RULE')
+  dataOf(
+    await finance.post(`/finance/receipts/${registered.id}/void`, {
+      version: registered.version,
+      reason: '错',
+    }),
+  )
+  const restored = await detail()
+  expect(restored).toMatchObject({
+    status: 'unsettled',
+    settledAt: null,
+    settlements: [{ status: 'voided' }],
   })
-
-  test('D13 对账按出货日期筛：对账格按区间算，预收不受影响', async () => {
-    const allocs = [
-      { orderId: o026, amountCents: 210000 },
-      { orderId: o021, amountCents: 48800 },
-    ]
-    dataOf(await (await s.as('u6')).post('/finance/receipts', receipt(300000, allocs)))
-    const day28 = await ar('?from=2026-09-28&to=2026-09-28')
-    expect(day28.items).toHaveLength(2)
-    expect([
-      day28.shippedCents,
-      day28.afterCents,
-      day28.receivedCents,
-      day28.unpaidCents,
-      day28.prepaidCents,
-    ]).toEqual([358800, 0, 358800, 0, 41200])
-    const day29 = await ar('?from=2026-09-29&to=2026-09-29')
-    expect([
-      day29.items.length,
-      day29.shippedCents,
-      day29.receivedCents,
-      day29.prepaidCents,
-    ]).toEqual([0, 0, 0, 41200])
-    const store = dataOf<{ items: unknown[]; shippedCents: number }>(
-      await (await s.as('s1')).get('/store/statement?from=2026-09-29&to=2026-09-29'),
-    )
-    expect([store.items.length, store.shippedCents]).toEqual([0, 0])
-  })
+  await voidStatement(restored)
+  expect(
+    (await draft('customer')).sources
+      .filter((item) => item.carriesAmount)
+      .map((item) => item.sourceNo)
+      .sort(),
+  ).toEqual(['SO-260927-021', 'SO-260927-026'])
+  expect(
+    dataOf<OutputOf<typeof contract.storeStatements>>(
+      await (await s.as('s1')).get('/store/statements'),
+    ).items,
+  ).toEqual([])
+  expect((await (await s.as('s1')).get(`/store/statements/${d.id}`)).status).toBe(404)
 })
 
-describe('售后和应收', () => {
-  test('A18 售后刚好抵完：应收 0、已收、售后抵扣；原来的核销回到预收', async () => {
-    await salesAfter(o021, [
-      { name: '粉玫瑰日常花束', qty: 15 },
-      { name: '白绿清新花束', qty: 6 },
-    ])
-    expect(await arOrder(o021)).toMatchObject({
-      receivableCents: 0,
-      offsetByAfter: true,
-      payStatus: 'paid',
-      receivedCents: 0,
-    })
-    expect((await tuple())[4]).toBe(100000)
-  })
-
-  test('A22 财务只读，由销售作废售后：未收回到原值，弹层不再列这张', async () => {
-    const after = await salesAfter(o021, [{ name: '粉玫瑰日常花束', qty: 2 }])
-    expect((await arOrder(o021)).unpaidCents).toBe(48800 - 13600)
-    const voided = await (
-      await s.as('u2')
-    ).post(`/afters/${after.id}/void`, { version: after.version, reason: '重复登记' })
-    expect(dataOf<AfterDetail>(voided)).toMatchObject({ status: 'voided', voidReason: '重复登记' })
-    const card = await arOrder(o021)
-    expect(card.unpaidCents).toBe(48800)
-    expect(card.afters).toEqual([])
-  })
+test('D08 少收、超额优惠、未勾优惠、未来日期均拒绝，无部分结清', async () => {
+  const finance = await s.as('u6'),
+    d = await detail(),
+    selected = [{ id: d.id, version: d.version }]
+  const short = await finance.post('/finance/receipts', receiptInput(100, selected))
+  expect(short.body.error?.code).toBe('BUSINESS_RULE')
+  expect(short.body.error?.message).toContain('还差')
+  expect(
+    (
+      await finance.post(
+        '/finance/receipts',
+        receiptInput(100, selected, { discountCents: 358801, discountReason: '错' }),
+      )
+    ).body.error?.fields,
+  ).toHaveProperty('discountCents')
+  expect(
+    (
+      await finance.post(
+        '/finance/receipts',
+        receiptInput(100, [], { discountCents: 1, discountReason: '错' }),
+      )
+    ).body.error?.fields,
+  ).toHaveProperty('discountCents')
+  expect(
+    (await finance.post('/finance/receipts', receiptInput(100, [], { receiptDate: TOMORROW }))).body
+      .error?.fields,
+  ).toHaveProperty('receiptDate')
+  expect(await detail()).toMatchObject({ version: d.version, status: 'unsettled' })
+  const foreign = await idBy(s.t, 'statements.no', 'DZ-260929-002')
+  expect(
+    (await finance.post('/finance/receipts', receiptInput(100000, [{ id: foreign, version: 1 }])))
+      .body.error?.code,
+  ).toBe('NOT_FOUND')
 })
 
-describe('收付款方式', () => {
-  test('D11 停用的方式不能再收款；至少保留一种启用；名称不能重复', async () => {
-    const finance = await s.as('u6')
-    const methods = dataOf<{ items: { id: string; name: string }[] }>(
-      await finance.get('/finance/methods'),
-    )
-    expect(methods.items.map((m) => m.name)).toEqual(['转账', '微信', '支付宝', '现金'])
-    const idOf = (name: string) => methods.items.find((m) => m.name === name)?.id
-    const dup = await finance.post('/finance/methods', { name: '微信' })
-    expect(dup.body.error?.fields).toEqual({ name: '已有同名方式' })
-    dataOf(await finance.patch(`/finance/methods/${idOf('微信')}`, { enabled: false }))
-    const res = await finance.post('/finance/receipts', receipt(10000, [], { methodName: '微信' }))
-    expect(res.body.error?.fields).toEqual({ methodName: '这种方式已停用，请换一种' })
-    for (const name of ['转账', '支付宝']) {
-      dataOf(await finance.patch(`/finance/methods/${idOf(name)}`, { enabled: false }))
-    }
-    const last = await finance.patch(`/finance/methods/${idOf('现金')}`, { enabled: false })
-    expect(last.body.error).toMatchObject({
-      code: 'BUSINESS_RULE',
-      message: '至少要保留一种启用的收付款方式',
-    })
+test('D09 一张不勾整笔多收，开单自动抵；后续DZ作废才可作废来源收款', async () => {
+  const finance = await s.as('u6')
+  await voidStatement(await detail())
+  const money = dataOf<ReceiptDetail>(await finance.post('/finance/receipts', receiptInput(10000)))
+  expect(money.creditCents).toBe(10000)
+  const next = await create(await draft('customer'))
+  expect(next).toMatchObject({ grossCents: 358800, creditDeductedCents: 10000, dueCents: 348800 })
+  const blocked = await finance.post(`/finance/receipts/${money.id}/void`, {
+    version: money.version,
+    reason: '错',
   })
+  expect(blocked.body.error?.code).toBe('BUSINESS_RULE')
+  expect(blocked.body.error?.message).toContain(next.no)
+  await voidStatement(next)
+  expect(
+    dataOf<ReceiptDetail>(await finance.get(`/finance/receipts/${money.id}`)).creditBalanceCents,
+  ).toBe(10000)
+  expect(
+    (
+      await finance.post(`/finance/receipts/${money.id}/void`, {
+        version: money.version,
+        reason: '错',
+      })
+    ).status,
+  ).toBe(200)
+})
+
+test('D10 处理完售后进下一张，负额DZ生成余额；余额退款释放后可作废', async () => {
+  const finance = await s.as('u6'),
+    sales = await s.as('u2'),
+    afterId = await idBy(s.t, 'afters.no', 'AS-260929-003')
+  const after = dataOf<AfterDetail>(await sales.get(`/afters/${afterId}`))
+  dataOf(
+    await sales.post(`/afters/${afterId}/process`, {
+      version: after.version,
+      note: '',
+      lines: after.lines.map((line) => ({
+        id: line.id,
+        qty: line.requestedQty ?? line.qty,
+        priceCents: 6800,
+      })),
+    }),
+  )
+  expect(await detail()).toMatchObject({ dueCents: 358800 })
+  const d = await create(await draft('customer'))
+  expect(d.status).toBe('settled')
+  expect(d.dueCents).toBe(0)
+  expect(d.creditGeneratedCents).toBeGreaterThan(0)
+  const refund = dataOf<OutputOf<typeof contract.createRefund>>(
+    await finance.post('/finance/refunds', {
+      kind: 'receipt',
+      customerId,
+      refundDate: TODAY,
+      amountCents: d.creditGeneratedCents,
+      methodName: '微信',
+      note: '',
+    }),
+  )
+  expect(refund.sources).toEqual([
+    { type: 'statement', id: d.id, no: d.no, amountCents: d.creditGeneratedCents },
+  ])
+  expect(
+    (await finance.post(`/finance/statements/${d.id}/void`, { version: d.version, reason: '错' }))
+      .body.error?.code,
+  ).toBe('BUSINESS_RULE')
+  dataOf(
+    await finance.post(`/finance/refunds/${refund.id}/void`, {
+      version: refund.version,
+      reason: '错',
+    }),
+  )
+  await voidStatement(d)
+  const history = await ledger()
+  expect(history.refunds[0]?.sources[0]?.no).toBe(d.no)
+})
+
+test('D11 开首单后期初设置永久锁，首单作废重新待入单；账期快照与逾期', async () => {
+  const finance = await s.as('u6'),
+    partyId = await idBy(s.t, 'suppliers.name', '云岭花卉')
+  const terms = dataOf<OutputOf<typeof contract.supplierTerms>>(
+    await finance.get(`/finance/suppliers/${partyId}/terms`),
+  )
+  const updated = dataOf<OutputOf<typeof contract.supplierTerms>>(
+    await finance.patch(`/finance/suppliers/${partyId}/terms`, {
+      version: terms.version,
+      termDays: 1,
+      openingDebtCents: 1000,
+    }),
+  )
+  expect(updated.openingDebtEditable).toBe(true)
+  const d = await create(await draft('supplier', partyId))
+  expect(d).toMatchObject({
+    grossCents: 96000,
+    openingDebtCents: 1000,
+    dueCents: 97000,
+    dueDate: TOMORROW,
+  })
+  const now = dataOf<OutputOf<typeof contract.supplierTerms>>(
+    await finance.get(`/finance/suppliers/${partyId}/terms`),
+  )
+  expect(now.openingDebtEditable).toBe(false)
+  expect(
+    (
+      await finance.patch(`/finance/suppliers/${partyId}/terms`, {
+        version: now.version,
+        termDays: 30,
+        openingDebtCents: 1,
+      })
+    ).body.error?.code,
+  ).toBe('BUSINESS_RULE')
+  dataOf(
+    await finance.patch(`/finance/suppliers/${partyId}/terms`, {
+      version: now.version,
+      termDays: 30,
+    }),
+  )
+  expect(dataOf<StatementDetail>(await finance.get(`/finance/statements/${d.id}`)).dueDate).toBe(
+    TOMORROW,
+  )
+  s.clock.set('2026-10-01T02:00:00.000Z')
+  expect(
+    dataOf<StatementDetail>(await finance.get(`/finance/statements/${d.id}`)).overdueDays,
+  ).toBe(1)
+  await voidStatement(d)
+  expect((await draft('supplier', partyId)).openingDebtCents).toBe(1000)
+  expect(
+    dataOf<OutputOf<typeof contract.supplierTerms>>(
+      await finance.get(`/finance/suppliers/${partyId}/terms`),
+    ).openingDebtEditable,
+  ).toBe(false)
+})
+
+test('D12 外部状态日期筛选只影响列表，抬头总账不变；share含整单', async () => {
+  const store = await s.as('s1')
+  const filtered = dataOf<OutputOf<typeof contract.storeStatements>>(
+    await store.get('/store/statements?status=settled&from=2000-01-01&to=2000-01-01'),
+  )
+  expect(filtered.items).toEqual([])
+  expect(filtered.unsettledCents).toBe(148800)
+  const share = dataOf<OutputOf<typeof contract.shareStatement>>(
+    await (await s.as('u6')).post(`/finance/statements/${statementId}/share`),
+  )
+  expect(share.shareData.groups).toHaveLength(2)
+  expect(share.shareData).not.toHaveProperty('actions')
+  expect(share.generatedAt).toBeTruthy()
+})
+
+test('D13 别家来源不存在；同一家金额或版本变化STALE', async () => {
+  const finance = await s.as('u6'),
+    foreign = await idBy(s.t, 'orders.no', 'SO-260928-030')
+  await voidStatement(await detail())
+  const d = await draft('customer')
+  const input = {
+    kind: 'customer',
+    partyId: customerId,
+    partyVersion: d.partyVersion,
+    periodFrom: d.periodFrom,
+    periodTo: d.periodTo,
+    note: '',
+    creditCents: d.creditCents,
+  }
+  expect(
+    (
+      await finance.post('/finance/statements', {
+        ...input,
+        sources: [{ type: 'order', id: foreign, version: 1, amountCents: 93600 }],
+      })
+    ).body.error?.code,
+  ).toBe('NOT_FOUND')
+  expect(
+    (
+      await finance.post('/finance/statements', {
+        ...input,
+        sources: d.sources.map((source) => ({ ...source, amountCents: source.amountCents + 1 })),
+      })
+    ).body.error?.code,
+  ).toBe('STALE')
+})
+
+test('D14 批量列表遵守往来/记录契约；内部只读DZ按岗位和kind授权', async () => {
+  const finance = await s.as('u6')
+  const sales = await s.as('u2')
+  const parties = dataOf<OutputOf<typeof contract.listArCustomers>>(
+    await finance.get('/finance/customers'),
+  )
+  expect(parties.items.find((p) => p.partyId === customerId)?.outstandingCents).toBe(358800)
+  const records = dataOf<OutputOf<typeof contract.listFinanceRecords>>(
+    await finance.get('/finance/records'),
+  )
+  expect(records.items).toHaveLength(1)
+  expect(records.items[0]?.creditCents).toBe(6400)
+  const internal = dataOf<StatementDetail>(await sales.get(`/statements/${statementId}`))
+  expect(internal.actions).toEqual([])
+  expect(internal.no).toBe('DZ-260929-001')
+  expect((await (await s.as('u4')).get(`/statements/${statementId}`)).status).toBe(404)
+  expect((await (await s.as('u7')).get(`/statements/${statementId}`)).status).toBe(403)
+  expect((await sales.post(`/finance/statements/${statementId}/share`)).status).toBe(403)
 })

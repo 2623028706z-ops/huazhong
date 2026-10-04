@@ -23,12 +23,15 @@
         "pages/customers/index",
         "pages/products/index",
         "pages/product-form/index",
-        "pages/directory/index"
+        "pages/order-pick/index",
+        "pages/store-form/index",
+        "pages/catalog-item/index",
+        "pages/catalog-pick/index"
       ]
     },
     {
       "root": "packages/shipping",
-      "pages": ["pages/home/index", "pages/list/index", "pages/ship/index"]
+      "pages": ["pages/home/index", "pages/list/index", "pages/ship/index", "pages/delivery/index"]
     },
     {
       "root": "packages/purchase",
@@ -38,9 +41,10 @@
         "pages/orders/index",
         "pages/order-detail/index",
         "pages/order-form/index",
-        "pages/invites/index",
         "pages/invite-form/index",
-        "pages/suppliers/index"
+        "pages/invite-detail/index",
+        "pages/suppliers/index",
+        "pages/supplier/index"
       ]
     },
     {
@@ -52,7 +56,6 @@
         "pages/stock/index",
         "pages/material/index",
         "pages/materials/index",
-        "pages/docs/index",
         "pages/doc-form/index",
         "pages/doc-detail/index",
         "pages/out-categories/index",
@@ -73,31 +76,36 @@
         "pages/methods/index",
         "pages/suppliers/index",
         "pages/supplier/index",
-        "pages/payable/index"
+        "pages/statement-form/index",
+        "pages/statement-detail/index",
+        "pages/statement-image/index",
+        "pages/account-settings/index",
+        "pages/money/index"
       ]
     },
     {
       "root": "packages/store",
       "pages": [
-        "pages/home/index",
         "pages/shop/index",
-        "pages/cart/index",
         "pages/orders/index",
         "pages/checkout/index",
         "pages/order-detail/index",
         "pages/afters/index",
         "pages/after-form/index",
-        "pages/statement/index"
+        "pages/statement/index",
+        "pages/after-detail/index",
+        "pages/statement-detail/index"
       ]
     },
     {
       "root": "packages/supplier",
       "pages": [
-        "pages/home/index",
         "pages/invites/index",
         "pages/supply/index",
         "pages/orders/index",
-        "pages/statement/index"
+        "pages/statement/index",
+        "pages/po-detail/index",
+        "pages/statement-detail/index"
       ]
     }
   ],
@@ -106,5 +114,9 @@
     "navigationBarTextStyle": "black"
   },
   "lazyCodeLoading": "requiredComponents",
-  "style": "v2"
+  "style": "v2",
+  "usingComponents": {
+    "hz-progress": "/components/hz-progress/index",
+    "hz-info-rows": "/components/hz-info-rows/index"
+  }
 }

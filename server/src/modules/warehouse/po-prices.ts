@@ -4,7 +4,7 @@ import { priceChanges, purchaseOrderLines } from '../../../db/schema/index.ts'
 import { actorLabelOf } from '../../common/domain/viewer.ts'
 import type { WriteContext } from '../../common/write.service.ts'
 
-type Prices = readonly { poLineId: string; priceCents: number }[]
+type Prices = readonly { poLineId: string; priceCents: number; receivedQty?: number }[]
 export function assertPoLines(
   detail: PoDetail,
   lines: readonly { poLineId: string }[],
@@ -25,7 +25,14 @@ export async function applyPoPrices(
   const changes = detail.lines.flatMap((old) => {
     const line = input.lines.find((row) => row.poLineId === old.id)
     return line && old.priceCents !== line.priceCents
-      ? [{ name: old.name, fromCents: old.priceCents, toCents: line.priceCents }]
+      ? [
+          {
+            name: old.name,
+            fromCents: old.priceCents,
+            toCents: line.priceCents,
+            qty: line.receivedQty ?? Math.max((old.receivedQty ?? 0) - old.returnedQty, 0),
+          },
+        ]
       : []
   })
   if (changes.length === 0) return []

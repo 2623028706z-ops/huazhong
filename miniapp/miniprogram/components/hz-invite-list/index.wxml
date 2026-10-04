@@ -1,0 +1,1 @@
+<import src="/views/invite-list.wxml" /><template is="invite-list" data="{{...$root}}" />

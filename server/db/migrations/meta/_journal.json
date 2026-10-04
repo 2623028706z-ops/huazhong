@@ -71,6 +71,27 @@
       "when": 1790972933703,
       "tag": "0009_merge_payment_methods",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791025639699,
+      "tag": "0010_stocktake_void_boundary",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791093333822,
+      "tag": "0011_statement_redesign",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791093589376,
+      "tag": "0012_statement_source_parent",
+      "breakpoints": true
     }
   ]
 }

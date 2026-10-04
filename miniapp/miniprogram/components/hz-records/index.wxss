@@ -3,11 +3,11 @@
 }
 
 .hz-records__row {
-  display: grid;
-  grid-template-columns: 112px 1fr;
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding: var(--hz-row-pad) 0;
-  font-size: var(--hz-font-note);
+  font-size: var(--hz-font-sm);
 }
 
 .hz-records__row + .hz-records__row {

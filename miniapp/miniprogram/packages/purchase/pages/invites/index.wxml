@@ -1,2 +1,0 @@
-<import src="/views/invite-list.wxml" />
-<template is="invite-list" data="{{title, supplier, tabs, statusKind, statuses, counts, dimensions, filter, failure, skeleton, loaded, rows, emptyObject, done, allLoaded, sheet, sheetError, view, buttons, share, busy, texts}}" />

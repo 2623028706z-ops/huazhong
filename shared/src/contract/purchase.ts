@@ -1,6 +1,6 @@
 // 采购与供应商端：阶段 4 开始实现的接口。
 import * as z from 'zod'
-import { apStatuses, inviteStatuses, poStatuses } from '../enums.ts'
+import { inviteStatuses, poStatuses } from '../enums.ts'
 import { copy } from '../copy.ts'
 import {
   businessDateSchema,
@@ -12,7 +12,7 @@ import {
   versionSchema,
 } from '../rules.ts'
 import { actionSchema } from './actions.ts'
-import { paymentAllocationSchema, externalAllocationSchema } from './ledger.ts'
+import { statementRefSchema } from './statement-ref.ts'
 import type { Endpoint } from './endpoint.ts'
 import {
   checkDateRange,
@@ -32,6 +32,8 @@ import {
 const actions = z.array(actionSchema)
 const recordShape = { id: idSchema, actorLabel: z.string(), createdAt: timestampSchema }
 export const poCardSchema = z.object({
+  materialNames: z.array(z.string()),
+  receivedAt: timestampSchema.nullable(),
   id: idSchema,
   no: z.string(),
   version: versionSchema,
@@ -39,18 +41,16 @@ export const poCardSchema = z.object({
   supplierId: idSchema,
   supplierName: z.string(),
   buyerName: z.string(),
+  buyerPhone: z.string(),
   status: z.enum(poStatuses),
   units: z.array(unitTotalSchema),
   amountCents: centsSchema,
-  payableCents: centsSchema,
-  paidCents: centsSchema,
-  unpaidCents: centsSchema,
-  apStatus: z.enum(apStatuses),
   changed: z.boolean(),
   repriced: z.boolean(),
   allReturned: z.boolean(),
   actions,
   lockedReason: z.string().nullable(),
+  statement: statementRefSchema.nullable(),
 })
 export type PoCard = z.infer<typeof poCardSchema>
 export const poDetailSchema = poCardSchema.extend({
@@ -68,6 +68,7 @@ export const poDetailSchema = poCardSchema.extend({
     z.object({
       id: idSchema,
       materialId: idSchema,
+      code: z.string(),
       name: z.string(),
       unit: z.string(),
       qty: z.number().int().positive(),
@@ -93,17 +94,14 @@ export const poDetailSchema = poCardSchema.extend({
     }),
   ),
   notice: z.string().nullable(),
-  allocations: z.array(paymentAllocationSchema),
 })
 export type PoDetail = z.infer<typeof poDetailSchema>
-export const supplierPoDetailSchema = poDetailSchema.extend({
-  allocations: z.array(externalAllocationSchema),
-})
-export type SupplierPoDetail = z.infer<typeof supplierPoDetailSchema>
+export type SupplierPoDetail = z.infer<typeof poDetailSchema>
 export const poQuerySchema = pageQuerySchema
   .extend({
     status: z.enum(poStatuses).optional(),
     supplierId: idSchema.optional(),
+    q: z.string().trim().optional(),
     ...dateRangeShape,
   })
   .superRefine(checkDateRange)
@@ -154,10 +152,12 @@ export const cancelPurchaseOrder = {
   errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
 } as const satisfies Endpoint
 export const inviteQuerySchema = pageQuerySchema.extend({
+  ...dateRangeShape,
   status: z.enum(inviteStatuses).optional(),
   supplierId: idSchema.optional(),
 })
 export const inviteCardSchema = z.object({
+  supplyAmountCents: centsSchema.nullable(),
   id: idSchema,
   no: z.string(),
   version: versionSchema,
@@ -165,6 +165,7 @@ export const inviteCardSchema = z.object({
   supplierId: idSchema,
   supplierName: z.string(),
   buyerName: z.string(),
+  buyerPhone: z.string(),
   status: z.enum(inviteStatuses),
   units: z.array(unitTotalSchema),
   materialNames: z.array(z.string()),
@@ -184,6 +185,7 @@ export const inviteDetailSchema = inviteCardSchema.extend({
       unit: z.string(),
       enabled: z.boolean(),
       needQty: z.number().int().positive(),
+      code: z.string(),
     }),
   ),
   supply: z.array(
@@ -193,6 +195,7 @@ export const inviteDetailSchema = inviteCardSchema.extend({
       unit: z.string(),
       qty: z.number().int().positive(),
       priceCents: centsSchema,
+      code: z.string(),
     }),
   ),
   cancelNote: z.string().nullable(),
@@ -281,7 +284,7 @@ export const submitSupplierInvite = {
   grants: ['supplier'],
   params: idParamsSchema,
   body: supplySchema,
-  response: z.object({ invite: inviteDetailSchema, purchaseOrder: supplierPoDetailSchema }),
+  response: z.object({ invite: inviteDetailSchema, purchaseOrder: poDetailSchema }),
   errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
   idempotent: true,
 } as const satisfies Endpoint
@@ -298,7 +301,7 @@ export const supplierPurchaseOrder = {
   path: '/supplier/purchase-orders/:id',
   grants: ['supplier'],
   params: idParamsSchema,
-  response: supplierPoDetailSchema,
+  response: poDetailSchema,
   errors: ['NOT_FOUND'],
 } as const satisfies Endpoint
 export const supplierUpdatePurchaseOrder = {
@@ -307,7 +310,7 @@ export const supplierUpdatePurchaseOrder = {
   grants: ['supplier'],
   params: idParamsSchema,
   body: supplySchema.safeExtend({ reason: z.string().trim().default('') }),
-  response: supplierPoDetailSchema,
+  response: poDetailSchema,
   errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
 } as const satisfies Endpoint
 export const supplierCancelPurchaseOrder = {
@@ -319,7 +322,17 @@ export const supplierCancelPurchaseOrder = {
     version: versionSchema,
     reason: requiredTextSchema(copy.rework.reasonRequired),
   }),
-  response: supplierPoDetailSchema,
+  response: poDetailSchema,
   errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
 } as const satisfies Endpoint
 export { demandQuerySchema, listPurchaseDemand, listDemandSources } from './purchase-demand.ts'
+
+export const getFinancePurchaseOrder = {
+  method: 'GET',
+  path: '/finance/purchase-orders/:id',
+  grants: ['finance'],
+  params: idParamsSchema,
+  query: z.object({ sourceType: z.enum(['po', 'purchase_return', 'price_change']).optional() }),
+  response: poDetailSchema.extend({ actions: z.array(actionSchema).length(0) }),
+  errors: ['NOT_FOUND'],
+} as const satisfies Endpoint

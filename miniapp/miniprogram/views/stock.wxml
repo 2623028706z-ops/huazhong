@@ -2,10 +2,8 @@
 <template name="stock-body">
   <hz-notice wx:if="{{notice}}" text="{{notice}}" />
   <template is="info" data="{{...info}}" />
-  <view class="u-section"><text class="u-section__title">{{linesHeading}}</text><hz-line-item lines="{{lines}}" quantity-only="{{quantityOnly}}" /></view>
-  <template wx:if="{{amountRows.length}}" is="info-card" data="{{rows:amountRows}}" />
-  <view wx:if="{{prices.length}}" class="u-section"><text class="u-section__title">{{texts.priceChanges}}</text><view class="u-card u-info"><view wx:for="{{prices}}" wx:key="id" class="u-info__line"><text>{{item.changes}}</text><text class="u-info__meta">{{item.name}} · {{item.reason}}</text></view></view></view>
+  <view class="u-section"><hz-line-item title="{{linesHeading}}" qty-label="{{qtyLabel}}" lines="{{lines}}" quantity-only="{{quantityOnly}}" /></view>
+  <hz-records wx:if="{{prices.length}}" type="priceChange" items="{{prices}}" />
   <view wx:if="{{images.length}}" class="u-section"><view class="u-thumbs"><image wx:for="{{images}}" wx:key="fileId" class="u-thumbs__item" src="{{item.thumbUrl}}" mode="aspectFill" data-url="{{item.url}}" data-urls="{{urls}}" bindtap="onPreview" /></view></view>
-  <view wx:if="{{payments.length}}" class="u-section"><text class="u-section__title">{{texts.allocations}}</text><view class="u-card u-info"><view wx:for="{{payments}}" wx:key="index" class="u-sheet-row"><text>{{item.date}}</text><text class="u-serif-amount">{{item.amount}}</text></view></view></view>
   <template wx:if="{{void.rows.length}}" is="info" data="{{...void}}" />
 </template>

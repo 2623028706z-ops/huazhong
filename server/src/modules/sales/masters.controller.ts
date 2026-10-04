@@ -7,7 +7,6 @@ import {
   type ProductCategory,
   type ProductItem,
   type StoreCatalog,
-  type StoreHome,
   type StoreInviteView,
   type StoreItem,
 } from '@huazhong/shared'
@@ -25,7 +24,7 @@ import { CatalogService } from './catalog.ts'
 import { CategoryService } from './categories.ts'
 import { CustomerService } from './customers.ts'
 import { ProductService } from './products.ts'
-import { StoreHomeService } from './store-home.ts'
+import { StoreCatalogService } from './store-catalog.ts'
 import { StoreInviteService } from './store-invites.ts'
 import { StoreWrites } from './stores.ts'
 
@@ -191,7 +190,7 @@ export class CatalogController {
   constructor(
     private readonly catalogs: CatalogService,
     private readonly catalogCategories: CatalogCategoryService,
-    private readonly storeHome: StoreHomeService,
+    private readonly storeCatalogs: StoreCatalogService,
   ) {}
 
   @Route(contract.getCatalog)
@@ -259,13 +258,8 @@ export class CatalogController {
     return this.catalogCategories.remove(viewer, Number(customerId), Number(id))
   }
 
-  @Route(contract.storeHome)
-  home(@CurrentViewer() viewer: Viewer): Promise<StoreHome> {
-    return this.storeHome.home(viewer)
-  }
-
   @Route(contract.storeCatalog)
   storeCatalog(@CurrentViewer() viewer: Viewer): Promise<StoreCatalog> {
-    return this.storeHome.catalog(viewer)
+    return this.storeCatalogs.catalog(viewer)
   }
 }

@@ -4,20 +4,20 @@ import {
   afterCreateSchema,
   afterProcessSchema,
   copy,
-  formatMoney,
   labels,
   type AfterCreate,
   type AfterDetail,
   type AfterProcess,
   type OrderLine,
 } from '@huazhong/shared'
-import { centsOfText, lineCents, sumCents, textOfCents } from '../../../../core/money'
-import { checkedOf, formTotalOf, type Checked } from '../../../../core/form'
+import { centsOfText, textOfCents } from '../../../../core/money'
+import { checkedOf, type Checked } from '../../../../core/form'
 
 export interface FormLine {
   // 处理时是售后明细 id，新建时是订单明细 id
   id: string
   name: string
+  code: string
   unit: string
   maxQty: number
   maxText: string
@@ -31,10 +31,14 @@ export interface FormLine {
   urls: string[]
 }
 
-export function processLinesOf(after: AfterDetail): FormLine[] {
+export function processLinesOf(
+  after: AfterDetail,
+  order?: { lines: { id: string; customerCode: string }[] },
+): FormLine[] {
   return after.lines.map((line) => ({
     id: line.id,
     name: line.name,
+    code: order?.lines.find((row) => row.id === line.orderLineId)?.customerCode ?? '',
     unit: line.unit,
     maxQty: line.maxQty,
     maxText: copy.screen.maxQty(line.maxQty),
@@ -53,6 +57,7 @@ export function createLineOf(line: OrderLine): FormLine {
   return {
     id: line.id,
     name: line.name,
+    code: line.customerCode,
     unit: line.unit,
     maxQty,
     maxText: copy.screen.maxQty(maxQty),
@@ -66,24 +71,11 @@ export function createLineOf(line: OrderLine): FormLine {
   }
 }
 
-function centsOf(line: FormLine): number {
-  return lineCents(line.qty, centsOfText(line.priceText))
-}
-
-export function amountTextsOf(lines: readonly FormLine[]): string[] {
-  return lines.map((line) => formatMoney(centsOf(line)))
-}
-
-export function totalRowsOf(lines: readonly FormLine[]) {
-  return lines.length > 1
-    ? [{ label: copy.screen.label.total, value: formTotalOf(sumCents(lines, centsOf), [...lines]) }]
-    : []
-}
-
 export interface LineErrors {
   qty: string
   price: string
   reason: string
+  description: string
 }
 
 export function lineErrorsOf(fields: Record<string, string>, count: number): LineErrors[] {
@@ -91,6 +83,7 @@ export function lineErrorsOf(fields: Record<string, string>, count: number): Lin
     qty: fields[`lines.${index}.qty`] ?? '',
     price: fields[`lines.${index}.priceCents`] ?? '',
     reason: fields[`lines.${index}.reason`] ?? '',
+    description: fields[`lines.${index}.description`] ?? '',
   }))
 }
 

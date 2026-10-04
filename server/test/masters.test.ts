@@ -137,7 +137,7 @@ describe('客户、门店、产品资料', () => {
     })
     const store = await s.as('s1')
     await s.t.db.update(customers).set({ enabled: false }).where(eq(customers.name, '晨曦花艺'))
-    expect((await store.get('/store/catalog')).body.error?.message).toBe(
+    expect(dataOf<{ lockedReason: string }>(await store.get('/store/catalog')).lockedReason).toBe(
       '这个客户已停用，不能再下新单，请联系花众',
     )
   })
@@ -236,7 +236,7 @@ describe('门店邀请', () => {
     )
     expect(me).toMatchObject({
       type: 'store',
-      landing: 'store_home',
+      landing: 'store_shop',
       orgLabel: '晨曦花艺 · 滨江店',
     })
     expect(dataOf<StoreInviteView>(await phone.get(`/store-invites/${token}`))).toMatchObject({

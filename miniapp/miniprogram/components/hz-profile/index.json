@@ -3,6 +3,6 @@
   "styleIsolation": "apply-shared",
   "usingComponents": {
     "hz-button": "../hz-button/index",
-    "hz-sheet": "../hz-sheet/index"
+    "hz-entry-grid": "../hz-entry-grid/index"
   }
 }

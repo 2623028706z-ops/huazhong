@@ -26,6 +26,8 @@ const staffModules: Partial<Record<string, readonly ModuleKey[]>> = {
   invites: ['purchase'],
   wh_doc: ['warehouse', 'finance'],
   wh_docs: ['warehouse', 'finance'],
+  statement: ['finance'],
+  finance_records: ['finance'],
   receipt: ['finance'],
   payment: ['finance'],
   payable: ['finance'],
@@ -37,8 +39,8 @@ const staffModules: Partial<Record<string, readonly ModuleKey[]>> = {
 }
 
 // 门店、供应商能订阅，但只收 scope 里含本店、本家的
-const STORE_SCOPED = new Set(['order', 'orders', 'after', 'afters'])
-const SUPPLIER_SCOPED = new Set(['po', 'pos', 'invite', 'invites'])
+const STORE_SCOPED = new Set(['order', 'orders', 'after', 'afters', 'statement'])
+const SUPPLIER_SCOPED = new Set(['po', 'pos', 'invite', 'invites', 'statement'])
 
 function staffCanSubscribe(viewer: Viewer, { kind, key }: ParsedTopic): boolean {
   if (kind === 'stock') return true

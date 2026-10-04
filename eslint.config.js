@@ -96,6 +96,7 @@ const boundaries = {
 export default tseslint.config(
   {
     ignores: [
+      'docs/audit/**',
       '**/node_modules/**',
       '**/dist/**',
       '**/coverage/**',

@@ -1,13 +1,12 @@
 // 阶段 5 仓库：手工入库、手工出库、报损、盘点、出库分类、出入库记录的接口报错和日志文案
 // （03 章第 8.3 节、05 章第 9 节、06 章 W4–W15）
 export const stockCopy = {
+  unitInUse: '这项花材已有库存、业务记录或配方引用，不能改单位，请新建花材',
+  voidAfterStocktake: '这张单的库存已被后续盘点确认，不能作废，请按实际情况登记新的出入库',
   supplierRequired: '请选择供应商',
   supplierDisabled: '这家供应商已停用，请重新选择',
   outCategoryRequired: '请选择出库分类',
   outCategoryDisabled: '这个出库分类已停用，请重新选择',
-  duplicatePaymentDoc: '同一张单据只能填一行',
-  // 2026-10-03 确认：手工入库单只整单付款
-  stockInPayWhole: '手工入库单要整单付款，请按待付金额核销',
   lossReasonRequired: '请填写报损原因',
   qtyInvalid: '数量须为大于 0 的整数',
   linesRequired: '请添加花材',
@@ -18,7 +17,6 @@ export const stockCopy = {
   verbOut: '出库',
   verbLoss: '报损',
   voidStockShort: '库存不够，不能作废',
-  voidPaid: '已有付款核销，请先由财务撤回',
   voided: '已作废',
   voidedNoReprice: '已作废，不能再改单价',
   notCreator: '只有录这张单的人能作废',
@@ -36,7 +34,7 @@ export const stockCopy = {
   categoryNameTaken: '已有同名的出库分类',
   keepOneEnabled: '至少保留一个启用的出库分类',
   // 详情、卡片
-  batchLabel: (date: string) => `${date.slice(5)} 入库`,
+  batchLabel: (date: string) => `${date} 入库`,
   actualQtyLabel: (unit: string) => `实盘数（${unit}）`,
   diffCount: (count: number) => `有差异 ${count} 项`,
   lineCount: (count: number) => `${count} 种花材`,
@@ -85,7 +83,6 @@ export const stockCopy = {
     stockOut: '手工出库',
     void: '作废单据',
     refreshStock: '库存有变化，请核对后再确认',
-    allocations: '核销记录',
     priceChanges: '改价记录',
     supplierHint: '入库单详情',
   },

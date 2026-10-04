@@ -4,7 +4,7 @@
 <template name="po-list">
   <hz-navbar title="{{title}}" back />
   <view class="u-list">
-    <hz-filter-bar status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" dimensions="{{dimensions}}" date-label="{{dateLabel}}" value="{{filter}}" bind:change="onFilter" />
+    <hz-filter-bar search-placeholder="{{searchPlaceholder}}" status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" dimensions="{{dimensions}}" date-label="{{dateLabel}}" value="{{filter}}" bind:change="onFilter" />
     <template is="list-state" data="{{failure,skeleton,loaded,rows,emptyObject}}" />
     <template is="cards" data="{{rows,statusKind,done,allLoaded}}" />
   </view>

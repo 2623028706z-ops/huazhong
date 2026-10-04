@@ -13,6 +13,7 @@ const base: Viewer = {
   customerId: null,
   supplierId: null,
   orgLabel: null,
+  storeName: null,
 }
 
 test('没有模块的员工（数据异常）落在花众首页', () => {

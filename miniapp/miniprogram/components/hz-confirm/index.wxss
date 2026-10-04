@@ -15,12 +15,12 @@
 }
 
 .hz-confirm__title {
-  font-size: var(--hz-font-title);
+  font-size: var(--hz-font-lg);
 }
 
 .hz-confirm__body {
   margin: 6px 0 18px;
-  font-size: var(--hz-font-note);
+  font-size: var(--hz-font-sm);
   color: var(--hz-muted);
 }
 

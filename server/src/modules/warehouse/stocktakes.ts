@@ -14,12 +14,23 @@ import { Clock } from '../../common/clock.ts'
 import { DB } from '../../common/db.ts'
 import { enabledAction } from '../../common/domain/actions.ts'
 import { pageOf } from '../../common/domain/cursor.ts'
+import { sumOf } from '../../common/domain/units.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import type { ParsedInput } from '../../common/endpoint.ts'
 import { beforeCursor } from '../../common/page.ts'
 import { found } from '../../common/scope.ts'
 import { WriteService, type WriteContext } from '../../common/write.service.ts'
 import { addStock, deductStock } from './stock-writes.ts'
+import { notifyCountedDocs } from './count-notifications.ts'
+
+function stocktakeLogView(
+  lines: { code: string; name: string; unit: string; bookQty: number; actualQty: number }[],
+  field: 'bookQty' | 'actualQty',
+) {
+  return Object.fromEntries(
+    lines.map((line) => [line.code, `${line.name} ${line[field]} ${line.unit}`]),
+  )
+}
 
 @Injectable()
 export class Stocktakes {
@@ -65,9 +76,10 @@ export class Stocktakes {
         code: row.code,
         unit: row.unit,
         enabled: row.enabled,
-        bookQty: batches
-          .filter((batch) => batch.materialId === row.id)
-          .reduce((sum, batch) => sum + batch.leftQty, 0),
+        bookQty: sumOf(
+          batches.filter((batch) => batch.materialId === row.id),
+          (batch) => batch.leftQty,
+        ),
       })),
     }
   }
@@ -153,12 +165,13 @@ export class Stocktakes {
           targetId: doc.id,
           targetLabel: doc.no,
           reason: input.reason,
-          after: lines,
+          before: stocktakeLogView(lines, 'bookQty'),
+          after: stocktakeLogView(lines, 'actualQty'),
         })
-        ctx.notify([
-          { topic: 'stock', version: null },
-          { topic: 'demand', version: null },
-        ])
+        await notifyCountedDocs(
+          ctx,
+          latest.lines.map((line) => Number(line.materialId)),
+        )
         return this.detail(doc.id, ctx.tx)
       },
       {
@@ -235,6 +248,7 @@ export class Stocktakes {
           unit: line.unit,
           bookQty: line.bookQty,
           actualQty: line.actualQty,
+          lastMoveId: sql`(SELECT coalesce(max(id), 0) FROM stock_moves WHERE material_id = ${Number(line.materialId)})`,
           sort: line.sort,
           createdBy: ctx.viewer?.accountId ?? 0,
         })),

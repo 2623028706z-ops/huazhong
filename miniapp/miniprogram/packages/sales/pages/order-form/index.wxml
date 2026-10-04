@@ -3,6 +3,7 @@
 <hz-navbar title="{{title}}" back guard="{{changed}}" />
 <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
 <view wx:else class="u-list">
+  <hz-notice wx:if="{{overdue}}" text="{{overdue}}" />
   <hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" />
   <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <hz-error wx:if="{{formError}}" message="{{formError}}" />
@@ -19,16 +20,13 @@
         </block>
         <hz-picker label="{{texts.shipDate}}" mode="date" value="{{form.shipDate}}" error="{{fields.shipDate}}" bind:change="onShipDate" />
         <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{form.note}}" bind:change="onNote" />
+        <hz-field wx:if="{{mode === 'edit' || (mode === 'confirm' && linesChanged)}}" label="{{texts.reason}}" type="textarea" value="{{form.reason}}" error="{{fields.reason}}" bind:change="onReason" />
       </view>
     </view>
     <view class="u-section">
-      <text class="u-section__title">{{texts.lines}}</text>
-      <hz-line-item lines="{{lineViews}}" mode="price" removable min="{{1}}" bind:qty="onQty" bind:price="onPrice" bind:remove="onRemove" />
+      <hz-line-item lines="{{lineViews}}" mode="price" edit-key="{{editKey}}" removable min="{{1}}" bind:qty="onQty" bind:price="onPrice" bind:remove="onRemove" />
       <hz-add-button text="{{texts.add}}" bind:press="onOpenPick" />
-      <template wx:if="{{amountRows.length}}" is="info-card" data="{{rows: amountRows}}" />
-    </view>
-    <view wx:if="{{mode !== 'create'}}" class="u-card u-form-card">
-      <hz-field label="{{texts.reason}}" type="textarea" value="{{form.reason}}" error="{{fields.reason}}" bind:change="onReason" />
+
     </view>
   </block>
 </view>

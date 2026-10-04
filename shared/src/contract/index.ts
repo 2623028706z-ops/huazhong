@@ -1,3 +1,7 @@
+import { batchConfirmOrders, batchShipOrders } from './order-writes.ts'
+import { getFinanceOrder } from './orders.ts'
+import { getFinancePurchaseOrder } from './purchase.ts'
+import { getFinanceWhDoc } from './stock.ts'
 // 接口契约：按开发阶段增长（08 章），每个接口在这里登记一次。
 // 后端每个路由都必须对应这里的一项，这里的每一项后端都必须实现（server/test/contract.test.ts）。
 import {
@@ -29,7 +33,33 @@ import {
   updateStore,
 } from './customers.ts'
 import { completeUpload, requestUploadTicket } from './files.ts'
-import { getArCustomer, getArOrder, listArCustomers, listUnpaidOrders } from './finance.ts'
+import {
+  getArCustomer,
+  listArCustomers,
+  getFinanceSupplier,
+  listFinanceSuppliers,
+  statementDraft,
+  listStatements,
+  createStatement,
+  getStatement,
+  getBusinessStatement,
+  voidStatement,
+  shareStatement,
+  listUnsettledCustomerStatements,
+  listUnsettledSupplierStatements,
+  customerTerms,
+  supplierTerms,
+  updateCustomerTerms,
+  updateSupplierTerms,
+  listReceivables,
+  listPayables,
+} from './finance.ts'
+import {
+  storeStatements,
+  storeStatementDetail,
+  supplierStatements,
+  supplierStatementDetail,
+} from './external-finance.ts'
 import { listInventory, listMaterialCategories } from './inventory.ts'
 import { getLog, listLogs } from './logs.ts'
 import { me } from './me.ts'
@@ -46,23 +76,10 @@ import {
   updateProduct,
   updateProductCategory,
 } from './products.ts'
-import {
-  allocatePrepaid,
-  createReceipt,
-  getReceipt,
-  listFinanceRecords,
-  voidReceipt,
-} from './receipts.ts'
+import { createReceipt, getReceipt, listFinanceRecords, voidReceipt } from './receipts.ts'
 import { createStaff, listStaff, unbindStaffWechat, updateStaff } from './staff.ts'
 import { getStoreInvite, useStoreInvite } from './store-invites.ts'
-import {
-  cancelStoreOrder,
-  createStoreOrder,
-  storeCatalog,
-  storeHome,
-  storeStatement,
-  updateStoreOrder,
-} from './store.ts'
+import { cancelStoreOrder, createStoreOrder, storeCatalog, updateStoreOrder } from './store.ts'
 import { moduleTodos } from './todos.ts'
 import {
   createMaterial,
@@ -97,14 +114,7 @@ import {
 } from './purchase.ts'
 import { createSupplier, getSupplier, listSuppliers, updateSupplier } from './suppliers.ts'
 import { createPayment, getPayment, voidPayment } from './payments.ts'
-import {
-  getFinanceSupplier,
-  getApDocument,
-  listUnpaidDocuments,
-  listFinanceSuppliers,
-  listPayables,
-  supplierStatement,
-} from './ap.ts'
+
 import {
   receivePurchaseOrder,
   repricePurchaseOrder,
@@ -121,8 +131,7 @@ import {
   voidOrder,
 } from './order-writes.ts'
 import { previewCatalogCopy, copyCatalog } from './catalog.ts'
-import { allocatePaymentPrepaid } from './payments.ts'
-import { createRefund, voidRefund, revokeAllocation, revokePaymentAllocation } from './refunds.ts'
+import { createRefund, voidRefund } from './refunds.ts'
 import { reviewPurchase } from './purchase-review.ts'
 import { getFinanceAfter } from './afters.ts'
 import { supplierUpdatePurchaseOrder, supplierCancelPurchaseOrder } from './purchase.ts'
@@ -144,6 +153,30 @@ import {
 } from './stock.ts'
 
 export const contract = {
+  batchConfirmOrders,
+  batchShipOrders,
+  getFinanceOrder,
+  getFinancePurchaseOrder,
+  getFinanceWhDoc,
+  statementDraft,
+  listStatements,
+  createStatement,
+  getStatement,
+  getBusinessStatement,
+  voidStatement,
+  shareStatement,
+  listUnsettledCustomerStatements,
+  listUnsettledSupplierStatements,
+  customerTerms,
+  supplierTerms,
+  updateCustomerTerms,
+  updateSupplierTerms,
+  listReceivables,
+  storeStatements,
+  storeStatementDetail,
+  supplierStatements,
+  supplierStatementDetail,
+
   getFinanceAfter,
   supplierUpdatePurchaseOrder,
   supplierCancelPurchaseOrder,
@@ -155,11 +188,8 @@ export const contract = {
   voidOrder,
   previewCatalogCopy,
   copyCatalog,
-  allocatePaymentPrepaid,
   createRefund,
   voidRefund,
-  revokeAllocation,
-  revokePaymentAllocation,
   reviewPurchase,
   voidPurchaseOrder,
   me,
@@ -217,19 +247,14 @@ export const contract = {
   voidAfter,
   createStoreAfter,
   // 门店端
-  storeHome,
   storeCatalog,
   createStoreOrder,
   updateStoreOrder,
   cancelStoreOrder,
-  storeStatement,
   // 财务收款
   listArCustomers,
   getArCustomer,
-  listUnpaidOrders,
-  getArOrder,
   createReceipt,
-  allocatePrepaid,
   getReceipt,
   voidReceipt,
   listFinanceRecords,
@@ -268,15 +293,12 @@ export const contract = {
   supplierMaterials,
   supplierPurchaseOrders,
   supplierPurchaseOrder,
-  supplierStatement,
   receivePurchaseOrder,
   returnPurchaseOrder,
   repricePurchaseOrder,
   listPayables,
   listFinanceSuppliers,
   getFinanceSupplier,
-  getApDocument,
-  listUnpaidDocuments,
   createPayment,
   getPayment,
   voidPayment,

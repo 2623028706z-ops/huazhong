@@ -37,7 +37,7 @@ async function moneyInput(kind: 'receipt' | 'payment', name: string) {
     amountCents: 1000,
     methodName: '微信',
     note: '',
-    allocs: [],
+    statements: [],
   }
 }
 test.each(['receipt', 'payment'] as const)(
@@ -60,7 +60,7 @@ test.each(['receipt', 'payment'] as const)(
         [ownerId],
       )
       firstRequest = finance.post(`/finance/${kind}s`, firstBody)
-      await expect.poll(blockedCount).toBe(1)
+      await expect.poll(blockedCount, { timeout: 5000 }).toBe(1)
       let finished: ApiResponse | undefined
       secondRequest = finance.post(`/finance/${kind}s`, secondBody).then((result) => {
         finished = result
@@ -79,23 +79,20 @@ test.each(['receipt', 'payment'] as const)(
 )
 
 test.each(['receipt', 'payment'] as const)(
-  'D21 D23 %s 相同主体相同复核并发登记仅一笔成功',
+  'D21 D23 %s 相同主体并发登记两笔未勾单资金，两笔均记入余额',
   async (kind) => {
     const finance = await s.as('u6'),
       path = `/finance/${kind}s`
-    const body = await snapshotInput(
-      s.t,
-      finance.openid,
-      path,
-      await moneyInput(kind, kind === 'receipt' ? '晨曦花艺' : '云岭花卉'),
-    )
+    const body = await moneyInput(kind, kind === 'receipt' ? '晨曦花艺' : '云岭花卉')
     const results = await Promise.all(
       [randomUUID(), randomUUID()].map((key) =>
         call(s.t, 'POST', path, { openid: finance.openid, body, idempotencyKey: key }),
       ),
     )
-    expect(results.map((result) => result.status).sort()).toEqual([200, 409])
-    expect(results.find((result) => result.status === 409)?.body.error?.code).toBe('STALE')
+    expect(results.map((result) => result.status)).toEqual([200, 200])
+    const funds = results.map((result) => dataOf<{ id: string; creditCents: number }>(result))
+    expect(funds.map((fund) => fund.creditCents)).toEqual([1000, 1000])
+    expect(new Set(funds.map((fund) => fund.id)).size).toBe(2)
   },
 )
 

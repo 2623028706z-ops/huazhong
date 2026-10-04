@@ -6,17 +6,3 @@
   <template is="cards" data="{{rows,done,allLoaded}}" />
 </view>
 <hz-action-bar wx:if="{{canCreate}}"><hz-button text="{{texts.create}}" bind:press="onCreate" /></hz-action-bar>
-<hz-sheet id="form-sheet" show="{{sheet}}" title="{{sheetTitle}}" guard="{{changed}}" footer bind:close="onClose">
-  <view class="u-sheet-form">
-    <hz-error wx:if="{{error}}" message="{{error}}" />
-    <hz-field label="{{texts.name}}" value="{{form.name}}" error="{{fields.name}}" data-field="name" bind:change="onText" />
-    <hz-field label="{{texts.contact}}" value="{{form.contact}}" data-field="contact" bind:change="onText" />
-    <hz-field label="{{texts.phone}}" value="{{form.phone}}" data-field="phone" bind:change="onText" />
-    <hz-field label="{{texts.address}}" value="{{form.address}}" data-field="address" bind:change="onText" />
-    <hz-switch label="{{texts.enabled}}" value="{{form.enabled}}" bind:change="onEnabled" />
-    <hz-switch label="{{texts.supplierAccount}}" value="{{form.account.enabled}}" bind:change="onAccount" />
-    <hz-field wx:if="{{form.account.enabled}}" label="{{texts.supplierLoginPhone}}" value="{{form.account.loginPhone}}" error="{{fields['account.loginPhone']}}" bind:change="onLoginPhone" />
-  </view>
-  <hz-button slot="footer" text="{{texts.save}}" loading="{{saving}}" bind:press="onSave" />
-</hz-sheet>
-<hz-confirm id="hz-confirm" />

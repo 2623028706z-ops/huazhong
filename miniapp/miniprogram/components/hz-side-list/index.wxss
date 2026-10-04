@@ -11,6 +11,7 @@
   min-height: var(--hz-tap);
   padding: var(--hz-line-gap) var(--hz-row-pad);
   font-size: var(--hz-font);
+  font-family: var(--hz-serif);
   color: var(--hz-muted);
 }
 
@@ -22,10 +23,11 @@
 
 .hz-side-list__item--on::before {
   position: absolute;
-  top: 12px;
-  bottom: 12px;
-  left: 0;
-  width: 2px;
+  top: 50%;
+  left: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
   content: '';
   background: var(--hz-brand);
 }

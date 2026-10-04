@@ -5,18 +5,14 @@ import {
   type DocPrefix,
   type Endpoint,
   type ModuleKey,
+  type LogDetail,
   type Topic,
 } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
 import { and, eq, sql } from 'drizzle-orm'
 import type { Db, Tx } from '../../db/client.ts'
 import { docSequences, idempotencyKeys, operationLogs } from '../../db/schema/index.ts'
-import {
-  CHANGES_CHANNEL,
-  CHANGES_PAYLOAD_MAX_BYTES,
-  type ChangeScope,
-  type ChangesPayload,
-} from './changes.ts'
+import { CHANGES_CHANNEL, encodeChanges, type ChangeScope, type ChangesPayload } from './changes.ts'
 import { Clock } from './clock.ts'
 import { DB } from './db.ts'
 import { formatDocNo } from './domain/doc-no.ts'
@@ -34,8 +30,8 @@ interface LogEntry {
   targetId: number | null
   targetLabel: string
   reason?: string
-  before?: unknown
-  after?: unknown
+  before?: LogDetail['before']
+  after?: LogDetail['after']
 }
 
 export interface WriteContext {
@@ -121,10 +117,8 @@ class TxContext implements WriteContext {
       changes: [...this.changes].map(([topic, version]) => ({ topic, version })),
       scope: { storeIds: [...this.storeIds], supplierIds: [...this.supplierIds] },
     }
-    const text = JSON.stringify(payload)
-    if (Buffer.byteLength(text) > CHANGES_PAYLOAD_MAX_BYTES)
-      throw new Error('change payload too large')
-    await this.tx.execute(sql`SELECT pg_notify(${CHANGES_CHANNEL}, ${text})`)
+    for (const text of encodeChanges(payload))
+      await this.tx.execute(sql`SELECT pg_notify(${CHANGES_CHANNEL}, ${text})`)
   }
 }
 
@@ -148,8 +142,14 @@ export class WriteService {
     viewer: Viewer | null,
     work: (ctx: WriteContext) => Promise<T>,
     idempotency?: Idempotency,
+    options: { exclusive?: boolean } = {},
   ): Promise<T> {
     return this.db.transaction(async (tx) => {
+      await tx.execute(
+        options.exclusive
+          ? sql`SELECT pg_advisory_xact_lock(hashtextextended('business-write', 0))`
+          : sql`SELECT pg_advisory_xact_lock_shared(hashtextextended('business-write', 0))`,
+      )
       if (idempotency && viewer) {
         const claim = await claimKey(tx, viewer.accountId, idempotency)
         if (claim.replay)

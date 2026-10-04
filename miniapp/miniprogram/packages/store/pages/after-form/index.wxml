@@ -7,32 +7,28 @@
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
   <block wx:else>
     <template is="info" data="{{rows: info}}" />
-    <view class="u-section">
-      <text class="u-section__title">{{texts.lines}}</text>
-      <view wx:for="{{lines}}" wx:key="orderLineId" class="u-card u-form-card">
-        <view class="u-info__head">
-          <text class="u-info__title">{{item.name}}</text>
-          <view class="u-tap" data-index="{{index}}" bindtap="onRemoveLine">
-            <text class="hz-icon hz-icon--trash-2"></text>
-          </view>
-        </view>
-        <view class="u-info__head">
-          <text class="u-info__meta">{{item.maxText}}</text>
-          <hz-stepper value="{{item.qty}}" min="{{1}}" max="{{item.maxQty}}" data-index="{{index}}" bind:change="onQty" />
-        </view>
-        <text wx:if="{{lineErrors[index].qty}}" class="u-field__error">{{lineErrors[index].qty}}</text>
-        <hz-picker label="{{texts.reason}}" options="{{reasonOptions}}" value="{{item.reason}}" error="{{lineErrors[index].reason}}" data-index="{{index}}" bind:change="onReason" />
-        <hz-field label="{{texts.description}}" type="textarea" value="{{item.description}}" error="{{lineErrors[index].description}}" data-index="{{index}}" bind:change="onDescription" />
-        <text class="u-field__label">{{texts.images}}</text>
-        <hz-upload files="{{item.images}}" data-index="{{index}}" bind:add="onAddImages" bind:remove="onRemoveImage" />
-        <text wx:if="{{lineErrors[index].images}}" class="u-field__error">{{lineErrors[index].images}}</text>
+    <view class="u-card u-info">
+      <view class="hz-store-after__row u-info__head"><text>{{texts.lines}}</text><text>{{texts.qty}}</text><text>{{texts.reason}}</text></view>
+      <view wx:for="{{tableRows}}" wx:key="orderLineId" class="hz-store-after__row" data-index="{{index}}" bindtap="onEditLine">
+        <view><text class="u-info__title">{{item.name}}</text><text class="u-info__meta">{{texts.code}} {{item.code}}　　{{item.maxText}}　　{{texts.images}} {{item.imageCount}}</text></view>
+        <text>{{item.qty}} {{item.unit}}</text><text>{{item.reasonText}}</text>
       </view>
-      <hz-add-button text="{{texts.add}}" bind:press="onOpenPick" />
     </view>
+    <hz-add-button text="{{texts.add}}" bind:press="onOpenPick" />
   </block>
 </view>
-<hz-action-bar>
-  <hz-button text="{{texts.submit}}" loading="{{saving}}" disabled="{{uploading}}" bind:press="onSubmit" />
-</hz-action-bar>
+<hz-action-bar><hz-button text="{{texts.submit}}" loading="{{saving}}" disabled="{{uploading}}" bind:press="onSubmit" /></hz-action-bar>
 <template is="pick-sheet" data="{{show: pickSheet, title: texts.pickTitle, picks, empty: texts.noPick}}" />
+<hz-sheet center guard="{{editChanged}}" show="{{editIndex >= 0}}" title="{{editLine.name}}" footer bind:close="onCloseEditor">
+  <view class="u-sheet-form">
+    <view class="u-sheet-row"><text>{{texts.qty}}</text><view><text>{{editLine.maxText}}</text><hz-stepper value="{{editLine.qty}}" min="{{1}}" max="{{editLine.maxQty}}" data-index="{{editIndex}}" bind:change="onQty" /><text>{{editLine.unit}}</text></view></view>
+    <text wx:if="{{editError.qty}}" class="u-field__error">{{editError.qty}}</text>
+    <hz-picker label="{{texts.reason}}" options="{{reasonOptions}}" value="{{editLine.reason}}" error="{{editError.reason}}" data-index="{{editIndex}}" bind:change="onReason" />
+    <hz-field label="{{texts.description}}" type="textarea" value="{{editLine.description}}" error="{{editError.description}}" data-index="{{editIndex}}" bind:change="onDescription" />
+    <text class="u-field__label">{{texts.images}}</text><hz-upload files="{{editLine.images}}" data-index="{{editIndex}}" bind:add="onAddImages" bind:remove="onRemoveImage" />
+    <text wx:if="{{editError.images}}" class="u-field__error">{{editError.images}}</text>
+  </view>
+  <hz-button slot="footer" kind="secondary" text="{{texts.remove}}" disabled="{{uploading}}" bind:press="onDeleteEditor" />
+  <hz-button slot="footer" text="{{texts.confirm}}" disabled="{{uploading}}" bind:press="onConfirmEditor" />
+</hz-sheet>
 <hz-confirm id="hz-confirm" />

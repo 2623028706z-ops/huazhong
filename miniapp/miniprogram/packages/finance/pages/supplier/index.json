@@ -1,21 +1,26 @@
 {
   "usingComponents": {
     "hz-navbar": "/components/hz-navbar/index",
+    "hz-tabs": "/components/hz-tabs/index",
     "hz-filter-bar": "/components/hz-filter-bar/index",
     "hz-card": "/components/hz-card/index",
     "hz-skeleton": "/components/hz-skeleton/index",
     "hz-state": "/components/hz-state/index",
     "hz-error": "/components/hz-error/index",
+    "hz-notice": "/components/hz-notice/index",
+    "hz-status": "/components/hz-status/index",
     "hz-action-bar": "/components/hz-action-bar/index",
     "hz-button": "/components/hz-button/index",
     "hz-sheet": "/components/hz-sheet/index",
-    "hz-notice": "/components/hz-notice/index",
-    "hz-status": "/components/hz-status/index",
+    "hz-reason-sheet": "/components/hz-reason-sheet/index",
     "hz-line-item": "/components/hz-line-item/index",
-    "hz-records": "/components/hz-records/index",
-    "hz-statement": "/components/hz-statement/index",
     "hz-field": "/components/hz-field/index",
     "hz-picker": "/components/hz-picker/index",
-    "hz-confirm": "/components/hz-confirm/index"
+    "hz-confirm": "/components/hz-confirm/index",
+    "hz-statement": "/components/hz-statement/index",
+    "hz-tabbar": "/components/hz-tabbar/index",
+    "hz-brand": "/components/hz-brand/index",
+    "hz-cover": "/components/hz-cover/index",
+    "hz-progress": "/components/hz-progress/index"
   }
 }

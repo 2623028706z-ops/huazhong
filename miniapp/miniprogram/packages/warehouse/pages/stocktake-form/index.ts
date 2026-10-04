@@ -1,4 +1,4 @@
-import { contract, copy, formatQty, type StocktakeDraft } from '@huazhong/shared'
+import { contract, copy, redesignCopy, type StocktakeDraft } from '@huazhong/shared'
 import type { DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { checkedOf, unplacedErrorOf } from '../../../../core/form'
@@ -24,12 +24,10 @@ const blank: Form = { reason: '', lines: [] }
 function rowsOf(form: Form, fields: Record<string, string>) {
   return form.lines.map((line, index) => ({
     ...line,
-    book: formatQty(line.bookQty, line.unit),
-    actualLabel: copy.stock.actualQtyLabel(line.unit),
-    diff:
+    diffQty:
       line.actualText.trim() === '' || !Number.isInteger(Number(line.actualText))
         ? ''
-        : formatQty(Number(line.actualText) - line.bookQty, line.unit),
+        : String(Number(line.actualText) - line.bookQty),
     error: fields[`lines.${index}.actualQty`] ?? '',
   }))
 }
@@ -48,7 +46,18 @@ Page({
     rows: [] as ReturnType<typeof rowsOf>,
     categories: '',
     realtime: '',
-    texts: { ...copy.stock.screen, disabled: copy.statusValue.disabled },
+    editor: false,
+    editIndex: -1,
+    draftActual: '',
+    draftName: '',
+    draftUnit: '',
+    texts: {
+      ...copy.stock.screen,
+      materials: redesignCopy.materialLines,
+      disabled: copy.statusValue.disabled,
+      unit: copy.field.unit,
+      confirm: redesignCopy.confirm,
+    },
   },
   categoryIds: [] as string[],
   key: '',
@@ -100,6 +109,31 @@ Page({
       })),
     })
     markChanged(this, isChanged(normalize(this.data.initial), normalize(form)))
+  },
+  onEdit(event: DetailEvent<unknown, { index: number }>) {
+    const index = event.currentTarget.dataset.index
+    const line = this.data.form.lines[index]
+    if (line)
+      this.setData({
+        editor: true,
+        editIndex: index,
+        draftActual: line.actualText,
+        draftName: line.name,
+        draftUnit: line.unit,
+      })
+  },
+  onDraftActual(event: DetailEvent<string>) {
+    this.setData({ draftActual: event.detail })
+  },
+  onCloseEditor() {
+    this.setData({ editor: false })
+  },
+  onConfirmEditor() {
+    this.onActual({
+      detail: this.data.draftActual,
+      currentTarget: { dataset: { index: this.data.editIndex } },
+    } as DetailEvent<string, { index: number }>)
+    this.setData({ editor: false })
   },
   onActual(event: DetailEvent<string, { index: number }>) {
     this.setData({ fields: {}, formError: '' })

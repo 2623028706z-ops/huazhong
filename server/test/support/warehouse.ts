@@ -1,6 +1,6 @@
-import type { contract, OutputOf, WhDocKind, WhDocDetail } from '@huazhong/shared'
+import type { WhDocKind, WhDocDetail } from '@huazhong/shared'
 import { sql } from 'drizzle-orm'
-import { dataOf, idBy, TODAY, type SalesApp } from './sales.ts'
+import { dataOf, idBy, type SalesApp } from './sales.ts'
 
 export async function whIds(s: SalesApp) {
   return {
@@ -29,29 +29,4 @@ export async function stockQtyOf(s: SalesApp, materialId: string) {
     sql`SELECT coalesce(sum(left_qty),0)::int AS qty FROM stock_batches WHERE material_id=${Number(materialId)}`,
   )
   return result.rows[0]?.qty ?? 0
-}
-export async function paymentForDocs(
-  s: SalesApp,
-  supplierId: string,
-  allocs: { docType: 'po' | 'wh'; docId: string; amountCents: number }[],
-  amountCents = allocs.reduce((sum, row) => sum + row.amountCents, 0),
-) {
-  const ledger = dataOf<OutputOf<typeof contract.listUnpaidDocuments>>(
-    await (await s.as('u6')).get(`/finance/suppliers/${supplierId}/unpaid-docs`),
-  )
-  return {
-    supplierId,
-    ledgerToken: ledger.ledgerToken,
-    expected: ledger.items.map(({ docType, docId, version, unpaidCents }) => ({
-      docType,
-      docId,
-      version,
-      unpaidCents,
-    })),
-    allocs,
-    amountCents,
-    payDate: TODAY,
-    methodName: '微信',
-    note: '',
-  }
 }

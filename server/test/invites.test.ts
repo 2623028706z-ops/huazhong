@@ -30,7 +30,16 @@ test('B25 发出邀请校验、账号筛选、日期和采购员', async () => {
   const invite = dataOf<InviteDetail>(
     await api.post('/invites', { supplierId, lines: [{ materialId, needQty: 15 }] }),
   )
-  expect(invite).toMatchObject({ status: 'pending', buyerName: '周宁', lines: [{ needQty: 15 }] })
+  const [material] = await s.t.db
+    .select()
+    .from(materials)
+    .where(eq(materials.id, Number(materialId)))
+  expect(invite).toMatchObject({
+    status: 'pending',
+    buyerName: '周宁',
+    buyerPhone: '13700000004',
+    lines: [{ needQty: 15, code: material?.code }],
+  })
   expect(invite.no).toMatch(/^YQ-/)
   expect(invite).not.toHaveProperty('expectedDate')
   const noAccount = await api.post('/invites', {
@@ -98,7 +107,7 @@ test('B27 B28 B29 填报生成采购单、快照、幂等及收货改价', async
     status: 'submitted',
     actions: [],
     purchaseOrderId: result.purchaseOrder.id,
-    supply: [{ qty: 70, priceCents: 350 }],
+    supply: [{ qty: 70, priceCents: 350, code: invite.lines[0]?.code }],
   })
   expect(
     dataOf<OutputOf<typeof contract.supplierPurchaseOrders>>(
@@ -119,7 +128,7 @@ test('B27 B28 B29 填报生成采购单、快照、幂等及收货改价', async
   expect(received).toMatchObject({
     status: 'received',
     repriced: true,
-    payableCents: 22400,
+    amountCents: 22400,
     lines: [{ orderPriceCents: 350, priceCents: 320 }],
     priceChanges: [{ reason: '供应商让价' }],
   })
@@ -137,6 +146,10 @@ test('B31 提交含停用邀请行或另报行拒绝，供应商删行即能提�
     dataOf<InviteDetail>(await supplier.get(`/supplier/invites/${invite.id}`)).lines[0]?.enabled,
   ).toBe(false)
   const otherId = await idBy(s.t, 'materials.name', '尤加利')
+  const [otherMaterial] = await s.t.db
+    .select()
+    .from(materials)
+    .where(eq(materials.id, Number(otherId)))
   const supply = {
     version: invite.version,
     lines: [{ materialId: otherId, qty: 10, priceCents: 200 }],
@@ -170,7 +183,9 @@ test('B31 提交含停用邀请行或另报行拒绝，供应商删行即能提�
     await supplier.post(`/supplier/invites/${invite.id}/submit`, supply),
   )
   expect(submitted.invite.lines).toEqual(invite.lines.map((line) => ({ ...line, enabled: false })))
-  expect(submitted.invite.supply).toMatchObject([{ materialId: otherId, qty: 10 }])
+  expect(submitted.invite.supply).toMatchObject([
+    { materialId: otherId, qty: 10, code: otherMaterial?.code },
+  ])
   expect(submitted.purchaseOrder.lines).toMatchObject([{ materialId: otherId, qty: 10 }])
 })
 test('B32 J24 分享卡片签名、归属和失效', async () => {

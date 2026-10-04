@@ -1,7 +1,14 @@
-import { contract, copy, formatQty, type WhDocKind, type InventoryItem } from '@huazhong/shared'
+import {
+  contract,
+  copy,
+  formatQty,
+  type InventoryItem,
+  type OutCategory,
+  type WhDocKind,
+} from '@huazhong/shared'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
-import { checkedOf, formTotalOf, unplacedErrorOf } from '../../../../core/form'
+import { checkedOf, unplacedErrorOf } from '../../../../core/form'
 import { formOnLeave, isChanged, markChanged, syncUnloadAlert } from '../../../../core/guard'
 import { watch } from '../../../../core/live'
 import { centsOfText } from '../../../../core/money'
@@ -14,6 +21,7 @@ import { loadInventory, loadSuppliers } from '../../../../views/purchase-load'
 interface Line {
   materialId: string
   name: string
+  code: string
   unit: string
   qty: number
   priceText: string
@@ -27,7 +35,6 @@ interface Form {
   images: UploadedImage[]
 }
 const blank: Form = { supplierId: '', outCategoryId: '', reason: '', lines: [], images: [] }
-const PREVIOUS_PAGE_OFFSET = 2
 const placedFields = ['supplierId', 'outCategoryId', 'reason', 'lines.*.qty', 'lines.*.priceCents']
 function kindOf(value?: string): WhDocKind {
   return value === 'out' || value === 'loss' ? value : 'in'
@@ -61,11 +68,15 @@ Page({
     lines: [] as ReturnType<typeof lineViews>,
     supplierOptions: [] as { id: string; name: string }[],
     categoryOptions: [] as { id: string; name: string }[],
+    categories: [] as OutCategory[],
+    categorySheet: false,
+    categoryError: '',
+    categorySaving: false,
     picks: [] as { id: string; name: string; sub: string }[],
     pickSheet: false,
+    editKey: '',
     pickError: '',
     realtime: '',
-    amount: '',
     submitText: '',
     texts: {
       ...copy.stock.screen,
@@ -80,6 +91,7 @@ Page({
   inventory: [] as InventoryItem[],
   materialId: '',
   key: '',
+  categoryKey: '',
   onLoad(query: Record<string, string | undefined>) {
     const kind = kindOf(query.kind)
     this.materialId = query.materialId ?? ''
@@ -139,6 +151,7 @@ Page({
         return false
       }
       this.setData({
+        categories: categories.data.items,
         categoryOptions: categories.data.items
           .filter((row) => row.enabled)
           .map((row) => ({ id: row.id, name: row.name })),
@@ -150,6 +163,7 @@ Page({
     return {
       materialId: item.id,
       name: item.name,
+      code: item.code,
       unit: item.unit,
       qty: 1,
       priceText: '',
@@ -162,10 +176,6 @@ Page({
       form,
       fields,
       lines: lineViews(form, fields, this.data.kind),
-      amount: formTotalOf(
-        form.lines.reduce((sum, line) => sum + line.qty * (centsOfText(line.priceText) ?? 0), 0),
-        form.lines,
-      ),
     })
     const normalize = (value: Form) => ({
       ...value,
@@ -206,6 +216,7 @@ Page({
   onOpenPick() {
     const selected = new Set(this.data.form.lines.map((line) => line.materialId))
     this.setData({
+      editKey: '',
       pickSheet: true,
       picks: this.inventory
         .filter((row) => !selected.has(row.id) && (this.data.kind !== 'in' || row.enabled))
@@ -220,14 +231,47 @@ Page({
     const item = this.inventory.find((row) => row.id === event.currentTarget.dataset.key)
     if (!item || this.data.form.lines.some((line) => line.materialId === item.id)) return
     this.render({ ...this.data.form, lines: [...this.data.form.lines, this.lineOf(item)] }, {})
-    this.setData({ pickSheet: false })
+    this.setData({ pickSheet: false, editKey: item.id })
   },
   onClosePick() {
     this.setData({ pickSheet: false })
   },
+  // 管理分类在弹层里做，维护完回到表单，草稿还在（06 章 W5）
   onManageCategories() {
-    syncUnloadAlert(false)
-    void wx.navigateTo({ url: '/packages/warehouse/pages/out-categories/index' })
+    this.categoryKey = newIdempotencyKey()
+    this.setData({ categorySheet: true, categoryError: '' })
+  },
+  onCloseCategories() {
+    if (!this.data.categorySaving) this.setData({ categorySheet: false })
+  },
+  async onSaveCategory(event: DetailEvent<{ id: string; name: string; enabled: boolean }>) {
+    if (this.data.categorySaving) return
+    const { id, name, enabled } = event.detail
+    const checked = checkedOf(contract.createOutCategory.body.safeParse({ name, enabled }))
+    if (!checked.ok) {
+      this.setData({ categoryError: Object.values(checked.fields)[0] ?? '' })
+      return
+    }
+    this.setData({ categorySaving: true, categoryError: '' })
+    const result = id
+      ? await request(contract.updateOutCategory, { params: { id }, body: checked.body })
+      : await request(
+          contract.createOutCategory,
+          { body: checked.body },
+          { idempotencyKey: this.categoryKey },
+        )
+    this.setData({ categorySaving: false })
+    if (!result.ok) {
+      const failure = failureOf(result.failure, 'submit')
+      if (failure) this.setData({ categoryError: messageOf(failure) })
+      return
+    }
+    this.categoryKey = newIdempotencyKey()
+    if (!(await this.loadOptions())) return
+    // 选中的分类刚被停用：清掉，提交时提示重新选
+    const selected = this.data.form.outCategoryId
+    if (selected && !this.data.categoryOptions.some((option) => option.id === selected))
+      this.render({ ...this.data.form, outCategoryId: '' })
   },
   async onAddImages(event: DetailEvent<LocalImage[]>) {
     if (this.data.uploading || this.data.saving) return
@@ -310,10 +354,7 @@ Page({
       }
       markChanged(this, false)
       showSuccess(copy.action.saved)
-      const previous = getCurrentPages().at(-PREVIOUS_PAGE_OFFSET)
-      if (previous?.route === 'packages/warehouse/pages/docs/index') void wx.navigateBack()
-      else
-        void wx.redirectTo({ url: `/packages/warehouse/pages/docs/index?kind=${this.data.kind}` })
+      void wx.redirectTo({ url: `/packages/warehouse/pages/doc-detail/index?id=${result.data.id}` })
     } finally {
       this.setData({ saving: false })
     }

@@ -1,6 +1,6 @@
 import { contract, copy, type InviteDetail, type PoDetail } from '@huazhong/shared'
 import { checkedOf, unplacedErrorOf } from '../core/form'
-import { centsOfText, lineCents, sumCents, textOfCents } from '../core/money'
+import { centsOfText, lineCents, textOfCents } from '../core/money'
 
 export type PurchaseMode = 'po' | 'invite' | 'supply'
 export function purchaseSuccessOf(mode: PurchaseMode, editing: boolean, supplierName: string) {
@@ -32,6 +32,7 @@ export function purchaseTitles(mode: PurchaseMode, editing: boolean) {
 export interface MaterialOption {
   id: string
   name: string
+  code?: string
   unit: string
   stockQty?: number
 }
@@ -71,7 +72,7 @@ export function poFormOf(
     note: po.note ?? '',
     reason,
     lines: po.lines.map((l) => ({
-      ...purchaseLineOf({ id: l.materialId, name: l.name, unit: l.unit }, l.qty),
+      ...purchaseLineOf({ id: l.materialId, name: l.name, code: l.code, unit: l.unit }, l.qty),
       priceText: textOfCents(l.priceCents),
     })),
   }
@@ -82,7 +83,7 @@ export function inviteFormOf(invite: InviteDetail): PurchaseForm {
     note: '',
     reason: '',
     lines: invite.lines.map((l) => ({
-      ...purchaseLineOf({ id: l.materialId, name: l.name, unit: l.unit }, l.needQty),
+      ...purchaseLineOf({ id: l.materialId, name: l.name, code: l.code, unit: l.unit }, l.needQty),
       needQty: l.needQty,
       enabled: l.enabled,
     })),
@@ -109,9 +110,6 @@ export function purchaseLineViews(
     tags: line.enabled ? [] : [{ text: copy.screen.tag.discontinued, warn: true }],
     readonly: mode === 'supply' && !line.enabled,
   }))
-}
-export function purchaseAmount(lines: PurchaseLine[]): number {
-  return sumCents(lines, (line) => lineCents(line.qty, centsOfText(line.priceText)))
 }
 export interface PurchaseCheckOptions {
   reviewToken?: string

@@ -1,15 +1,14 @@
 import {
   contract,
   copy,
+  redesignCopy,
   labels,
   type InviteDetail,
   type PoDetail,
-  type SupplierPoDetail,
   type OutputOf,
 } from '@huazhong/shared'
 import type { DetailEvent, KeyEvent } from '../core/events'
 import type { FailureView } from '../core/failure-view'
-import { formTotalOf } from '../core/form'
 import { isChanged, syncUnloadAlert } from '../core/guard'
 import { unwatch, watch, watchNewer } from '../core/live'
 import { newIdempotencyKey, request, type Failure } from '../core/request'
@@ -20,12 +19,17 @@ import { reviewDraft, purchaseReviewData, purchaseReviewMethods } from './purcha
 import { submitPurchase } from './purchase-submit'
 import { purchaseFormDetails } from './purchase-form-detail'
 import type { Checked } from '../core/form'
-import { openInvitePo, type inviteViewOf } from './invite-detail'
-import { loadInventory, loadMaterials, loadSuppliers, loadSupplyMaterials } from './purchase-load'
+import type { inviteViewOf } from './invite-detail'
+import {
+  loadInventory,
+  loadPendingInvites,
+  loadMaterials,
+  loadSuppliers,
+  loadSupplyMaterials,
+} from './purchase-load'
 import {
   blankPurchaseForm,
   checkPurchaseForm,
-  purchaseAmount,
   purchaseLineOf,
   purchaseLineViews,
   purchaseErrorOf,
@@ -60,13 +64,15 @@ const data = {
   canChangeSupplier: true,
   editable: true,
   lockedReason: '',
-  amount: '',
   pickSheet: false,
+  editKey: '',
   picks: [] as ReturnType<typeof materialPickOf>[],
   inviteView: null as ReturnType<typeof inviteViewOf> | null,
   poView: null as ReturnType<typeof poViewOf> | null,
   texts: {
     ...copy.screen.label,
+    separator: copy.separator,
+    no: redesignCopy.no,
     lines: copy.screen.section.materials,
     add: copy.screen.action.addMaterial,
     pickTitle: copy.screen.title.pickMaterial,
@@ -85,8 +91,10 @@ export interface PurchaseFormHost {
   data: typeof data
   id: string
   key: string
-  po: PoDetail | SupplierPoDetail | null
+  po: PoDetail | null
   invite: InviteDetail | null
+  pendingMaterialNames: string[]
+  loadInviteWarnings(): Promise<boolean>
   materials: MaterialOption[]
   draft: PurchaseDraft | null
   setData(patch: Record<string, unknown>): void
@@ -97,6 +105,7 @@ export interface PurchaseFormHost {
   }
   load(preserve?: boolean): Promise<void>
   loadChoices(): Promise<boolean>
+  loadInternalChoices(): Promise<boolean>
   loadExternalMaterials(): Promise<boolean>
   loadStock(): Promise<boolean>
   loadDetail(preserve?: boolean): Promise<boolean>
@@ -117,9 +126,10 @@ const methods = {
   ...purchaseReviewMethods,
   id: '',
   key: '',
-  po: null as PoDetail | SupplierPoDetail | null,
+  po: null as PoDetail | null,
   invite: null as InviteDetail | null,
   materials: [] as MaterialOption[],
+  pendingMaterialNames: [] as string[],
   draft: null as PurchaseDraft | null,
   onLoad(this: Host, query: Record<string, string | undefined>) {
     if (query.poId && this.data.mode === 'supply')
@@ -175,6 +185,11 @@ const methods = {
   async loadChoices(this: Host) {
     if (this.data.mode === 'supply' || this.data.supplierEditing)
       return this.loadExternalMaterials()
+    if (!(await this.loadInternalChoices())) return false
+    if (this.data.mode === 'po' && !this.id && !(await this.loadInviteWarnings())) return false
+    return this.data.mode !== 'invite' || (await this.loadStock())
+  },
+  async loadInternalChoices(this: Host) {
     const materials = await loadMaterials()
     const suppliers = await loadSuppliers({
       enabled: 'true',
@@ -187,7 +202,16 @@ const methods = {
     }
     this.materials = materials.data
     this.setData({ supplierOptions: suppliers.data.map((s) => ({ id: s.id, name: s.name })) })
-    return this.data.mode !== 'invite' || (await this.loadStock())
+    return true
+  },
+  async loadInviteWarnings(this: Host) {
+    const result = await loadPendingInvites()
+    if (!result.ok) {
+      this.setData({ failure: failureOf(result.failure, 'load') })
+      return false
+    }
+    this.pendingMaterialNames = result.data.flatMap((invite) => invite.materialNames)
+    return true
   },
   async loadExternalMaterials(this: Host) {
     const result = await loadSupplyMaterials()
@@ -210,10 +234,14 @@ const methods = {
     }))
     return true
   },
-  async loadDetail(this: Host, preserve = false) {
-    return this.data.mode === 'po' ? this.loadPo(preserve) : this.loadInvite(preserve)
-  },
   render(this: Host, form: PurchaseForm, initial = false) {
+    form = {
+      ...form,
+      lines: form.lines.map((line) => {
+        const code = this.materials.find((material) => material.id === line.id)?.code
+        return code === undefined ? line : { ...line, code }
+      }),
+    }
     if (this.data.mode === 'invite')
       form = {
         ...form,
@@ -228,8 +256,10 @@ const methods = {
       form,
       initial: base,
       changed,
-      lineViews: purchaseLineViews(form.lines, this.data.mode, this.data.fields),
-      amount: formTotalOf(purchaseAmount(form.lines), form.lines),
+      lineViews: purchaseLineViews(form.lines, this.data.mode, this.data.fields).map((line) => ({
+        ...line,
+        notice: this.pendingMaterialNames.includes(line.name) ? copy.screen.invitedPending : '',
+      })),
     })
     syncUnloadAlert(changed)
   },
@@ -266,6 +296,7 @@ const methods = {
   onOpenPick(this: Host) {
     const added = new Set(this.data.form.lines.map((l) => l.id))
     this.setData({
+      editKey: '',
       pickSheet: true,
       picks: this.materials.filter((m) => !added.has(m.id)).map(materialPickOf),
     })
@@ -276,7 +307,10 @@ const methods = {
   onPick(this: Host, event: KeyEvent) {
     const material = this.materials.find((m) => m.id === event.currentTarget.dataset.key)
     this.setData({ pickSheet: false })
-    if (material) this.update({ lines: [...this.data.form.lines, purchaseLineOf(material)] })
+    if (material) {
+      this.update({ lines: [...this.data.form.lines, purchaseLineOf(material)] })
+      this.setData({ editKey: material.id })
+    }
   },
   async prepare(this: Host): Promise<Checked<unknown> | null> {
     const version = this.po?.version ?? this.invite?.version ?? null
@@ -326,9 +360,12 @@ const methods = {
     }
     syncUnloadAlert(false)
     this.setData({ changed: false })
-    if (this.data.mode === 'invite')
-      this.getOpenerEventChannel().emit?.('saved', { id: result.data.id })
     showSuccess(purchaseSuccessOf(this.data.mode, !!this.id, this.data.supplierName))
+    if (this.data.mode === 'invite') {
+      this.getOpenerEventChannel().emit?.('saved', { id: result.data.id })
+      void wx.navigateBack()
+      return
+    }
     void wx.navigateBack()
   },
   async saveSupply(this: Host, body: unknown) {
@@ -357,16 +394,6 @@ const methods = {
       })
       this.render(this.data.form)
     }
-  },
-  // 用户点实时提示条才换成最新内容，丢弃本地草稿（02 章第 5 节）
-  onRealtime(this: Host) {
-    void this.load(false)
-  },
-  onFailureAction(this: Host) {
-    void this.load()
-  },
-  onPo(this: Host) {
-    openInvitePo(this.invite, this.data.mode === 'supply')
   },
 }
 export const purchaseFormPage = { ...methods, data }

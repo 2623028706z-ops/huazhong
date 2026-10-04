@@ -27,8 +27,8 @@
   justify-content: center;
   width: var(--hz-tap);
   height: var(--hz-tap);
-  font-size: var(--hz-icon);
-  color: var(--hz-ink);
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
 }
 
 .hz-filter-bar__button--bare {
@@ -93,6 +93,7 @@
 
 .hz-filter-bar__count {
   margin-left: 3px;
+  color: var(--hz-danger);
   font-size: var(--hz-font-sm);
 }
 
@@ -134,7 +135,7 @@
 .hz-filter-bar__segments {
   display: flex;
   padding: 3px;
-  font-size: var(--hz-font-note);
+  font-size: var(--hz-font-sm);
   color: var(--hz-muted);
   border-radius: var(--hz-radius);
   box-shadow: inset 0 0 0 1px var(--hz-hair);
@@ -200,5 +201,9 @@
 
 .hz-filter-bar__check {
   font-size: var(--hz-icon);
+  color: var(--hz-brand);
+}
+
+.hz-filter-bar__button--active {
   color: var(--hz-brand);
 }

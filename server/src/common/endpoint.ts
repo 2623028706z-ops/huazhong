@@ -1,5 +1,5 @@
 // 控制器绑定契约：@Route(contract.x) 注册路由并挂上契约；@Input() 按契约校验入参；@CurrentViewer() 取当前账号
-import { appError, copy, contract, fieldsOf, type Endpoint, type OutputOf } from '@huazhong/shared'
+import { appError, copy, fieldsOf, type Endpoint, type OutputOf } from '@huazhong/shared'
 import {
   applyDecorators,
   createParamDecorator,
@@ -81,19 +81,6 @@ export const Input = createParamDecorator((_data: unknown, ctx) => {
   if (!endpoint) throw appError.internal()
   const req = ctx.switchToHttp().getRequest<Request>()
   return parseInput(endpoint, {
-    params: req.params,
-    query: req.query,
-    body: req.body as unknown,
-    idempotencyKey: req.header(IDEMPOTENCY_HEADER),
-  })
-})
-export type PaymentInputValue =
-  { replayPaymentId: number } | ParsedInput<typeof contract.createPayment>
-export const PaymentInput = createParamDecorator((_data: unknown, ctx): PaymentInputValue => {
-  const state = requestContext.get()
-  if (state?.paymentReplayId !== undefined) return { replayPaymentId: state.paymentReplayId }
-  const req = ctx.switchToHttp().getRequest<Request>()
-  return parseInput(contract.createPayment, {
     params: req.params,
     query: req.query,
     body: req.body as unknown,

@@ -23,6 +23,7 @@
       bind:blur="onBlur"
       bind:change="onChange"
     />
+    <text wx:if="{{suffix}}" class="u-field__suffix">{{suffix}}</text>
   </view>
   <text wx:if="{{error}}" class="u-field__error">{{error}}</text>
 </view>

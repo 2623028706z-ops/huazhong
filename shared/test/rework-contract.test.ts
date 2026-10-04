@@ -5,7 +5,6 @@ import {
   moduleKeys,
   receiptCreateSchema,
   paymentCreateSchema,
-  allocKinds,
   shippingCardSchema,
   shippingLineSchema,
   shippingDetailSchema,
@@ -49,18 +48,11 @@ describe('review rework contracts', () => {
       contract.supplierCancelPurchaseOrder.body.safeParse({ version: 1, reason: ' ' }).success,
     ).toBe(false)
   })
-  it('provides nonempty rework copy and all cancellation/allocation status labels', () => {
-    for (const value of Object.values(copy.rework)) {
+  it('provides current cancellation and statement labels', () => {
+    for (const value of Object.values(copy.rework))
       if (typeof value === 'string') expect(value.trim()).not.toBe('')
-    }
-    expect(copy.rework.allocationAmounts(100, 0)).toContain('生效 ¥0.00')
-    expect(copy.rework.ledgerDifference(100, 0)).not.toContain('undefined')
-    expect(copy.rework.noLongerUnpaid('PO-1')).toContain('PO-1')
-    expect(copy.rework.copySummary(2)).toContain('2')
-    expect(copy.rework.overdueSummary(3)).toContain('3')
     expect(Object.keys(labels.cancelRequestStatus)).toHaveLength(5)
-    expect(statusOf('allocationStatus', 'valid')).toEqual({ text: '有效', tone: 'done' })
-    expect(statusOf('allocationStatus', 'revoked')).toEqual({ text: '已撤回', tone: 'ended' })
+    expect(statusOf('statementStatus', 'unsettled')).toEqual({ text: '未结清', tone: 'wait' })
   })
   it('G30/G30-F: requires log filter modules in the shared response rather than current job grants', () => {
     const response = {
@@ -81,59 +73,67 @@ describe('review rework contracts', () => {
     expect(listLogs.response.safeParse(missing).success).toBe(false)
     expect(filterModules).toEqual(['sales', 'warehouse'])
   })
-  it('removes both legacy finance semantics and exposes the symmetric operations', () => {
-    expect(allocKinds).toEqual(['direct', 'prepaid'])
-    expect('getPayable' in contract).toBe(false)
+  it('removes allocation APIs and exposes symmetric statement settlement', () => {
+    for (const key of [
+      'getPayable',
+      'allocatePrepaid',
+      'allocatePaymentPrepaid',
+      'revokeAllocation',
+      'revokePaymentAllocation',
+      'storeHome',
+      'storeStatement',
+      'supplierStatement',
+    ])
+      expect(key in contract).toBe(false)
+    expect(contract.createStatement.path).toBe('/finance/statements')
     expect(contract.createPayment.path).toBe('/finance/payments')
-    expect(contract.allocatePaymentPrepaid.path).toBe('/finance/prepaid-payment-allocations')
-    expect(contract.revokePaymentAllocation.path).toBe('/finance/payment-allocations/:id/revoke')
     expect(contract.createRefund.path).toBe('/finance/refunds')
   })
-  it('requires complete snapshot credentials for receipt and supplier payment creation', () => {
-    const source = {
+  it('settles whole statements without full-ledger credentials; requires a discount reason and unique IDs', () => {
+    const input = {
       receiptDate: '2026-10-02',
       payDate: '2026-10-02',
       customerId: '1',
       supplierId: '1',
       amountCents: 100,
+      discountCents: 0,
+      discountReason: '',
       methodName: '现金',
       note: '',
-      allocs: [],
-      ledgerToken: 'test-snapshot',
-      expected: [],
+      statements: [],
     }
-    expect(receiptCreateSchema.safeParse(source).success).toBe(true)
-    expect(paymentCreateSchema.safeParse(source).success).toBe(true)
-    const { ledgerToken, ...missing } = source
-    expect(receiptCreateSchema.safeParse(missing).success).toBe(false)
-    expect(paymentCreateSchema.safeParse(missing).success).toBe(false)
-    expect(ledgerToken).toBeTruthy()
-  })
-  it('supplier payments and prepaid allocations distinguish same-ID purchase and manual documents, but reject actual duplicates', () => {
-    const refs = [
-      { docType: 'po', docId: '1' },
-      { docType: 'wh', docId: '1' },
-    ]
-    const source = {
-      supplierId: '1',
-      ledgerToken: 'test-snapshot',
-      payDate: '2026-10-02',
-      methodName: '现金',
-      amountCents: 200,
-      note: '',
-      expected: refs.map((row) => ({ ...row, version: 1, unpaidCents: 100 })),
-      allocs: refs.map((row) => ({ ...row, amountCents: 100 })),
-    }
-    for (const schema of [paymentCreateSchema, contract.allocatePaymentPrepaid.body]) {
-      expect(schema.safeParse(source).success).toBe(true)
+    for (const schema of [receiptCreateSchema, paymentCreateSchema]) {
+      expect(schema.safeParse(input).success).toBe(true)
+      expect(schema.safeParse({ ...input, discountCents: 1 }).success).toBe(false)
       expect(
-        schema.safeParse({ ...source, allocs: [source.allocs[0], source.allocs[0]] }).success,
+        schema.safeParse({ ...input, statements: [{ id: '1', version: 1 }], discountCents: 1 })
+          .success,
       ).toBe(false)
       expect(
-        schema.safeParse({ ...source, expected: [source.expected[0], source.expected[0]] }).success,
+        schema.safeParse({
+          ...input,
+          statements: [{ id: '1', version: 1 }],
+          discountCents: 1,
+          discountReason: '抹零',
+        }).success,
+      ).toBe(true)
+      expect(
+        schema.safeParse({
+          ...input,
+          statements: [
+            { id: '1', version: 1 },
+            { id: '1', version: 1 },
+          ],
+        }).success,
       ).toBe(false)
     }
-    expect(() => structuredClone(copy.stock.screen)).not.toThrow()
+    expect(
+      contract.updateCustomerTerms.body.safeParse({
+        version: 1,
+        termDays: null,
+        openingDebtCents: 2147483648,
+      }).success,
+    ).toBe(false)
   })
   it('shipping schemas do not expose amount or price fields and reject accidental leaks', () => {
     expect('amountCents' in shippingCardSchema.shape).toBe(false)
@@ -142,48 +142,14 @@ describe('review rework contracts', () => {
     expect('afters' in shippingDetailSchema.shape).toBe(false)
     expect('allocations' in shippingDetailSchema.shape).toBe(false)
   })
-  it('A48: requires an image for damage or quality but not quantity mismatch', () => {
-    expect(
-      storeAfterCreateSchema.safeParse({
-        orderId: '1',
-        lines: [
-          {
-            orderLineId: '1',
-            qty: 1,
-            reason: 'damaged',
-            description: '花材损坏',
-            imageFileIds: [],
-          },
-        ],
-      }).success,
-    ).toBe(false)
-    expect(
-      storeAfterCreateSchema.safeParse({
-        orderId: '1',
-        lines: [
-          {
-            orderLineId: '1',
-            qty: 1,
-            reason: 'damaged',
-            description: '花材损坏',
-            imageFileIds: ['1'],
-          },
-        ],
-      }).success,
-    ).toBe(true)
-    expect(
-      storeAfterCreateSchema.safeParse({
-        orderId: '1',
-        lines: [
-          {
-            orderLineId: '1',
-            qty: 1,
-            reason: 'qty_mismatch',
-            description: '数量不符',
-            imageFileIds: [],
-          },
-        ],
-      }).success,
-    ).toBe(true)
+  it('A48: every store after reason requires a description and image', () => {
+    for (const reason of ['qty_mismatch', 'damaged', 'quality', 'other']) {
+      const line = { orderLineId: '1', qty: 1, reason, description: '说明', imageFileIds: ['1'] }
+      const parsed = (changes: object) =>
+        storeAfterCreateSchema.safeParse({ orderId: '1', lines: [{ ...line, ...changes }] })
+      expect(parsed({}).success).toBe(true)
+      expect(parsed({ description: ' ' }).success).toBe(false)
+      expect(parsed({ imageFileIds: [] }).success).toBe(false)
+    }
   })
 })

@@ -1,4 +1,3 @@
-// 收付款方式、收款、核销（04 章第 7 节）。付款表在阶段 4 加（08 章）
 import { sql } from 'drizzle-orm'
 import {
   bigint,
@@ -7,18 +6,24 @@ import {
   date,
   index,
   integer,
+  pgEnum,
   pgTable,
   text,
   unique,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
+import { statementKinds, statementStatuses } from '@huazhong/shared'
 import { accountRef, commonColumns, timestamptz, versionColumn } from './columns.ts'
-import { allocKind, recordStatus, refundKind } from './enums.ts'
-import { customers, suppliers } from './org.ts'
-import { orders } from './sales.ts'
-import { purchaseOrders } from './purchase.ts'
-import { whDocs } from './warehouse.ts'
-
-// 收付款方式一份列表（2026-10-03 确认合并）；至少一种启用（服务层）
+import { recordStatus, refundKind } from './enums.ts'
+import { customers, suppliers, stores } from './org.ts'
+export const statementKind = pgEnum('statement_kind', statementKinds)
+export const statementStatus = pgEnum('statement_status', statementStatuses)
+const cents = () => bigint({ mode: 'number' }).notNull()
+const customerRef = () =>
+  bigint({ mode: 'number' }).references(() => customers.id, { onDelete: 'restrict' })
+const supplierRef = () =>
+  bigint({ mode: 'number' }).references(() => suppliers.id, { onDelete: 'restrict' })
+const voidFields = () => ({ voidReason: text(), voidedBy: accountRef(), voidedAt: timestamptz() })
 export const paymentMethods = pgTable(
   'payment_methods',
   {
@@ -29,114 +34,161 @@ export const paymentMethods = pgTable(
   },
   (t) => [unique().on(t.name)],
 )
-
-export const receipts = pgTable(
-  'receipts',
+export const statements = pgTable(
+  'statements',
   {
     ...commonColumns(),
     version: versionColumn(),
     no: text().notNull().unique(),
-    receiptDate: date({ mode: 'string' }).notNull(),
-    customerId: bigint({ mode: 'number' })
-      .notNull()
-      .references(() => customers.id, { onDelete: 'restrict' }),
-    amountCents: integer().notNull(),
-    // 快照：登记时必须是启用的收款方式
-    methodName: text().notNull(),
+    kind: statementKind().notNull(),
+    customerId: customerRef(),
+    supplierId: supplierRef(),
+    periodFrom: date().notNull(),
+    periodTo: date().notNull(),
+    statementDate: date().notNull(),
+    dueDate: date(),
     note: text().notNull().default(''),
-    status: recordStatus().notNull().default('valid'),
-    voidReason: text(),
-    voidedBy: accountRef(),
-    voidedAt: timestamptz(),
+    grossCents: cents(),
+    openingDebtCents: integer().notNull().default(0),
+    creditDeductedCents: cents().default(0),
+    dueCents: cents(),
+    creditGeneratedCents: cents().default(0),
+    status: statementStatus().notNull(),
+    settledAt: timestamptz(),
+    ...voidFields(),
   },
   (t) => [
-    check('receipts_amount_positive', sql`${t.amountCents} > 0`),
-    check('receipts_void_reason', sql`${t.status} <> 'voided' OR ${t.voidReason} IS NOT NULL`),
+    check(
+      'statements_party',
+      sql`num_nonnulls(${t.customerId},${t.supplierId})=1 AND ((${t.kind}='customer')=(${t.customerId} IS NOT NULL))`,
+    ),
+    check('statements_period', sql`${t.periodFrom}<=${t.periodTo}`),
+    check(
+      'statements_amounts',
+      sql`${t.openingDebtCents}>=0 AND ${t.creditDeductedCents}>=0 AND ${t.dueCents}>=0 AND ${t.creditGeneratedCents}>=0 AND ${t.dueCents}=greatest(${t.grossCents}+${t.openingDebtCents}-${t.creditDeductedCents},0) AND ${t.creditGeneratedCents}=greatest(-(${t.grossCents}+${t.openingDebtCents}),0) AND ${t.creditDeductedCents}<=greatest(${t.grossCents}+${t.openingDebtCents},0)`,
+    ),
+    check(
+      'statements_state',
+      sql`(${t.status}<>'settled' OR ${t.settledAt} IS NOT NULL) AND (${t.status}<>'unsettled' OR ${t.settledAt} IS NULL) AND (${t.status}<>'voided' OR (${t.voidReason} IS NOT NULL AND length(trim(${t.voidReason}))>0 AND ${t.voidedBy} IS NOT NULL AND ${t.voidedAt} IS NOT NULL))`,
+    ),
+    index('statements_customer').on(t.customerId, t.statementDate.desc(), t.id),
+    index('statements_supplier').on(t.supplierId, t.statementDate.desc(), t.id),
+    index('statements_waiting').on(t.kind, t.status, t.dueDate),
+    uniqueIndex('statements_customer_opening')
+      .on(t.customerId)
+      .where(sql`${t.openingDebtCents}>0 AND ${t.status}<>'voided'`),
+    uniqueIndex('statements_supplier_opening')
+      .on(t.supplierId)
+      .where(sql`${t.openingDebtCents}>0 AND ${t.status}<>'voided'`),
+  ],
+)
+export const statementLines = pgTable(
+  'statement_lines',
+  {
+    ...commonColumns(),
+    statementId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => statements.id, { onDelete: 'restrict' }),
+    sourceType: text().notNull(),
+    sourceId: bigint({ mode: 'number' }).notNull(),
+    sourceVersion: integer(),
+    parentType: text(),
+    parentId: bigint({ mode: 'number' }),
+    sourceNo: text().notNull(),
+    sourceDate: date().notNull(),
+    storeId: bigint({ mode: 'number' }).references(() => stores.id, { onDelete: 'restrict' }),
+    storeName: text(),
+    amountCents: cents(),
+    carriesAmount: boolean().notNull().default(true),
+    previousPeriod: boolean().notNull(),
+    sort: integer().notNull(),
+    releasedAt: timestamptz(),
+  },
+  (t) => [
+    check(
+      'statement_lines_source_type',
+      sql`${t.sourceType} IN ('order','after','po','wh','purchase_return','price_change')`,
+    ),
+    unique().on(t.statementId, t.sourceType, t.sourceId),
+    uniqueIndex('statement_lines_live_source')
+      .on(t.sourceType, t.sourceId)
+      .where(sql`${t.releasedAt} IS NULL`),
+    index('statement_lines_statement').on(t.statementId),
+  ],
+)
+const fundFields = () => ({
+  ...commonColumns(),
+  version: versionColumn(),
+  no: text().notNull().unique(),
+  amountCents: integer().notNull(),
+  discountCents: integer().notNull().default(0),
+  discountReason: text().notNull().default(''),
+  creditCents: cents().default(0),
+  methodName: text().notNull(),
+  note: text().notNull().default(''),
+  status: recordStatus().notNull().default('valid'),
+  ...voidFields(),
+})
+export const receipts = pgTable(
+  'receipts',
+  { ...fundFields(), receiptDate: date().notNull(), customerId: customerRef().notNull() },
+  (t) => [
+    check(
+      'receipts_amount_positive',
+      sql`${t.amountCents}>0 AND ${t.discountCents}>=0 AND ${t.creditCents}>=0 AND ${t.creditCents}<=${t.amountCents}`,
+    ),
+    check(
+      'receipts_discount_reason',
+      sql`${t.discountCents}=0 OR length(trim(${t.discountReason}))>0`,
+    ),
+    check(
+      'receipts_void_reason',
+      sql`${t.status}<>'voided' OR (${t.voidReason} IS NOT NULL AND length(trim(${t.voidReason}))>0 AND ${t.voidedBy} IS NOT NULL AND ${t.voidedAt} IS NOT NULL)`,
+    ),
     index('receipts_customer_status').on(t.customerId, t.status),
     index('receipts_date').on(t.receiptDate.desc()),
   ],
 )
-
-// 登记金额；生效金额按登记顺序现算（04 章第 8 节）。作废收款时同一事务写 revoked_at
-export const allocations = pgTable(
-  'allocations',
-  {
-    ...commonColumns(),
-    receiptId: bigint({ mode: 'number' })
-      .notNull()
-      .references(() => receipts.id, { onDelete: 'restrict' }),
-    orderId: bigint({ mode: 'number' })
-      .notNull()
-      .references(() => orders.id, { onDelete: 'restrict' }),
-    amountCents: integer().notNull(),
-    kind: allocKind().notNull(),
-    revokedAt: timestamptz(),
-    revokedBy: accountRef(),
-    revokeReason: text(),
-  },
-  (t) => [
-    check('allocations_amount_positive', sql`${t.amountCents} > 0`),
-    index('allocations_order_live')
-      .on(t.orderId)
-      .where(sql`${t.revokedAt} IS NULL`),
-    index('allocations_receipt_live')
-      .on(t.receiptId)
-      .where(sql`${t.revokedAt} IS NULL`),
-  ],
-)
-
 export const payments = pgTable(
   'payments',
-  {
-    ...commonColumns(),
-    version: versionColumn(),
-    no: text().notNull().unique(),
-    supplierId: bigint({ mode: 'number' })
-      .notNull()
-      .references(() => suppliers.id, { onDelete: 'restrict' }),
-    payDate: date({ mode: 'string' }).notNull(),
-    amountCents: integer().notNull(),
-    methodName: text().notNull(),
-    note: text().notNull().default(''),
-    status: recordStatus().notNull().default('valid'),
-    voidReason: text(),
-    voidedBy: accountRef(),
-    voidedAt: timestamptz(),
-  },
+  { ...fundFields(), payDate: date().notNull(), supplierId: supplierRef().notNull() },
   (t) => [
-    check('payments_amount_positive', sql`${t.amountCents} > 0`),
-    check('payments_void_reason', sql`${t.status} <> 'voided' OR ${t.voidReason} IS NOT NULL`),
+    check(
+      'payments_amount_positive',
+      sql`${t.amountCents}>0 AND ${t.discountCents}>=0 AND ${t.creditCents}>=0 AND ${t.creditCents}<=${t.amountCents}`,
+    ),
+    check(
+      'payments_discount_reason',
+      sql`${t.discountCents}=0 OR length(trim(${t.discountReason}))>0`,
+    ),
+    check(
+      'payments_void_reason',
+      sql`${t.status}<>'voided' OR (${t.voidReason} IS NOT NULL AND length(trim(${t.voidReason}))>0 AND ${t.voidedBy} IS NOT NULL AND ${t.voidedAt} IS NOT NULL)`,
+    ),
     index('payments_supplier_status').on(t.supplierId, t.status),
     index('payments_date').on(t.payDate.desc()),
   ],
 )
-export const paymentAllocations = pgTable(
-  'payment_allocations',
+export const settlementLinks = pgTable(
+  'settlement_links',
   {
     ...commonColumns(),
-    paymentId: bigint({ mode: 'number' })
+    statementId: bigint({ mode: 'number' })
       .notNull()
-      .references(() => payments.id, { onDelete: 'restrict' }),
-    poId: bigint({ mode: 'number' }).references(() => purchaseOrders.id, { onDelete: 'restrict' }),
-    whDocId: bigint({ mode: 'number' }).references(() => whDocs.id, { onDelete: 'restrict' }),
-    amountCents: integer().notNull(),
-    kind: allocKind().notNull(),
-    revokedAt: timestamptz(),
-    revokedBy: accountRef(),
-    revokeReason: text(),
+      .references(() => statements.id, { onDelete: 'restrict' }),
+    receiptId: bigint({ mode: 'number' }).references(() => receipts.id, { onDelete: 'restrict' }),
+    paymentId: bigint({ mode: 'number' }).references(() => payments.id, { onDelete: 'restrict' }),
+    amountCents: cents(),
+    reversedAt: timestamptz(),
   },
-  (table) => [
-    check('payment_allocations_amount_positive', sql`${table.amountCents} > 0`),
-    check('payment_allocations_one_doc', sql`num_nonnulls(${table.poId}, ${table.whDocId}) = 1`),
-    index('payment_allocations_po_live')
-      .on(table.poId)
-      .where(sql`${table.revokedAt} IS NULL`),
-    index('payment_allocations_wh_live')
-      .on(table.whDocId)
-      .where(sql`${table.revokedAt} IS NULL`),
-    index('payment_allocations_payment_live')
-      .on(table.paymentId)
-      .where(sql`${table.revokedAt} IS NULL`),
+  (t) => [
+    check('settlement_links_one_fund', sql`num_nonnulls(${t.receiptId},${t.paymentId})=1`),
+    check('settlement_links_positive', sql`${t.amountCents}>0`),
+    uniqueIndex('settlement_links_live_statement')
+      .on(t.statementId)
+      .where(sql`${t.reversedAt} IS NULL`),
+    index('settlement_links_receipt').on(t.receiptId),
+    index('settlement_links_payment').on(t.paymentId),
   ],
 )
 export const refunds = pgTable(
@@ -146,33 +198,69 @@ export const refunds = pgTable(
     version: versionColumn(),
     no: text().notNull().unique(),
     kind: refundKind().notNull(),
-    receiptId: bigint({ mode: 'number' }).references(() => receipts.id, { onDelete: 'restrict' }),
-    paymentId: bigint({ mode: 'number' }).references(() => payments.id, { onDelete: 'restrict' }),
-    refundDate: date({ mode: 'string' }).notNull(),
+    customerId: customerRef(),
+    supplierId: supplierRef(),
+    refundDate: date().notNull(),
     amountCents: integer().notNull(),
     methodName: text().notNull(),
     note: text().notNull().default(''),
     status: recordStatus().notNull().default('valid'),
-    voidReason: text(),
-    voidedBy: accountRef(),
-    voidedAt: timestamptz(),
+    ...voidFields(),
   },
-  (table) => [
-    check('refunds_amount_positive', sql`${table.amountCents} > 0`),
-    check('refunds_one_source', sql`num_nonnulls(${table.receiptId}, ${table.paymentId}) = 1`),
+  (t) => [
     check(
-      'refunds_kind_source',
-      sql`(${table.kind} = 'receipt') = (${table.receiptId} IS NOT NULL)`,
+      'refunds_one_party',
+      sql`num_nonnulls(${t.customerId},${t.supplierId})=1 AND ((${t.kind}='receipt')=(${t.customerId} IS NOT NULL))`,
     ),
+    check('refunds_amount_positive', sql`${t.amountCents}>0`),
     check(
       'refunds_void_reason',
-      sql`${table.status} <> 'voided' OR (${table.voidReason} <> '' AND ${table.voidedAt} IS NOT NULL AND ${table.voidedBy} IS NOT NULL)`,
+      sql`${t.status}<>'voided' OR (${t.voidReason} IS NOT NULL AND length(trim(${t.voidReason}))>0 AND ${t.voidedBy} IS NOT NULL AND ${t.voidedAt} IS NOT NULL)`,
     ),
-    index('refunds_receipt_live')
-      .on(table.receiptId)
-      .where(sql`${table.status} = 'valid'`),
-    index('refunds_payment_live')
-      .on(table.paymentId)
-      .where(sql`${table.status} = 'valid'`),
+    index('refunds_customer').on(t.customerId, t.status),
+    index('refunds_supplier').on(t.supplierId, t.status),
+  ],
+)
+export const creditUses = pgTable(
+  'credit_uses',
+  {
+    ...commonColumns(),
+    sourceReceiptId: bigint({ mode: 'number' }).references(() => receipts.id, {
+      onDelete: 'restrict',
+    }),
+    sourcePaymentId: bigint({ mode: 'number' }).references(() => payments.id, {
+      onDelete: 'restrict',
+    }),
+    sourceStatementId: bigint({ mode: 'number' }).references(() => statements.id, {
+      onDelete: 'restrict',
+    }),
+    statementId: bigint({ mode: 'number' }).references(() => statements.id, {
+      onDelete: 'restrict',
+    }),
+    refundId: bigint({ mode: 'number' }).references(() => refunds.id, { onDelete: 'restrict' }),
+    amountCents: cents(),
+    releasedAt: timestamptz(),
+  },
+  (t) => [
+    check(
+      'credit_uses_source',
+      sql`num_nonnulls(${t.sourceReceiptId},${t.sourcePaymentId},${t.sourceStatementId})=1`,
+    ),
+    check(
+      'credit_uses_target',
+      sql`num_nonnulls(${t.statementId},${t.refundId})=1 AND (${t.sourceStatementId} IS NULL OR ${t.statementId} IS NULL OR ${t.sourceStatementId} <> ${t.statementId})`,
+    ),
+    check('credit_uses_amount', sql`${t.amountCents}>0`),
+    index('credit_uses_receipt')
+      .on(t.sourceReceiptId)
+      .where(sql`${t.releasedAt} IS NULL`),
+    index('credit_uses_payment')
+      .on(t.sourcePaymentId)
+      .where(sql`${t.releasedAt} IS NULL`),
+    index('credit_uses_statement_source')
+      .on(t.sourceStatementId)
+      .where(sql`${t.releasedAt} IS NULL`),
+    index('credit_uses_statement').on(t.statementId),
+    index('credit_uses_refund').on(t.refundId),
   ],
 )

@@ -2,6 +2,9 @@
 // 从订单详情「修改订单」进来是改单模式（?mode=edit）：用单独一份购物车，返回后原购物车不变
 import {
   copy,
+  financeCopy,
+  redesignCopy,
+  formatUnitTotals,
   formatMoney,
   shanghaiDateOf,
   type StoreCatalog,
@@ -12,6 +15,8 @@ import type { DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { unwatch, watch } from '../../../../core/live'
 import { lineCents, sumCents } from '../../../../core/money'
+import { confirmAsk } from '../../../../core/guard'
+import { tabsOf } from '../../../../core/session'
 import { failureOf } from '../../../../core/session'
 import {
   cartLinesOf,
@@ -41,6 +46,7 @@ function productRowsOf(
     priceText: copy.screen.pricePer(formatMoney(item.listPriceCents), item.unit),
     thumbUrl: item.thumbUrl ?? '',
     qty: qtyOf(lines, item.productId),
+    unit: item.unit,
   }))
 }
 
@@ -56,9 +62,14 @@ function catalogErrorOf(data: ShopData): string {
   return data.catalogFailure ? (failureOf(data.catalogFailure, 'refresh')?.message ?? '') : ''
 }
 
+const HEADER_COLLAPSE_SCROLL_PX = 40
+function headerDateOf(isEdit: boolean) {
+  return (isEdit ? editDraft()?.orderDate : undefined) ?? shanghaiDateOf(Date.now())
+}
 Page({
   data: {
     title: copy.screen.title.shop,
+    headerCollapsed: false,
     isEdit: false,
     loaded: false,
     failure: null as FailureView | null,
@@ -78,6 +89,8 @@ Page({
     cartText: '',
     cartSheet: false,
     cartRows: [] as ReturnType<typeof cartLinesOf>,
+    tabs: [] as ReturnType<typeof tabsOf>,
+    notice: '',
     texts: {
       checkout: copy.screen.action.toCheckout,
       clear: copy.screen.action.clear,
@@ -120,14 +133,17 @@ Page({
       sub: '',
     }))
     const kept = categories.some((category) => category.id === this.data.categoryId)
-    const draft = this.data.isEdit ? editDraft() : null
     this.setData({
       loaded: true,
       failure: null,
       catalogError: catalogErrorOf(data),
       head: data.me.orgLabel ?? '',
-      date: draft?.orderDate ?? shanghaiDateOf(Date.now()),
-      countText: copy.store.orderableCount(data.home.orderableCount),
+      date: headerDateOf(this.data.isEdit),
+      countText: this.data.isEdit
+        ? copy.screen.title.editOrder
+        : copy.store.orderableCount(data.home.orderableCount),
+      tabs: tabsOf(data.me),
+      notice: data.home.lockedReason ?? '',
       categories,
       categoryId: kept ? this.data.categoryId : (categories[0]?.id ?? ''),
     })
@@ -140,14 +156,31 @@ Page({
       products: this.catalog ? productRowsOf(this.catalog, categoryId, keyword, lines) : [],
       emptyObject: keyword.trim() ? copy.screen.empty.shopSearch : copy.screen.empty.shop,
       cartCount: count,
-      cartText: copy.screen.cartCount(count),
+      cartText: redesignCopy.pickedCount(
+        lines.length,
+        formatUnitTotals(
+          [...new Set(lines.map((line) => line.unit))].map((unit) => ({
+            unit,
+            qty: lines
+              .filter((line) => line.unit === unit)
+              .reduce((sum, line) => sum + line.qty, 0),
+          })),
+        ),
+      ),
       cartTotal: sumCents(lines, (line) => lineCents(line.qty, line.priceCents)),
-      cartRows: cartLinesOf(lines, isEdit),
+      cartRows: cartLinesOf(lines, isEdit).map((line) => ({ ...line, removable: true })),
     })
   },
   change(lines: CartLine[]) {
     this.source?.save(lines)
     this.showLines(lines)
+  },
+  onImageError(event: DetailEvent<unknown, { key: string }>) {
+    this.setData({
+      products: this.data.products.map((row) =>
+        row.id === event.currentTarget.dataset.key ? { ...row, thumbUrl: '' } : row,
+      ),
+    })
   },
   onCategory(event: DetailEvent<string>) {
     this.setData({ categoryId: event.detail })
@@ -157,11 +190,21 @@ Page({
     this.setData({ keyword: event.detail })
     this.showLines(this.lines)
   },
+  onProductScroll(event: DetailEvent<{ scrollTop: number }>) {
+    const collapsed = event.detail.scrollTop > HEADER_COLLAPSE_SCROLL_PX
+    if (collapsed !== this.data.headerCollapsed) this.setData({ headerCollapsed: collapsed })
+  },
   onQty(event: DetailEvent<number, { key: string }>) {
     const item = this.catalog?.items.find(
       (product: StoreCatalogItem) => product.productId === event.currentTarget.dataset.key,
     )
     if (item) this.change(withQty(this.lines, item, event.detail))
+  },
+  onAdd(event: DetailEvent<unknown, { key: string }>) {
+    const item = this.catalog?.items.find(
+      (product) => product.productId === event.currentTarget.dataset.key,
+    )
+    if (item) this.change(withQty(this.lines, item, 1))
   },
   onOpenCart() {
     if (this.lines.length > 0) this.setData({ cartSheet: true })
@@ -177,11 +220,20 @@ Page({
     const line = this.lines[event.detail]
     if (line) this.change(withQty(this.lines, entryOf(line), 0))
   },
-  onClear() {
-    this.change([])
-    this.setData({ cartSheet: false })
+  async onClear() {
+    const confirmed = await confirmAsk(this, {
+      title: copy.screen.action.clear,
+      body: financeCopy.clearSelected,
+      cancel: copy.confirm.keepEditing,
+      confirm: copy.screen.action.clear,
+    })
+    if (confirmed) {
+      this.change([])
+      this.setData({ cartSheet: false })
+    }
   },
   onCheckout() {
+    if (!this.lines.length || this.data.notice) return
     const mode = this.data.isEdit ? '?mode=edit' : ''
     void wx.navigateTo({ url: `/packages/store/pages/checkout/index${mode}` })
   },

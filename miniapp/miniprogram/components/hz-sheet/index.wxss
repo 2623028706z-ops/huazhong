@@ -47,3 +47,9 @@
 .hz-sheet__footer {
   flex: none;
 }
+
+.hz-sheet__panel--center {
+  width: 90vw;
+  overflow: hidden;
+  border-radius: var(--hz-radius-sheet);
+}

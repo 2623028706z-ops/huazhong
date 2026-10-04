@@ -3,7 +3,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   overflow: hidden;
-  border: 1px solid var(--hz-rule);
+  border: 1px solid var(--hz-rule-frame);
   border-radius: var(--hz-radius);
 }
 
@@ -46,8 +46,8 @@
 }
 
 .hz-entry-grid__name {
-  font-size: var(--hz-font-title);
-  letter-spacing: 0.2em;
+  font-size: var(--hz-font-lg);
+  letter-spacing: 0;
 }
 
 .hz-entry-grid__go {
@@ -64,8 +64,12 @@
 
 /* 模块首页：小一号 */
 .hz-entry-grid--compact .hz-entry-grid__cell {
-  height: 78px;
+  height: 56px;
   padding: 14px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
 }
 
 .hz-entry-grid--compact .hz-entry-grid__cell--wide {
@@ -78,7 +82,7 @@
 
 .hz-entry-grid--compact .hz-entry-grid__name {
   font-size: var(--hz-font-md);
-  letter-spacing: 0.14em;
+  letter-spacing: 0;
 }
 
 .hz-entry-grid--compact .hz-entry-grid__cell--wide .hz-entry-grid__go {

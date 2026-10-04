@@ -1,9 +1,8 @@
 // 操作日志的显示（06 章 M6）：列表按上海日期分组；详情先写是哪一条，改动只列前后不一样的字段
 import {
   copy,
-  formatClock,
-  formatDayHeader,
   formatTime,
+  formatDayHeader,
   labels,
   shanghaiDayOf,
   type LogDetail,
@@ -19,7 +18,13 @@ function moduleLabelOf(item: LogItem): string {
 interface LogGroup {
   day: string
   header: string
-  rows: { id: string; title: string; total: string; meta: string }[]
+  rows: {
+    id: string
+    title: string
+    total: string
+    meta: string
+    fields: { label: string; value: string; wide?: boolean }[]
+  }[]
 }
 
 // 接口按时间倒序给，同一天的挨在一起
@@ -29,9 +34,14 @@ export function groupsOf(items: LogItem[], today: string): LogGroup[] {
     const day = shanghaiDayOf(item.createdAt)
     const row = {
       id: item.id,
+      fields: [
+        { label: copy.object.module, value: moduleLabelOf(item) },
+        { label: copy.field.name, value: item.actorLabel },
+        { label: copy.log.date, value: formatTime(item.createdAt) },
+      ],
       title: [item.action, item.targetLabel].join(copy.separator),
       total: moduleLabelOf(item),
-      meta: [formatClock(item.createdAt), item.actorLabel].join(copy.separator),
+      meta: [formatTime(item.createdAt), item.actorLabel].join(copy.separator),
     }
     const last = groups[groups.length - 1]
     if (last?.day === day) last.rows.push(row)

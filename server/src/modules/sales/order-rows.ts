@@ -62,7 +62,7 @@ export function claimableExists(executor: Executor): SQL {
 
 // 只有发货模块的员工：列表只看待发货、已发货；详情另能看已取消（发货提交时要看到「销售已取消」）
 export const SHIPPING_LIST: readonly OrderStatus[] = ['to_ship', 'shipped']
-export const SHIPPING_DETAIL: readonly OrderStatus[] = ['to_ship', 'shipped', 'cancelled']
+export const SHIPPING_DETAIL: readonly OrderStatus[] = ['to_ship', 'shipped', 'cancelled', 'voided']
 
 // 门店只看本店；销售、财务看全部；只有发货模块的按状态限定
 export function orderVisibleTo(viewer: Viewer, statuses: readonly OrderStatus[]): SQL | undefined {
@@ -120,7 +120,6 @@ export function orderRowsQuery(executor: Executor) {
       confirmedBy: orders.confirmedBy,
       cancelRequested: sql<boolean>`EXISTS (SELECT 1 FROM order_cancel_requests WHERE order_id=${orders.id} AND status='pending')`,
       cancelRejected: sql<boolean>`EXISTS (SELECT 1 FROM order_cancel_requests WHERE order_id=${orders.id} AND status='rejected')`,
-      hasLiveAllocation: sql<boolean>`EXISTS (SELECT 1 FROM allocations a JOIN receipts r ON r.id=a.receipt_id WHERE a.order_id=${orders.id} AND a.revoked_at IS NULL AND r.status='valid')`,
       hasLiveAfter: sql<boolean>`EXISTS (SELECT 1 FROM afters WHERE order_id=${orders.id} AND status IN ('pending','processed'))`,
       orderDate: orders.orderDate,
       shipDate: orders.shipDate,

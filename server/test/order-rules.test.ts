@@ -74,22 +74,22 @@ describe('停用产品', () => {
     expect(saved.changes[0]?.items).toContain('删除 白绿清新花束')
   })
 
-  test('A32 待确认单有停用产品：确认禁用、修改并确认可点；不删保存报错，删掉后待发货', async () => {
+  test('A32 待确认单有停用产品：确认可点并能编辑；不删保存报错，删掉后待发货', async () => {
     dataOf(await setCatalog('白绿清新花束', { enabled: false }))
     const sales = await s.as('u2')
     const opened = await detail('u2', o018)
     expect(actionOf(opened, 'confirm')).toMatchObject({
-      enabled: false,
-      disabledReason: '白绿清新花束已停用，请修改并确认或取消订单',
+      enabled: true,
+      disabledReason: null,
     })
-    expect(actionOf(opened, 'editAndConfirm')?.enabled).toBe(true)
+    expect(actionOf(opened, 'editAndConfirm')).toBeUndefined()
     const confirm = await sales.post(`/orders/${o018}/confirm`, {
       version: opened.version,
       shipDate: TOMORROW,
     })
     expect(confirm.body.error).toMatchObject({
       code: 'BUSINESS_RULE',
-      message: '白绿清新花束已停用，请修改并确认或取消订单',
+      message: '白绿清新花束已停用，请先删掉再保存',
     })
     const edit = {
       version: opened.version,
@@ -97,10 +97,13 @@ describe('停用产品', () => {
       note: opened.note ?? '',
       reason: '白绿清新停用',
     }
-    const blocked = await sales.put(`/orders/${o018}`, { ...edit, lines: salesLines(opened) })
+    const blocked = await sales.post(`/orders/${o018}/confirm`, {
+      ...edit,
+      lines: salesLines(opened),
+    })
     expect(blocked.body.error?.message).toBe('白绿清新花束已停用，请先删掉再保存')
     const saved = dataOf<OrderDetail>(
-      await sales.put(`/orders/${o018}`, {
+      await sales.post(`/orders/${o018}/confirm`, {
         ...edit,
         lines: salesLines(opened, (n) => n !== '白绿清新花束'),
       }),
@@ -185,11 +188,11 @@ describe('目录调价同步待确认订单', () => {
 })
 
 describe('门店、客户停用和出货日期', () => {
-  test('J22 门店停用：确认、修改并确认禁用，取消可点；直接调返回同一句；启用后恢复', async () => {
+  test('J22 门店停用：确认禁用，取消可点；直接调返回同一句；启用后恢复', async () => {
     const s1 = Number(await idBy(s.t, 'stores.name', '滨江店'))
     await s.t.db.update(stores).set({ enabled: false }).where(eq(stores.id, s1))
     const opened = await detail('u2', o018)
-    for (const code of ['confirm', 'editAndConfirm']) {
+    for (const code of ['confirm']) {
       expect(actionOf(opened, code)).toMatchObject({
         enabled: false,
         disabledReason: '门店已停用，启用后才能确认',
@@ -219,7 +222,6 @@ describe('门店、客户停用和出货日期', () => {
       .where(eq(customers.id, Number(c1)))
     const sales = await detail('u2', o018)
     expect(actionOf(sales, 'confirm')?.disabledReason).toBe('客户已停用，启用后才能确认')
-    expect(actionOf(sales, 'editAndConfirm')?.disabledReason).toBe('客户已停用，启用后才能确认')
     const opened = await detail('s1', o018)
     expect(actionOf(opened, 'storeEdit')).toMatchObject({
       enabled: false,

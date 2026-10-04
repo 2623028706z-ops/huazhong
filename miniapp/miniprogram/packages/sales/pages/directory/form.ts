@@ -1,4 +1,4 @@
-// 订货目录（06 章 X11，2026-10-03 确认）：右侧按这个客户的订货分类分组列目录项；点一项弹层，
+// 订货目录（06 章 X11，2026-10-03 确认）：右侧按这个客户的订货分类分组列目录项；点一项进目录产品整页，
 // 上块「订货信息」（客户产品编码、订货分类、订货价、可订），下块配方（产品本身的，所有客户共用），一起保存
 import {
   catalogItemSaveSchema,
@@ -22,7 +22,7 @@ function rowOf(item: CatalogItem) {
   // 目录停用、产品停用都标「已停用」，两者都有只标一个，警告样式（2026-10-05 确认）
   const tags: Tag[] =
     item.enabled && item.productEnabled ? [] : [{ text: copy.screen.tag.discontinued, warn: true }]
-  // 行上只放名称、订货价，第二行标记 + 编码（都没有就不出第二行）；配方只在弹层里看
+  // 行上只放名称、订货价，第二行标记 + 编码（都没有就不出第二行）；配方在目录产品页查看
   return {
     productId: item.productId,
     name: item.name,

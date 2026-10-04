@@ -1,10 +1,10 @@
 // S8 申请售后（06 章 S8）：原订单、出货日期 → 明细（数量上限 maxQty；问题原因、问题说明、图片）→「添加产品」。
 // 提交后进 S7，并打开这张售后的详情弹层
-import { contract, copy, type OrderDetail } from '@huazhong/shared'
+import { contract, copy, financeCopy, labels, type OrderDetail } from '@huazhong/shared'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
 import { unplacedErrorOf } from '../../../../core/form'
 import type { FailureView } from '../../../../core/failure-view'
-import { syncUnloadAlert } from '../../../../core/guard'
+import { syncUnloadAlert, isChanged } from '../../../../core/guard'
 import { newIdempotencyKey, request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
 import { uploadImage, type LocalImage } from '../../../../core/upload'
@@ -28,13 +28,24 @@ Page({
     picks: [] as { id: string; name: string; sub: string }[],
     saving: false,
     uploading: false,
+    editIndex: -1,
+    editorNew: false,
+    editChanged: false,
+    editInitial: null as FormLine | null,
+    editLine: null as FormLine | null,
+    editError: { qty: '', reason: '', description: '', images: '' },
+    tableRows: [] as (FormLine & { reasonText: string; imageCount: number })[],
     texts: {
       lines: copy.screen.section.afterLines,
+      code: copy.screen.label.customerCode,
       reason: copy.screen.label.afterReason,
       description: copy.screen.label.afterDescription,
-      images: copy.screen.label.afterImages,
+      images: financeCopy.imagesRequired,
       add: copy.screen.action.addProduct,
       submit: copy.screen.action.submitAfter,
+      qty: financeCopy.afterQty,
+      remove: copy.screen.action.delete,
+      confirm: financeCopy.confirm,
       pickTitle: copy.screen.title.pickProduct,
       noPick: copy.state.empty(copy.screen.empty.addableProducts),
     },
@@ -68,10 +79,29 @@ Page({
     })
   },
   setLines(lines: FormLine[]) {
-    this.setData({ lines, lineErrors: lineErrorsOf({}, lines.length), formError: '' })
+    this.setData({
+      lines,
+      tableRows: lines.map((line) => ({
+        ...line,
+        reasonText: line.reason
+          ? labels.afterReason[line.reason as keyof typeof labels.afterReason]
+          : '',
+        imageCount: line.images.length,
+      })),
+      lineErrors: lineErrorsOf({}, lines.length),
+      formError: '',
+    })
     syncUnloadAlert(lines.length > 0)
   },
   update(index: number, patch: Partial<FormLine>) {
+    if (this.data.editIndex === index && this.data.editLine) {
+      this.setData({
+        editLine: { ...this.data.editLine, ...patch },
+        editChanged: isChanged(this.data.editInitial, { ...this.data.editLine, ...patch }),
+        editError: { qty: '', reason: '', description: '', images: '' },
+      })
+      return
+    }
     this.setLines(this.data.lines.map((line, i) => (i === index ? { ...line, ...patch } : line)))
   },
   onQty(event: IndexDetail<number>) {
@@ -93,17 +123,17 @@ Page({
     for (const file of event.detail) {
       const result = await uploadImage('after_image', file)
       if (!result.ok) {
-        this.setData({ formError: result.message })
+        this.setData({ editError: { ...this.data.editError, images: result.message } })
         break
       }
-      const line = this.data.lines[index]
+      const line = this.data.editIndex === index ? this.data.editLine : this.data.lines[index]
       if (line) this.update(index, { images: [...line.images, result.image] })
     }
     this.setData({ uploading: false })
   },
   onRemoveImage(event: IndexDetail<number>) {
     const { index } = event.currentTarget.dataset
-    const line = this.data.lines[index]
+    const line = this.data.editIndex === index ? this.data.editLine : this.data.lines[index]
     if (line) this.update(index, { images: line.images.filter((_, i) => i !== event.detail) })
   },
   // 只列这张单里还能申请、还没加进来的产品
@@ -120,7 +150,62 @@ Page({
   onPick(event: KeyEvent) {
     const line = this.order?.lines.find((l) => l.id === event.currentTarget.dataset.key)
     this.setData({ pickSheet: false })
-    if (line) this.setLines([...this.data.lines, formLineOf(line)])
+    if (line) {
+      const lines = [...this.data.lines, formLineOf(line)]
+      this.setLines(lines)
+      this.openEditor(lines.length - 1)
+      this.setData({ editorNew: true })
+    }
+  },
+  onEditLine(event: DetailEvent<unknown, { index: number }>) {
+    this.openEditor(event.currentTarget.dataset.index)
+  },
+  openEditor(index: number) {
+    const line = this.data.lines[index]
+    if (line)
+      this.setData({
+        editIndex: index,
+        editorNew: false,
+        editChanged: false,
+        editInitial: { ...line, images: [...line.images] },
+        editLine: { ...line, images: [...line.images] },
+        editError: this.data.lineErrors[index] ?? {
+          qty: '',
+          reason: '',
+          description: '',
+          images: '',
+        },
+      })
+  },
+  onCloseEditor() {
+    if (this.data.uploading) return
+    if (this.data.editorNew)
+      this.setLines(this.data.lines.filter((_, i) => i !== this.data.editIndex))
+    this.setData({ editIndex: -1, editLine: null, editorNew: false, editChanged: false })
+  },
+  onConfirmEditor() {
+    const edited = this.data.editLine
+    if (!edited) return
+    const checked = checkForm(this.orderId, [edited])
+    if (!checked.ok) {
+      this.setData({
+        editError: lineErrorsOf(checked.fields, 1)[0] ?? {
+          qty: '',
+          reason: '',
+          description: '',
+          images: '',
+        },
+      })
+      return
+    }
+    this.setLines(this.data.lines.map((line, i) => (i === this.data.editIndex ? edited : line)))
+    this.setData({ editorNew: false })
+    this.onCloseEditor()
+  },
+  onDeleteEditor() {
+    this.setLines(this.data.lines.filter((_, i) => i !== this.data.editIndex))
+    this.setData({ editorNew: false })
+    this.onCloseEditor()
   },
   showFields(fields: Record<string, string>) {
     this.setData({
@@ -132,6 +217,8 @@ Page({
         'lines.*.imageFileIds',
       ]),
     })
+    const index = this.data.lineErrors.findIndex((row) => Object.values(row).some(Boolean))
+    if (index >= 0) this.openEditor(index)
   },
   async onSubmit(): Promise<void> {
     const checked = checkForm(this.orderId, this.data.lines)
@@ -145,7 +232,7 @@ Page({
     this.setData({ saving: false })
     if (result.ok) {
       syncUnloadAlert(false)
-      void wx.redirectTo({ url: `/packages/store/pages/afters/index?open=${result.data.id}` })
+      void wx.redirectTo({ url: `/packages/store/pages/after-detail/index?id=${result.data.id}` })
       return
     }
     const view = failureOf(result.failure, 'submit')

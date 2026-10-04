@@ -8,28 +8,26 @@
     <hz-error wx:if="{{failure && !sheet && !cancelSheet}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
     <hz-error wx:if="{{error && !sheet && !cancelSheet}}" message="{{error}}" />
     <hz-skeleton wx:if="{{!loaded}}" type="detail" />
-    <block wx:elif="{{receiving}}">
+    <block wx:elif="{{receiving}}"><hz-progress steps="{{view.progress}}" />
       <template is="info" data="{{...view.info}}" />
       <hz-records wx:if="{{view.changes.length}}" type="poChange" items="{{view.changes}}" />
       <view class="u-section">
-        <text class="u-section__title">{{texts.lines}}</text>
-        <hz-line-item lines="{{lineViews}}" mode="price" bind:qty="onQty" bind:price="onPrice" />
+        <hz-line-item title="{{texts.lines}}" qty-label="{{texts.receivedQty}}" lines="{{lineViews}}" mode="price" bind:qty="onQty" bind:price="onPrice" />
       </view>
       <view class="u-card u-form-card">
-        <view wx:if="{{lineViews.length > 1}}" class="u-sheet-row"><text>{{texts.total}}</text><text class="u-serif-amount">{{amount}}</text></view>
-        <hz-field wx:if="{{repriced}}" label="{{texts.repriceReason}}" value="{{reason}}" error="{{fields.reason}}" bind:change="onReason" />
+        <hz-field wx:if="{{repriced}}" id="receive-reason" label="{{texts.repriceReason}}" value="{{reason}}" error="{{fields.reason}}" bind:change="onReason" />
         <hz-field label="{{texts.receiveNote}}" value="{{recvNote}}" bind:change="onRecvNote" />
       </view>
     </block>
     <template wx:elif="{{view}}" is="po-body" data="{{...view}}" />
   </view>
-  <hz-action-bar wx:if="{{receiving}}"><hz-button text="{{texts.receive}}" loading="{{busy === 'receive'}}" bind:press="onReceive" /></hz-action-bar>
+  <hz-action-bar wx:if="{{receiving}}"><hz-button kind="secondary" text="{{texts.reject}}" disabled="{{busy!==''}}" bind:press="onReject" /><hz-button text="{{texts.receive}}" loading="{{busy === 'receive'}}" bind:press="onReceive" /></hz-action-bar>
   <template wx:else is="buttons" data="{{buttons,busy}}" />
   <hz-reason-sheet show="{{cancelSheet}}" title="{{texts.cancelPo}}" required confirm="{{texts.confirmCancel}}" error="{{error}}" loading="{{busy === 'cancelPo'}}" bind:close="onCloseCancel" bind:submit="onCancel" />
   <hz-sheet show="{{sheet !== ''}}" title="{{sheetTitle}}" guard="{{changed}}" footer bind:close="onCloseSheet">
     <view class="u-sheet-form">
       <hz-error wx:if="{{error}}" message="{{error}}" />
-      <hz-line-item lines="{{lineViews}}" mode="price" quantity-only="{{sheet === 'return'}}" quantity-readonly="{{sheet === 'reprice'}}" bind:qty="onQty" bind:price="onPrice" />
+      <hz-line-item title="{{texts.lines}}" qty-label="{{texts.receivedQty}}" lines="{{lineViews}}" mode="price" quantity-only="{{sheet === 'return'}}" quantity-readonly="{{sheet === 'reprice'}}" bind:qty="onQty" bind:price="onPrice" />
       <hz-field wx:if="{{sheet === 'reprice'}}" label="{{texts.repriceReason}}" value="{{reason}}" error="{{fields.reason}}" bind:change="onReason" />
     </view>
     <hz-button slot="footer" text="{{sheet === 'return' ? texts.confirmReturn : texts.confirmReprice}}" loading="{{busy !== ''}}" bind:press="onSaveSheet" />

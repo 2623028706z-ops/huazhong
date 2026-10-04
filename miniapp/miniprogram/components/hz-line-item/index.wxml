@@ -1,78 +1,39 @@
 <wxs src="../../core/format.wxs" module="format" />
-<!-- 第一行：名称 + 标记，金额在最右（只读和表单共用） -->
-<template name="head">
-  <view class="hz-line-item__head">
-    <text class="hz-line-item__name u-ellipsis">{{name}}</text>
-    <text wx:if="{{headMeta}}" class="hz-line-item__meta">{{headMeta}}</text>
-    <hz-tag wx:for="{{tags}}" wx:for-item="tag" wx:key="text" text="{{tag.text}}" warn="{{tag.warn}}" />
-    <text wx:if="{{!quantityOnly && !hideAmount}}" class="hz-line-item__amount u-serif-amount">{{format.formatMoney(amountCents)}}</text>
+<view wx:if="{{mode !== 'after'}}" class="u-card hz-line-item__table">
+  <view class="hz-line-item__tr hz-line-item__tr--head {{quantityOnly ? (lines[0].orderedQty !== undefined ? 'hz-line-item__tr--actual' : 'hz-line-item__tr--qty') : ''}}">
+    <text class="hz-line-item__name">{{title || texts.lines}}<text wx:if="{{picking}}" class="hz-line-item__meta"> {{packedText}}</text></text>
+    <text>{{qtyLabel || texts.qty}}</text><text wx:if="{{quantityOnly && lines[0].orderedQty !== undefined}}">{{texts.actual}}</text><text>{{texts.unit}}</text>
+    <block wx:if="{{!quantityOnly}}"><text>{{texts.price}}</text><text>{{texts.subtotal}}</text></block>
   </view>
-</template>
-<view wx:if="{{mode === 'view'}}" class="u-card hz-line-item__list">
-  <view wx:for="{{lines}}" wx:key="key" class="hz-line-item__row">
-    <template is="head" data="{{...item, quantityOnly}}" />
-    <view class="hz-line-item__sub">
-      <text wx:if="{{item.code}}">{{item.code}}</text>
-      <text>{{item.subText || ((item.meta || format.formatQty(item.qty, item.unit)) + (quantityOnly || item.hideAmount ? '' : ' × ' + format.formatMoney(item.priceCents)))}}</text>
+  <view wx:for="{{lines}}" wx:key="key" class="hz-line-item__row" data-index="{{index}}" bindtap="onEdit">
+    <view class="hz-line-item__tr {{quantityOnly ? (lines[0].orderedQty !== undefined ? 'hz-line-item__tr--actual' : 'hz-line-item__tr--qty') : ''}}">
+      <view class="hz-line-item__name"><text wx:if="{{picking}}" class="hz-line-item__check" data-index="{{index}}" catchtap="onPacked">{{item.packed ? '☑' : '☐'}}</text><text>{{item.name}}</text></view>
+      <text>{{item.orderedQty === undefined ? item.qty : item.orderedQty}}</text><text wx:if="{{quantityOnly && item.orderedQty !== undefined}}">{{item.qty}}</text><text>{{item.unit}}</text>
+      <block wx:if="{{!quantityOnly}}"><text class="u-serif-amount">{{item.hideAmount ? '—' : format.formatMoney(item.priceCents)}}</text><text class="u-serif-amount">{{item.hideAmount ? '—' : format.formatMoney(item.amountCents)}}</text></block>
     </view>
+    <view wx:if="{{item.code || item.meta || item.tags.length}}" class="hz-line-item__sub">
+      <text wx:if="{{item.code}}">{{texts.code}} {{item.code}}</text><text wx:if="{{item.meta}}">{{item.meta}}</text>
+      <hz-tag wx:for="{{item.tags}}" wx:for-item="tag" wx:key="text" text="{{tag.text}}" warn="{{tag.warn}}" />
+    </view>
+<hz-button wx:if="{{mode==='view' && removable && item.removable}}" kind="text" text="{{texts.remove}}" data-index="{{index}}" catch:press="onRemoveRead" />
+    <hz-notice wx:if="{{item.notice}}" text="{{item.notice}}" />
+    <text wx:if="{{item.qtyError || item.priceError}}" class="u-field__error">{{item.qtyError || item.priceError}}</text>
+  </view>
+  <view wx:if="{{note}}" class="hz-line-item__note"><text>{{noteLabel}}</text><text>{{note}}</text></view>
+  <view class="hz-line-item__totals"><view><text>{{texts.totalQty}}</text><text>{{totalQty}}</text></view><view wx:if="{{!quantityOnly}}"><text>{{texts.totalAmount}}</text><text class="u-serif-amount">{{totalAmount}}</text></view></view>
+</view>
+<view wx:else>
+  <view wx:for="{{lines}}" wx:key="key" class="u-card hz-line-item__after">
+    <view class="hz-line-item__head"><text>{{item.name}}</text><text class="u-serif-amount">{{item.amountText}}</text></view>
+    <text class="hz-line-item__meta">{{item.meta}}</text><text wx:if="{{item.description}}">{{item.description}}</text>
+    <view wx:if="{{item.images.length}}" class="u-thumbs"><image wx:for="{{item.images}}" wx:for-item="image" wx:key="url" class="u-thumbs__item" src="{{image.thumbUrl}}" mode="aspectFill" data-url="{{image.url}}" data-urls="{{item.urls}}" bindtap="onPreview" /></view>
   </view>
 </view>
-<!-- 售后明细：①名称 + 售后金额（门店端没有金额时不写）②数量 · 原因 ③问题说明、图片 -->
-<view wx:elif="{{mode === 'after'}}" class="u-card hz-line-item__list">
-  <view wx:for="{{lines}}" wx:key="key" class="hz-line-item__row">
-    <view class="hz-line-item__head">
-      <text class="hz-line-item__name">{{item.name}}</text>
-      <text wx:if="{{item.amountText}}" class="hz-line-item__amount u-serif-amount">{{item.amountText}}</text>
-    </view>
-    <view class="hz-line-item__sub">
-      <text>{{item.meta}}</text>
-    </view>
-    <text wx:if="{{item.description}}" class="hz-line-item__note">{{item.description}}</text>
-    <view wx:if="{{item.images.length > 0}}" class="u-thumbs">
-      <image
-        wx:for="{{item.images}}"
-        wx:for-item="image"
-        wx:key="url"
-        class="u-thumbs__item"
-        src="{{image.thumbUrl}}"
-        mode="aspectFill"
-        data-url="{{image.url}}"
-        data-urls="{{item.urls}}"
-        bindtap="onPreview"
-      />
-    </view>
+<hz-sheet show="{{showEditor}}" title="{{activeLine.name}}" center footer bind:close="onClose">
+  <view class="u-sheet-form">
+    <view class="u-sheet-row"><text>{{quantityOnly && activeLine.orderedQty !== undefined ? texts.actual : texts.qty}}</text><view class="hz-line-item__quantity"><hz-stepper wx:if="{{!quantityReadonly}}" value="{{draftQty}}" min="{{min}}" max="{{activeLine.max === undefined ? maxQty : activeLine.max}}" bind:change="onDraftQty" /><text wx:else>{{draftQty}}</text><text>{{activeLine.unit}}</text></view></view>
+    <hz-field wx:if="{{mode === 'price' && !quantityOnly}}" label="{{texts.price}}" type="digit" value="{{draftPrice}}" suffix="{{texts.yuan}}" error="{{priceError}}" bind:change="onDraftPrice" />
+    <view wx:if="{{!quantityOnly}}" class="u-sheet-row"><text>{{texts.subtotal}}</text><text class="u-serif-amount">{{draftAmount}}</text></view>
   </view>
-</view>
-<view wx:else class="hz-line-item__cards">
-  <view wx:for="{{lines}}" wx:key="key" class="u-card hz-line-item__card">
-    <template is="head" data="{{...item, quantityOnly, headMeta:item.meta}}" />
-    <view class="hz-line-item__body">
-      <text wx:if="{{quantityReadonly || item.readonly}}">{{format.formatQty(item.qty, item.unit)}}</text>
-      <hz-stepper wx:else value="{{item.qty}}" min="{{min}}" max="{{item.max === undefined ? maxQty : item.max}}" error="{{!!item.qtyError}}" data-index="{{index}}" bind:change="onQty" />
-      <block wx:if="{{!quantityOnly && mode === 'price' && !item.readonly}}">
-        <text class="hz-line-item__times">×</text>
-        <view class="u-price-box {{item.priceError ? 'u-field__box--error' : ''}}">
-          <input
-            class="u-price-box__input"
-            type="digit"
-            value="{{item.priceText}}"
-            data-index="{{index}}"
-            bindinput="onPrice"
-          />
-          <text class="u-price-box__unit">{{yuan}}</text>
-        </view>
-      </block>
-      <text wx:elif="{{!quantityOnly}}" class="hz-line-item__times">× {{format.formatMoney(item.priceCents)}}</text>
-      <view
-        wx:if="{{removable}}"
-        class="hz-line-item__trash u-tap"
-        data-index="{{index}}"
-        bindtap="onRemove"
-      >
-        <text class="hz-icon hz-icon--trash-2"></text>
-      </view>
-    </view>
-    <text wx:if="{{item.qtyError}}" class="u-field__error">{{item.qtyError}}</text>
-    <text wx:if="{{item.priceError && item.priceError !== item.qtyError}}" class="u-field__error">{{item.priceError}}</text>
-  </view>
-</view>
+  <hz-button wx:if="{{removable}}" slot="footer" kind="secondary" text="{{texts.remove}}" bind:press="onRemove" /><hz-button slot="footer" text="{{texts.confirm}}" bind:press="onConfirm" />
+</hz-sheet>

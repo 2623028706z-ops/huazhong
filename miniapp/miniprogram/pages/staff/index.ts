@@ -30,6 +30,10 @@ import {
 function rowOf(item: StaffItem) {
   return {
     id: item.id,
+    fields: [
+      { label: copy.field.role, value: roleLabelOf(item), wide: true },
+      { label: copy.field.phone, value: maskPhone(item.phone), wide: true },
+    ],
     title: item.name,
     total: roleLabelOf(item),
     meta: maskPhone(item.phone),

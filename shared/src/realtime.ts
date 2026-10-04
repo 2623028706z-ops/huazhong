@@ -28,6 +28,8 @@ export type Topic =
   | 'invites'
   | `wh_doc:${Id}`
   | 'wh_docs'
+  | `statement:${Id}`
+  | 'finance_records'
   | `receipt:${Id}`
   | `payable:po:${Id}`
   | `payable:wh:${Id}`
@@ -49,11 +51,11 @@ export type Topic =
 const topicPattern = new RegExp(
   '^(?:' +
     [
-      '(?:order|after|po|invite|wh_doc|receipt|payment|refund|supplier|catalog|account|store_invites):[1-9][0-9]*',
+      '(?:order|after|po|invite|wh_doc|receipt|payment|refund|statement|supplier|catalog|account|store_invites):[1-9][0-9]*',
       'payable:(?:po|wh):[1-9][0-9]*',
       '(?:ar|ap):(?:[1-9][0-9]*|\\*)',
       `todo:(?:${moduleKeys.join('|')}|\\*)`,
-      'orders|afters|pos|invites|wh_docs|stock|demand',
+      'orders|afters|pos|invites|wh_docs|stock|demand|finance_records',
     ].join('|') +
     ')$',
 )

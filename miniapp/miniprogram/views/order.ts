@@ -1,7 +1,9 @@
+import { orderProgress, externalProgressOf, statementText } from './progress'
 // 订单的显示（06 章第 1.1 节、S3、S6、X2、X3、H2、H3）：门店、销售、发货共用。
 // 这里只把后端返回的字段换成组件要的样子，不判断能不能操作（00 章第 1 节）
 import {
   copy,
+  redesignCopy,
   formatMoney,
   formatTime,
   formatUnitTotals,
@@ -22,6 +24,8 @@ interface Tag {
 export interface InfoRow {
   label: string
   value: string
+  url?: string
+  phone?: string
 }
 
 // 待确认的门店单没有出货日期：「待销售安排」
@@ -50,8 +54,20 @@ export function orderRowOf(order: OrderCard, forStore: boolean) {
     : copy.org.store(order.customerName, order.storeName)
   return {
     id: order.id,
+    version: order.version,
+    fields: [
+      { label: redesignCopy.no, value: order.no, wide: true },
+      { label: redesignCopy.orderDate, value: order.orderDate },
+      { label: redesignCopy.shipDate, value: shipDateText(order.shipDate) },
+      { label: redesignCopy.qty, value: formatUnitTotals(order.units) },
+      {
+        label: order.status === 'shipped' ? redesignCopy.shippedAmount : redesignCopy.orderAmount,
+        value: formatMoney(order.amountCents),
+        amount: true,
+      },
+    ],
     date: order.orderDate,
-    status: order.status,
+    status: forStore && order.status === 'voided' ? 'cancelled' : order.status,
     title,
     total: formatUnitTotals(order.units),
     meta: [order.no, shipDateText(order.shipDate)].join(copy.separator),
@@ -86,10 +102,15 @@ function orderLinesOf(order: OrderDetail) {
 }
 
 // 有值才显示的「标签 + 值」
-export function rowsOf(rows: readonly [string, string | null][]): InfoRow[] {
+export function rowsOf(
+  rows: readonly [string, string | null, { url?: string; phone?: string }?][],
+): InfoRow[] {
   return rows
-    .filter((row): row is [string, string] => row[1] !== null && row[1] !== '')
-    .map(([label, value]) => ({ label, value }))
+    .filter(
+      (row): row is [string, string, { url?: string; phone?: string }?] =>
+        row[1] !== null && row[1] !== '',
+    )
+    .map(([label, value, link]) => ({ label, value, ...link }))
 }
 
 function changesOf(changes: readonly OrderChange[]) {
@@ -100,22 +121,6 @@ function changesOf(changes: readonly OrderChange[]) {
     changes: change.items,
     reason: change.reason,
   }))
-}
-
-// 金额：发货前订单金额，已发货发货金额
-function amountRowOf(order: OrderDetail): InfoRow {
-  const label =
-    order.status === 'shipped' ? copy.screen.label.shipAmount : copy.screen.label.orderAmount
-  return { label, value: formatMoney(order.amountCents) }
-}
-
-// 发货人、发货时间、发货备注
-function shipInfoOf(order: OrderDetail): InfoRow[] {
-  return rowsOf([
-    [copy.screen.label.shippedBy, order.shippedBy],
-    [copy.screen.label.shippedAt, order.shippedAt === null ? null : formatTime(order.shippedAt)],
-    [copy.screen.label.shipNote, order.shipNote],
-  ])
 }
 
 // 原因行：取消原因、取消时间
@@ -129,51 +134,66 @@ function cancelInfoOf(order: OrderDetail): InfoRow[] {
   ])
 }
 
-function voidInfoOf(order: { voidReason: string | null; voidedAt: string | null }) {
+function voidInfoOf(
+  order: { voidReason: string | null; voidedAt: string | null },
+  external = false,
+) {
   return {
-    heading: copy.screen.section.void,
+    heading: external ? copy.screen.section.cancel : copy.screen.section.void,
     rows: rowsOf([
-      [copy.screen.label.voidReason, order.voidReason],
-      [copy.screen.label.voidedAt, order.voidedAt ? formatTime(order.voidedAt) : null],
+      [external ? copy.screen.label.cancelReason : copy.screen.label.voidReason, order.voidReason],
+      [
+        external ? copy.screen.label.cancelledAt : copy.screen.label.voidedAt,
+        order.voidedAt ? formatTime(order.voidedAt) : null,
+      ],
     ]),
   }
 }
 
 // 详情页（S6、X3、H3 只读）：信息卡 → 产品明细（明细 + 金额）→ 发货信息 → 变更记录 → 取消信息。
 // 员工多写来源、客户门店
-export function orderViewOf(order: OrderDetail, forStore: boolean) {
-  const staffRows: [string, string | null][] = forStore
-    ? []
-    : [
-        [copy.screen.label.origin, labels.orderOrigin[order.origin]],
-        [copy.screen.label.customerStore, copy.org.store(order.customerName, order.storeName)],
-      ]
+export function orderViewOf(order: OrderDetail, forStore: boolean, finance = false) {
   return {
-    info: {
-      title: order.no,
-      statusKind: 'orderStatus',
-      status: order.status,
-      rows: rowsOf([
-        ...staffRows,
-        [copy.screen.label.orderDate, order.orderDate],
-        [copy.field.shipDate, shipDateText(order.shipDate)],
-        [copy.field.note, order.note],
-      ]),
-    },
+    progress: forStore ? externalProgressOf(orderProgress(order)) : orderProgress(order),
+    quantityOnly: false,
+    qtyLabel: order.status === 'shipped' ? redesignCopy.actual : redesignCopy.qty,
+    shipNote: order.shipNote,
+    shipNoteLabel: copy.screen.label.shipNote,
+    info: orderInfoOf(order, forStore, finance),
     linesHeading: copy.screen.section.lines,
     lines: orderLinesOf(order),
-    allocations: order.allocations.map((allocation) => ({
-      date: allocation.date,
-      amount: formatMoney(allocation.amountCents),
-    })),
-    amountRows: [amountRowOf(order)],
-    ship: { heading: copy.screen.section.ship, rows: shipInfoOf(order) },
+    ship: {
+      heading: copy.screen.section.ship,
+      rows: rowsOf([[copy.screen.label.shipNote, order.shipNote]]),
+    },
     changes: changesOf(order.changes),
+    showChanges: order.status === 'to_ship' || order.status === 'shipped',
+    changesHeading: copy.records.orderChange,
+    noChange: redesignCopy.noChange,
+    cancelNotice: cancelNoticeOf(order),
     requests: cancelRequestRowsOf(order.cancelRequests),
-    void: voidInfoOf(order),
+    void: voidInfoOf(order, forStore),
     reason: { heading: copy.screen.section.cancel, rows: cancelInfoOf(order) },
     notice: order.lockedReason ?? '',
   }
+}
+
+function cancelNoticeOf(order: {
+  status: string
+  cancelRequests: OrderDetail['cancelRequests']
+}): string {
+  const request = order.cancelRequests.at(-1)
+  if (!request) return ''
+  if (request.status === 'rejected')
+    return redesignCopy.cancelRejectedNotice(request.rejectReason ?? '')
+  if (request.status === 'lapsed') return redesignCopy.cancelUnhandledNotice
+  if (request.status === 'pending')
+    return redesignCopy.cancelPendingNotice(
+      request.requestedBy,
+      formatTime(request.requestedAt),
+      request.reason,
+    )
+  return ''
 }
 
 function cancelRequestRowsOf(requests: OrderDetail['cancelRequests']) {
@@ -192,6 +212,13 @@ function cancelRequestRowsOf(requests: OrderDetail['cancelRequests']) {
 export function shippingRowOf(order: ShippingCard) {
   return {
     id: order.id,
+    version: order.version,
+    fields: [
+      { label: redesignCopy.no, value: order.no, wide: true },
+      { label: redesignCopy.orderDate, value: order.orderDate },
+      { label: redesignCopy.shipDate, value: shipDateText(order.shipDate) },
+      { label: redesignCopy.qty, value: formatUnitTotals(order.units), wide: true },
+    ],
     date: order.orderDate,
     status: order.status,
     title: copy.org.store(order.customerName, order.storeName),
@@ -206,22 +233,19 @@ export function shippingRowOf(order: ShippingCard) {
 
 export function shippingViewOf(order: ShippingDetail) {
   return {
-    info: {
-      title: order.no,
-      statusKind: 'orderStatus',
-      status: order.status,
-      rows: rowsOf([
-        [copy.screen.label.customerStore, copy.org.store(order.customerName, order.storeName)],
-        [copy.field.shipDate, shipDateText(order.shipDate)],
-        [copy.field.note, order.note],
-      ]),
-    },
+    progress: orderProgress(order),
+    quantityOnly: true,
+    qtyLabel: redesignCopy.qty,
+    shipNote: order.shipNote,
+    shipNoteLabel: copy.screen.label.shipNote,
+    info: shippingInfoOf(order),
     linesHeading: copy.screen.section.lines,
     lines: order.lines.map((line) => ({
       key: line.id,
       name: line.name,
       code: line.customerCode,
       qty: line.shippedQty ?? line.qty,
+      orderedQty: line.qty,
       unit: line.unit,
       tags: [
         ...(line.short ? [{ text: copy.screen.tag.short, warn: true }] : []),
@@ -237,6 +261,10 @@ export function shippingViewOf(order: ShippingDetail) {
       ]),
     },
     changes: changesOf(order.changes),
+    showChanges: order.status === 'to_ship' || order.status === 'shipped',
+    changesHeading: copy.records.orderChange,
+    noChange: redesignCopy.noChange,
+    cancelNotice: cancelNoticeOf(order),
     requests: cancelRequestRowsOf(order.cancelRequests),
     reason: {
       heading: copy.screen.section.cancel,
@@ -247,5 +275,61 @@ export function shippingViewOf(order: ShippingDetail) {
     },
     void: voidInfoOf(order),
     notice: order.lockedReason ?? '',
+  }
+}
+
+function shippingInfoOf(order: ShippingDetail) {
+  return {
+    title: copy.org.store(order.customerName, order.storeName),
+    statusKind: 'orderStatus',
+    status: order.status,
+    rows: rowsOf([
+      [redesignCopy.no, order.no],
+      [copy.screen.label.customerStore, copy.org.store(order.customerName, order.storeName)],
+      [copy.field.shipDate, shipDateText(order.shipDate)],
+      [redesignCopy.shipper, order.shippedBy],
+      [redesignCopy.shippedAt, order.shippedAt ? formatTime(order.shippedAt) : null],
+      [
+        redesignCopy.contact,
+        [order.contactName, order.contactPhone].filter(Boolean).join(copy.separator) ||
+          redesignCopy.notFilled,
+        { phone: order.contactPhone },
+      ],
+      [redesignCopy.address, order.address || redesignCopy.notFilled],
+    ]),
+  }
+}
+
+function orderInfoOf(order: OrderDetail, forStore: boolean, finance: boolean) {
+  const staffRows: [string, string | null, { url?: string; phone?: string }?][] = forStore
+    ? []
+    : [
+        [copy.screen.label.origin, labels.orderOrigin[order.origin]],
+        [copy.screen.label.customerStore, copy.org.store(order.customerName, order.storeName)],
+      ]
+  return {
+    title: forStore ? order.storeName : copy.org.store(order.customerName, order.storeName),
+    statusKind: 'orderStatus',
+    status: forStore && order.status === 'voided' ? 'cancelled' : order.status,
+    rows: rowsOf([
+      [redesignCopy.no, order.no],
+      ...staffRows,
+      [copy.screen.label.orderDate, order.orderDate],
+      [copy.field.shipDate, shipDateText(order.shipDate)],
+      [redesignCopy.shipper, order.shippedBy],
+      [redesignCopy.shippedAt, order.shippedAt ? formatTime(order.shippedAt) : null],
+      [
+        redesignCopy.statement,
+        statementText(order.statement),
+        order.statement
+          ? {
+              url: forStore
+                ? `/packages/store/pages/statement-detail/index?id=${order.statement.id}`
+                : `/packages/finance/pages/statement-detail/index?scope=${finance ? 'finance' : 'internal'}&id=${order.statement.id}`,
+            }
+          : {},
+      ],
+      [copy.field.note, order.note],
+    ]),
   }
 }

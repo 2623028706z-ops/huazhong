@@ -5,6 +5,8 @@ import { and, asc, eq, inArray, ne, sql, type SQL } from 'drizzle-orm'
 import type { Db, Tx } from '../../../db/client.ts'
 import { accounts, customers, stores } from '../../../db/schema/index.ts'
 import { DB } from '../../common/db.ts'
+import { Clock } from '../../common/clock.ts'
+import { customerOverdue, customerOverdues } from '../../common/statements.ts'
 import { actionOf } from '../../common/domain/actions.ts'
 import { pageOf } from '../../common/domain/cursor.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
@@ -83,12 +85,18 @@ export class CustomerService {
   constructor(
     @Inject(DB) private readonly db: Db,
     private readonly writes: WriteService,
+    private readonly clock: Clock,
   ) {}
 
   async item(executor: Executor, viewer: Viewer, id: number): Promise<CustomerItem> {
     const [row] = await executor.select().from(customers).where(eq(customers.id, id))
     const storeRows = await storeRowsOf(executor, eq(stores.customerId, id))
-    return toCustomerItem(found(row), storeRows, isSales(viewer))
+    return toCustomerItem(
+      found(row),
+      storeRows,
+      isSales(viewer),
+      await customerOverdue(executor, id, this.clock.today()),
+    )
   }
 
   async list(
@@ -106,12 +114,14 @@ export class CustomerService {
     const storeRows =
       ids.length === 0 ? [] : await storeRowsOf(this.db, inArray(stores.customerId, ids))
     const sales = isSales(viewer)
+    const overdue = await customerOverdues(this.db, ids, this.clock.today())
     return {
       items: page.items.map((row) =>
         toCustomerItem(
           row,
           storeRows.filter((store) => store.customerId === row.id),
           sales,
+          overdue.get(row.id) ?? null,
         ),
       ),
       nextCursor: page.nextCursor,

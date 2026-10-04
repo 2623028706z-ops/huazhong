@@ -1,6 +1,8 @@
 import * as z from 'zod'
-import { allocKinds, allocationStatuses, recordStatuses, refundKinds } from '../enums.ts'
+import { statementCopy } from '../copy-statements.ts'
+import { financeCopy } from '../copy-finance.ts'
 import {
+  STORED_INT_MAX,
   businessDateSchema,
   centsSchema,
   idSchema,
@@ -8,61 +10,94 @@ import {
   versionSchema,
 } from '../rules.ts'
 import { actionSchema } from './actions.ts'
-
-export const ledgerTokenSchema = z.string().min(1)
-export const externalAllocationSchema = z.object({
-  date: businessDateSchema,
-  amountCents: centsSchema,
-})
 export const actorSchema = z.object({ id: idSchema, name: z.string() })
-export const allocationHistoryShape = {
+export const creditSourceSchema = z.object({
+  type: z.enum(['receipt', 'payment', 'statement']),
   id: idSchema,
-  kind: z.enum(allocKinds),
-  createdAt: timestampSchema,
-  createdBy: actorSchema,
-  registeredCents: centsSchema,
-  effectiveCents: centsSchema,
-  status: z.enum(allocationStatuses),
-  revokedAt: timestampSchema.nullable(),
-  revokedBy: actorSchema.nullable(),
-  revokeReason: z.string().nullable(),
-  actions: z.array(actionSchema),
-}
-export const paymentAllocationSchema = z.object({
-  ...allocationHistoryShape,
-  paymentId: idSchema,
-  paymentNo: z.string(),
-  docType: z.enum(['po', 'wh']),
-  docId: idSchema,
-  docNo: z.string(),
+  no: z.string(),
+  amountCents: centsSchema,
 })
 export const refundSchema = z.object({
   id: idSchema,
   no: z.string(),
   version: versionSchema,
-  kind: z.enum(refundKinds),
-  receiptId: idSchema.nullable(),
-  paymentId: idSchema.nullable(),
+  kind: z.enum(['receipt', 'payment']),
+  customerId: idSchema.nullable(),
+  supplierId: idSchema.nullable(),
   refundDate: businessDateSchema,
   amountCents: centsSchema,
   methodName: z.string(),
-  note: z.string().nullable(),
-  status: z.enum(recordStatuses),
+  note: z.string(),
+  status: z.enum(['valid', 'voided']),
   voidReason: z.string().nullable(),
   voidedAt: timestampSchema.nullable(),
   voidedBy: actorSchema.nullable(),
+  sources: z.array(creditSourceSchema),
   actions: z.array(actionSchema),
 })
 export type RefundDetail = z.infer<typeof refundSchema>
-export type PaymentAllocation = z.infer<typeof paymentAllocationSchema>
-export const receiptExpectedSchema = z.object({
-  orderId: idSchema,
-  version: versionSchema,
-  unpaidCents: centsSchema,
+export const fundStatementSchema = z.object({
+  id: idSchema,
+  no: z.string(),
+  dueCents: centsSchema,
+  amountCents: centsSchema,
+  status: z.enum(['unsettled', 'settled', 'voided']),
+  reversedAt: timestampSchema.nullable(),
 })
-export const paymentExpectedSchema = z.object({
-  docType: z.enum(['po', 'wh']),
-  docId: idSchema,
+export const fundDetailShape = {
+  id: idSchema,
+  no: z.string(),
   version: versionSchema,
-  unpaidCents: centsSchema,
-})
+  amountCents: centsSchema,
+  discountCents: centsSchema,
+  discountReason: z.string(),
+  creditCents: centsSchema,
+  creditBalanceCents: centsSchema,
+  methodName: z.string(),
+  note: z.string(),
+  createdBy: actorSchema,
+  createdAt: timestampSchema,
+  status: z.enum(['valid', 'voided']),
+  voidReason: z.string().nullable(),
+  voidedAt: timestampSchema.nullable(),
+  voidedBy: actorSchema.nullable(),
+  statements: z.array(fundStatementSchema),
+  refunds: z.array(refundSchema),
+  actions: z.array(actionSchema),
+  lockedReason: z.string().nullable(),
+}
+export const fundInputShape = {
+  amountCents: z.number().int().positive().max(STORED_INT_MAX),
+  discountCents: z.number().int().nonnegative().max(STORED_INT_MAX).default(0),
+  discountReason: z.string().trim().default(''),
+  methodName: z.string().trim().min(1, financeCopy.methodRequired),
+  note: z.string().trim(),
+  statements: z.array(z.object({ id: idSchema, version: versionSchema })),
+}
+export function checkFundInput(
+  value: { discountCents: number; discountReason: string; statements: { id: string }[] },
+  ctx: z.RefinementCtx,
+) {
+  if (value.discountCents > 0 && !value.discountReason)
+    ctx.addIssue({
+      code: 'custom',
+      path: ['discountReason'],
+      message: financeCopy.discountReasonRequired,
+    })
+  if (!value.statements.length && value.discountCents)
+    ctx.addIssue({
+      code: 'custom',
+      path: ['discountCents'],
+      message: financeCopy.discountWithoutStatement,
+    })
+  const seen = new Set<string>()
+  value.statements.forEach((s, i) => {
+    if (seen.has(s.id))
+      ctx.addIssue({
+        code: 'custom',
+        path: ['statements', i, 'id'],
+        message: statementCopy.duplicateStatement,
+      })
+    seen.add(s.id)
+  })
+}

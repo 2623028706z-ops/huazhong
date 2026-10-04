@@ -16,7 +16,7 @@ export const seedStores = [
     name: '滨江店',
     contact: '陈女士',
     phone: '13800138001',
-    address: '杭州市滨江区江南大道128号',
+    address: '',
     enabled: true,
   },
   {
@@ -25,7 +25,7 @@ export const seedStores = [
     name: '城西店',
     contact: '王先生',
     phone: '13800138002',
-    address: '杭州市西湖区文一西路86号',
+    address: '',
     enabled: true,
   },
   {
@@ -34,7 +34,7 @@ export const seedStores = [
     name: '城东店',
     contact: '刘女士',
     phone: '13800138003',
-    address: '杭州市上城区新塘路56号',
+    address: '',
     enabled: false,
   },
   {
@@ -43,7 +43,7 @@ export const seedStores = [
     name: '文新店',
     contact: '林女士',
     phone: '13800138004',
-    address: '杭州市西湖区文二路88号',
+    address: '',
     enabled: true,
   },
   {
@@ -52,7 +52,7 @@ export const seedStores = [
     name: '湖滨店',
     contact: '何先生',
     phone: '13800138005',
-    address: '杭州市上城区延安路16号',
+    address: '',
     enabled: true,
   },
 ] as const
@@ -162,7 +162,7 @@ interface SeedAccount {
 
 // 第一个是管理员，后面每个账号的 created_by 都是它
 export const seedAccounts = [
-  { key: 'u1', name: '周总', type: 'admin', phone: '13700000001' },
+  { key: 'u1', name: '瑞瑞', type: 'admin', phone: '13700000001' },
   { key: 'u2', name: '李敏', type: 'staff', phone: '13700000002', modules: ['sales'] },
   { key: 'u3', name: '王芳', type: 'staff', phone: '13700000003', modules: ['sales', 'warehouse'] },
   { key: 'u4', name: '周宁', type: 'staff', phone: '13700000004', modules: ['purchase'] },

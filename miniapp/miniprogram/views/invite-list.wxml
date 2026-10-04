@@ -1,24 +1,11 @@
 <import src="list.wxml" />
-<import src="purchase.wxml" />
 <template name="invite-list">
-  <hz-navbar title="{{title}}" back="{{!supplier}}" />
+  <!-- 可不传：embedded -->
+  <hz-navbar wx:if="{{!embedded}}" title="{{title}}" back="{{!supplier}}" />
   <view class="u-list">
-    <hz-filter-bar status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" dimensions="{{dimensions}}" value="{{filter}}" bind:change="onFilter" />
+    <hz-filter-bar date-label="{{dateLabel}}" status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" dimensions="{{dimensions}}" value="{{filter}}" bind:change="onFilter" />
     <template is="list-state" data="{{failure,skeleton,loaded,rows,emptyObject}}" />
     <template is="cards" data="{{rows,statusKind,done,allLoaded}}" />
   </view>
-  <hz-sheet show="{{sheet !== ''}}" title="{{sheet === 'share' ? texts.share : sheet === 'cancel' ? texts.cancel : texts.detail}}" back="{{sheet !== 'detail'}}" footer bind:close="onCloseSheet" bind:back="onBackSheet">
-    <view class="u-sheet-form u-sheet-plain">
-      <hz-error wx:if="{{sheetError}}" message="{{sheetError}}" />
-      <template wx:if="{{view}}" is="invite-body" data="{{...view}}" />
-      <hz-skeleton wx:else type="detail" />
-      <hz-button wx:if="{{sheet === 'share' && share}}" kind="secondary" text="{{texts.copy}}" bind:press="onCopyLink" />
-    </view>
-    <view slot="footer" class="{{sheet === 'detail' ? 'u-sheet-buttons' : ''}}">
-      <hz-button wx:for="{{buttons}}" wx:if="{{sheet === 'detail'}}" wx:key="code" text="{{item.text}}" kind="{{item.kind}}" disabled="{{item.disabled}}" reason="{{item.reason}}" data-code="{{item.code}}" bind:press="onAction" />
-      <hz-button wx:if="{{sheet === 'cancel'}}" text="{{texts.confirm}}" loading="{{busy !== ''}}" bind:press="onCancel" />
-      <hz-button wx:if="{{sheet === 'share' && share}}" text="{{texts.send}}" open-type="share" />
-    </view>
-  </hz-sheet>
   <hz-tabbar wx:if="{{supplier}}" tabs="{{tabs}}" current="supply" />
 </template>

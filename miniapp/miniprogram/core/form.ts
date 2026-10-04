@@ -20,11 +20,13 @@ export function unplacedErrorOf(fields: Record<string, string>, located: string[
   )
 }
 
-export function formTotalOf(amountCents: number, lines: { unit: string; qty: number }[]) {
+// 按单位合计数量：15 束 · 60 枝
+export function unitTotalsTextOf(lines: { unit: string; qty: number }[]) {
   const totals = new Map<string, number>()
   for (const line of lines) totals.set(line.unit, (totals.get(line.unit) ?? 0) + line.qty)
-  return copy.screen.totalAmount(
-    formatMoney(amountCents),
-    formatUnitTotals([...totals].map(([unit, qty]) => ({ unit, qty }))),
-  )
+  return formatUnitTotals([...totals].map(([unit, qty]) => ({ unit, qty })))
+}
+
+export function formTotalOf(amountCents: number, lines: { unit: string; qty: number }[]) {
+  return copy.screen.totalAmount(formatMoney(amountCents), unitTotalsTextOf(lines))
 }

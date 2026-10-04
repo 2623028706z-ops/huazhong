@@ -1,6 +1,8 @@
 // 售后：申请、新建、处理、关闭、作废、申请期限（07 章 A01–A05、A21、A35、A37、J26、J29）
-import type { AfterDetail, OrderDetail } from '@huazhong/shared'
+import { copy, type AfterDetail, type OrderDetail } from '@huazhong/shared'
+import { and, eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+import { operationLogs } from '../db/schema/index.ts'
 import { codesOf, dataOf, idBy, startSales, type SalesApp } from './support/sales.ts'
 import { uploadAfterImage } from './support/images.ts'
 
@@ -110,7 +112,7 @@ describe('处理和关闭', () => {
     expect(done).toMatchObject({
       status: 'processed',
       amountCents: 27200,
-      notice: '发货单应收已减去售后金额',
+      notice: '售后金额将计入下一张对账单',
     })
     expect(done.lines[0]).toMatchObject({ requestedQty: 10, qty: 4, description: '花头折损' })
     expect(await roseMax()).toBe(11)
@@ -159,20 +161,58 @@ describe('处理和关闭', () => {
     })
   })
 
-  test('A05 已关闭的不显示金额、没有操作', async () => {
+  test('A05 关闭响应与受控详情返回真实关闭日志时间，不显示金额和操作', async () => {
     const applied = dataOf<AfterDetail>(await storeApply(2))
-    dataOf(
+    expect(applied.closedAt).toBeNull()
+    const closed = dataOf<AfterDetail>(
       await (
         await s.as('u2')
       ).post(`/afters/${applied.id}/close`, { version: applied.version, reason: '门店撤回' }),
     )
-    const view = dataOf<AfterDetail>(await (await s.as('s1')).get(`/afters/${applied.id}`))
-    expect(view).toMatchObject({
+    const where = and(
+      eq(operationLogs.targetType, 'afters'),
+      eq(operationLogs.targetId, Number(applied.id)),
+      eq(operationLogs.action, copy.log.action.closeAfter),
+    )
+    const [log] = await s.t.db
+      .select({
+        createdAt: operationLogs.createdAt,
+        module: operationLogs.module,
+        kind: operationLogs.kind,
+        action: operationLogs.action,
+        targetType: operationLogs.targetType,
+        targetId: operationLogs.targetId,
+        targetLabel: operationLogs.targetLabel,
+        actorLabel: operationLogs.actorLabel,
+      })
+      .from(operationLogs)
+      .where(where)
+    if (!log) throw new Error('expected close log')
+    const closedAt = log.createdAt.toISOString()
+    expect(closed).toMatchObject({
       status: 'closed',
       amountCents: null,
       actions: [],
       closeReason: '门店撤回',
+      closedAt,
     })
+    // 同 id 的其他实体日志、同实体的其他动作不能污染这个时间。
+    await s.t.db.insert(operationLogs).values([
+      { ...log, targetType: 'orders', createdAt: new Date('2099-01-01') },
+      { ...log, action: copy.log.action.voidAfter, createdAt: new Date('2099-01-02') },
+    ])
+    for (const [key, path] of [
+      ['s1', `/afters/${applied.id}`],
+      ['u2', `/afters/${applied.id}`],
+      ['u6', `/finance/afters/${applied.id}`],
+    ] as const) {
+      const view = dataOf<AfterDetail>(await (await s.as(key)).get(path))
+      expect(view).toMatchObject({ closedAt, amountCents: null, actions: [] })
+    }
+    await s.t.db.delete(operationLogs).where(where)
+    expect(
+      dataOf<AfterDetail>(await (await s.as('s1')).get(`/afters/${applied.id}`)).closedAt,
+    ).toBeNull()
   })
 })
 
@@ -201,7 +241,7 @@ describe('作废和列表', () => {
     expect(await roseMax()).toBe(15)
   })
 
-  test('J29 列表级操作码：销售新建、门店申请、财务没有', async () => {
+  test('J29 列表级操作码：销售新建、门店与财务没有', async () => {
     expect(
       codesOf(
         dataOf<{ actions: { code: string }[] }>(await (await s.as('u2')).get('/afters')).actions,
@@ -211,7 +251,7 @@ describe('作废和列表', () => {
       codesOf(
         dataOf<{ actions: { code: string }[] }>(await (await s.as('s1')).get('/afters')).actions,
       ),
-    ).toEqual(['applyAfter'])
+    ).toEqual([])
     expect(dataOf<{ actions: unknown[] }>(await (await s.as('u6')).get('/afters')).actions).toEqual(
       [],
     )

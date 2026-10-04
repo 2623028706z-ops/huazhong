@@ -3,6 +3,7 @@ import { and, asc, eq, inArray, lt, sql } from 'drizzle-orm'
 import { materials, stockBatches, stockMoves } from '../../../db/schema/index.ts'
 import type { WriteContext } from '../../common/write.service.ts'
 import { found } from '../../common/scope.ts'
+import { guardStocktakeVoid } from '../../common/stock-count.ts'
 
 // 来源单据：采购单、手工出入库单、盘点单；批次 source_type 和流水 doc_type 用同一个值
 type StockDocType = 'po' | 'wh' | 'stocktake'
@@ -87,6 +88,7 @@ export async function deductStock(
 ) {
   const ids = lines.map((line) => line.materialId)
   await lockStockMaterials(ctx, ids)
+  if (input.type === 'po_void' || input.type === 'in_void') await guardStocktakeVoid(ctx.tx, doc)
   const batches = await ctx.tx
     .select()
     .from(stockBatches)
@@ -144,6 +146,7 @@ export async function restoreStock(
     )
     .orderBy(asc(stockMoves.id))
   await lockStockMaterials(ctx, [...new Set(moves.map((move) => move.materialId))])
+  await guardStocktakeVoid(ctx.tx, doc)
   await ctx.tx
     .select({ id: stockBatches.id })
     .from(stockBatches)

@@ -5,6 +5,7 @@ import {
   type contract,
   type OutputOf,
   WS_CLOSE,
+  copy,
 } from '@huazhong/shared'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, expect, test } from 'vitest'
@@ -74,7 +75,7 @@ test('F05 开账号校验、关闭账号保留绑定及取消邀请，重新开�
     dataOf<Me>(
       await external.post('/auth/bind-phone', { code: phoneCode(body.account.loginPhone) }),
     ).landing,
-  ).toBe('supplier_home')
+  ).toBe('supplier_invites')
   const supplierApi = await s.as('p1'),
     spring = await supplierOf(s),
     invite = await inviteOf(s)
@@ -122,7 +123,7 @@ test('F05 开账号校验、关闭账号保留绑定及取消邀请，重新开�
   )
   expect(dataOf<Me>(await supplierApi.get('/me'))).toMatchObject({
     id: spring.account.id,
-    landing: 'supplier_home',
+    landing: 'supplier_invites',
   })
   const restored = await connect(s.t, supplierApi.openid)
   await restored.sync()
@@ -159,7 +160,7 @@ test('F06 改手机号同时解绑、关闭实时连接、邀请仍待填报', a
   expect(
     dataOf<Me>(await supplierApi.post('/auth/bind-phone', { code: phoneCode('13900139999') }))
       .landing,
-  ).toBe('supplier_home')
+  ).toBe('supplier_invites')
   expect((await supplierApi.get('/supplier/invites')).status).toBe(200)
   expect((await inviteOf(s)).status).toBe('pending')
 })
@@ -180,10 +181,15 @@ test('C05 G03 花材编码、同名、分类改名、单位和无修改', async 
   expect(dataOf<Material>(await wh.get(`/materials/${mat.id}`)).categoryName).toBe('玫瑰花材')
   const rose = list.items.find((row) => row.name === '粉雪山玫瑰')
   const qty = dataOf<{ stockQty: number }>(await wh.get(`/materials/${rose?.id}`)).stockQty
-  dataOf(
+  expect(
     await wh.patch(`/materials/${rose?.id}`, { ...rose, categoryId: rose?.categoryId, unit: '把' }),
-  )
-  expect(dataOf<{ stockQty: number }>(await wh.get(`/materials/${rose?.id}`)).stockQty).toBe(qty)
+  ).toMatchObject({
+    status: 409,
+    body: { error: { code: 'BUSINESS_RULE', message: copy.stock.unitInUse } },
+  })
+  expect(
+    dataOf<Material & { stockQty: number }>(await wh.get(`/materials/${rose?.id}`)),
+  ).toMatchObject({ unit: rose?.unit, stockQty: qty })
   const cats = dataOf<OutputOf<typeof contract.listMaterialCategories>>(
     await wh.get('/material-categories'),
   )

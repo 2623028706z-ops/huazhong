@@ -1,4 +1,4 @@
-import { contract, copy, formatQty } from '@huazhong/shared'
+import { contract, copy, redesignCopy } from '@huazhong/shared'
 import type { FailureView } from '../../../../core/failure-view'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
@@ -14,15 +14,15 @@ Page({
       statusKind: 'stocktakeStatus',
       rows: [] as { label: string; value: string }[],
     },
-    lines: [] as {
-      key: string
+    rows: [] as {
+      materialId: string
       name: string
-      subText: string
-      tags: never[]
-      qty: number
+      bookQty: number
+      actualText: string
+      diffQty: number
       unit: string
     }[],
-    texts: copy.stock.screen,
+    texts: { ...copy.stock.screen, materials: redesignCopy.materialLines, unit: copy.field.unit },
     reason: '',
   },
   id: '',
@@ -58,17 +58,18 @@ Page({
           },
         ],
       },
-      lines: doc.lines.map((line) => ({
-        key: line.materialId,
+      rows: doc.lines.map((line) => ({
+        materialId: line.materialId,
         name: line.name,
-        tags: [],
-        qty: line.actualQty,
+        bookQty: line.bookQty,
+        actualText: String(line.actualQty),
+        diffQty: line.diffQty,
         unit: line.unit,
-        subText: `${copy.stock.screen.bookQty} ${formatQty(line.bookQty, line.unit)} · ${copy.stock.screen.actualQty} ${formatQty(line.actualQty, line.unit)} · ${copy.stock.screen.difference} ${formatQty(line.diffQty, line.unit)}`,
       })),
       reason: doc.reason ?? '',
     })
   },
+  onEdit() {},
   onFailureAction() {
     void this.load()
   },

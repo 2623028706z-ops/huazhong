@@ -5,20 +5,17 @@ import type {
   afterOrigins,
   afterReasons,
   afterStatuses,
-  allocKinds,
-  allocationStatuses,
   cancelRequestStatuses,
   refundKinds,
-  apStatuses,
   fileStatuses,
   inviteStatuses,
   moduleKeys,
   moveTypes,
   orderOrigins,
   orderStatuses,
-  payStatuses,
   poStatuses,
   recordStatuses,
+  statementStatuses,
   stocktakeStatuses,
   storeInviteStatuses,
   whDocKinds,
@@ -28,9 +25,10 @@ import type {
 type Labels<T extends readonly string[]> = Record<T[number], string>
 
 export const labels = {
-  allocationStatus: { valid: '有效', revoked: '已撤回' } satisfies Labels<
-    typeof allocationStatuses
+  statementStatus: { unsettled: '未结清', settled: '已结清', voided: '已作废' } satisfies Labels<
+    typeof statementStatuses
   >,
+
   cancelRequestStatus: {
     pending: '待处理',
     withdrawn: '已撤回',
@@ -38,7 +36,7 @@ export const labels = {
     rejected: '已拒绝',
     lapsed: '已失效',
   } satisfies Labels<typeof cancelRequestStatuses>,
-  refundKind: { receipt: '预收退款', payment: '预付退款' } satisfies Labels<typeof refundKinds>,
+  refundKind: { receipt: '多收退回', payment: '多付退回' } satisfies Labels<typeof refundKinds>,
   orderStatus: {
     pending_confirm: '待确认',
     to_ship: '待发货',
@@ -67,7 +65,6 @@ export const labels = {
     other: '其他',
   } satisfies Labels<typeof afterReasons>,
   recordStatus: { valid: '有效', voided: '已作废' } satisfies Labels<typeof recordStatuses>,
-  allocKind: { direct: '登记核销', prepaid: '余额核销' } satisfies Labels<typeof allocKinds>,
   inviteStatus: {
     pending: '待填报',
     submitted: '已提交',
@@ -117,19 +114,6 @@ export const labels = {
   fileStatus: { pending: '待检测', ok: '通过', rejected: '不通过' } satisfies Labels<
     typeof fileStatuses
   >,
-  payStatus: { unpaid: '未收', partial: '部分收', paid: '已收' } satisfies Labels<
-    typeof payStatuses
-  >,
-  // 门店端对同一个收款状态的叫法（03 章第 3 节）
-  storePayStatus: { unpaid: '未付', partial: '部分付', paid: '已付' } satisfies Labels<
-    typeof payStatuses
-  >,
-  apStatus: {
-    unpaid: '未付款',
-    partial: '部分付款',
-    paid: '已付款',
-    no_pay: '无需付款',
-  } satisfies Labels<typeof apStatuses>,
 } as const
 
 // 岗位：管理员写「管理员」，员工写模块名，多个用「、」连（03 章第 8.5 节）；身份行和员工列表共用
@@ -148,7 +132,9 @@ type Tones<T extends readonly string[]> = Record<T[number], StatusTone>
 
 // hz-status 传「状态种类 + 状态码」取中文名和颜色；种类名和 labels 的键一致
 export const statusTones = {
-  allocationStatus: { valid: 'done', revoked: 'ended' } satisfies Tones<typeof allocationStatuses>,
+  statementStatus: { unsettled: 'wait', settled: 'done', voided: 'ended' } satisfies Tones<
+    typeof statementStatuses
+  >,
   cancelRequestStatus: {
     pending: 'wait',
     withdrawn: 'ended',
@@ -195,13 +181,6 @@ export const statusTones = {
     voided: 'ended',
   } satisfies Tones<typeof whDocStatuses>,
   stocktakeStatus: { done: 'done' } satisfies Tones<typeof stocktakeStatuses>,
-  payStatus: { unpaid: 'wait', partial: 'wait', paid: 'done' } satisfies Tones<typeof payStatuses>,
-  storePayStatus: { unpaid: 'wait', partial: 'wait', paid: 'done' } satisfies Tones<
-    typeof payStatuses
-  >,
-  apStatus: { unpaid: 'wait', partial: 'wait', paid: 'done', no_pay: 'ended' } satisfies Tones<
-    typeof apStatuses
-  >,
 } as const
 export type StatusKind = keyof typeof statusTones
 

@@ -1,6 +1,6 @@
 // M4 我的（06 章 M4，门店、供应商共用这一页）：身份 → 按 menus 列入口 → 个人资料 → 退出登录。
 // 订阅 account:<id>：被停用、解绑、改了模块时重新取 /me
-import { contract, copy, maskPhone, type Me } from '@huazhong/shared'
+import { contract, copy, type Me } from '@huazhong/shared'
 import type { DetailEvent } from '../../core/events'
 import type { FailureView } from '../../core/failure-view'
 import { confirmAsk } from '../../core/guard'
@@ -9,6 +9,11 @@ import { failureOf, identityOf, isDevelop, loadMe, logout, tabsOf } from '../../
 import { request } from '../../core/request'
 
 const menuPages = {
+  methods: {
+    icon: 'wallet',
+    text: copy.screen.title.methods,
+    url: '/packages/finance/pages/methods/index',
+  },
   inventory: { icon: 'boxes', text: copy.title.inventory, url: '/pages/inventory/index' },
   logs: { icon: 'scroll-text', text: copy.title.logs, url: '/pages/logs/index' },
   staff: { icon: 'users-round', text: copy.title.staff, url: '/pages/staff/index' },
@@ -17,7 +22,11 @@ const menuPages = {
 type MenuKey = keyof typeof menuPages
 
 function menusOf(me: Me) {
-  const keys: MenuKey[] = [...me.menus, ...(isDevelop() ? (['gallery'] as const) : [])]
+  const keys: MenuKey[] = [
+    ...me.menus,
+    ...(me.modules.includes('finance') ? (['methods'] as const) : []),
+    ...(isDevelop() ? (['gallery'] as const) : []),
+  ]
   return keys.map((key) => ({ key, icon: menuPages[key].icon, text: menuPages[key].text }))
 }
 
@@ -25,19 +34,18 @@ function profileOf(me: Me) {
   const { lead } = identityOf(me)
   return {
     name: me.name,
-    sub: [lead, maskPhone(me.phone)].join(copy.separator),
+    sub: lead,
+    phone: me.phone,
+    contactPhone: me.contactPhone,
+    external: me.type === 'store' || me.type === 'supplier',
     menus: menusOf(me),
-    details: [
-      { label: copy.field.name, value: me.name },
-      { label: me.orgLabel === null ? copy.field.role : copy.field.org, value: lead },
-      { label: copy.field.phone, value: me.phone },
-    ],
   }
 }
 
 Page({
   data: {
     title: copy.title.my,
+    back: false,
     profile: null as ReturnType<typeof profileOf> | null,
     tabs: [] as ReturnType<typeof tabsOf>,
     failure: null as FailureView | null,
@@ -63,7 +71,12 @@ Page({
         ? await request(contract.supplierInvites, { query: { status: 'pending' } })
         : null
     const count = invites?.ok ? (invites.data.counts.pending ?? 0) : 0
-    this.setData({ profile: profileOf(me), tabs: tabsOf(me, count), failure: null })
+    this.setData({
+      back: me.landing.startsWith('module:') && me.landing !== 'module:warehouse',
+      profile: profileOf(me),
+      tabs: tabsOf(me, count),
+      failure: null,
+    })
     const topics =
       me.type === 'supplier'
         ? ([`account:${me.id}`, `supplier:${me.supplierId ?? ''}`] as const)

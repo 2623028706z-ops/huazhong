@@ -1,8 +1,23 @@
 // 筛选栏的条件（02 章第 4 节 hz-filter-bar）：纯函数，组件和页面都用这一份。
 // 日期按 Asia/Shanghai 算：近 7 天 = 今天往前 6 天到今天，本月 = 本月 1 号到今天。
-import { addDays, copy, formatCardDate, monthStartOf, statusOf } from '@huazhong/shared'
+import {
+  addDays,
+  copy,
+  redesignCopy,
+  formatCardDate,
+  monthStartOf,
+  statusOf,
+} from '@huazhong/shared'
 
-const datePresets = ['all', 'today', 'last7Days', 'thisMonth', 'custom'] as const
+const datePresets = [
+  'all',
+  'today',
+  'tomorrow',
+  'next7Days',
+  'last7Days',
+  'thisMonth',
+  'custom',
+] as const
 export type DatePreset = (typeof datePresets)[number]
 
 export interface DateRange {
@@ -52,6 +67,7 @@ interface FilterQuery {
 
 const DATE_KEY = 'date'
 const LAST_7_DAYS_BACK = -6
+const NEXT_7_DAYS_FORWARD = 6
 
 export const emptyFilter: FilterValue = {
   status: '',
@@ -67,6 +83,10 @@ export function rangeOf(value: FilterValue, today: string): DateRange | null {
       return null
     case 'today':
       return { from: today, to: today }
+    case 'tomorrow':
+      return { from: addDays(today, 1), to: addDays(today, 1) }
+    case 'next7Days':
+      return { from: today, to: addDays(today, NEXT_7_DAYS_FORWARD) }
     case 'last7Days':
       return { from: addDays(today, LAST_7_DAYS_BACK), to: today }
     case 'thisMonth':
@@ -86,7 +106,15 @@ function dateChip(value: FilterValue, today: string): FilterChip | null {
   if (value.date === 'custom') {
     return value.range ? { key: DATE_KEY, text: rangeText(value.range, today) } : null
   }
-  return { key: DATE_KEY, text: copy.filter[value.date] }
+  return {
+    key: DATE_KEY,
+    text:
+      value.date === 'tomorrow'
+        ? redesignCopy.tomorrow
+        : value.date === 'next7Days'
+          ? redesignCopy.next7Days
+          : copy.filter[value.date],
+  }
 }
 
 // 条件胶囊：日期在前，对象按 dimensions 的顺序
@@ -156,7 +184,14 @@ export function tabsOf(
 export function segmentsOf(value: FilterValue, today: string): { key: DatePreset; text: string }[] {
   return datePresets.map((key) => ({
     key,
-    text: key === 'custom' && value.range ? rangeText(value.range, today) : copy.filter[key],
+    text:
+      key === 'custom' && value.range
+        ? rangeText(value.range, today)
+        : key === 'tomorrow'
+          ? redesignCopy.tomorrow
+          : key === 'next7Days'
+            ? redesignCopy.next7Days
+            : copy.filter[key],
   }))
 }
 

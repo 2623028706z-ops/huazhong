@@ -6,13 +6,13 @@ const GALLERY_URL = '/pages/dev-gallery/index'
 const identity = { roles: '销售、仓库', person: '王芳' }
 
 const storeTabs = [
-  { key: 'home', icon: 'house', text: '首页', url: GALLERY_URL, badge: 0 },
-  { key: 'cart', icon: 'shopping-cart', text: '购物车', url: GALLERY_URL, badge: 3 },
+  { key: 'shop', icon: 'flower-2', text: '订货', url: GALLERY_URL, badge: 0 },
+  { key: 'orders', icon: 'file-text', text: '订单', url: GALLERY_URL, badge: 3 },
   { key: 'my', icon: 'user-round', text: '我的', url: GALLERY_URL, badge: 0 },
 ]
 
 const supplierTabs = [
-  { key: 'home', icon: 'house', text: '首页', url: GALLERY_URL, badge: 0 },
+  { key: 'orders', icon: 'file-text', text: '采购单', url: GALLERY_URL, badge: 0 },
   { key: 'supply', icon: 'clipboard-list', text: '填报', url: GALLERY_URL, badge: 120 },
   { key: 'my', icon: 'user-round', text: '我的', url: GALLERY_URL, badge: 0 },
 ]
@@ -42,21 +42,6 @@ const moduleEntries = [
   { key: 'stock', icon: 'boxes', text: '库存', disabled: false },
   { key: 'material', icon: 'flower-2', text: '花材', disabled: true },
 ]
-
-const hub = {
-  hero: {
-    key: 'supply',
-    icon: 'clipboard-pen',
-    text: '填报',
-    sub: '3 份邀请待填报',
-    badge: 3,
-    disabled: false,
-  },
-  minis: [
-    { key: 'orders', icon: 'file-text', text: '采购单', disabled: false },
-    { key: 'statement', icon: 'notebook-text', text: '对账', disabled: true },
-  ],
-}
 
 // 库存列表：没有金额，总数是关键数字；库存 0 照常次要色
 const stockCards = [
@@ -318,7 +303,6 @@ export const samples = {
   coverModes,
   entries,
   moduleEntries,
-  hub,
   stockCards,
   cards,
   statusRows,

@@ -52,6 +52,7 @@ export function toCustomerItem(
   row: { id: number; version: number; name: string; enabled: boolean },
   stores: readonly StoreRow[],
   isSales: boolean,
+  overdue: CustomerItem['overdue'] = null,
 ): CustomerItem {
   return {
     id: String(row.id),
@@ -59,6 +60,7 @@ export function toCustomerItem(
     name: row.name,
     enabled: row.enabled,
     stores: stores.map((store) => toStoreItem(store, isSales)),
+    overdue,
   }
 }
 

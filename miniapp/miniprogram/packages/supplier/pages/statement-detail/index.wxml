@@ -1,0 +1,1 @@
+<import src="/views/external-statement.wxml" /><template is="external-statement" data="{{title,supplier,loaded,failure,view,texts,sourceSheet,sourceError,stockView}}" />

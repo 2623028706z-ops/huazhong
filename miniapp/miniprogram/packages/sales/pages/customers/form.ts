@@ -85,6 +85,10 @@ export function customerSideOf(customers: readonly CustomerItem[]) {
 export function storeRowsOf(customer: CustomerItem | undefined) {
   return (customer?.stores ?? []).map((store) => ({
     id: store.id,
+    fields: [
+      { label: copy.field.contact, value: store.contact },
+      { label: copy.field.phone, value: maskPhone(store.phone), wide: true },
+    ],
     title: store.name,
     total: store.contact,
     // 列表里手机号中间四位打码，弹层里完整（02 章第 7 节）

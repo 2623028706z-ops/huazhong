@@ -7,7 +7,7 @@
     variant="{{kind === 'primary' ? 'base' : 'outline'}}"
     size="medium"
     block
-    disabled="{{disabled}}"
+    disabled="{{disabled || blocked}}"
     open-type="{{openType}}"
     bind:tap="onTap"
     bind:getphonenumber="onPhone"

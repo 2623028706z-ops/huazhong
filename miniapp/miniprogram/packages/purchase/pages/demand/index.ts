@@ -1,6 +1,7 @@
 import {
   contract,
   copy,
+  redesignCopy,
   formatQty,
   formatCardDate,
   DEMAND_DEFAULT_DAYS,
@@ -9,6 +10,7 @@ import {
   shanghaiDateOf,
   type OutputOf,
 } from '@huazhong/shared'
+import { emptyFilter, rangeOf, type FilterValue } from '../../../../core/filter'
 import { canDo } from '../../../../core/actions'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
@@ -21,7 +23,6 @@ import { loadSuppliers } from '../../../../views/purchase-load'
 
 type Demand = OutputOf<typeof contract.listPurchaseDemand>
 type Sources = OutputOf<typeof contract.listDemandSources>
-const MONTH_DAY_OFFSET = 5
 function sourceGroupsOf(source: Sources, unit: string) {
   return source.groups.map((group) => ({
     shipDate: group.shipDate,
@@ -30,7 +31,7 @@ function sourceGroupsOf(source: Sources, unit: string) {
       orderId: item.orderId,
       title: [item.customerName, item.storeName].join(copy.separator),
       qty: formatQty(item.materialQty, unit),
-      meta: `${item.orderNo}${copy.separator}${item.productName} ${formatQty(item.qty, item.productUnit)} × ${item.bomQty}`,
+      meta: `${redesignCopy.no} ${item.orderNo}${copy.separator}${item.productName} ${formatQty(item.qty, item.productUnit)} × ${item.bomQty}`,
     })),
   }))
 }
@@ -51,9 +52,7 @@ function rowsOf(demand: Demand, selected: string[]) {
     range:
       m.shipFrom && m.shipTo
         ? copy.screen.sourceShipDate(
-            m.shipFrom === m.shipTo
-              ? m.shipFrom.slice(MONTH_DAY_OFFSET)
-              : `${m.shipFrom.slice(MONTH_DAY_OFFSET)} ~ ${m.shipTo.slice(MONTH_DAY_OFFSET)}`,
+            m.shipFrom === m.shipTo ? m.shipFrom : `${m.shipFrom} ~ ${m.shipTo}`,
           )
         : copy.rework.noDemand,
     left: copy.screen.leftQty(m.leftQty),
@@ -77,7 +76,10 @@ Page({
     count: '',
     rows: [] as ReturnType<typeof rowsOf>,
     selected: [] as string[],
-    shortageOnly: false,
+    shortageOnly: true,
+    section: 'shortage',
+    dateFilter: { ...emptyFilter, date: 'next7Days' },
+    datePresets: ['today', 'tomorrow', 'next7Days', 'custom'],
     overdue: { count: 0, shipFrom: null as string | null, shipTo: null as string | null },
     overdueText: '',
     canInvite: false,
@@ -97,12 +99,20 @@ Page({
     supplierSheet: false,
     suppliers: [] as { id: string; name: string }[],
     supplierId: '',
+    inviteSupplierId: '',
     texts: {
+      all: redesignCopy.all,
+      shortage: redesignCopy.shortage,
+      toSupply: redesignCopy.toSupply,
+      shipDate: redesignCopy.shipDate,
       from: copy.screen.label.from,
       to: copy.screen.label.to,
       invite: copy.screen.action.inviteSupplier,
       create: copy.screen.action.createPo,
       supplier: copy.screen.label.supplier,
+      no: redesignCopy.no,
+      qty: redesignCopy.qty,
+      need: redesignCopy.need,
       next: copy.screen.action.next,
       source: copy.screen.label.origin,
       invited: copy.screen.invitedPending,
@@ -117,7 +127,9 @@ Page({
   },
   demand: null as Demand | null,
   loadVersion: 0,
-  onLoad() {
+  onLoad(query: Record<string, string | undefined>) {
+    if (query.supplierId) this.setData({ inviteSupplierId: query.supplierId })
+    if (query.tab === 'invites') this.setData({ section: 'invites' })
     const from = shanghaiDateOf(Date.now())
     this.setData({ from, to: addDays(from, DEMAND_DEFAULT_DAYS - 1) })
   },
@@ -160,8 +172,21 @@ Page({
       canInvite: canDo(result.data.actions, 'inviteSupplier'),
       canCreate: canDo(result.data.actions, 'createPo'),
     })
-    if (this.data.sourceSheet && this.data.sourceId)
-      await this.onSource({ currentTarget: { dataset: { key: this.data.sourceId } } } as KeyEvent)
+    if (this.data.sourceSheet && this.data.sourceId) await this.openSource(this.data.sourceId)
+  },
+  onSection(event: KeyEvent) {
+    const section = event.currentTarget.dataset.key
+    this.setData({ section, shortageOnly: section === 'shortage' })
+    if (section !== 'invites') void this.load()
+  },
+  onDemandFilter(event: DetailEvent<FilterValue>) {
+    const range = rangeOf(event.detail, shanghaiDateOf(Date.now()))
+    this.setData({
+      dateFilter: event.detail,
+      from: range?.from ?? shanghaiDateOf(Date.now()),
+      to: range?.to ?? addDays(shanghaiDateOf(Date.now()), DEMAND_DEFAULT_DAYS - 1),
+    })
+    void this.load()
   },
   onFrom(event: DetailEvent<string>) {
     this.setData({ from: event.detail })
@@ -189,18 +214,21 @@ Page({
       : [...this.data.selected, id]
     this.setData({ selected, rows: rowsOf(this.demand, selected) })
   },
-  async onSource(event: KeyEvent) {
-    const mat = this.demand?.mats.find((m) => m.materialId === event.currentTarget.dataset.key)
+  onSource(event: KeyEvent) {
+    return this.openSource(event.currentTarget.dataset.key)
+  },
+  async openSource(id: string) {
+    const mat = this.demand?.mats.find((m) => m.materialId === id)
     this.setData({
       sourceSheet: true,
-      sourceId: event.currentTarget.dataset.key,
+      sourceId: id,
       source: null,
       ...sourceSummaryOf(mat),
       sourceGroups: [],
       error: '',
     })
     const result = await request(contract.listDemandSources, {
-      params: { materialId: event.currentTarget.dataset.key },
+      params: { materialId: id },
       query: { from: this.data.from, to: this.data.to },
     })
     if (result.ok)
@@ -214,13 +242,15 @@ Page({
     this.setData({ sourceSheet: false })
   },
   onOpenSourcePo(event: KeyEvent) {
+    this.setData({ sourceSheet: false })
     void wx.navigateTo({
       url: `/packages/purchase/pages/order-detail/index?id=${event.currentTarget.dataset.key}`,
     })
   },
   onOpenSourceInvite(event: KeyEvent) {
+    this.setData({ sourceSheet: false })
     void wx.navigateTo({
-      url: `/packages/purchase/pages/invites/index?id=${event.currentTarget.dataset.key}`,
+      url: `/packages/purchase/pages/invite-detail/index?id=${event.currentTarget.dataset.key}`,
     })
   },
   draft(): PurchaseDraft {

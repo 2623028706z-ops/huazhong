@@ -1,0 +1,1 @@
+<view class="hz-progress"><view wx:for="{{steps}}" wx:key="index" class="hz-progress__step hz-progress__step--{{item.state}}"><view class="hz-progress__dot"></view><text class="hz-progress__label">{{item.label}}</text><text wx:if="{{item.date}}" class="hz-progress__date">{{item.date}}</text></view></view>

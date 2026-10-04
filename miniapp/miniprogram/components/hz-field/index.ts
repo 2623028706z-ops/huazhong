@@ -10,6 +10,7 @@ Component({
     // text | number | digit | textarea
     type: { type: String, value: 'text' },
     error: { type: String, value: '' },
+    suffix: { type: String, value: '' },
   },
   data: { focused: false },
   methods: {

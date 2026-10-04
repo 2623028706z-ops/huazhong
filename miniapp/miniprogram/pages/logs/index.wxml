@@ -8,7 +8,7 @@
   <block wx:for="{{groups}}" wx:key="day" wx:for-item="group">
     <text class="u-list__group">{{group.header}}</text>
     <view wx:for="{{group.rows}}" wx:key="id" data-key="{{item.id}}" bindtap="onOpen">
-      <hz-card title="{{item.title}}" total="{{item.total}}" meta="{{item.meta}}" />
+      <hz-card row="{{item}}" />
     </view>
   </block>
   <text wx:if="{{done && groups.length > 0}}" class="u-list__end">{{allLoaded}}</text>

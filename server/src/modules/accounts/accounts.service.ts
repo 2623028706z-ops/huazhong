@@ -4,6 +4,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { eq } from 'drizzle-orm'
 import type { Db } from '../../../db/client.ts'
 import { accounts } from '../../../db/schema/index.ts'
+import { ENV, type Env } from '../../env.ts'
 import { DB } from '../../common/db.ts'
 import { resolveViewer, viewerOf, type Viewer } from '../../common/domain/viewer.ts'
 import { findAccountRow } from '../../common/identity.ts'
@@ -19,6 +20,7 @@ const idOrNull = (id: number | null) => (id === null ? null : String(id))
 export class AccountsService {
   constructor(
     @Inject(DB) private readonly db: Db,
+    @Inject(ENV) private readonly env: Env,
     private readonly writes: WriteService,
     private readonly phones: PhoneExchange,
   ) {}
@@ -29,6 +31,7 @@ export class AccountsService {
       type: viewer.type,
       name: viewer.name,
       phone: viewer.phone,
+      contactPhone: this.env.CONTACT_PHONE ?? '',
       orgLabel: viewer.orgLabel,
       storeId: idOrNull(viewer.storeId),
       supplierId: idOrNull(viewer.supplierId),

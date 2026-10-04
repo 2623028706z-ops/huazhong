@@ -194,6 +194,7 @@ export const stocktakeLines = pgTable(
     unit: text().notNull(),
     bookQty: integer().notNull(),
     actualQty: integer().notNull(),
+    lastMoveId: bigint({ mode: 'number' }).notNull().default(0),
     diffQty: integer().generatedAlwaysAs(sql`actual_qty - book_qty`),
     sort: integer().notNull(),
   },
@@ -201,5 +202,7 @@ export const stocktakeLines = pgTable(
     unique().on(t.stocktakeId, t.materialId),
     check('stocktake_lines_book', sql`${t.bookQty} >= 0`),
     check('stocktake_lines_actual', sql`${t.actualQty} >= 0`),
+    check('stocktake_lines_last_move', sql`${t.lastMoveId} >= 0`),
+    index('stocktake_lines_material_move').on(t.materialId, t.lastMoveId),
   ],
 )

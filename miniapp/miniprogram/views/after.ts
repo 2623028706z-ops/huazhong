@@ -2,6 +2,7 @@
 import {
   afterReasons,
   copy,
+  redesignCopy,
   formatMoney,
   formatQty,
   formatTime,
@@ -26,8 +27,18 @@ function amountTextOf(after: AfterCard, forStore: boolean): string {
 export function afterRowOf(after: AfterCard, forStore: boolean) {
   return {
     id: after.id,
+    fields: [
+      { label: redesignCopy.no, value: after.no, wide: true },
+      { label: redesignCopy.submittedDate, value: after.afterDate },
+      {
+        label: redesignCopy.afterAmount,
+        value: after.amountCents === null ? redesignCopy.pending : formatMoney(after.amountCents),
+        amount: after.amountCents !== null,
+      },
+      { label: redesignCopy.originalOrder, value: after.orderNo, wide: true },
+    ],
     date: after.afterDate,
-    status: after.status,
+    status: forStore && after.status === 'voided' ? 'cancelled' : after.status,
     title: forStore
       ? lineTitleOf(after.lineName, after.lineCount)
       : copy.org.store(after.customerName, after.storeName),
@@ -58,30 +69,40 @@ export function afterLinesOf(after: AfterDetail) {
   }))
 }
 
-export function afterInfoOf(after: AfterDetail) {
+export function afterInfoOf(after: AfterDetail, forStore = false) {
   return rowsOf([
-    [copy.screen.label.sourceOrder, after.orderNo],
+    [redesignCopy.no, after.no],
+    [
+      copy.screen.label.sourceOrder,
+      after.orderNo,
+      {
+        url: `/packages/${forStore ? 'store' : 'sales'}/pages/order-detail/index?id=${after.orderId}`,
+      },
+    ],
     [copy.screen.label.customerStore, copy.org.store(after.customerName, after.storeName)],
     [copy.field.shipDate, after.shipDate],
     [copy.screen.label.afterDate, after.afterDate],
     [copy.screen.label.origin, labels.afterOrigin[after.origin]],
     [
       copy.screen.label.afterAmount,
-      after.amountCents === null ? null : formatMoney(after.amountCents),
+      after.amountCents === null ? redesignCopy.pending : formatMoney(after.amountCents),
     ],
     [copy.screen.label.processNote, after.note],
   ])
 }
 
 // 关闭信息（关闭原因）或作废信息（作废原因和作废时间）
-export function afterReasonsOf(after: AfterDetail) {
+export function afterReasonsOf(after: AfterDetail, external = false) {
   const heading = after.voidReason === null ? copy.screen.section.close : copy.screen.section.void
   return {
-    heading,
+    heading: external && after.voidReason !== null ? copy.screen.section.cancel : heading,
     rows: rowsOf([
       [copy.screen.label.closeReason, after.closeReason],
-      [copy.screen.label.voidReason, after.voidReason],
-      [copy.screen.label.voidedAt, after.voidedAt === null ? null : formatTime(after.voidedAt)],
+      [external ? copy.screen.label.cancelReason : copy.screen.label.voidReason, after.voidReason],
+      [
+        external ? copy.screen.label.cancelledAt : copy.screen.label.voidedAt,
+        after.voidedAt === null ? null : formatTime(after.voidedAt),
+      ],
     ]),
   }
 }

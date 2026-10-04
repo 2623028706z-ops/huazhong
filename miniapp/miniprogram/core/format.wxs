@@ -63,7 +63,7 @@ function formatMoney(cents) {
 function formatQty(qty, unit) {
     return qty + ' ' + unit;
 }
-var UNIT_SEPARATOR = ' · ';
+var UNIT_SEPARATOR = '　　';
 function formatUnitTotals(totals) {
     var text = '';
     for (var i = 0; i < totals.length; i += 1) {
@@ -74,8 +74,8 @@ function formatUnitTotals(totals) {
     }
     return text;
 }
-function formatCardDate(date, today) {
-    return date.slice(0, 4) === today.slice(0, 4) ? date.slice(5) : date;
+function formatCardDate(date, _today) {
+    return date;
 }
 function clockOf(minutes) {
     var minuteOfDay = minutes - Math.floor(minutes / MINUTES_PER_DAY) * MINUTES_PER_DAY;
@@ -95,8 +95,7 @@ function formatClock(timestamp) {
     return clockOf(shanghaiMinutesOf(timestamp));
 }
 function formatNavDate(date) {
-    var dotted = date.slice(0, 4) + '.' + date.slice(5, 7) + '.' + date.slice(8, 10);
-    return dotted + ' ' + weekdayOf(date);
+    return date + ' ' + weekdayOf(date);
 }
 function formatDayHeader(date, today) {
     return formatCardDate(date, today) + ' ' + weekdayOf(date);

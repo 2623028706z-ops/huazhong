@@ -88,85 +88,69 @@ describe('G30-F 历史日志筛选', () => {
   })
 })
 
-describe('H06/H12-F 账本变化不覆盖草稿', () => {
-  it('version:null只提示，重核保留资金输入、清空失效核销并换令牌', async () => {
+describe('对账单变化不覆盖资金草稿', () => {
+  it('实时只提示，显式核对后保留金额优惠备注并换所选版本', async () => {
     const page = await loadPage(() => import('../miniprogram/packages/finance/pages/receive/index'))
+    const statement = {
+      id: '1',
+      no: 'DZ-1',
+      version: 1,
+      kind: 'supplier',
+      partyId: '9',
+      partyName: '供应商',
+      periodFrom: '2026-10-01',
+      periodTo: '2026-10-02',
+      statementDate: '2026-10-02',
+      dueDate: null,
+      settledAt: null,
+      amountCents: 1000,
+      dueCents: 1000,
+      sourceCount: 1,
+      status: 'unsettled',
+      overdueDays: 0,
+      actions: [],
+      lockedReason: null,
+    }
     const draft = {
       receiptDate: '2026-10-01',
       amountText: '20',
+      discountText: '1',
+      discountReason: '抹零',
       methodName: '微信',
-      note: '备注',
-      allocs: [
-        {
-          orderId: 'po:1',
-          docType: 'po',
-          docId: '1',
-          orderNo: 'PO-001',
-          version: 1,
-          unpaidCents: 1000,
-          text: '10.00',
-        },
-      ],
+      note: '保留备注',
+      statements: [statement],
     }
-    page.setData({ isPayment: true, customerId: '9', form: draft, ledgerToken: 'old-token' })
-    await invoke(page, 'watchCustomer')
+    page.setData({ isPayment: true, partyId: '9', form: draft })
+    await invoke(page, 'watchParty')
     mocks.changes[0]?.(null)
     expect(page.data.form).toEqual(draft)
-    expect(page.data.ledgerToken).toBe('old-token')
     expect(page.data.needsReview).toBe(true)
     expect(mocks.request).not.toHaveBeenCalled()
     mocks.request.mockResolvedValue({
       ok: true,
       data: {
-        ledgerToken: 'new-token',
-        prepaidCents: 200,
-        items: [
-          {
-            docType: 'po',
-            docId: '1',
-            no: 'PO-001',
-            version: 2,
-            unpaidCents: 700,
-            notice: '单价改过，请核对',
-          },
-        ],
+        partyId: '9',
+        creditCents: 200,
+        items: [{ ...statement, version: 2, dueCents: 700 }],
+        actions: [],
       },
     })
-    await invoke(page, 'onReviewLedger')
+    await invoke(page, 'onReview')
     expect(page.data.form).toMatchObject({
-      receiptDate: draft.receiptDate,
-      amountText: '20',
-      methodName: '微信',
-      note: '备注',
-      allocs: [{ orderId: 'po:1', text: '', unpaidCents: 700, version: 2 }],
+      ...draft,
+      statements: [{ id: '1', version: 2, dueCents: 700 }],
     })
-    expect(page.data.ledgerToken).toBe('new-token')
-    expect(page.data.ledgerChanges).toEqual([
-      `PO-001${copy.separator}${copy.rework.ledgerDifference(1000, 700)}`,
-    ])
+    expect(page.data.changes).toEqual(['DZ-1 · 来源单据有变化，请核对后再生成'])
     expect(page.data.needsReview).toBe(false)
   })
 })
 
 describe('阶段5草稿与复合单据引用', () => {
-  it('付款表单按类型和ID打开改单记录，不把复合键当作单据ID', async () => {
+  it('收付款所选对账单进入完整详情页', async () => {
     const page = await loadPage(() => import('../miniprogram/packages/finance/pages/receive/index'))
-    page.setData({
-      isPayment: true,
-      form: {
-        allocs: [
-          { orderId: 'wh:1', docType: 'wh', docId: '1' },
-          { orderId: 'po:1', docType: 'po', docId: '1' },
-        ],
-      },
-    })
-    await invoke(page, 'onOpenDocument', { currentTarget: { dataset: { key: 'wh:1' } } })
+    await invoke(page, 'onOpenStatement', { currentTarget: { dataset: { key: '1' } } })
     expect(mocks.navigateTo).toHaveBeenCalledWith({
-      url: '/packages/finance/pages/payable/index?docType=wh&id=1',
-    })
-    await invoke(page, 'onOpenDocument', { currentTarget: { dataset: { key: 'po:1' } } })
-    expect(mocks.navigateTo).toHaveBeenCalledWith({
-      url: '/packages/finance/pages/payable/index?docType=po&id=1',
+      url: '/packages/finance/pages/statement-detail/index?id=1',
     })
   })
   it('入库详情推送保持草稿和原版本，提交仍受版本锁校验；核销后关闭不可用操作', async () => {
@@ -197,7 +181,7 @@ describe('阶段5草稿与复合单据引用', () => {
     expect(page.data.sheet).toBe('')
     expect(page.data.changed).toBe(false)
   })
-  it('管理出库分类只临时关闭系统卸载拦截，不清空出库草稿', async () => {
+  it('管理出库分类在表单弹层里做，不离开表单、不清空草稿；选中的分类被停用就清掉', async () => {
     const page = await loadPage(
       () => import('../miniprogram/packages/warehouse/pages/doc-form/index'),
     )
@@ -205,27 +189,40 @@ describe('阶段5草稿与复合单据引用', () => {
       supplierId: '',
       outCategoryId: '1',
       reason: '保留',
-      lines: [{ materialId: '1', qty: 2 }],
+      lines: [],
       images: [],
     }
-    page.setData({ form, changed: true })
+    page.setData({ kind: 'out', form, changed: true })
     await invoke(page, 'onManageCategories')
-    expect(mocks.disableUnload).toHaveBeenCalled()
-    expect(mocks.navigateTo).toHaveBeenCalledWith({
-      url: '/packages/warehouse/pages/out-categories/index',
+    expect(page.data.categorySheet).toBe(true)
+    expect(mocks.navigateTo).not.toHaveBeenCalled()
+    expect(page.data.form).toEqual(form)
+    mocks.request
+      .mockResolvedValueOnce({ ok: true, data: { id: '1', name: '样品', enabled: false, sort: 0 } })
+      .mockResolvedValueOnce({
+        ok: true,
+        data: {
+          items: [
+            { id: '1', name: '样品', enabled: false, sort: 0 },
+            { id: '2', name: '其他', enabled: true, sort: 1 },
+          ],
+          nextCursor: null,
+        },
+      })
+    await invoke(page, 'onSaveCategory', { detail: { id: '1', name: '样品', enabled: false } })
+    expect(mocks.request.mock.calls.at(-2)?.[0]).toMatchObject({
+      method: contract.updateOutCategory.method,
+      path: contract.updateOutCategory.path,
     })
-    expect(page.data.form).toEqual(form)
-    expect(page.data.changed).toBe(true)
-    await invoke(page, 'onHide')
-    expect(mocks.disableUnload).toHaveBeenCalled()
-    expect(page.data.form).toEqual(form)
+    expect(page.data.categoryOptions).toEqual([{ id: '2', name: '其他' }])
+    expect(page.data.form).toEqual({ ...form, outCategoryId: '' })
     expect(page.data.changed).toBe(true)
   })
 })
 
-describe('X11 目录复制凭据', () => {
+describe('X8 客户页目录复制凭据', () => {
   it('零可复制不写，STALE只重预览，不自动重试复制', async () => {
-    const page = await loadPage(() => import('../miniprogram/packages/sales/pages/directory/index'))
+    const page = await loadPage(() => import('../miniprogram/packages/sales/pages/customers/index'))
     page.setData({
       customerId: '1',
       copySourceId: '2',
@@ -297,7 +294,7 @@ describe('C2 需求卡片与草稿来源', () => {
     })
     await invoke(page, 'load')
     const rows = page.data.rows as { range: string }[]
-    expect(rows[0]?.range).toBe('10-03 ~ 10-04 出货')
+    expect(rows[0]?.range).toBe('2026-10-03 ~ 2026-10-04 出货')
     expect(mocks.request.mock.calls[0]?.[1]).toMatchObject({ query: { shortageOnly: 'true' } })
     expect(await invoke(page, 'draft')).toMatchObject({
       demandContext: {

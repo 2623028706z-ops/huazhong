@@ -12,6 +12,8 @@
     "hz-action-bar": "/components/hz-action-bar/index",
     "hz-button": "/components/hz-button/index",
     "hz-sheet": "/components/hz-sheet/index",
-    "hz-confirm": "/components/hz-confirm/index"
+    "hz-confirm": "/components/hz-confirm/index",
+    "hz-line-item": "/components/hz-line-item/index",
+    "hz-realtime-bar": "/components/hz-realtime-bar/index"
   }
 }

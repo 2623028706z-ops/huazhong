@@ -8,3 +8,9 @@
   background: var(--hz-amber-bg);
   box-shadow: none;
 }
+
+.hz-tag--danger {
+  color: var(--hz-danger);
+  background: var(--hz-danger-bg);
+  box-shadow: none;
+}

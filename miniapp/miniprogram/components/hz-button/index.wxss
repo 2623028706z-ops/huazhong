@@ -1,7 +1,7 @@
 /* TDesign 按钮只改主题变量（02 章第 2 节） */
 .hz-button {
   --td-button-medium-height: var(--hz-tap);
-  --td-button-border-radius: var(--hz-radius);
+  --td-button-border-radius: var(--hz-radius-button);
   --td-button-medium-font: 600 var(--hz-font-md) / 1 var(--td-font-family);
   --td-button-medium-padding-horizontal: var(--hz-row-pad);
   --td-button-primary-bg-color: var(--hz-brand);
@@ -28,7 +28,7 @@
 }
 
 .hz-button__inner {
-  letter-spacing: 0.16em;
+  letter-spacing: 0;
 }
 
 /* 微信原生 button:not([size=mini]) 默认 184px 宽，优先级高过 TDesign 的 --block，这里拉满 */

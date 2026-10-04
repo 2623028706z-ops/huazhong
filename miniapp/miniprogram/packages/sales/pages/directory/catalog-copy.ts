@@ -15,7 +15,7 @@ interface Host {
   }
   idempotencyKey: string
   setData(patch: Record<string, unknown>): void
-  show(catalog: Catalog): void
+  showCatalog(catalog: Catalog): void
   onPreviewCopy(): Promise<void>
 }
 
@@ -71,7 +71,7 @@ export const catalogCopyMethods = {
     )
     this.setData({ copyBusy: false })
     if (result.ok) {
-      this.show(result.data)
+      this.showCatalog(result.data)
       this.setData({ copySheet: false })
       showSuccess(copy.action.saved)
       return

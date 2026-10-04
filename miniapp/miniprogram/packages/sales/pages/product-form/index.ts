@@ -11,6 +11,7 @@ import { showSuccess } from '../../../../core/toast'
 import { uploadImage, type LocalImage } from '../../../../core/upload'
 import {
   addMaterial,
+  bomTableRowsOf,
   loadMaterials,
   materialPicksOf,
   removeBomLine,
@@ -19,8 +20,6 @@ import {
 import { checkCreate, checkUpdate, productFormOf, type ProductForm } from './form'
 
 const DEFAULT_TITLE: string = copy.screen.title.createProduct
-
-type IndexDetail<T> = DetailEvent<T, { index: number }>
 
 Page({
   data: {
@@ -38,6 +37,8 @@ Page({
     picks: [] as { id: string; name: string; sub: string }[],
     saving: false,
     uploading: false,
+    bomRows: [] as ReturnType<typeof bomTableRowsOf>,
+    editKey: '',
     texts: {
       name: copy.screen.label.name,
       category: copy.field.category,
@@ -89,7 +90,11 @@ Page({
     this.render(form)
   },
   render(form: ProductForm) {
-    this.setData({ form, images: form.imageUrl ? [{ url: form.imageUrl }] : [] })
+    this.setData({
+      form,
+      bomRows: bomTableRowsOf(form.bom, this.materials),
+      images: form.imageUrl ? [{ url: form.imageUrl }] : [],
+    })
     markChanged(this, isChanged(this.data.initial, form))
   },
   update(patch: Partial<ProductForm>, field: string) {
@@ -126,12 +131,12 @@ Page({
   onRemoveImage() {
     this.update({ imageFileId: null, imageUrl: '' }, 'imageFileId')
   },
-  onBomQty(event: IndexDetail<number>) {
-    const { index } = event.currentTarget.dataset
-    this.update({ bom: setBomQty(this.data.form.bom, index, event.detail) }, 'bom')
+  onBomQty(event: DetailEvent<{ index: number; qty: number }>) {
+    const { index, qty } = event.detail
+    this.update({ bom: setBomQty(this.data.form.bom, index, qty) }, 'bom')
   },
-  onRemoveBom(event: DetailEvent<unknown, { index: number }>) {
-    const { index } = event.currentTarget.dataset
+  onRemoveBom(event: DetailEvent<number>) {
+    const index = event.detail
     this.update({ bom: removeBomLine(this.data.form.bom, index) }, 'bom')
   },
   onAddBom() {
@@ -141,7 +146,7 @@ Page({
     this.setData({ pickSheet: false })
   },
   onPick(event: KeyEvent) {
-    this.setData({ pickSheet: false })
+    this.setData({ pickSheet: false, editKey: event.currentTarget.dataset.key })
     const bom = addMaterial(this.materials, this.data.form.bom, event.currentTarget.dataset.key)
     this.update({ bom }, 'bom')
   },

@@ -13,7 +13,7 @@
   align-items: baseline;
   justify-content: space-between;
   margin-top: 16px;
-  font-size: var(--hz-font-note);
+  font-size: var(--hz-font-sm);
 }
 
 .hz-brand__lead {

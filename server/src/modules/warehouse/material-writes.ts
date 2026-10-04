@@ -8,6 +8,7 @@ import { found } from '../../common/scope.ts'
 import { guardUnique } from '../../common/unique.ts'
 import { WriteService, type WriteContext } from '../../common/write.service.ts'
 import { MaterialReads, nextMaterialCode } from './material-reads.ts'
+import { guardMaterialUnit } from './material-unit.ts'
 
 type In<K extends keyof typeof contract> = ParsedInput<(typeof contract)[K]>['body']
 const UNIQUE_FIELDS = { materials_code_unique: { code: copy.finance.materialCodeTaken } }
@@ -95,38 +96,44 @@ export class MaterialWrites {
   update(viewer: Viewer, id: number, input: In<'updateMaterial'>) {
     return guardUnique(
       () =>
-        this.writes.run(viewer, async (ctx) => {
-          found(
-            (await ctx.tx.select().from(materials).where(eq(materials.id, id)).for('update'))[0],
-          )
-          const before = await this.reads.item(ctx.tx, id)
-          if (before.version !== input.version)
-            throw appError.stale(copy.finance.materialStale, before)
-          const same =
-            before.name === input.name &&
-            before.code === input.code &&
-            before.categoryId === input.categoryId &&
-            before.unit === input.unit &&
-            before.enabled === input.enabled
-          if (same) throw appError.businessRule(copy.error.noChange)
-          await checkCategory(ctx, input.categoryId)
-          await ctx.tx
-            .update(materials)
-            .set({
-              ...input,
-              categoryId: Number(input.categoryId),
-              version: sql`${materials.version} + 1`,
+        this.writes.run(
+          viewer,
+          async (ctx) => {
+            found(
+              (await ctx.tx.select().from(materials).where(eq(materials.id, id)).for('update'))[0],
+            )
+            const before = await this.reads.item(ctx.tx, id)
+            if (before.version !== input.version)
+              throw appError.stale(copy.finance.materialStale, before)
+            const same =
+              before.name === input.name &&
+              before.code === input.code &&
+              before.categoryId === input.categoryId &&
+              before.unit === input.unit &&
+              before.enabled === input.enabled
+            if (same) throw appError.businessRule(copy.error.noChange)
+            if (before.unit !== input.unit) await guardMaterialUnit(ctx, id)
+            await checkCategory(ctx, input.categoryId)
+            await ctx.tx
+              .update(materials)
+              .set({
+                ...input,
+                categoryId: Number(input.categoryId),
+                version: sql`${materials.version} + 1`,
+              })
+              .where(eq(materials.id, id))
+            const after = await this.reads.item(ctx.tx, id)
+            await ctx.log({
+              ...materialLog(after, copy.log.action.updateMaterial),
+              before: materialView(before),
+              after: materialView(after),
             })
-            .where(eq(materials.id, id))
-          const after = await this.reads.item(ctx.tx, id)
-          await ctx.log({
-            ...materialLog(after, copy.log.action.updateMaterial),
-            before: materialView(before),
-            after: materialView(after),
-          })
-          notifyMaterial(ctx)
-          return after
-        }),
+            notifyMaterial(ctx)
+            return after
+          },
+          undefined,
+          { exclusive: true },
+        ),
       UNIQUE_FIELDS,
     )
   }

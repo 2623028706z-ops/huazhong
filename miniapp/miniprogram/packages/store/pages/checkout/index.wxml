@@ -1,3 +1,4 @@
+<wxs src="../../../../core/format.wxs" module="format" />
 <import src="/views/detail.wxml" />
 <hz-navbar title="{{title}}" back guard="{{note !== initialNote}}" />
 <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
@@ -8,17 +9,19 @@
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
   <block wx:else>
     <template is="info" data="{{rows: info}}" />
+    <view class="u-section">
+      <hz-line-item lines="{{rows}}" mode="view" removable bind:remove="onRemove" />
+    </view>
     <view class="u-card u-form-card">
       <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{note}}" bind:change="onNote" />
     </view>
-    <view class="u-section">
-      <text class="u-section__title">{{texts.lines}}</text>
-      <hz-line-item lines="{{rows}}" mode="qty" removable bind:qty="onQty" bind:remove="onRemove" />
-      <template wx:if="{{amountRows.length}}" is="info-card" data="{{rows: amountRows}}" />
-    </view>
   </block>
 </view>
-<hz-action-bar>
-  <hz-button text="{{isEdit ? texts.confirmEdit : texts.submit}}" loading="{{saving}}" disabled="{{rows.length === 0 && !isEdit}}" bind:press="onSubmit" />
+<hz-action-bar settlement>
+  <view wx:if="{{rows.length}}" class="u-bar-total">
+    <text class="u-serif-amount">{{format.formatMoney(totalCents)}}</text>
+    <text class="u-info__meta">{{totalMeta}}</text>
+  </view>
+  <hz-button text="{{needsReview ? texts.recheck : isEdit ? texts.confirmEdit : texts.submit}}" loading="{{saving}}" disabled="{{rows.length === 0 && !isEdit}}" bind:press="onSubmit" />
 </hz-action-bar>
 <hz-confirm id="hz-confirm" />

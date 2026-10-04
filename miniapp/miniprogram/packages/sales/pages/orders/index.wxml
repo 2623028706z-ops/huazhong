@@ -3,8 +3,8 @@
 <view class="u-list">
   <hz-filter-bar status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" search-placeholder="{{searchPlaceholder}}" date-label="{{dateLabel}}" dimensions="{{dimensions}}" value="{{filter}}" bind:change="onFilter" />
   <template is="list-state" data="{{failure, skeleton, loaded, rows, emptyObject}}" />
-  <template is="cards" data="{{rows, statusKind, done, allLoaded}}" />
+  <template is="cards" data="{{rows, statusKind, done, allLoaded,selection:filter.status==='pending_confirm'}}" />
 </view>
-<hz-action-bar wx:if="{{canCreate}}">
-  <hz-button text="{{createText}}" bind:press="onCreate" />
-</hz-action-bar>
+<hz-action-bar wx:if="{{filter.status === 'pending_confirm'}}"><hz-button kind="secondary" text="{{texts.allSelected}}" bind:press="onSelectAll" /><hz-button text="{{batchText}}" disabled="{{!selected.length}}" bind:press="onOpenBatch" /></hz-action-bar>
+<hz-action-bar wx:elif="{{canCreate}}"><hz-button kind="secondary" text="{{texts.invite}}" bind:press="onInvite" /><hz-button text="{{createText}}" bind:press="onCreate" /></hz-action-bar>
+<hz-sheet show="{{batchSheet}}" title="{{texts.confirmOrders}}" footer bind:close="onCloseBatch"><view class="u-sheet-form"><hz-notice wx:for="{{batchOverdue}}" wx:key="index" text="{{item}}" /><hz-error wx:if="{{batchError}}" message="{{batchError}}" /><hz-picker label="{{texts.shipDate}}" mode="date" value="{{batchDate}}" bind:change="onBatchDate" /><text wx:for="{{batchNos}}" wx:key="index">{{item}}</text></view><hz-button slot="footer" text="{{batchText}}" loading="{{batchBusy}}" bind:press="onConfirmBatch" /></hz-sheet>

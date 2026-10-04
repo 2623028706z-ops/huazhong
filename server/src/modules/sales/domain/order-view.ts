@@ -1,6 +1,14 @@
 // 订单卡片、明细行的组装（纯函数）：金额、合计、标记、actions 都在这里算，前端只显示
-import { copy, type OrderCard, type OrderLine, type OrderStatus } from '@huazhong/shared'
+import {
+  copy,
+  type OrderCard,
+  type OrderLine,
+  type OrderStatus,
+  type StatementRef,
+} from '@huazhong/shared'
+import { actionOf } from '../../../common/domain/actions.ts'
 import { sumOf, unitTotalsOf } from '../../../common/domain/units.ts'
+import { statementLockedReason } from '../../../common/statements.ts'
 import { orderActionsOf, type OrderRoles } from './order-actions.ts'
 
 export interface OrderRow {
@@ -8,7 +16,7 @@ export interface OrderRow {
   confirmedBy?: number | null
   cancelRequested?: boolean
   cancelRejected?: boolean
-  hasLiveAllocation?: boolean
+  statement?: StatementRef | null
   hasLiveAfter?: boolean
   id: number
   no: string
@@ -121,14 +129,16 @@ function cardActions(row: OrderRow, views: OrderLine[], roles: OrderRoles, today
         : action,
     )
   actions.push(...cancelActions(row, roles, owned))
-  if (
-    roles.sales &&
-    row.status === 'shipped' &&
-    owned &&
-    !row.hasLiveAllocation &&
-    !row.hasLiveAfter
-  )
-    actions.push({ code: 'voidOrder', enabled: true, disabledReason: null, reasonRequired: true })
+  if (roles.sales && row.status === 'shipped') {
+    const disabledReason = !owned
+      ? copy.error.forbidden
+      : row.statement
+        ? statementLockedReason(row.statement.no)
+        : row.hasLiveAfter
+          ? copy.rework.orderOperationLocked
+          : null
+    actions.push(actionOf('voidOrder', disabledReason, true))
+  }
   return { ...actionSet, actions }
 }
 export function toOrderCard(

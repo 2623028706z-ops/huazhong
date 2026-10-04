@@ -5,12 +5,15 @@ import {
   type AfterCard,
   type AfterLine,
   type AfterStatus,
+  type StatementRef,
 } from '@huazhong/shared'
+import { statementLockedReason } from '../../../common/statements.ts'
 import { actionOf, uniqueActions } from '../../../common/domain/actions.ts'
 import { unitTotalsOf } from '../../../common/domain/units.ts'
 import type { Viewer } from '../../../common/domain/viewer.ts'
 
 export interface AfterRow {
+  statement?: StatementRef | null
   createdBy?: number
   processedBy?: number | null
   id: number
@@ -94,6 +97,7 @@ export function toAfterCard(
     lineCount: lines.length,
     units: unitTotalsOf(lines),
     // 只有已处理的有金额（已关闭、已作废不显示金额，03 章第 7 节）
+    statement: row.statement ?? null,
     amountCents: row.status === 'processed' ? row.amountCents : null,
     actions: afterActionsOf(roles, row.status)
       .filter(
@@ -109,7 +113,13 @@ export function toAfterCard(
         !roles.admin &&
         roles.accountId !== (row.origin === 'store' ? row.processedBy : row.createdBy)
           ? { ...action, enabled: false as const, disabledReason: copy.error.forbidden }
-          : action,
+          : action.code === 'voidAfter' && row.statement
+            ? {
+                ...action,
+                enabled: false as const,
+                disabledReason: statementLockedReason(row.statement.no),
+              }
+            : action,
       ),
     lockedReason: null,
   }

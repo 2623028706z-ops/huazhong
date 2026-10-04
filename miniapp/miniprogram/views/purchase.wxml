@@ -1,24 +1,22 @@
 <import src="detail.wxml" />
 <template name="po-body">
   <hz-notice wx:if="{{notice}}" text="{{notice}}" />
+  <hz-progress steps="{{progress}}" />
   <template is="info" data="{{...info}}" />
   <view class="u-section">
-    <text class="u-section__title">{{linesHeading}}</text>
-    <hz-line-item lines="{{lines}}" />
-    <template is="info-card" data="{{rows: amountRows}}" />
+    <hz-line-item title="{{linesHeading}}" qty-label="{{qtyLabel}}" lines="{{lines}}" />
+
   </view>
   <hz-records wx:if="{{changes.length}}" type="poChange" items="{{changes}}" />
   <hz-records wx:if="{{prices.length}}" type="priceChange" items="{{prices}}" />
   <hz-records wx:if="{{returns.length}}" type="returns" items="{{returns}}" />
   <template wx:if="{{reason.rows.length}}" is="info" data="{{...reason}}" />
-  <view wx:if="{{payments.length}}" class="u-section"><text class="u-section__title">核销记录</text><view class="u-card u-info"><view wx:for="{{payments}}" wx:key="index" class="u-sheet-row"><text>{{item.date}}</text><text class="u-serif-amount">{{item.amount}}</text></view></view></view>
 </template>
 <template name="invite-body">
+  <hz-progress steps="{{progress}}" />
   <template is="info" data="{{...info}}" />
-  <hz-button wx:if="{{poLink}}" kind="text" text="{{poLink}}" bind:press="onPo" />
   <view class="u-section">
-    <text class="u-section__title">{{linesHeading}}</text>
-    <hz-line-item lines="{{lines}}" quantity-only="{{!submitted}}" />
+    <hz-line-item title="{{linesHeading}}" qty-label="{{qtyLabel}}" lines="{{lines}}" quantity-only="{{!submitted}}" />
   </view>
   <template wx:if="{{reason.rows.length}}" is="info" data="{{...reason}}" />
 </template>

@@ -1,5 +1,5 @@
 import type { Me } from '@huazhong/shared'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { identityOf, isLandingModule, landingUrl, tabsOf } from '../miniprogram/core/session'
 
 vi.mock('../miniprogram/core/config', () => ({
@@ -11,6 +11,7 @@ const base: Me = {
   type: 'staff',
   name: '李敏',
   phone: '13700000002',
+  contactPhone: '',
   orgLabel: null,
   storeId: null,
   supplierId: null,
@@ -20,20 +21,17 @@ const base: Me = {
 }
 
 describe('登录落点和底栏', () => {
-  it('只有一个模块的员工落在模块首页，底栏「首页」也指向它', () => {
+  it('单模块员工落在模块首页，销售没有模块底栏', () => {
     expect(landingUrl(base)).toBe('/packages/sales/pages/home/index')
     expect(isLandingModule(base, 'sales')).toBe(true)
-    expect(tabsOf(base).map((tab) => tab.url)).toEqual([
-      '/packages/sales/pages/home/index',
-      '/pages/my/index',
-    ])
+    expect(tabsOf(base)).toEqual([])
   })
 
-  it('管理员、多模块员工落在花众首页；门店、供应商落在各自首页', () => {
+  it('管理员、多模块员工落在花众首页；门店进订货、供应商进填报', () => {
     expect(landingUrl({ ...base, landing: 'home' })).toBe('/pages/home/index')
-    expect(landingUrl({ ...base, landing: 'store_home' })).toBe('/packages/store/pages/home/index')
-    expect(landingUrl({ ...base, landing: 'supplier_home' })).toBe(
-      '/packages/supplier/pages/home/index',
+    expect(landingUrl({ ...base, landing: 'store_shop' })).toBe('/packages/store/pages/shop/index')
+    expect(landingUrl({ ...base, landing: 'supplier_invites' })).toBe(
+      '/packages/supplier/pages/invites/index',
     )
     expect(isLandingModule({ ...base, landing: 'home' }, 'sales')).toBe(false)
   })
@@ -56,27 +54,28 @@ describe('身份行', () => {
   })
 })
 
-describe('门店底栏', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
+describe('业务底栏', () => {
+  it('门店只显示订货、订单、我的', () => {
+    const store: Me = { ...base, type: 'store', modules: [], landing: 'store_shop', menus: [] }
+    expect(tabsOf(store).map((tab) => tab.key)).toEqual(['shop', 'orders', 'my'])
   })
-
-  it('门店多一个「购物车」，角标是本机购物车件数', () => {
-    const cart = [
-      { productId: '1', qty: 2, name: '粉玫瑰日常花束', unit: '束', priceCents: 6800 },
-      { productId: '2', qty: 3, name: '白绿清新花束', unit: '束', priceCents: 8000 },
-    ]
-    vi.stubGlobal('wx', { getStorageSync: (key: string) => (key === 'hz-cart:9' ? cart : '') })
-    const store: Me = {
+  it('供应商填报带待填报数', () => {
+    const supplier: Me = {
       ...base,
-      id: '9',
-      type: 'store',
+      type: 'supplier',
       modules: [],
-      landing: 'store_home',
+      landing: 'supplier_invites',
       menus: [],
     }
-    const tabs = tabsOf(store)
-    expect(tabs.map((tab) => tab.key)).toEqual(['home', 'cart', 'my'])
-    expect(tabs[1]?.badge).toBe(5)
+    const tabs = tabsOf(supplier, 3)
+    expect(tabs.map((tab) => tab.key)).toEqual(['supply', 'orders', 'my'])
+    expect(tabs[0]?.badge).toBe(3)
+  })
+  it('只有仓库单模块员工显示库存一级入口', () => {
+    const warehouse: Me = { ...base, modules: ['warehouse'], landing: 'module:warehouse' }
+    expect(tabsOf(warehouse).map((tab) => tab.key)).toEqual(['home', 'stock', 'my'])
+    expect(
+      tabsOf({ ...base, modules: ['sales', 'warehouse'], landing: 'home' }).map((tab) => tab.key),
+    ).toEqual(['home', 'my'])
   })
 })

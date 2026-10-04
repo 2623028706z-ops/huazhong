@@ -6,10 +6,10 @@ describe('状态码取中文名和颜色', () => {
     expect(statusOf('orderStatus', 'to_ship')).toEqual({ text: '待发货', tone: 'wait' })
   })
   it('门店端收款状态叫「未付」，颜色同未收', () => {
-    expect(statusOf('storePayStatus', 'unpaid')).toEqual({ text: '未付', tone: 'wait' })
+    expect(statusOf('statementStatus', 'unsettled')).toEqual({ text: '未结清', tone: 'wait' })
   })
   it('无需付款是结束类（灰）', () => {
-    expect(statusOf('apStatus', 'no_pay')).toEqual({ text: '无需付款', tone: 'ended' })
+    expect(statusOf('statementStatus', 'voided')).toEqual({ text: '已作废', tone: 'ended' })
   })
   it('种类或状态码不对返回 null', () => {
     expect(statusOf('orderStatus', 'nope')).toBeNull()

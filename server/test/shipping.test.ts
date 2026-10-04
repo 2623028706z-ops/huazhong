@@ -1,5 +1,5 @@
 // 确认发货、新建订单、出货日期（07 章 A08、A09、A20、A23、A36、I04）
-import { copy, type OrderDetail, type TodoItem } from '@huazhong/shared'
+import { copy, type OrderDetail, type TodoRow } from '@huazhong/shared'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { dataOf, idBy, startSales, TODAY, TOMORROW, type SalesApp } from './support/sales.ts'
 
@@ -37,10 +37,10 @@ const shipAll = (order: OrderDetail, shipNote = '') => ({
 })
 
 async function shippingTodoNos(): Promise<string[]> {
-  const todos = dataOf<{ items: TodoItem[] }>(
-    await (await s.as('u7')).get('/modules/shipping/todos'),
+  const due = dataOf<{ items: { no: string }[] }>(
+    await (await s.as('u7')).get('/shipping/orders?dueOnly=true'),
   )
-  return todos.items.flatMap((item) => (item.kind === 'order' ? [item.order.no] : []))
+  return due.items.map((item) => item.no)
 }
 
 describe('确认发货', () => {
@@ -276,5 +276,18 @@ describe('出货日期', () => {
     expect(todos.count).toBe(2)
     // 两张都是今天出货，同一天按录入先后
     expect(await shippingTodoNos()).toEqual(['SO-260929-016', 'SO-260928-012'])
+  })
+
+  test('H3 发货待办和发货单都不带金额、改价标记', async () => {
+    const ship = await s.as('u7')
+    const todos = dataOf<{ rows: TodoRow[] }>(await ship.get('/modules/shipping/todos'))
+    const list = dataOf<{ items: Record<string, unknown>[] }>(await ship.get('/shipping/orders'))
+    expect(todos.rows).toEqual([{ key: 'dueShipments', label: '今日应发', count: 2 }])
+    const cards = list.items
+    expect(cards.length).toBeGreaterThan(0)
+    for (const card of cards) {
+      expect(card).not.toHaveProperty('amountCents')
+      expect(card).not.toHaveProperty('repriced')
+    }
   })
 })

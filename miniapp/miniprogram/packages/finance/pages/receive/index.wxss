@@ -1,0 +1,15 @@
+.hz-finance-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hz-finance-select__card {
+  flex: 1;
+  min-width: 0;
+}
+
+.hz-finance-select__check {
+  color: var(--hz-brand);
+  font-size: var(--hz-icon);
+}

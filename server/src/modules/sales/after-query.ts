@@ -10,7 +10,7 @@ import {
   type OutputOf,
 } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
-import { and, asc, count, desc, eq, inArray, type SQL } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, sql, type SQL } from 'drizzle-orm'
 import type { Db } from '../../../db/client.ts'
 import {
   afterLineImages,
@@ -19,8 +19,10 @@ import {
   customers,
   orderLines,
   orders,
+  operationLogs,
   stores,
 } from '../../../db/schema/index.ts'
+import { sourceStatement, sourceStatements } from '../../common/statements.ts'
 import { DB } from '../../common/db.ts'
 import { actionOf } from '../../common/domain/actions.ts'
 import { waitCounts } from '../../common/domain/counts.ts'
@@ -29,6 +31,7 @@ import { orNull } from '../../common/domain/text.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import { beforeCursor, dateBetween } from '../../common/page.ts'
 import { found, ownStoreId } from '../../common/scope.ts'
+import { searchAny } from '../../common/search.ts'
 import { FilesService } from '../files/files.service.ts'
 import {
   afterRolesOf,
@@ -40,15 +43,16 @@ import {
 import { claimedQtyOf, type Executor } from './order-rows.ts'
 
 type AfterQuery = {
-  status?: AfterStatus | undefined
+  status?: AfterStatus | 'cancelled' | undefined
   customerId?: string | undefined
+  q?: string | undefined
   from?: string | undefined
   to?: string | undefined
   cursor?: string | undefined
   limit: number
 }
 
-export function afterRowsQuery(executor: Executor) {
+function afterRowsQuery(executor: Executor) {
   return executor
     .select({
       id: afters.id,
@@ -111,7 +115,7 @@ async function loadAfterLines(
 }
 
 // 一组售后的卡片：明细一次查完
-export async function afterCardsOf(
+async function afterCardsOf(
   executor: Executor,
   rows: readonly AfterRow[],
   viewer: Viewer,
@@ -122,9 +126,14 @@ export async function afterCardsOf(
     null,
   )
   const roles = afterRolesOf(viewer)
+  const statements = await sourceStatements(
+    executor,
+    'after',
+    rows.map((row) => row.id),
+  )
   return rows.map((row) =>
     toAfterCard(
-      row,
+      { ...row, statement: statements.get(row.id) ?? null },
       lines.filter((line) => line.afterId === row.id),
       roles,
     ),
@@ -151,8 +160,12 @@ export async function orderAfterCards(
 }
 
 function listActions(viewer: Viewer) {
-  if (viewer.type === 'store') return [actionOf('applyAfter', null, null)]
+  if (viewer.type === 'store') return []
   return viewer.modules.includes('sales') ? [actionOf('createAfter', null, null)] : []
+}
+
+function closedAtOf(status: AfterStatus, date: Date | null) {
+  return status === 'closed' ? (date?.toISOString() ?? null) : null
 }
 
 @Injectable()
@@ -165,6 +178,7 @@ export class AfterReads {
   async list(viewer: Viewer, query: AfterQuery): Promise<OutputOf<typeof contract.listAfters>> {
     const base = and(
       afterVisibleTo(viewer),
+      searchAny(query.q, [afters.no, orders.no, customers.name, stores.name]),
       query.customerId === undefined ? undefined : eq(afters.customerId, Number(query.customerId)),
       dateBetween(afters.afterDate, query),
     )
@@ -172,7 +186,9 @@ export class AfterReads {
       .where(
         and(
           base,
-          query.status === undefined ? undefined : eq(afters.status, query.status),
+          query.status === undefined
+            ? undefined
+            : eq(afters.status, query.status === 'cancelled' ? 'voided' : query.status),
           beforeCursor(afters.afterDate, afters.id, query.cursor),
         ),
       )
@@ -225,6 +241,11 @@ export class AfterReads {
         note: afters.note,
         processedAt: afters.processedAt,
         closeReason: afters.closeReason,
+        closedAt: sql<Date | null>`(SELECT max(${operationLogs.createdAt}) FROM ${operationLogs}
+          WHERE ${operationLogs.targetType} = 'afters' AND ${operationLogs.targetId} = ${afters.id}
+            AND ${operationLogs.action} = ${copy.log.action.closeAfter})`.mapWith(
+          (value: string) => new Date(value),
+        ),
         voidReason: afters.voidReason,
         voidedAt: afters.voidedAt,
         shipDate: orders.shipDate,
@@ -238,16 +259,18 @@ export class AfterReads {
       executor,
       lines.map((line) => line.id),
     )
+    const statement = await sourceStatement(executor, 'after', id)
     return {
-      ...toAfterCard(row, lines, afterRolesOf(viewer)),
+      ...toAfterCard({ ...row, statement }, lines, afterRolesOf(viewer)),
       shipDate: extra.shipDate,
       note: orNull(extra.note),
       lines: lines.map((line) => toAfterLine(line, row.status, imagesOf(line.id))),
       processedAt: extra.processedAt?.toISOString() ?? null,
       closeReason: extra.closeReason,
+      closedAt: closedAtOf(row.status, extra.closedAt),
       voidReason: extra.voidReason,
       voidedAt: extra.voidedAt?.toISOString() ?? null,
-      notice: row.status === 'processed' ? copy.after.processedNotice : null,
+      notice: row.status === 'processed' && !statement ? copy.after.processedNotice : null,
     }
   }
 }

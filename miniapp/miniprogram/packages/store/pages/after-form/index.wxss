@@ -1,0 +1,10 @@
+.hz-store-after__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 80px;
+  gap: var(--hz-line-gap);
+  padding: var(--hz-row-pad) 0;
+}
+
+.hz-store-after__row .u-info__meta {
+  display: block;
+}

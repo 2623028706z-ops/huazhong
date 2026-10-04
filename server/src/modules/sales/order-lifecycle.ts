@@ -7,7 +7,7 @@ import { gateAction } from '../../common/domain/actions.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import { CurrentViewer, Input, Route, type ParsedInput } from '../../common/endpoint.ts'
 import { lockCustomer } from '../../common/org.ts'
-import { notifyCustomerFinance } from '../../common/ledger.ts'
+import { notifyCustomerFinance, assertSourceUnstatemented } from '../../common/statements.ts'
 import { found } from '../../common/scope.ts'
 import { WriteService } from '../../common/write.service.ts'
 import { orderDetailOf } from './order-query.ts'
@@ -40,6 +40,7 @@ export class OrderLifecycle {
         !ownsOrder(current, rolesOf(viewer))
       )
         throw appError.forbidden()
+      if (code === 'voidOrder') await assertSourceUnstatemented(ctx.tx, 'order', id)
       gateAction(before, {
         code,
         version: input.version,

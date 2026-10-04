@@ -1,6 +1,6 @@
 // 组件总览（02 章第 4 节、第 9 节）：每个 hz-* 组件的各种状态摆在一页，和 docs/design/gallery.html 对照。
 // 只在开发环境出现，正式版不打包
-import { copy, labels, shanghaiDateOf } from '@huazhong/shared'
+import { copy, redesignCopy, formatMoney, labels, shanghaiDateOf } from '@huazhong/shared'
 import type { DetailEvent, IndexEvent } from '../../core/events'
 import { emptyFilter, type FilterValue } from '../../core/filter'
 import { confirmLeave, isChanged, syncUnloadAlert } from '../../core/guard'
@@ -19,6 +19,25 @@ function amountOf(line: Line): Line {
 Page({
   data: {
     ...samples,
+    stockCards: samples.stockCards.map((row) => ({
+      ...row,
+      fields: [
+        { label: copy.title.inventory, value: row.total },
+        { label: copy.field.code, value: row.meta },
+      ],
+    })),
+    cards: samples.cards.map((row) => ({
+      ...row,
+      fields: [
+        { label: redesignCopy.no, value: row.meta, wide: true },
+        { label: redesignCopy.orderDate, value: row.date },
+        {
+          label: row.status === 'shipped' ? redesignCopy.shippedAmount : redesignCopy.orderAmount,
+          value: formatMoney(row.amount),
+          amount: true,
+        },
+      ],
+    })),
     title: copy.title.devGallery,
     modules: Object.values(labels.module),
     today: shanghaiDateOf(Date.now()),

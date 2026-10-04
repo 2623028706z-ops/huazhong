@@ -1,12 +1,1 @@
-<import src="/views/list.wxml" />
-<import src="/views/detail.wxml" />
-<import src="/views/payment-panel.wxml" />
-<hz-navbar title="{{title}}" back />
-<view class="u-list">
-  <hz-tabs items="{{kindTabs}}" value="{{kind}}" bind:change="onKind" />
-  <hz-filter-bar status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" count-all date-label="{{dateLabel}}" value="{{filter}}" bind:change="onFilter" />
-  <template is="list-state" data="{{failure, skeleton, loaded, rows, emptyObject}}" />
-  <template is="cards" data="{{rows, statusKind, done, allLoaded}}" />
-</view>
-<template is="payment-panel" data="{{paymentLayer,paymentFields,paymentView,paymentError,paymentReason,paymentBusy,paymentTexts,refundForm,refundMethods}}" />
-<hz-confirm id="hz-confirm" />
+<import src="/views/list.wxml" /><hz-navbar title="{{title}}" back /><view class="u-list"><hz-tabs items="{{kindTabs}}" value="{{kind}}" bind:change="onKind" /><hz-filter-bar ended-tabs dimensions="{{dimensions}}" status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" date-label="{{dateLabel}}" search-placeholder="{{searchPlaceholder}}" value="{{filter}}" bind:change="onFilter" /><template is="list-state" data="{{failure,skeleton,loaded,rows,emptyObject}}" /><template is="cards" data="{{rows,statusKind,done,allLoaded}}" /></view>

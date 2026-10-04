@@ -11,6 +11,8 @@ import type { UploadedImage } from '../../../../core/upload'
 export interface FormLine {
   orderLineId: string
   name: string
+  unit: string
+  code: string | null
   maxQty: number
   maxText: string
   qty: number
@@ -24,6 +26,8 @@ export function formLineOf(line: OrderLine): FormLine {
   return {
     orderLineId: line.id,
     name: line.name,
+    unit: line.unit,
+    code: line.customerCode,
     maxQty,
     maxText: copy.screen.maxQty(maxQty),
     qty: 1,
@@ -53,6 +57,11 @@ export function lineErrorsOf(fields: Record<string, string>, count: number): Lin
 type Checked = { ok: true; body: StoreAfterCreate } | { ok: false; fields: Record<string, string> }
 
 export function checkForm(orderId: string, lines: readonly FormLine[]): Checked {
+  const quantityErrors: Record<string, string> = {}
+  lines.forEach((line, index) => {
+    if (line.qty > line.maxQty) quantityErrors[`lines.${index}.qty`] = line.maxText
+  })
+  if (Object.keys(quantityErrors).length) return { ok: false, fields: quantityErrors }
   const parsed = storeAfterCreateSchema.safeParse({
     orderId,
     lines: lines.map((line) => ({

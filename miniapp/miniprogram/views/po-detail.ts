@@ -1,22 +1,16 @@
-import { contract, copy, labels, type PoDetail } from '@huazhong/shared'
+import { contract, copy, redesignCopy, labels, type PoDetail } from '@huazhong/shared'
 import { buttonsOf, canDo, type ButtonView } from '../core/actions'
 import type { CodeEvent, DetailEvent } from '../core/events'
 import type { FailureView } from '../core/failure-view'
-import { checkedOf, formTotalOf, unplacedErrorOf } from '../core/form'
-import { isChanged, syncUnloadAlert } from '../core/guard'
+import { checkedOf, unplacedErrorOf } from '../core/form'
+import { confirmAsk, isChanged, syncUnloadAlert } from '../core/guard'
 import { unwatch, watchNewer } from '../core/live'
 import { centsOfText } from '../core/money'
 import { request, type Result } from '../core/request'
 import { failureOf, messageOf } from '../core/session'
 import { showSuccess } from '../core/toast'
 import { poViewOf } from './purchase'
-import {
-  receiveAmountOf,
-  receiveInputOf,
-  receiveLinesOf,
-  receiveViewsOf,
-  type ReceiveLine,
-} from './po-receive-form'
+import { receiveInputOf, receiveLinesOf, receiveViewsOf, type ReceiveLine } from './po-receive-form'
 
 function isOldResponse(next: PoDetail, current: PoDetail | null) {
   const version = current?.version ?? 0
@@ -49,13 +43,13 @@ const data = {
   receiving: false,
   recvNote: '',
   reason: '',
-  amount: '',
   repriced: false,
   sheet: '' as '' | 'return' | 'reprice',
   sheetTitle: '',
   texts: {
     ...copy.screen.label,
     lines: copy.screen.section.materials,
+    reject: redesignCopy.rejectPurchaseConfirm,
     confirmCancel: copy.screen.action.confirmCancel,
     cancelPo: copy.screen.action.cancelPo as string,
     receive: copy.screen.action.receive,
@@ -66,19 +60,38 @@ const data = {
 interface Host {
   data: typeof data
   id: string
+  financeScope: boolean
+  readonlyScope: boolean
+  sourceType: 'po' | 'purchase_return' | 'price_change'
   order: PoDetail | null
   setData(patch: Record<string, unknown>): void
+  selectComponent(selector: string): unknown
   load(pushed?: boolean, replace?: boolean): Promise<void>
   show(po: PoDetail, recvNote?: string): void
   preserve(po: PoDetail): boolean
   render(lines: ReceiveLine[]): void
   settle(result: Result<PoDetail>, done: string): void
 }
+function readPurchaseOrder(host: Host) {
+  return request(host.financeScope ? contract.getFinancePurchaseOrder : contract.getPurchaseOrder, {
+    params: { id: host.id },
+    query: { sourceType: host.sourceType },
+  })
+}
 const methods = {
   id: '',
+  financeScope: false,
+  readonlyScope: false,
+  sourceType: 'po' as 'po' | 'purchase_return' | 'price_change',
   order: null as PoDetail | null,
   onLoad(this: Host, query: Record<string, string | undefined>) {
     this.id = query.id ?? ''
+    this.financeScope = query.scope === 'finance'
+    this.readonlyScope = query.scope === 'internal'
+    this.sourceType =
+      query.sourceType === 'purchase_return' || query.sourceType === 'price_change'
+        ? query.sourceType
+        : 'po'
   },
   onShow(this: Host) {
     void this.load()
@@ -99,7 +112,7 @@ const methods = {
     syncUnloadAlert(false)
   },
   async load(this: Host, pushed = false, replace = false) {
-    const result = await request(contract.getPurchaseOrder, { params: { id: this.id } })
+    const result = await readPurchaseOrder(this)
     if (!result.ok) {
       this.setData({ failure: failureOf(result.failure, this.data.loaded ? 'refresh' : 'load') })
       return
@@ -126,21 +139,22 @@ const methods = {
   },
   show(this: Host, po: PoDetail, recvNote = '') {
     this.order = po
-    const receiving = this.data.kind === 'warehouse' && canDo(po.actions, 'receive')
+    const receiving =
+      !this.readonlyScope && this.data.kind === 'warehouse' && canDo(po.actions, 'receive')
     const specs =
       this.data.kind === 'purchase'
         ? ([{ code: 'cancelPo', secondary: true }, { code: 'editPo' }] as const)
         : ([
-            { code: 'voidPo', secondary: true },
             { code: 'return', secondary: true },
             { code: 'reprice' },
+            { code: 'voidPo', secondary: true },
           ] as const)
     const lines = receiveLinesOf(po, 'receive')
     this.setData({
       loaded: true,
       failure: null,
-      view: poViewOf(po),
-      buttons: buttonsOf(po.actions, specs),
+      view: poViewOf(po, false, this.financeScope),
+      buttons: this.readonlyScope ? [] : buttonsOf(po.actions, specs),
       receiving,
       initial: lines,
       recvNote,
@@ -159,7 +173,6 @@ const methods = {
       lines,
       lineViews: receiveViewsOf(lines, this.data.receiving && !this.data.sheet, this.data.fields),
       repriced: lines.some((l) => centsOfText(l.priceText) !== l.orderPriceCents),
-      amount: formTotalOf(receiveAmountOf(lines), lines),
       changed,
     })
     syncUnloadAlert(changed)
@@ -239,6 +252,31 @@ const methods = {
         body: { version: this.order.version, reason: event.detail },
       },
     )
+    this.settle(result, result.ok ? labels.poStatus[result.data.status] : '')
+  },
+  async onReject(this: Host) {
+    if (!this.order || this.data.busy) return
+    const confirmed = await confirmAsk(this, {
+      title: redesignCopy.rejectPurchaseTitle,
+      body: redesignCopy.rejectPurchaseBody,
+      cancel: copy.confirm.cancel,
+      confirm: redesignCopy.rejectPurchaseConfirm,
+    })
+    if (!confirmed) return
+    this.setData({ busy: 'receive', error: '' })
+    const result = await request(contract.receivePurchaseOrder, {
+      params: { id: this.id },
+      body: {
+        version: this.order.version,
+        reason: '',
+        recvNote: this.data.recvNote,
+        lines: this.order.lines.map((line) => ({
+          poLineId: line.id,
+          receivedQty: 0,
+          priceCents: line.priceCents,
+        })),
+      },
+    })
     this.settle(result, result.ok ? labels.poStatus[result.data.status] : '')
   },
   async onReceive(this: Host) {

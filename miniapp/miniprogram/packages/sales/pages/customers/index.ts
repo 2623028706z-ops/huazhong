@@ -1,38 +1,36 @@
-// X8 客户门店（06 章 X8）：左侧客户（停用的标「已停用」）、右侧门店；右侧顶部当前客户名 +「编辑客户」。
-// 底栏「新建客户」（createCustomer，次）、「新建门店」（create）。门店弹层里「邀请下单」（inviteStore）
-// →「生成邀请」→ 分享卡片；「解绑微信」（unbindStoreWechat）
-import { contract, copy, formatTime, type CustomerItem, type StoreItem } from '@huazhong/shared'
-import { findAction, hasAction } from '../../../../core/actions'
+// X8 客户：左侧客户，右侧门店 / 订货目录；门店资料和目录产品分别进入 X12 / X13 整页。
+import { contract, copy, redesignCopy, type CustomerItem } from '@huazhong/shared'
+import { hasAction } from '../../../../core/actions'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
 import { unplacedErrorOf } from '../../../../core/form'
 import type { FailureView } from '../../../../core/failure-view'
-import { confirmAsk, isChanged, syncUnloadAlert } from '../../../../core/guard'
+import { isChanged, syncUnloadAlert } from '../../../../core/guard'
 import { firstFailure, newIdempotencyKey, request, type Result } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
+import { unwatch } from '../../../../core/live'
+import { catalogPanelData } from './catalog-state'
+import { catalogPanelMethods } from './catalog-panel'
+import { catalogCopyMethods } from '../directory/catalog-copy'
 import { loadCustomers } from '../../../../views/customers'
 import {
   checkCustomerCreate,
   checkCustomerUpdate,
-  checkStoreCreate,
-  checkStoreUpdate,
   customerFormOf,
   customerSideOf,
-  storeFormOf,
   storeRowsOf,
   type CustomerForm,
-  type StoreForm,
 } from './form'
 
-interface Invite {
-  path: string
-  title: string
-  expiresText: string
-}
-
 Page({
+  ...catalogCopyMethods,
+  ...catalogPanelMethods,
   data: {
-    title: copy.screen.title.customers,
+    section: 'stores',
+    catalogTitle: copy.screen.title.directory,
+
+    ...catalogPanelData,
+    title: copy.screen.label.customer,
     loaded: false,
     failure: null as FailureView | null,
     side: [] as ReturnType<typeof customerSideOf>,
@@ -42,41 +40,22 @@ Page({
     canCreate: false,
     canCreateCustomer: false,
     customerSheet: false,
+    customerChanged: false,
     editingCustomer: false,
     customerForm: customerFormOf(null),
-    storeSheet: false,
-    editingStore: null as StoreItem | null,
-    storeForm: storeFormOf(null, ''),
-    customerOptions: [] as { id: string; name: string }[],
-    invite: null as { enabled: boolean; reason: string } | null,
-    canUnbind: false,
-    shared: null as Invite | null,
     fields: {},
     formError: '',
     saving: false,
     texts: {
+      stores: redesignCopy.stores,
       editCustomer: copy.screen.action.editCustomer,
       createCustomer: copy.screen.action.createCustomer,
       createStore: copy.screen.action.createStore,
       customerTitle: copy.screen.title.editCustomer,
       newCustomerTitle: copy.screen.title.createCustomer,
-      storeTitle: copy.screen.title.editStore,
-      newStoreTitle: copy.screen.title.createStore,
       name: copy.screen.label.name,
       enabled: copy.screen.label.enabled,
-      customer: copy.screen.label.customer,
-      contact: copy.field.contact,
-      phone: copy.field.storePhone,
-      address: copy.field.address,
-      loginPhone: copy.screen.label.loginPhone,
-      wechat: copy.field.wechat,
-      bound: copy.statusValue.bound,
-      invite: copy.screen.action.inviteStore,
-      generate: copy.screen.action.generateInvite,
-      share: copy.screen.action.shareInvite,
-      unbind: copy.screen.action.unbindStoreWechat,
       saveCustomer: copy.action.saveCustomer,
-      saveStore: copy.action.saveStore,
       empty: copy.screen.empty.customers,
       noStores: copy.state.empty(copy.screen.label.store),
     },
@@ -89,7 +68,11 @@ Page({
   onShow() {
     void this.load()
   },
+  onHide() {
+    unwatch(this)
+  },
   onUnload() {
+    unwatch(this)
     syncUnloadAlert(false)
   },
   async load(selectId = ''): Promise<void> {
@@ -110,11 +93,11 @@ Page({
       loaded: true,
       failure: null,
       side: customerSideOf(customers.data),
-      customerOptions: customers.data.map(({ id, name }) => ({ id, name })),
       canCreate: hasAction(page.data.actions, 'create'),
       canCreateCustomer: hasAction(page.data.actions, 'createCustomer'),
     })
     this.select(selected?.id ?? '')
+    await this.loadCatalogPanel()
   },
   select(customerId: string) {
     const customer = this.customers.find((c: CustomerItem) => c.id === customerId)
@@ -122,17 +105,22 @@ Page({
       customerId,
       customerName: customer?.name ?? '',
       stores: storeRowsOf(customer),
+      groups: [],
     })
   },
   onCustomer(event: DetailEvent<string>) {
     this.select(event.detail)
+    void this.selectCatalog(event.detail)
+  },
+  onSection(event: KeyEvent) {
+    this.setData({ section: event.currentTarget.dataset.key })
   },
   currentCustomer(): CustomerItem | undefined {
     return this.customers.find((c: CustomerItem) => c.id === this.data.customerId)
   },
   resetForm() {
     this.idempotencyKey = newIdempotencyKey()
-    this.setData({ fields: {}, formError: '', shared: null })
+    this.setData({ fields: {}, formError: '', customerChanged: false })
   },
   onNewCustomer() {
     this.resetForm()
@@ -148,45 +136,33 @@ Page({
     this.setData({ customerSheet: true, editingCustomer: true, customerForm: form })
   },
   onNewStore() {
-    this.resetForm()
-    this.openStore(null)
+    void wx.navigateTo({
+      url: `/packages/sales/pages/store-form/index?customerId=${this.data.customerId}`,
+    })
   },
   onOpen(event: KeyEvent) {
-    this.resetForm()
-    const store = this.currentCustomer()?.stores.find(
-      (s: StoreItem) => s.id === event.currentTarget.dataset.key,
-    )
-    if (store) this.openStore(store)
-  },
-  openStore(store: StoreItem | null) {
-    const action = store ? findAction(store.actions, 'inviteStore') : null
-    this.setData({
-      storeSheet: true,
-      editingStore: store,
-      storeForm: storeFormOf(store, this.data.customerId),
-      invite: action ? { enabled: action.enabled, reason: action.disabledReason ?? '' } : null,
-      canUnbind: store ? hasAction(store.actions, 'unbindStoreWechat') : false,
+    void wx.navigateTo({
+      url: `/packages/sales/pages/store-form/index?customerId=${this.data.customerId}&id=${event.currentTarget.dataset.key}`,
     })
   },
   onCloseSheet() {
-    this.setData({ customerSheet: false, storeSheet: false })
+    this.setData({ customerSheet: false, customerChanged: false })
     syncUnloadAlert(false)
   },
   patchCustomer(patch: Partial<CustomerForm>) {
     const form = { ...this.data.customerForm, ...patch }
-    this.setData({ customerForm: form, fields: {}, formError: '' })
-    syncUnloadAlert(isChanged(customerFormOf(this.currentCustomer() ?? null), form))
+    const initial = customerFormOf(
+      this.data.editingCustomer ? (this.currentCustomer() ?? null) : null,
+    )
+    const customerChanged = isChanged(initial, form)
+    this.setData({ customerForm: form, fields: {}, formError: '', customerChanged })
+    syncUnloadAlert(customerChanged)
   },
   onCustomerName(event: DetailEvent<string>) {
     this.patchCustomer({ name: event.detail })
   },
   onCustomerEnabled(event: DetailEvent<boolean>) {
     this.patchCustomer({ enabled: event.detail })
-  },
-  patchStore(event: DetailEvent<string | boolean, { field: keyof StoreForm }>) {
-    const form = { ...this.data.storeForm, [event.currentTarget.dataset.field]: event.detail }
-    this.setData({ storeForm: form, fields: {}, formError: '' })
-    syncUnloadAlert(isChanged(storeFormOf(this.data.editingStore, this.data.customerId), form))
   },
   async onSaveCustomer(): Promise<void> {
     const customer = this.data.editingCustomer ? this.currentCustomer() : undefined
@@ -211,31 +187,8 @@ Page({
         )
     this.afterSave(result, result.ok ? result.data.id : '')
   },
-  async onSaveStore(): Promise<void> {
-    const store = this.data.editingStore
-    const form = this.data.storeForm
-    this.setData({ saving: true })
-    const result = store ? await this.updateStore(store, form) : await this.createStore(form)
-    if (result) this.afterSave(result, this.data.customerId)
-    else this.setData({ saving: false })
-  },
-  async createStore(form: StoreForm): Promise<Result<StoreItem> | null> {
-    const checked = checkStoreCreate(form)
-    if (!checked.ok) return this.showFields(checked.fields)
-    const options = { idempotencyKey: this.idempotencyKey }
-    return request(contract.createStore, { body: checked.body }, options)
-  },
-  async updateStore(store: StoreItem, form: StoreForm): Promise<Result<StoreItem> | null> {
-    const checked = checkStoreUpdate(form, store.version)
-    if (!checked.ok) return this.showFields(checked.fields)
-    return request(contract.updateStore, { params: { id: store.id }, body: checked.body })
-  },
   showFields(fields: Record<string, string>): null {
-    this.setData({
-      fields,
-      formError: unplacedErrorOf(fields, ['name', 'customerId', 'contact', 'loginPhone']),
-      saving: false,
-    })
+    this.setData({ fields, formError: unplacedErrorOf(fields, ['name']), saving: false })
     return null
   },
   afterSave(result: Result<unknown>, selectId: string) {
@@ -252,49 +205,6 @@ Page({
       this.setData({ formError: view.message })
       void this.load()
     } else if (view) this.setData({ formError: view.message })
-  },
-  async onGenerateInvite(): Promise<void> {
-    const store = this.data.editingStore
-    if (!store) return
-    this.setData({ saving: true, formError: '' })
-    const options = { idempotencyKey: this.idempotencyKey }
-    const result = await request(contract.createStoreInvite, { params: { id: store.id } }, options)
-    this.setData({ saving: false })
-    if (!result.ok) {
-      this.setData({ formError: failureOf(result.failure, 'submit')?.message ?? '' })
-      return
-    }
-    const { path, title, expiresAt } = result.data
-    this.setData({
-      shared: { path, title, expiresText: copy.screen.inviteExpires(formatTime(expiresAt)) },
-    })
-  },
-  // 只在弹层里的分享按钮触发（06 章第 11 节），图片用内置品牌背景
-  onShareAppMessage(): WechatMiniprogram.Page.ICustomShareContent {
-    const shared = this.data.shared
-    return shared
-      ? { title: shared.title, path: shared.path, imageUrl: '/assets/backdrop.jpg' }
-      : { title: copy.invite.storeTitle }
-  },
-  async onUnbind(): Promise<void> {
-    const store = this.data.editingStore
-    if (store?.accountVersion == null) return
-    const confirmed = await confirmAsk(this, {
-      title: copy.confirm.unbindTitle,
-      body: copy.screen.confirm.unbindStore,
-      cancel: copy.confirm.cancel,
-      confirm: copy.screen.action.unbindStoreWechat,
-    })
-    if (!confirmed) return
-    const body = { version: store.accountVersion }
-    const result = await request(contract.unbindStoreWechat, { params: { id: store.id }, body })
-    if (!result.ok) {
-      this.setData({ formError: failureOf(result.failure, 'submit')?.message ?? '' })
-      return
-    }
-    this.openStore(result.data)
-    showSuccess(copy.action.unbound)
-    void this.load()
   },
   onFailureAction() {
     void this.load()

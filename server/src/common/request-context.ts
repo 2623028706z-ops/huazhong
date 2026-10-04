@@ -14,7 +14,6 @@ interface RequestState {
   // 只在 grants 为 'openid' 的接口里有值
   openid: string | null
   endpoint: Endpoint | null
-  paymentReplayId?: number
 }
 
 const storage = new AsyncLocalStorage<RequestState>()

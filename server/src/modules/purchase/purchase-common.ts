@@ -10,7 +10,7 @@ import {
 } from '../../../db/schema/index.ts'
 import { found } from '../../common/scope.ts'
 import type { WriteContext } from '../../common/write.service.ts'
-import { lockSupplierLedger } from '../../common/ledger.ts'
+import { lockSupplierLedger } from '../../common/statements.ts'
 
 export async function lockPo(tx: Tx, id: number, nextSupplierId?: number) {
   const [pointer] = await tx

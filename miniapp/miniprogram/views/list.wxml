@@ -8,20 +8,9 @@
 </template>
 <!-- 三行卡片，点开发 onOpen（data-key 是行的 id） -->
 <template name="cards">
+  <!-- 可不传：selection、done、allLoaded、statusKind -->
   <view wx:for="{{rows}}" wx:key="id" data-key="{{item.id}}" bindtap="onOpen">
-    <hz-card
-      date="{{item.date}}"
-      status-kind="{{statusKind}}"
-      status="{{item.status}}"
-      head-text="{{item.headText}}"
-      title="{{item.title}}"
-      total="{{item.total}}"
-      total-tone="{{item.totalTone}}"
-      meta="{{item.meta}}"
-      amount="{{item.amount}}"
-      amount-text="{{item.amountText}}"
-      tags="{{item.tags}}"
-    />
+    <hz-card row="{{item}}" status-kind="{{statusKind}}" selectable="{{selection && item.selectable}}" selected="{{item.selected}}" select-disabled="{{item.selectDisabled}}" data-key="{{item.id}}" bind:toggle="onToggle" />
   </view>
   <text wx:if="{{done && rows.length > 0}}" class="u-list__end">{{allLoaded}}</text>
 </template>

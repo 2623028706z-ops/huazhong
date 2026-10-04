@@ -2,14 +2,17 @@ import {
   contract,
   copy,
   MATERIAL_CODE_DIGITS,
+  STOCK_AGE_WARNING_DAYS,
   MATERIAL_CODE_PREFIX,
   type Material,
   type OutputOf,
 } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
-import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm'
+import { and, asc, eq, gt, inArray, sql, type SQL } from 'drizzle-orm'
 import type { Db, Tx } from '../../../db/client.ts'
 import { materialCategories, materials, stockBatches } from '../../../db/schema/index.ts'
+import { Clock } from '../../common/clock.ts'
+import { ageDaysOf } from './stock-age.ts'
 import { DB } from '../../common/db.ts'
 import { actionOf, enabledAction } from '../../common/domain/actions.ts'
 import { pageOf } from '../../common/domain/cursor.ts'
@@ -56,17 +59,24 @@ async function batchesOf(executor: Executor, ids: number[]) {
   return executor
     .select()
     .from(stockBatches)
-    .where(inArray(stockBatches.materialId, ids))
+    .where(and(inArray(stockBatches.materialId, ids), gt(stockBatches.leftQty, 0)))
     .orderBy(asc(stockBatches.inDate), asc(stockBatches.id))
 }
-function batchView(row: typeof stockBatches.$inferSelect) {
-  return { id: String(row.id), inDate: row.inDate, qty: row.qty, leftQty: row.leftQty }
+function batchView(row: typeof stockBatches.$inferSelect, today: string) {
+  return {
+    id: String(row.id),
+    inDate: row.inDate,
+    qty: row.qty,
+    leftQty: row.leftQty,
+    ageDays: ageDaysOf(row.inDate, today),
+  }
 }
 @Injectable()
 export class MaterialReads {
   constructor(
     @Inject(DB) private readonly db: Db,
     private readonly warehouse: WarehouseService,
+    private readonly clock: Clock,
   ) {}
   async item(executor: Executor, id: number) {
     return toMaterial(found((await materialRows(executor, eq(materials.id, id)))[0]))
@@ -77,11 +87,15 @@ export class MaterialReads {
     return {
       ...item,
       stockQty: batches.reduce((sum, row) => sum + row.leftQty, 0),
-      batches: batches.map(batchView),
+      oldestAgeDays: stockAge(batches, this.clock.today()),
+      aged: (stockAge(batches, this.clock.today()) ?? 0) >= STOCK_AGE_WARNING_DAYS,
+      batches: batches.map((batch) => batchView(batch, this.clock.today())),
       actions: viewer.modules.includes('warehouse')
         ? [
             actionOf('stockIn', item.enabled ? null : copy.stock.materialDisabled(item.name), null),
+            enabledAction('edit', null),
             enabledAction('stockOut', null),
+            enabledAction('reportLoss', null),
           ]
         : [],
     }
@@ -143,9 +157,25 @@ export class MaterialReads {
       ...page,
       items: page.items.map((row) => ({
         ...row,
-        batches: batches.filter((batch) => String(batch.materialId) === row.id).map(batchView),
+        batches: batches
+          .filter((batch) => String(batch.materialId) === row.id)
+          .map((batch) => batchView(batch, this.clock.today())),
+        oldestAgeDays: stockAge(
+          batches.filter((batch) => String(batch.materialId) === row.id),
+          this.clock.today(),
+        ),
+        aged:
+          (stockAge(
+            batches.filter((batch) => String(batch.materialId) === row.id),
+            this.clock.today(),
+          ) ?? 0) >= STOCK_AGE_WARNING_DAYS,
         actions: [],
       })),
     }
   }
+}
+
+function stockAge(batches: (typeof stockBatches.$inferSelect)[], today: string): number | null {
+  const first = batches.find((batch) => batch.leftQty > 0)
+  return first ? ageDaysOf(first.inDate, today) : null
 }

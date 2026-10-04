@@ -1,9 +1,17 @@
 import { randomUUID } from 'node:crypto'
-import { contract, copy, type WhDocDetail, type StocktakeDraft } from '@huazhong/shared'
+import {
+  contract,
+  copy,
+  type WhDocDetail,
+  type StocktakeDraft,
+  type PaymentDetail,
+  type StatementDraft,
+} from '@huazhong/shared'
 import { sql } from 'drizzle-orm'
 import { afterEach, beforeEach, expect, test } from 'vitest'
-import { dataOf, idBy, startSales, type SalesApp } from './support/sales.ts'
+import { dataOf, idBy, startSales, TODAY, type SalesApp } from './support/sales.ts'
 import { call } from './support/http.ts'
+import { openStatement } from './support/statements.ts'
 
 let app: SalesApp
 beforeEach(async () => {
@@ -41,7 +49,7 @@ async function quantity(materialId: string) {
   )
   return result.rows[0]?.qty ?? 0
 }
-test('C06/C07/C08/D28/F04: manual receipts join the supplier ledger, payment and scope; zero gifts never enter payables', async () => {
+test('C06/C07/C08/D28/F04: 手工入库进入DZ并锁定，0元赠送仍可对账，供应商仅看本家', async () => {
   const warehouse = await app.as('u5'),
     finance = await app.as('u6'),
     supplier = await app.as('p1'),
@@ -59,35 +67,25 @@ test('C06/C07/C08/D28/F04: manual receipts join the supplier ledger, payment and
     }),
   )
   expect(created.no).toMatch(/^RK-/)
-  expect(created).toMatchObject({ amountCents: 5000, apStatus: 'unpaid', unpaidCents: 5000 })
-  const payables = dataOf<{
-    items: { docType: string; docId: string }[]
-  }>(await finance.get('/finance/payables'))
-  expect(payables.items).toContainEqual(
-    expect.objectContaining({ docType: 'wh', docId: created.id }),
+  expect(created).toMatchObject({ amountCents: 5000, statement: null })
+  const statement = await openStatement(app, 'supplier', values.supplierId, [
+    { type: 'wh', id: created.id },
+  ])
+  const payment = dataOf<PaymentDetail>(
+    await finance.post('/finance/payments', {
+      supplierId: values.supplierId,
+      payDate: TODAY,
+      amountCents: 6000,
+      methodName: '微信',
+      note: '',
+      discountCents: 0,
+      discountReason: '',
+      statements: [{ id: statement.id, version: statement.version }],
+    }),
   )
-  const snapshot = dataOf<{
-    ledgerToken: string
-    items: { docType: 'po' | 'wh'; docId: string; version: number; unpaidCents: number }[]
-  }>(await finance.get(`/finance/suppliers/${created.supplierId}/unpaid-docs`))
-  const payment = await finance.post('/finance/payments', {
-    supplierId: created.supplierId,
-    payDate: '2026-09-29',
-    amountCents: 6000,
-    methodName: '微信',
-    note: '',
-    ledgerToken: snapshot.ledgerToken,
-    expected: snapshot.items.map(({ docType, docId, version, unpaidCents }) => ({
-      docType,
-      docId,
-      version,
-      unpaidCents,
-    })),
-    allocs: [{ docType: 'wh', docId: created.id, amountCents: 5000 }],
-  })
-  expect(payment.status).toBe(200)
+  expect(payment).toMatchObject({ creditCents: 1000, status: 'valid' })
   const paid = dataOf<WhDocDetail>(await warehouse.get(`/warehouse/docs/${created.id}`))
-  expect(paid).toMatchObject({ apStatus: 'paid', paidCents: 5000 })
+  expect(paid.statement).toMatchObject({ id: statement.id, status: 'settled' })
   expect(
     paid.actions
       .filter((action) => ['void', 'reprice'].includes(action.code))
@@ -111,16 +109,24 @@ test('C06/C07/C08/D28/F04: manual receipts join the supplier ledger, payment and
     ).status,
   ).toBe(409)
   const ownView = await supplier.get(`/supplier/stock-ins/${created.id}`)
-  expect(ownView.status).toBe(200)
-  expect(contract.getSupplierStockIn.response.parse(ownView.body.data).allocations).toHaveLength(1)
+  expect(contract.getSupplierStockIn.response.parse(ownView.body.data).statement).toMatchObject({
+    id: statement.id,
+    status: 'settled',
+  })
   expect((await other.get(`/supplier/stock-ins/${created.id}`)).status).toBe(404)
   const gift = await doc('in', 1, 0)
-  expect(gift.apStatus).toBe('no_pay')
-  const all = dataOf<{
-    items: { docType: string; docId: string }[]
-  }>(await finance.get('/finance/payables'))
-  expect(all.items.some((row) => row.docType === 'wh' && row.docId === gift.id)).toBe(false)
-  expect((await finance.get(`/finance/ap-documents/wh/${created.id}`)).status).toBe(200)
+  expect(gift).toMatchObject({ amountCents: 0, statement: null })
+  const draft = dataOf<StatementDraft>(
+    await finance.get(`/finance/statements/draft?kind=supplier&partyId=${values.supplierId}`),
+  )
+  expect(draft.sources).toContainEqual(
+    expect.objectContaining({ type: 'wh', id: gift.id, amountCents: 0 }),
+  )
+  const giftStatement = await openStatement(app, 'supplier', values.supplierId, [
+    { type: 'wh', id: gift.id },
+  ])
+  expect(giftStatement.status).toBe('settled')
+  expect((await finance.get(`/finance/warehouse-docs/${created.id}`)).status).toBe(200)
 })
 test('C09/C10/C11/C18: receipt reprice history and reversal are atomic, stock-limited and creator-only', async () => {
   const warehouse = await app.as('u5'),

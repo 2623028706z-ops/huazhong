@@ -7,11 +7,12 @@ z.config({ customError: () => copy.error.validationFallback })
 
 // 数据库 CHECK 用同一个字符串（server/db/schema）
 export const PHONE_PATTERN = '^1[0-9]{10}$'
+export const STORED_INT_MAX = 2147483647
 
 export const idSchema = z.string().regex(/^[1-9][0-9]*$/)
 export const phoneSchema = z.string().regex(new RegExp(PHONE_PATTERN))
 export const centsSchema = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)
-export const qtySchema = z.number().int().positive()
+export const qtySchema = z.number().int().positive().max(STORED_INT_MAX)
 export const businessDateSchema = z.iso.date()
 export const timestampSchema = z.iso.datetime({ precision: 3 })
 export const versionSchema = z.number().int().positive()
@@ -28,17 +29,25 @@ export function requiredDateSchema(message: string) {
 
 // 数量这类输入：大于 0 的整数（明细行数量、配方用量）
 export function positiveIntSchema(message: string) {
-  return z.number({ error: message }).int({ error: message }).positive({ error: message })
+  return z
+    .number({ error: message })
+    .int({ error: message })
+    .positive({ error: message })
+    .max(STORED_INT_MAX, { error: copy.error.numericRange })
 }
 
 // 可以填 0 的整数（处理售后时不给的行填 0）
 export function nonNegativeIntSchema(message: string) {
-  return z.number({ error: message }).int({ error: message }).nonnegative({ error: message })
+  return z
+    .number({ error: message })
+    .int({ error: message })
+    .nonnegative({ error: message })
+    .max(STORED_INT_MAX, { error: copy.error.numericRange })
 }
 
 // 金额输入（分）：0 或正整数，没填时写专门的提示
 export function centsInputSchema(message: string) {
-  return nonNegativeIntSchema(message).max(Number.MAX_SAFE_INTEGER, { error: message })
+  return nonNegativeIntSchema(message)
 }
 
 // 必填的文字（名称、原因）：去掉首尾空白后不能为空

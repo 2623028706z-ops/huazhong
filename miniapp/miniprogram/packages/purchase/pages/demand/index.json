@@ -9,6 +9,8 @@
     "hz-button": "/components/hz-button/index",
     "hz-sheet": "/components/hz-sheet/index",
     "hz-picker": "/components/hz-picker/index",
-    "hz-demand-row": "/components/hz-demand-row/index"
+    "hz-demand-row": "/components/hz-demand-row/index",
+    "hz-invite-list": "/components/hz-invite-list/index",
+    "hz-filter-bar": "/components/hz-filter-bar/index"
   }
 }

@@ -49,6 +49,14 @@
   font-weight: 600;
 }
 
+/* 底栏左侧的合计：金额 + 数量（订货结算条、结算页） */
+.u-bar-total {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: var(--hz-tap);
+}
+
 /* 信息行里的金额：15px 墨色加粗，不靠继承字号（02 章第 6 节第 4 条） */
 .u-amount {
   flex: none;
@@ -59,7 +67,8 @@
 
 /* 卡片底（hz-card、入口卡、明细、提示条共用） */
 .u-card {
-  background: var(--hz-card);
+  background: var(--hz-paper);
+  border: 1px solid var(--hz-hair);
   border-radius: var(--hz-radius);
 }
 
@@ -77,16 +86,21 @@
 /* 表单字段外框：hz-field、hz-picker 共用（02 章第 4 节） */
 .u-field {
   display: flex;
-  flex-direction: column;
+  flex-flow: row wrap;
+  align-items: center;
   gap: var(--hz-line-gap);
 }
 
 .u-field__label {
+  width: 72px;
+  flex: none;
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);
 }
 
 .u-field__box {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -117,6 +131,7 @@
 }
 
 .u-field__error {
+  flex-basis: 100%;
   font-size: var(--hz-font-sm);
   color: var(--hz-danger);
 }
@@ -124,7 +139,7 @@
 /* 弹层里的区块：不套框，用细线分隔，左右留 --hz-gap-sheet（hz-sheet） */
 .u-sheet-section {
   padding: var(--hz-row-pad) var(--hz-gap-sheet);
-  font-size: var(--hz-font-note);
+  font-size: var(--hz-font-sm);
   border-top: 1px solid var(--hz-line);
 }
 
@@ -233,7 +248,7 @@
 
 /* 铺品牌背景的页面（各首页、我的）：左右 20px，抬头下面 32px 开始放窗格 */
 .u-home {
-  padding: 0 var(--hz-gap-home);
+  padding: 0 var(--hz-gap-page);
 }
 
 .u-home__body {
@@ -255,7 +270,7 @@
    列表组头（操作日志按天、产品按分类）和详情、表单里的一组共用 */
 .u-list__group,
 .u-section__title {
-  font-size: var(--hz-font-note);
+  font-size: var(--hz-font-sm);
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -370,7 +385,7 @@
 .u-rows__unit {
   flex: none;
   min-width: 2em;
-  font-size: var(--hz-font-note);
+  font-size: var(--hz-font-sm);
   color: var(--hz-muted);
 }
 
@@ -411,7 +426,7 @@
   flex-direction: column;
   gap: var(--hz-line-gap);
   padding: var(--hz-row-pad) var(--hz-card-pad);
-  font-size: var(--hz-font-note);
+  font-size: var(--hz-font-sm);
 }
 
 .u-info__head {
@@ -525,7 +540,7 @@
 
 /* 只读弹层（收款、售后、订单详情弹层）：详情模板里的卡片在弹层里不装框，
    区块之间 --hz-line 细线，区块小标题 12px 次要色（02 章第 4 节 hz-sheet、第 6 节第 2 条）。
-   卡片底色和弹层亮格分不出来，可点的 hz-card（订单弹层里的售后）也一样摊平，和下面的核销行对齐 */
+   卡片底色和弹层亮格分不出来，可点的 hz-card（订单弹层里的售后）也一样摊平，与下面的记录行对齐 */
 .u-sheet-plain .u-card {
   background: transparent;
   border-radius: 0;
@@ -549,4 +564,52 @@
   font-weight: 400;
   color: var(--hz-muted);
   letter-spacing: 0;
+}
+
+.u-field > picker {
+  flex: 1;
+  min-width: 0;
+}
+
+.u-field__suffix {
+  flex: none;
+  color: var(--hz-muted);
+}
+
+.u-aged {
+  color: var(--hz-amber);
+}
+
+.u-detail-third {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px var(--hz-gap-page);
+  color: var(--hz-muted);
+}
+
+.u-document-canvas {
+  color: var(--hz-ink);
+  background-color: var(--hz-paper);
+  border-top-color: var(--hz-green);
+}
+
+.u-count-table {
+  display: grid;
+  grid-template-columns: minmax(85px, 1fr) repeat(3, 38px) 28px;
+  gap: 4px;
+  align-items: center;
+  padding: 12px 10px;
+  font-size: var(--hz-font-sm);
+  text-align: right;
+  border-bottom: 1px solid var(--hz-hair);
+}
+
+.u-count-table > view:first-child,
+.u-count-table > text:first-child {
+  text-align: left;
+}
+
+.u-count-table--head {
+  background: var(--hz-tint);
+  color: var(--hz-muted);
 }

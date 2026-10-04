@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import {
   type Me,
   type PoDetail,
-  type TodoItem,
+  type TodoRow,
   type contract,
   type OutputOf,
 } from '@huazhong/shared'
@@ -28,13 +28,14 @@ describe('采购单', () => {
       landing: 'module:purchase',
       modules: ['purchase'],
     })
-    const todo = dataOf<{ count: number; items: TodoItem[] }>(
+    const todo = dataOf<{ count: number; rows: TodoRow[] }>(
       await purchase.get('/modules/purchase/todos'),
     )
-    expect(todo).toMatchObject({
-      count: 1,
-      items: [{ kind: 'invite', invite: { no: 'YQ-260929-001' } }],
-    })
+    expect(todo.rows).toEqual([
+      { key: 'pendingInvites', label: '待填报邀请', count: 1 },
+      { key: 'pendingPurchaseOrders', label: '待收货采购单', count: 2 },
+    ])
+    expect(todo.count).toBe(todo.rows.reduce((count, row) => count + row.count, 0))
     expect((await (await s.as('u5')).post('/purchase-orders', {})).status).toBe(403)
   })
   test('B02 新建校验、整数金额和幂等', async () => {
@@ -102,8 +103,7 @@ describe('采购单', () => {
     const received = dataOf<PoDetail>(await wh.post(`/purchase-orders/${po.id}/receive`, recv))
     expect(received).toMatchObject({
       status: 'received',
-      payableCents: 241400,
-      amountCents: 255600,
+      amountCents: 241400,
     })
     expect(await stockQty(s, '粉雪山玫瑰')).toBe(before + 170)
     const logs = await s.t.db

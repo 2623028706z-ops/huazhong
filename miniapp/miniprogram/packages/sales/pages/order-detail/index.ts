@@ -1,17 +1,11 @@
 // X3 订单详情（06 章 X3）：状态区 → 单号、状态、来源 → 客户门店、下单日期、出货日期、备注 → 明细 → 金额 →
 // 发货信息 → 变更记录 → 原因行。确认订单弹层选出货日期（默认今天往后 SHIP_DATE_DEFAULT_OFFSET_DAYS 天）；
 // 取消按 cancel 的 reasonRequired，弹层开着时被确认返回 STALE，按 latest 换成原因框
-import {
-  SHIP_DATE_DEFAULT_OFFSET_DAYS,
-  addDays,
-  contract,
-  copy,
-  shanghaiDateOf,
-  type OrderDetail,
-} from '@huazhong/shared'
+import { contract, copy, type OrderDetail } from '@huazhong/shared'
 import { buttonsOf, isReasonRequired, type ButtonView } from '../../../../core/actions'
 import type { CodeEvent, DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
+import { confirmAsk } from '../../../../core/guard'
 import { unwatchOnLeave, watchNewer } from '../../../../core/live'
 import { request, type Result } from '../../../../core/request'
 import { failureOf, messageOf } from '../../../../core/session'
@@ -21,10 +15,10 @@ import { orderViewOf } from '../../../../views/order'
 const PAGES = '/packages/sales/pages'
 const buttonSpecs = [
   { code: 'cancel', secondary: true },
-  { code: 'approveCancel', secondary: true },
   { code: 'rejectCancel', secondary: true },
   { code: 'voidOrder', secondary: true },
-  { code: 'editAndConfirm', secondary: true },
+  // 门店申请取消时：拒绝（次）在左、同意（主）在右
+  { code: 'approveCancel' },
   { code: 'confirm' },
   { code: 'edit' },
   { code: 'createAfter' },
@@ -53,25 +47,23 @@ Page({
     buttons: [] as ButtonView[],
     busy: '',
     ...sheetDefaults,
-    confirmSheet: false,
-    shipDate: '',
-    confirmError: '',
     cancelSheet: false,
     cancelRequired: false,
     cancelError: '',
     texts: {
-      confirmTitle: copy.screen.title.confirmOrder,
-      confirm: copy.screen.action.confirm,
-      shipDate: copy.field.shipDate,
       cancelTitle: reasonTitles.cancel,
       cancelBody: copy.screen.confirm.cancelOrder,
       confirmCancel: CONFIRM_CANCEL,
     },
   },
   id: '',
+  financeScope: false,
+  readonlyScope: false,
   order: null as OrderDetail | null,
   onLoad(query: Record<string, string | undefined>) {
     this.id = query.id ?? ''
+    this.financeScope = query.scope === 'finance'
+    this.readonlyScope = query.scope === 'internal'
   },
   onShow() {
     void this.load()
@@ -83,7 +75,9 @@ Page({
     )
   },
   async load(pushed = false) {
-    const result = await request(contract.getOrder, { params: { id: this.id } })
+    const result = await request(this.financeScope ? contract.getFinanceOrder : contract.getOrder, {
+      params: { id: this.id },
+    })
     if (!result.ok) {
       this.setData({ failure: failureOf(result.failure, this.data.loaded ? 'refresh' : 'load') })
       return
@@ -96,48 +90,51 @@ Page({
     this.setData({
       loaded: true,
       failure: null,
-      view: orderViewOf(order, false),
-      buttons: buttonsOf(order.actions, buttonSpecs),
+      view: orderViewOf(order, false, this.financeScope),
+      buttons: this.readonlyScope ? [] : buttonsOf(order.actions, buttonSpecs),
     })
   },
-  onAction(event: CodeEvent) {
+  async onAction(event: CodeEvent) {
     const order = this.order
     if (!order) return
     const { code } = event.currentTarget.dataset
     if (code === 'confirm') {
-      const shipDate = addDays(shanghaiDateOf(Date.now()), SHIP_DATE_DEFAULT_OFFSET_DAYS)
-      this.setData({ confirmSheet: true, shipDate, confirmError: '' })
+      void wx.navigateTo({ url: `${PAGES}/order-form/index?mode=confirm&id=${order.id}` })
     } else if (isReasonAction(code)) {
       const cancelRequired = isReasonRequired(order.actions, code)
       const title = reasonTitles[code]
       this.setData({
-        cancelSheet: true,
+        cancelSheet: cancelRequired,
         cancelRequired,
         cancelError: '',
         cancelMode: code,
         texts: { ...this.data.texts, cancelTitle: title, confirmCancel: title },
       })
-    } else if (code === 'edit' || code === 'editAndConfirm') {
+      if (
+        !cancelRequired &&
+        (await confirmAsk(this, {
+          title,
+          body: this.data.texts.cancelBody,
+          cancel: copy.confirm.cancel,
+          confirm: title,
+        }))
+      )
+        await this.submitCancel('')
+    } else if (code === 'edit') {
       void wx.navigateTo({ url: `${PAGES}/order-form/index?mode=${code}&id=${order.id}` })
     } else if (code === 'createAfter') {
       void wx.navigateTo({ url: `${PAGES}/after-form/index?orderId=${order.id}` })
     }
   },
-  onShipDate(event: DetailEvent<string>) {
-    this.setData({ shipDate: event.detail, confirmError: '' })
-  },
-  onCloseConfirm() {
-    this.setData({ confirmSheet: false })
-  },
   onCloseCancel() {
     this.setData({ cancelSheet: false })
   },
   // 写操作的结果：成功关弹层；STALE 刷新成最新内容，错误写在弹层里
-  settle(result: Result<OrderDetail>, sheet: 'confirm' | 'cancel', done: string): void {
+  settle(result: Result<OrderDetail>, done: string): void {
     this.setData({ busy: '' })
     if (result.ok) {
       this.show(result.data)
-      this.setData(sheet === 'confirm' ? { confirmSheet: false } : { cancelSheet: false })
+      this.setData({ cancelSheet: false })
       showSuccess(done)
       return
     }
@@ -146,25 +143,20 @@ Page({
     if (view.kind === 'stale') {
       const latest = view.latest as OrderDetail
       this.show(latest)
-      this.setData({ cancelRequired: isReasonRequired(latest.actions, this.data.cancelMode) })
+      const cancelRequired = isReasonRequired(latest.actions, this.data.cancelMode)
+      this.setData({ cancelRequired, cancelSheet: cancelRequired })
     }
-    const errorKey = sheet === 'confirm' ? 'confirmError' : 'cancelError'
     const message = messageOf(view)
-    this.setData({ [errorKey]: message })
-  },
-  async onConfirm(): Promise<void> {
-    const order = this.order
-    if (!order) return
-    this.setData({ busy: 'confirm', confirmError: '' })
-    const body = { version: order.version, shipDate: this.data.shipDate }
-    const result = await request(contract.confirmOrder, { params: { id: order.id }, body })
-    this.settle(result, 'confirm', copy.order.confirmed)
+    this.setData({ cancelError: message, ...(!this.data.cancelSheet ? { failure: view } : {}) })
   },
   async onCancel(event: DetailEvent<string>): Promise<void> {
+    await this.submitCancel(event.detail)
+  },
+  async submitCancel(value: string): Promise<void> {
     const order = this.order
-    if (!order) return
+    if (!order || this.data.busy) return
     this.setData({ busy: 'cancel', cancelError: '' })
-    const reason = event.detail || undefined
+    const reason = value || undefined
     const body = { version: order.version, reason }
     const endpoint =
       this.data.cancelMode === 'approveCancel'
@@ -178,7 +170,7 @@ Page({
       params: { id: order.id },
       body: { ...body, reason: reason ?? '' },
     })
-    this.settle(result, 'cancel', copy.order.cancelled)
+    this.settle(result, copy.order.cancelled)
   },
   onFailureAction() {
     void this.load()

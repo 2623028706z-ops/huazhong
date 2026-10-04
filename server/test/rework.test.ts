@@ -1,214 +1,22 @@
 import { found } from '../src/common/scope.ts'
-import {
-  type contract,
-  moduleKeys,
-  type OutputOf,
-  type PoDetail,
-  type PaymentDetail,
-  type ReceiptDetail,
-  type OrderDetail,
-} from '@huazhong/shared'
+import { type contract, moduleKeys, type OutputOf, type OrderDetail } from '@huazhong/shared'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, expect, test } from 'vitest'
 import {
   accounts,
   operationLogs,
   accountModules,
-  payments,
   customers,
   catalogCategories,
 } from '../db/schema/index.ts'
-import {
-  startSales,
-  idBy,
-  dataOf,
-  codesOf,
-  TODAY,
-  type SalesApp,
-  snapshotInput,
-} from './support/sales.ts'
-import { poOf, payInput, createPo, receiveInput } from './support/purchase.ts'
-import { call } from './support/http.ts'
-import { randomUUID } from 'node:crypto'
+import { startSales, idBy, dataOf, codesOf, TODAY, type SalesApp } from './support/sales.ts'
+import { createPo, receiveInput } from './support/purchase.ts'
 let s: SalesApp
 beforeEach(async () => {
   s = await startSales()
 })
 afterEach(async () => {
   await s.close()
-})
-
-test('D 新账本：供应商多单付款、预付退款、退款阻止作废、撤回保留历史', async () => {
-  const finance = await s.as('u6')
-  const supplierId = await idBy(s.t, 'suppliers.name', '云岭花卉')
-  const po = await createPo(s, { supplierId })
-  dataOf(await (await s.as('u5')).post(`/purchase-orders/${po.id}/receive`, receiveInput(po)))
-  const snapshot = dataOf<OutputOf<typeof contract.listUnpaidDocuments>>(
-    await finance.get(`/finance/suppliers/${supplierId}/unpaid-docs`),
-  )
-  const docs = snapshot.items.slice(0, 2)
-  expect(docs).toHaveLength(2)
-  const payment = dataOf<PaymentDetail>(
-    await finance.post('/finance/payments', {
-      supplierId,
-      ledgerToken: snapshot.ledgerToken,
-      expected: docs.map((doc) => ({
-        docType: 'po',
-        docId: doc.id,
-        version: doc.version,
-        unpaidCents: doc.unpaidCents,
-      })),
-      allocs: docs.map((doc) => ({ docType: 'po', docId: doc.id, amountCents: 1000 })),
-      amountCents: 3000,
-      payDate: TODAY,
-      methodName: '微信',
-      note: '',
-    }),
-  )
-  expect(payment.allocations).toHaveLength(2)
-  expect(payment.prepaidCents).toBe(1000)
-  const refund = dataOf<OutputOf<typeof contract.createRefund>>(
-    await finance.post('/finance/refunds', {
-      kind: 'payment',
-      paymentId: payment.id,
-      refundDate: TODAY,
-      amountCents: 500,
-      methodName: '微信',
-      note: '',
-    }),
-  )
-  expect(
-    dataOf<PaymentDetail>(await finance.get(`/finance/payments/${payment.id}`)).prepaidCents,
-  ).toBe(500)
-  expect(
-    (
-      await finance.post(`/finance/payments/${payment.id}/void`, {
-        version: payment.version,
-        reason: '错误',
-      })
-    ).status,
-  ).toBe(409)
-  dataOf(
-    await finance.post(`/finance/refunds/${refund.id}/void`, {
-      version: refund.version,
-      reason: '退款错误',
-    }),
-  )
-  const revoked = dataOf<PaymentDetail>(
-    await finance.post(`/finance/payment-allocations/${found(payment.allocations[0]).id}/revoke`, {
-      reason: '核销错误',
-    }),
-  )
-  expect(revoked.prepaidCents).toBe(2000)
-  expect(revoked.allocations[0]).toMatchObject({
-    registeredCents: 1000,
-    effectiveCents: 0,
-    status: 'revoked',
-    revokeReason: '核销错误',
-  })
-  expect(revoked.refunds[0]?.status).toBe('voided')
-  const supplier = dataOf<OutputOf<typeof contract.supplierStatement>>(
-    await (await s.as('p1')).get('/supplier/statement'),
-  )
-  expect(
-    supplier.items
-      .flatMap((doc) => doc.allocations)
-      .every((row) => Object.keys(row).sort().join(',') === 'amountCents,date'),
-  ).toBe(true)
-})
-
-test('D ledgerToken + expected：改价及金额回跳仍整笔STALE，幂等旧DTO回读不重复入账', async () => {
-  const finance = await s.as('u6'),
-    wh = await s.as('u5'),
-    po = await poOf(s, 'PO-260928-004')
-  const body = await snapshotInput(s.t, finance.openid, '/finance/payments', payInput(po))
-  await wh.post(`/purchase-orders/${po.id}/reprice`, {
-    version: po.version,
-    reason: '调价',
-    lines: po.lines.map((line) => ({ poLineId: line.id, priceCents: 700 })),
-  })
-  const stale = await finance.post('/finance/payments', body)
-  expect(stale.body.error?.code).toBe('STALE')
-  expect(await s.t.db.select().from(payments)).toHaveLength(0)
-  const current = dataOf<PoDetail>(await wh.get(`/purchase-orders/${po.id}`))
-  const input = await snapshotInput(s.t, finance.openid, '/finance/payments', payInput(current))
-  const key = randomUUID()
-  const result = dataOf<PaymentDetail>(
-    await call(s.t, 'POST', '/finance/payments', {
-      openid: finance.openid,
-      body: input,
-      idempotencyKey: key,
-    }),
-  )
-  await s.t.db.execute(
-    (await import('drizzle-orm'))
-      .sql`UPDATE idempotency_keys SET response=${JSON.stringify({ id: result.id, docType: 'po', docId: po.id, amountCents: result.amountCents })}::jsonb WHERE key=${key}`,
-  )
-  const replay = dataOf<PaymentDetail>(
-    await call(s.t, 'POST', '/finance/payments', {
-      openid: finance.openid,
-      body: input,
-      idempotencyKey: key,
-    }),
-  )
-  expect(replay.id).toBe(result.id)
-  expect(replay.allocations).toHaveLength(1)
-  expect(await s.t.db.select().from(payments)).toHaveLength(1)
-})
-
-test('D 收款退款、有效零核销挡业务作废、财务售后专用只读', async () => {
-  const finance = await s.as('u6'),
-    sales = await s.as('u2')
-  const customerId = await idBy(s.t, 'customers.name', '晨曦花艺')
-  const receipt = dataOf<ReceiptDetail>(
-    await finance.post('/finance/receipts', {
-      customerId,
-      receiptDate: TODAY,
-      amountCents: 1000,
-      methodName: '微信',
-      note: '',
-      allocs: [],
-    }),
-  )
-  const refund = dataOf<OutputOf<typeof contract.createRefund>>(
-    await finance.post('/finance/refunds', {
-      kind: 'receipt',
-      receiptId: receipt.id,
-      refundDate: TODAY,
-      amountCents: 400,
-      methodName: '微信',
-      note: '',
-    }),
-  )
-  expect(
-    dataOf<ReceiptDetail>(await finance.get(`/finance/receipts/${receipt.id}`)).prepaidCents,
-  ).toBe(600)
-  expect(
-    (
-      await finance.post(`/finance/receipts/${receipt.id}/void`, {
-        version: receipt.version,
-        reason: '错',
-      })
-    ).status,
-  ).toBe(409)
-  const afterId = await idBy(s.t, 'afters.no', 'AS-260929-003')
-  expect(
-    dataOf<OutputOf<typeof contract.getFinanceAfter>>(
-      await finance.get(`/finance/afters/${afterId}`),
-    ).actions,
-  ).toEqual([])
-  expect((await finance.post(`/afters/${afterId}/void`, { version: 1, reason: '错' })).status).toBe(
-    403,
-  )
-  const orderId = await idBy(s.t, 'orders.no', 'SO-260927-026')
-  const detail = dataOf<OrderDetail>(await sales.get(`/orders/${orderId}`))
-  expect(codesOf(detail.actions)).not.toContain('voidOrder')
-  dataOf(
-    await finance.post(`/finance/refunds/${refund.id}/void`, {
-      version: refund.version,
-      reason: '错',
-    }),
-  )
 })
 
 test('A 取消申请阻止改单、拒绝不再申请、发货使申请失效；管理员发货也无金额', async () => {

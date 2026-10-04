@@ -2,11 +2,13 @@
 
 export const PAGE_SIZE = 20
 export const PAGE_SIZE_MAX = 50
+export const ORDER_BATCH_MAX_COUNT = 100
 export const TODO_PREVIEW_COUNT = 3
 export const DEMAND_DEFAULT_DAYS = 7
 export const STORE_INVITE_TTL_DAYS = 7
 export const STORE_INVITE_TOKEN_BYTES = 32
 export const AFTER_IMAGE_MAX_COUNT = 3
+export const STOCK_AGE_WARNING_DAYS = 3
 // 门店售后申请期限：实际发货那天再加几天（阶段 3 确认）
 export const AFTER_APPLY_DAYS = 7
 // 销售确认订单、新建订单时出货日期默认今天往后几天（默认明天）

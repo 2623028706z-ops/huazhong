@@ -21,7 +21,7 @@
 
 .hz-state__detail {
   margin-top: 6px;
-  font-size: var(--hz-font-note);
+  font-size: var(--hz-font-sm);
   color: var(--hz-muted);
 }
 

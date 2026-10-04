@@ -66,56 +66,11 @@ async function reviewInput(
     ? { ...input, reviewToken: (result.body.data as { reviewToken: string }).reviewToken }
     : input
 }
-async function moneyInput(
-  t: TestApp,
-  openid: string,
-  receipt: boolean,
-  input: Record<string, unknown>,
-) {
-  const id = receipt ? input.customerId : input.supplierId
-  const result = await call(
-    t,
-    'GET',
-    receipt
-      ? `/finance/customers/${String(id)}/unpaid-orders`
-      : `/finance/suppliers/${String(id)}/unpaid-docs`,
-    { openid },
-  )
-  if (!result.body.ok) return input
-  const snapshot = result.body.data as {
-    ledgerToken: string
-    items: {
-      id?: string
-      docType?: 'po' | 'wh'
-      docId?: string
-      orderId?: string
-      version: number
-      unpaidCents: number
-    }[]
-  }
-  return {
-    ...input,
-    ledgerToken: snapshot.ledgerToken,
-    expected: snapshot.items.map((row) =>
-      receipt
-        ? { orderId: row.orderId, version: row.version, unpaidCents: row.unpaidCents }
-        : {
-            docType: row.docType,
-            docId: row.docId,
-            version: row.version,
-            unpaidCents: row.unpaidCents,
-          },
-    ),
-  }
-}
 export async function snapshotInput(t: TestApp, openid: string, path: string, body: unknown) {
   if (!body || typeof body !== 'object') return body
   const input = body as Record<string, unknown>
   if (['/purchase-orders', '/invites'].includes(path) && !input.reviewToken)
     return reviewInput(t, openid, path, input)
-  const receipt = ['/finance/receipts', '/finance/prepaid-allocations'].includes(path)
-  const payment = ['/finance/payments', '/finance/prepaid-payment-allocations'].includes(path)
-  if ((receipt || payment) && !input.ledgerToken) return moneyInput(t, openid, receipt, input)
 
   return body
 }
@@ -145,6 +100,9 @@ type Lookup =
   | 'orders.no'
   | 'afters.no'
   | 'receipts.no'
+  | 'payments.no'
+  | 'statements.no'
+  | 'refunds.no'
   | 'customers.name'
   | 'stores.name'
   | 'products.name'

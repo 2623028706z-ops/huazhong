@@ -1,2 +1,2 @@
-import { poListPage } from '../../../../views/po-list'
-Page({ ...poListPage, data: { ...poListPage.data, kind: 'supplier' } })
+import { externalBusinessPage } from '../../../../views/external-business'
+Page(externalBusinessPage(true, 'orders'))

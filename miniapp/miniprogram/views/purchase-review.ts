@@ -1,9 +1,7 @@
 import { contract, copy, type OutputOf } from '@huazhong/shared'
 import { isChanged } from '../core/guard'
 import { request, type Failure } from '../core/request'
-import { failureOf } from '../core/session'
 import type { KeyEvent } from '../core/events'
-import { inviteViewOf } from './invite-detail'
 import type { PurchaseDraft, PurchaseForm } from './purchase-form-data'
 
 interface ReviewHost {
@@ -18,8 +16,6 @@ export const purchaseReviewData = {
   reviewWarnings: [] as string[],
   reviewInvites: [] as OutputOf<typeof contract.reviewPurchase>['warnings'][number]['invites'],
   reviewDemand: [] as { name: string; summary: string; left: string }[],
-  reviewInviteView: null as ReturnType<typeof inviteViewOf> | null,
-  reviewInviteSheet: false,
   reviewError: '',
 }
 interface InteractionHost {
@@ -61,16 +57,10 @@ export const purchaseReviewMethods = {
     this.reviewResolve?.(false)
     this.reviewResolve = null
   },
-  async onReviewInvite(this: InteractionHost, event: KeyEvent) {
-    this.setData({ reviewInviteSheet: true, reviewInviteView: null, reviewError: '' })
-    const result = await request(contract.getInvite, {
-      params: { id: event.currentTarget.dataset.key },
+  onReviewInvite(this: InteractionHost, event: KeyEvent) {
+    void wx.navigateTo({
+      url: `/packages/purchase/pages/invite-detail/index?id=${event.currentTarget.dataset.key}`,
     })
-    if (result.ok) this.setData({ reviewInviteView: inviteViewOf(result.data) })
-    else this.setData({ reviewError: failureOf(result.failure, 'refresh')?.message ?? '' })
-  },
-  onReviewInviteClose(this: InteractionHost) {
-    this.setData({ reviewInviteSheet: false })
   },
 }
 export async function reviewDraft(

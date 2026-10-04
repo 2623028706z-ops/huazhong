@@ -14,6 +14,12 @@ const CATEGORY = 'category'
 function rowOf(item: InventoryItem) {
   return {
     id: item.id,
+    fields: [
+      { label: copy.screen.title.stock, value: formatQty(item.stockQty, item.unit) },
+      { label: copy.field.unit, value: item.unit },
+      { label: copy.field.code, value: item.code },
+      { label: copy.field.category, value: item.categoryName },
+    ],
     title: item.name,
     total: formatQty(item.stockQty, item.unit),
     // 库存数是这页的关键数字，加粗；库存 0 照常次要色（02 章第 4 节 hz-card）

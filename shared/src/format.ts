@@ -90,9 +90,9 @@ export function formatQty(qty: number, unit: string): string {
 }
 
 // 和 copy.separator 同一个写法（本文件会转成 WXS，不能 import）
-const UNIT_SEPARATOR = ' · '
+const UNIT_SEPARATOR = '　　'
 
-// 卡片第 2 行的总数：后端按单位合计好（顺序照明细里第一次出现），例如「32 束 · 4 盆」
+// 卡片第 2 行的总数：后端按单位合计好（顺序照明细里第一次出现），多个单位之间用两格全角空格
 export function formatUnitTotals(totals: { unit: string; qty: number }[]): string {
   let text = ''
   for (let i = 0; i < totals.length; i += 1) {
@@ -103,9 +103,9 @@ export function formatUnitTotals(totals: { unit: string; qty: number }[]): strin
   return text
 }
 
-// 卡片、列表里的日期：今年的写 月-日，不是今年的写全
-export function formatCardDate(date: string, today: string): string {
-  return date.slice(0, 4) === today.slice(0, 4) ? date.slice(5) : date
+// 卡片、列表里的日期：始终写完整年月日
+export function formatCardDate(date: string, _today: string): string {
+  return date
 }
 
 // 一天里的第几分钟 → 时:分
@@ -135,13 +135,12 @@ export function formatClock(timestamp: string): string {
   return clockOf(shanghaiMinutesOf(timestamp))
 }
 
-// 顶栏日期：2026.09.30 周三
+// 顶栏日期：2026-09-30 周三
 export function formatNavDate(date: string): string {
-  const dotted = date.slice(0, 4) + '.' + date.slice(5, 7) + '.' + date.slice(8, 10)
-  return dotted + ' ' + weekdayOf(date)
+  return date + ' ' + weekdayOf(date)
 }
 
-// 列表分组头：今年的写 月-日 周几，不是今年的写全
+// 列表分组头：完整年月日 + 周几
 export function formatDayHeader(date: string, today: string): string {
   return formatCardDate(date, today) + ' ' + weekdayOf(date)
 }

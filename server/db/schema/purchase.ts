@@ -189,7 +189,9 @@ export const priceChanges = pgTable(
     whDocId: bigint({ mode: 'number' }).references(() => whDocs.id, { onDelete: 'restrict' }),
     actorLabel: text().notNull(),
     reason: text().notNull(),
-    items: jsonb().$type<{ name: string; fromCents: number; toCents: number }[]>().notNull(),
+    items: jsonb()
+      .$type<{ name: string; fromCents: number; toCents: number; qty: number }[]>()
+      .notNull(),
   },
   (t) => [
     index('price_changes_po_time').on(t.poId, t.createdAt),
@@ -222,6 +224,7 @@ export const purchaseReturnLines = pgTable(
       .references(() => purchaseOrderLines.id, { onDelete: 'restrict' }),
     name: text().notNull(),
     qty: integer().notNull(),
+    priceCents: integer().notNull().default(0),
   },
   (t) => [check('purchase_return_lines_qty_positive', sql`${t.qty} > 0`)],
 )

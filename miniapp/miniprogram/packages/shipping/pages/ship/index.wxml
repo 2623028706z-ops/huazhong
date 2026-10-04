@@ -2,17 +2,18 @@
 <hz-navbar title="{{title}}" back guard="{{changed}}" />
 <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
 <view wx:else class="u-list">
+  <hz-notice wx:if="{{orderNote}}" text="{{orderNote}}" />
   <hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" />
   <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <hz-error wx:if="{{formError}}" message="{{formError}}" />
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="detail" /></block>
   <block wx:elif="{{isForm}}">
     <hz-notice wx:if="{{view.notice}}" text="{{view.notice}}" />
+    <hz-progress steps="{{view.progress}}" />
     <template is="info" data="{{...info}}" />
     <view class="u-section">
-      <text class="u-section__title">{{texts.lines}}</text>
-      <hz-line-item wx:if="{{canShip}}" lines="{{lineViews}}" mode="qty" quantity-only min="{{0}}" bind:qty="onQty" />
-      <hz-line-item wx:else lines="{{lineViews}}" quantity-only />
+      <hz-line-item wx:if="{{canShip}}" lines="{{lineViews}}" mode="qty" quantity-only picking bind:packed="onPacked" min="{{0}}" bind:qty="onQty" />
+      <hz-line-item wx:else lines="{{lineViews}}" quantity-only picking bind:packed="onPacked" />
     </view>
     <hz-field wx:if="{{canShip}}" label="{{texts.shipNote}}" type="textarea" placeholder="{{texts.optional}}" value="{{shipNote}}" bind:change="onNote" />
     <hz-records wx:if="{{view.changes.length > 0}}" type="orderChange" items="{{view.changes}}" />
@@ -23,4 +24,5 @@
 <hz-action-bar wx:if="{{isForm}}">
   <hz-button text="{{texts.ship}}" disabled="{{!canShip}}" reason="{{shipReason}}" loading="{{saving}}" bind:press="onShip" />
 </hz-action-bar>
+<hz-action-bar wx:elif="{{loaded && view.info.status==='shipped'}}"><hz-button text="{{texts.delivery}}" bind:press="onDelivery" /></hz-action-bar>
 <hz-confirm id="hz-confirm" />

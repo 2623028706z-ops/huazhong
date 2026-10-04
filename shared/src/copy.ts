@@ -7,7 +7,7 @@ import { logCopy } from './copy-log.ts'
 import { stockCopy } from './copy-stock.ts'
 
 // 同一行里并列的几项之间（身份行、卡片第 3 行）
-const SEPARATOR = ' · '
+const SEPARATOR = '　　'
 
 export const copy = {
   rework: reworkCopy,
@@ -22,6 +22,7 @@ export const copy = {
     notFound: '没有找到这张单据',
     internal: '系统出错了，请稍后再试',
     validationFallback: '格式不对，请检查后重试',
+    numericRange: '数值超出可保存范围，请调整后重试',
     dateRange: '结束日期不能早于开始日期',
     noChange: '没有修改内容',
   },
@@ -92,7 +93,7 @@ export const copy = {
   },
   // 订单、发货（03 章第 5、8.1 节，05 章第 4–6 节）
   order: {
-    shipDatePending: '待销售安排',
+    shipDatePending: '待定',
     shipDateRequired: '请选择出货日期',
     editReasonRequired: '请填写修改原因',
     linesRequired: '请添加产品并填写有效数量',
@@ -108,7 +109,6 @@ export const copy = {
     storeRequired: '请选择客户和门店',
     discontinuedSave: (names: string) => `${names}已停用，请先删掉再保存`,
     discontinuedSubmit: (names: string) => `${names}已停用，请先删掉再提交`,
-    discontinuedConfirm: (names: string) => `${names}已停用，请修改并确认或取消订单`,
     productUnavailable: (name: string) => `${name}不在这个客户的可订产品里`,
     storeDisabledConfirm: '门店已停用，启用后才能确认',
     customerDisabledConfirm: '客户已停用，启用后才能确认',
@@ -158,7 +158,7 @@ export const copy = {
     priceOverShip: (name: string, price: string) => `${name}的售后单价不能高于发货单价 ${price}`,
     linesLocked: '门店提交的售后只能改数量和单价',
     orderNotShipped: '订单还没发货，不能申请售后',
-    processedNotice: '发货单应收已减去售后金额',
+    processedNotice: '售后金额将计入下一张对账单',
     pendingAmount: '待确认',
     closeReasonRequired: '请填写关闭原因',
     voidReasonRequired: '请填写作废原因',
@@ -264,7 +264,7 @@ export const copy = {
     external: (name: string, org: string) => `${name}（${org}）`,
   },
   org: {
-    store: (customerName: string, storeName: string) => `${customerName}${SEPARATOR}${storeName}`,
+    store: (customerName: string, storeName: string) => `${customerName} · ${storeName}`,
   },
   // 页面标题：思源宋体子集从这里抽字（scripts/gen-font）
   title: {

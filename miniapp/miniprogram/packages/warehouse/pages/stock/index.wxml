@@ -1,8 +1,11 @@
 <import src="/views/list.wxml" />
-<hz-navbar title="{{title}}" back />
+<hz-navbar title="{{title}}" back="{{back}}" />
 <view class="u-list">
   <hz-filter-bar search-placeholder="{{search}}" dimensions="{{dimensions}}" value="{{filter}}" bind:change="onFilter" />
   <template is="list-state" data="{{failure,skeleton,loaded,rows,emptyObject}}" />
-  <view wx:for="{{rows}}" wx:key="id" data-key="{{item.id}}" bindtap="onOpen"><hz-card title="{{item.title}}" total="{{item.total}}" key-total="{{item.keyTotal}}" meta="{{item.meta}}" tags="{{item.tags}}" /></view>
+  <text wx:if="{{loaded && hasAged}}" class="u-section__title u-aged">{{texts.old}}</text><view wx:for="{{rows}}" wx:key="id" wx:if="{{item.aged}}" data-key="{{item.id}}" bindtap="onOpen"><hz-card row="{{item}}" /></view>
+  <block wx:if="{{!agedOnly}}"><text wx:if="{{loaded && hasOther}}" class="u-section__title">{{texts.other}}</text><view wx:for="{{rows}}" wx:key="id" wx:if="{{!item.aged}}" data-key="{{item.id}}" bindtap="onOpen"><hz-card row="{{item}}" /></view></block>
   <text wx:if="{{done && rows.length}}" class="u-list__end">{{allLoaded}}</text>
 </view>
+
+<hz-tabbar wx:if="{{tabs.length}}" tabs="{{tabs}}" current="stock" />

@@ -10,7 +10,7 @@
   grid-auto-flow: column;
   gap: 8px;
   align-items: start;
-  padding: 9px var(--hz-gap-bar);
+  padding: 9px var(--hz-gap-page);
   padding-bottom: calc(9px + env(safe-area-inset-bottom));
   background: var(--hz-paper);
 }
@@ -35,4 +35,18 @@
   position: static;
   background: transparent;
   border-top: 1px solid var(--hz-line);
+}
+
+.hz-action-bar--settlement {
+  right: 12px;
+  left: 12px;
+  bottom: 12px;
+  border-radius: var(--hz-radius);
+  background: var(--hz-green);
+  color: var(--hz-paper);
+  box-shadow: var(--hz-shadow);
+}
+
+.hz-action-bar--settlement.hz-action-bar--tabbar {
+  bottom: calc(var(--hz-tabbar) + env(safe-area-inset-bottom) + 8px);
 }

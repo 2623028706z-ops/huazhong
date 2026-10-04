@@ -1,19 +1,16 @@
 // 销售模块对外的读：财务对账要的发货单、售后卡片、客户；模块首页的销售、发货待办（00 章第 11.2 节）
-import { TODO_PREVIEW_COUNT, type AfterCard, type TodoItem } from '@huazhong/shared'
+import { redesignCopy, type AfterCard } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
-import { and, asc, count, eq, inArray, lte, sql, type SQL } from 'drizzle-orm'
+import { and, asc, count, eq, inArray, lte } from 'drizzle-orm'
 import type { Db, Tx } from '../../../db/client.ts'
-import { afters, customers, orders } from '../../../db/schema/index.ts'
+import { afters, customers, orders, orderCancelRequests } from '../../../db/schema/index.ts'
 import { Clock } from '../../common/clock.ts'
 import { DB } from '../../common/db.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import { afterCursor } from '../../common/page.ts'
 import { found } from '../../common/scope.ts'
 import { searchAny } from '../../common/search.ts'
-import { afterCardsOf, afterRowsQuery, orderAfterCards } from './after-query.ts'
-import { orderCardsOf } from './order-query.ts'
-import { orderRowsQuery } from './order-rows.ts'
-import { shippedLedgerOrders } from '../../common/customer-ledger.ts'
+import { orderAfterCards } from './after-query.ts'
 
 type Executor = Db | Tx
 
@@ -31,10 +28,6 @@ export class SalesService {
     @Inject(DB) private readonly db: Db,
     private readonly clock: Clock,
   ) {}
-
-  shippedOrders(executor: Executor, customerIds: readonly number[]) {
-    return shippedLedgerOrders(executor, customerIds)
-  }
 
   // 发货单弹层里已处理的售后（项 actions ⊆ voidAfter）
   processedAfterCards(executor: Executor, orderId: number, viewer: Viewer): Promise<AfterCard[]> {
@@ -86,54 +79,34 @@ export class SalesService {
       .orderBy(asc(customers.id))
   }
 
-  private async orderTodos(viewer: Viewer, where: SQL, order: SQL[]) {
-    const rows = await orderRowsQuery(this.db)
-      .where(where)
-      .orderBy(...order)
-      .limit(TODO_PREVIEW_COUNT)
-    const [total] = await this.db.select({ total: count() }).from(orders).where(where)
-    const cards = await orderCardsOf(this.db, rows, viewer, this.clock.today())
-    return { count: total?.total ?? 0, cards }
-  }
-
-  // 销售：待确认订单 + 待处理售后，最早的在前
-  async salesTodos(viewer: Viewer): Promise<{ count: number; items: TodoItem[] }> {
-    const pendingOrders = await this.orderTodos(viewer, eq(orders.status, 'pending_confirm'), [
-      asc(orders.orderDate),
-      asc(orders.id),
-    ])
-    const pendingAfter = eq(afters.status, 'pending')
-    const afterRows = await afterRowsQuery(this.db)
-      .where(pendingAfter)
-      .orderBy(asc(afters.afterDate), asc(afters.id))
-      .limit(TODO_PREVIEW_COUNT)
-    const [afterTotal] = await this.db.select({ total: count() }).from(afters).where(pendingAfter)
-    const afterCards = await afterCardsOf(this.db, afterRows, viewer)
-    const items: { date: string; item: TodoItem }[] = [
-      ...pendingOrders.cards.map((order) => ({
-        date: order.orderDate,
-        item: { kind: 'order' as const, order },
-      })),
-      ...afterCards.map((after) => ({
-        date: after.afterDate,
-        item: { kind: 'after' as const, after },
-      })),
+  async salesTodos(_viewer: Viewer) {
+    const [orderTotal] = await this.db
+      .select({ n: count() })
+      .from(orders)
+      .where(eq(orders.status, 'pending_confirm'))
+    const [afterTotal] = await this.db
+      .select({ n: count() })
+      .from(afters)
+      .where(eq(afters.status, 'pending'))
+    const [cancelTotal] = await this.db
+      .select({ n: count() })
+      .from(orderCancelRequests)
+      .where(eq(orderCancelRequests.status, 'pending'))
+    const rows = [
+      { key: 'pendingOrders', label: redesignCopy.pendingOrderTodo, count: orderTotal?.n ?? 0 },
+      { key: 'cancelRequests', label: redesignCopy.cancelApplication, count: cancelTotal?.n ?? 0 },
+      { key: 'pendingAfters', label: redesignCopy.pendingAfterTodo, count: afterTotal?.n ?? 0 },
     ]
-    items.sort((a, b) => a.date.localeCompare(b.date))
-    return {
-      count: pendingOrders.count + (afterTotal?.total ?? 0),
-      items: items.slice(0, TODO_PREVIEW_COUNT).map((entry) => entry.item),
-    }
+    return { count: rows.reduce((n, row) => n + row.count, 0), rows }
   }
-
-  // 发货：出货日期不晚于今天的待发货，按出货日期升序
-  async shippingTodos(viewer: Viewer): Promise<{ count: number; items: TodoItem[] }> {
-    const due =
-      and(eq(orders.status, 'to_ship'), lte(orders.shipDate, this.clock.today())) ?? sql`false`
-    const { count: total, cards } = await this.orderTodos(viewer, due, [
-      asc(orders.shipDate),
-      asc(orders.id),
-    ])
-    return { count: total, items: cards.map((order) => ({ kind: 'order' as const, order })) }
+  async shippingTodos(_viewer: Viewer) {
+    const [total] = await this.db
+      .select({ n: count() })
+      .from(orders)
+      .where(and(eq(orders.status, 'to_ship'), lte(orders.shipDate, this.clock.today())))
+    return {
+      count: total?.n ?? 0,
+      rows: [{ key: 'dueShipments', label: redesignCopy.dueShipmentTodo, count: total?.n ?? 0 }],
+    }
   }
 }

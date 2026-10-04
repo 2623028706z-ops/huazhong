@@ -12,7 +12,7 @@ import {
 } from '../rules.ts'
 import { actionSchema } from './actions.ts'
 import { afterCardSchema } from './afters.ts'
-import { externalAllocationSchema } from './ledger.ts'
+import { statementRefSchema } from './statement-ref.ts'
 import type { Endpoint } from './endpoint.ts'
 import {
   checkDateRange,
@@ -29,7 +29,7 @@ export const orderCardSchema = z.object({
   status: z.enum(orderStatuses),
   origin: z.enum(orderOrigins),
   orderDate: businessDateSchema,
-  // 门店下的单待确认时为 null（「待销售安排」）
+  // 门店下的单待确认时为 null（「待定」）
   shipDate: businessDateSchema.nullable(),
   customerId: idSchema,
   customerName: z.string(),
@@ -90,12 +90,19 @@ export const cancelRequestSchema = z.object({
   status: z.enum(cancelRequestStatuses),
   reason: z.string(),
   requestedAt: timestampSchema,
+  requestedBy: z.string(),
   handledAt: timestampSchema.nullable(),
   rejectReason: z.string().nullable(),
 })
 
 export const orderDetailSchema = orderCardSchema.extend({
   note: z.string().nullable(),
+  confirmedAt: timestampSchema.nullable(),
+  contactName: z.string(),
+  contactPhone: z.string(),
+  address: z.string(),
+  statement: statementRefSchema.nullable(),
+  overdue: z.object({ amountCents: centsSchema, days: z.number().int().positive() }).nullable(),
   customerEnabled: z.boolean(),
   storeEnabled: z.boolean(),
   lines: z.array(orderLineSchema),
@@ -110,16 +117,22 @@ export const orderDetailSchema = orderCardSchema.extend({
   cancelRequests: z.array(cancelRequestSchema),
   // 已发货的才有（门店看不到已关闭、已作废的金额）
   afters: z.array(afterCardSchema),
-  allocations: z.array(externalAllocationSchema),
 })
 export type OrderDetail = z.infer<typeof orderDetailSchema>
-export const shippingCardSchema = orderCardSchema.omit({ amountCents: true }).strict()
+// 发货端不显示单价和金额（06 章 H3），改价标记也算价格信息
+export const shippingCardSchema = orderCardSchema
+  .omit({ amountCents: true, repriced: true })
+  .strict()
 export const shippingLineSchema = orderLineSchema
   .omit({ priceCents: true, listPriceCents: true, amountCents: true, maxQty: true, repriced: true })
   .strict()
 export const shippingDetailSchema = shippingCardSchema
   .extend({
     note: z.string().nullable(),
+    confirmedAt: timestampSchema.nullable(),
+    contactName: z.string(),
+    contactPhone: z.string(),
+    address: z.string(),
     lines: z.array(shippingLineSchema),
     changes: z.array(orderChangeSchema),
     cancelRequests: z.array(cancelRequestSchema),
@@ -143,6 +156,7 @@ export const orderQuerySchema = pageQuerySchema
     q: z.string().trim().optional(),
     // 只要能申请或新建售后的已发货订单（S7、X5 选订单的弹层）
     afterable: z.stringbool().optional(),
+    cancelRequested: z.stringbool().optional(),
     // 按下单日期
     ...dateRangeShape,
   })
@@ -167,6 +181,7 @@ export const listShippingOrders = {
   query: pageQuerySchema.extend({
     status: z.enum(['to_ship', 'shipped']).optional(),
     q: z.string().trim().optional(),
+    dueOnly: z.stringbool().optional(),
   }),
   response: countedPageSchema(shippingCardSchema, orderStatuses),
   errors: [],
@@ -186,5 +201,14 @@ export const getShippingOrder = {
   grants: ['shipping'],
   params: idParamsSchema,
   response: shippingDetailSchema,
+  errors: ['NOT_FOUND'],
+} as const satisfies Endpoint
+
+export const getFinanceOrder = {
+  method: 'GET',
+  path: '/finance/orders/:id',
+  grants: ['finance'],
+  params: idParamsSchema,
+  response: orderDetailSchema.extend({ actions: z.array(actionSchema).length(0) }),
   errors: ['NOT_FOUND'],
 } as const satisfies Endpoint

@@ -8,7 +8,6 @@ import {
   afterOrigins,
   afterReasons,
   afterStatuses,
-  allocKinds,
   filePurposes,
   fileStatuses,
   moduleKeys,
@@ -32,7 +31,6 @@ export const afterStatus = pgEnum('after_status', afterStatuses)
 export const afterOrigin = pgEnum('after_origin', afterOrigins)
 export const afterReason = pgEnum('after_reason', afterReasons)
 export const recordStatus = pgEnum('record_status', recordStatuses)
-export const allocKind = pgEnum('alloc_kind', allocKinds)
 export const cancelRequestStatus = pgEnum('cancel_request_status', cancelRequestStatuses)
 export const refundKind = pgEnum('refund_kind', refundKinds)
 export const whDocKind = pgEnum('wh_doc_kind', whDocKinds)

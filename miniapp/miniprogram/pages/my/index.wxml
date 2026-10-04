@@ -1,5 +1,5 @@
 <hz-cover />
-<hz-navbar transparent />
+<hz-navbar transparent back="{{back}}" />
 <view class="u-home">
   <hz-brand lead="{{title}}" />
   <view class="u-home__body">
@@ -10,11 +10,11 @@
       name="{{profile.name}}"
       sub="{{profile.sub}}"
       menus="{{profile.menus}}"
-      details="{{profile.details}}"
+      phone="{{profile.phone}}" contact-phone="{{profile.contactPhone}}" external="{{profile.external}}"
       bind:select="onSelect"
       bind:logout="onLogout"
     />
   </view>
 </view>
 <hz-confirm id="hz-confirm" />
-<hz-tabbar tabs="{{tabs}}" current="my" />
+<hz-tabbar wx:if="{{tabs.length}}" tabs="{{tabs}}" current="my" />

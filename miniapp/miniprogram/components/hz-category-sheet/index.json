@@ -5,6 +5,7 @@
     "hz-sheet": "../hz-sheet/index",
     "hz-field": "../hz-field/index",
     "hz-error": "../hz-error/index",
-    "hz-button": "../hz-button/index"
+    "hz-button": "../hz-button/index",
+    "hz-switch": "../hz-switch/index"
   }
 }

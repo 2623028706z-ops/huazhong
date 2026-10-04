@@ -85,7 +85,7 @@ function storeActions(facts: OrderFacts, today: string): ActionSet {
   }
 }
 
-// 确认订单、修改并确认的禁用原因：门店停用 → 客户停用（05 章第 1.5 节）
+// 统一确认订单入口的禁用原因：门店停用 → 客户停用（05 章第 1.5 节）
 function confirmBlock(facts: OrderFacts): string | null {
   if (!facts.storeEnabled) return copy.order.storeDisabledConfirm
   if (!facts.customerEnabled) return copy.order.customerDisabledConfirm
@@ -96,16 +96,8 @@ function salesActions(facts: OrderFacts): ActionSet {
   switch (facts.status) {
     case 'pending_confirm': {
       const blocked = confirmBlock(facts)
-      const stopped = facts.discontinued.length > 0
-      const discontinued = stopped
-        ? copy.order.discontinuedConfirm(namesText(facts.discontinued))
-        : null
       return {
-        actions: [
-          actionOf('cancel', null, false),
-          actionOf('editAndConfirm', blocked, true),
-          actionOf('confirm', blocked ?? discontinued, false),
-        ],
+        actions: [actionOf('cancel', null, false), actionOf('confirm', blocked, false)],
         lockedReason: null,
       }
     }

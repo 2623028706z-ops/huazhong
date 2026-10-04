@@ -1,140 +1,99 @@
-// 收款详情（06 章 F3、F8 同一个弹层）：金额、方式、日期、备注、状态、核销明细；作废后写「已作废，核销已撤回。」
 import {
-  copy,
+  financeCopy as f,
   formatMoney,
   formatTime,
-  labels,
-  type Allocation,
-  type ReceiptCard,
   type ReceiptDetail,
-  type RefundDetail,
   type PaymentDetail,
-  type PaymentAllocation,
 } from '@huazhong/shared'
-import { canDo } from '../core/actions'
-import { rowsOf } from './order'
-
-// 核销记录一行：收款号或单号 · 类型 · 时间 + 金额
-export function allocRowsOf(allocations: readonly Allocation[], by: 'receipt' | 'order') {
-  return allocations.map((alloc) => ({
-    id: alloc.id,
-    key: by === 'receipt' ? alloc.receiptId : alloc.orderId,
-    name: [by === 'receipt' ? alloc.receiptNo : alloc.orderNo, labels.allocKind[alloc.kind]].join(
-      copy.separator,
-    ),
-    sub: historyTextOf(alloc),
-    amount: copy.rework.allocationAmounts(alloc.registeredCents, alloc.effectiveCents),
-    canRevoke: canDo(alloc.actions, 'revokeAllocation'),
-  }))
-}
-
-function historyTextOf(alloc: Allocation | PaymentAllocation) {
+import { canDo, findAction } from '../core/actions'
+import type { FinanceRow } from './statement'
+type Fund = PaymentDetail | ReceiptDetail
+function fundBusinessRows(fund: Fund) {
+  const payment = 'payDate' in fund
   return [
-    labels.allocationStatus[alloc.status],
-    alloc.createdBy.name,
-    formatTime(alloc.createdAt),
-    alloc.revokeReason,
-    alloc.revokedBy?.name,
-    alloc.revokedAt ? formatTime(alloc.revokedAt) : null,
+    {
+      label: payment ? f.supplier : f.customer,
+      value: payment ? fund.supplierName : fund.customerName,
+    },
+    { label: payment ? f.paymentAmount : f.receiptAmount, value: formatMoney(fund.amountCents) },
+    { label: f.discount, value: formatMoney(fund.discountCents) },
+    { label: f.discountReason, value: fund.discountReason },
+    { label: payment ? f.supplierCredited : f.credited, value: formatMoney(fund.creditCents) },
+    {
+      label: payment ? f.paymentDate : f.receiptDate,
+      value: payment ? fund.payDate : fund.receiptDate,
+    },
   ]
-    .filter(Boolean)
-    .join(copy.separator)
 }
-
-export function paymentAllocRowsOf(allocations: readonly PaymentAllocation[]) {
-  return allocations.map((alloc) => ({
-    id: alloc.id,
-    key: alloc.paymentId,
-    name: [alloc.paymentNo, alloc.docNo, labels.allocKind[alloc.kind]].join(copy.separator),
-    sub: historyTextOf(alloc),
-    amount: copy.rework.allocationAmounts(alloc.registeredCents, alloc.effectiveCents),
-    canRevoke: canDo(alloc.actions, 'revokePaymentAllocation'),
-  }))
+function fundHistoryRows(fund: Fund) {
+  return [
+    { label: f.method, value: fund.methodName },
+    { label: f.note, value: fund.note },
+    { label: f.registeredBy, value: fund.createdBy.name },
+    { label: f.registeredAt, value: formatTime(fund.createdAt) },
+    ...(fund.voidReason
+      ? [
+          { label: f.voidReason, value: fund.voidReason },
+          { label: f.voidedBy, value: fund.voidedBy?.name ?? '' },
+          { label: f.voidedAt, value: fund.voidedAt ? formatTime(fund.voidedAt) : '' },
+        ]
+      : []),
+  ]
 }
-
-function refundViewsOf(refunds: RefundDetail[]) {
-  return refunds.map((refund) => ({
-    id: refund.id,
-    no: refund.no,
-    date: refund.refundDate,
-    amount: formatMoney(refund.amountCents),
-    status: labels.recordStatus[refund.status],
-    meta: [
-      refund.methodName,
-      refund.note,
-      refund.voidReason,
-      refund.voidedBy?.name,
-      refund.voidedAt ? formatTime(refund.voidedAt) : null,
-    ]
-      .filter(Boolean)
-      .join(copy.separator),
-    canVoid: canDo(refund.actions, 'voidRefund'),
-  }))
-}
-function fundRowsOf(fund: PaymentDetail | ReceiptDetail) {
-  const payment = 'payDate' in fund
-  return rowsOf([
-    [
-      payment ? copy.screen.label.supplier : copy.screen.label.customer,
-      payment ? fund.supplierName : fund.customerName,
-    ],
-    [copy.screen.label.amount, formatMoney(fund.amountCents)],
-    [copy.screen.label.methodShort, fund.methodName],
-    [copy.screen.label.date, payment ? fund.payDate : fund.receiptDate],
-    [
-      payment ? copy.rework.availablePrepaid : copy.rework.availableReceiptPrepaid,
-      formatMoney(fund.prepaidCents),
-    ],
-    [copy.field.note, fund.note],
-    [copy.screen.label.voidReason, fund.voidReason],
-    [copy.screen.label.voidedAt, fund.voidedAt ? formatTime(fund.voidedAt) : null],
-    [copy.rework.voidedBy, fund.voidedBy?.name ?? null],
-  ])
-}
-export function fundViewOf(fund: PaymentDetail | ReceiptDetail) {
-  const payment = 'payDate' in fund
+export function fundViewOf(fund: Fund) {
+  const code = 'payDate' in fund ? 'voidPayment' : 'voidReceipt',
+    action = findAction(fund.actions, code)
   return {
     title: fund.no,
-    statusKind: 'recordStatus',
     status: fund.status,
-    notice: fund.notice ?? '',
-    canVoid: canDo(fund.actions, payment ? 'voidPayment' : 'voidReceipt'),
-    canRefund: canDo(fund.actions, payment ? 'refundPayment' : 'refundReceipt'),
-    allocations: payment
-      ? paymentAllocRowsOf(fund.allocations)
-      : allocRowsOf(fund.allocations, 'order'),
-    refunds: refundViewsOf(fund.refunds),
-    rows: fundRowsOf(fund),
+    statusKind: 'recordStatus',
+    notice: fund.lockedReason ?? '',
+    canVoid: canDo(fund.actions, code),
+    hasVoid: action !== null,
+    voidDisabled: !canDo(fund.actions, code),
+    voidReason: action?.disabledReason ?? '',
+    rows: [...fundBusinessRows(fund), ...fundHistoryRows(fund)],
+    statements: fund.statements.map((item) => ({
+      id: item.id,
+      title: item.no,
+      status: item.status,
+      fields: [
+        { label: f.amount, value: formatMoney(item.amountCents), amount: true },
+        {
+          label: 'payDate' in fund ? f.payable : f.receivable,
+          value: formatMoney(item.dueCents),
+          amount: true,
+        },
+      ],
+      tags: item.reversedAt ? [{ text: f.voided, warn: false }] : [],
+    })),
   }
 }
-
-// 收付款记录卡片：日期 + 状态；客户 + 方式；单号 + 金额
-function receiptRowOf(receipt: ReceiptCard) {
+export function recordRowOf(record: ReceiptDetail | PaymentDetail): FinanceRow {
+  const payment = 'payDate' in record
   return {
-    id: receipt.id,
-    date: receipt.receiptDate,
-    status: receipt.status,
-    title: receipt.customerName,
-    total: receipt.methodName,
-    meta: receipt.no,
-    amount: receipt.amountCents,
-    amountText: '',
-    tags: [],
-  }
-}
-
-export function recordRowOf(record: ReceiptCard | PaymentDetail) {
-  if ('receiptDate' in record) return { ...receiptRowOf(record), kind: 'receipt' as const }
-  return {
-    kind: 'payment' as const,
+    kind: payment ? 'payment' : 'receipt',
     id: record.id,
-    date: record.payDate,
+    title: payment ? record.supplierName : record.customerName,
     status: record.status,
-    title: record.supplierName,
-    total: record.methodName,
-    meta: record.no,
-    amount: record.amountCents,
-    amountText: '',
-    tags: [],
+    fields: [
+      { label: f.amount, value: formatMoney(record.amountCents), amount: true },
+      { label: f.method, value: record.methodName },
+      {
+        label: payment ? f.paymentDate : f.receiptDate,
+        value: payment ? record.payDate : record.receiptDate,
+      },
+      { label: f.no, value: record.no, wide: true },
+      {
+        label: f.statements,
+        value: record.statements[0]
+          ? f.statementSummary(record.statements[0].no, record.statements.length)
+          : f.noLinkedStatements,
+        wide: true,
+      },
+    ],
+    tags: record.discountCents
+      ? [{ text: `${f.discount} ${formatMoney(record.discountCents)}`, warn: false }]
+      : [],
   }
 }

@@ -25,8 +25,8 @@ describe('列表按天分组', () => {
     expect(formatClock('2026-10-03T01:40:00.000Z')).toBe('09:40')
     expect(formatClock('2026-10-02T16:05:00.000Z')).toBe('00:05')
   })
-  it('今年的组头写 月-日 周几', () => {
-    expect(formatDayHeader('2026-10-03', '2026-10-03')).toBe('10-03 周六')
+  it('组头写完整年月日和周几', () => {
+    expect(formatDayHeader('2026-10-03', '2026-10-03')).toBe('2026-10-03 周六')
   })
   it('不是今年的组头写全', () => {
     expect(formatDayHeader('2025-12-28', '2026-10-03')).toBe('2025-12-28 周日')
@@ -89,14 +89,14 @@ describe('数量带单位', () => {
         { unit: '束', qty: 32 },
         { unit: '盆', qty: 4 },
       ]),
-    ).toBe('32 束 · 4 盆')
+    ).toBe('32 束　　4 盆')
     expect(formatUnitTotals([])).toBe('')
   })
 })
 
 describe('卡片日期', () => {
-  it('今年的只写月-日', () => {
-    expect(formatCardDate('2026-09-28', '2026-09-30')).toBe('09-28')
+  it('同年也写完整年月日', () => {
+    expect(formatCardDate('2026-09-28', '2026-09-30')).toBe('2026-09-28')
   })
   it('往年的写全', () => {
     expect(formatCardDate('2025-12-31', '2026-09-30')).toBe('2025-12-31')
@@ -123,13 +123,13 @@ describe('时间按上海时间显示', () => {
 
 describe('顶栏日期', () => {
   it('2026-09-30 是周三', () => {
-    expect(formatNavDate('2026-09-30')).toBe('2026.09.30 周三')
+    expect(formatNavDate('2026-09-30')).toBe('2026-09-30 周三')
   })
   it('1970-01-01 是周四', () => {
-    expect(formatNavDate('1970-01-01')).toBe('1970.01.01 周四')
+    expect(formatNavDate('1970-01-01')).toBe('1970-01-01 周四')
   })
   it('1969-12-28 是周日（1970 年以前也对）', () => {
-    expect(formatNavDate('1969-12-28')).toBe('1969.12.28 周日')
+    expect(formatNavDate('1969-12-28')).toBe('1969-12-28 周日')
   })
 })
 

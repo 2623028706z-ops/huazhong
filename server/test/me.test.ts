@@ -83,7 +83,7 @@ describe('当前账号', () => {
     const data = res.body.data as Me
     expect(data).toMatchObject({
       type: 'admin',
-      name: '周总',
+      name: '瑞瑞',
       orgLabel: null,
       storeId: null,
       supplierId: null,
@@ -113,7 +113,7 @@ describe('当前账号', () => {
     })
   })
 
-  test('门店账号：归属「客户 · 门店」、落在门店首页', async () => {
+  test('门店账号：归属「客户 · 门店」、落在订货页', async () => {
     const data = (await me(await t.bind('s1'))).body.data as Me
     expect(data).toMatchObject({
       type: 'store',
@@ -121,20 +121,20 @@ describe('当前账号', () => {
       orgLabel: '晨曦花艺 · 滨江店',
       supplierId: null,
       modules: [],
-      landing: 'store_home',
+      landing: 'store_shop',
       menus: [],
     })
     expect(data.storeId).toMatch(/^[1-9][0-9]*$/)
   })
 
-  test('供应商账号：归属是供应商名称、落在供应商首页', async () => {
+  test('供应商账号：归属是供应商名称、落在填报页', async () => {
     const data = (await me(await t.bind('p2'))).body.data as Me
     expect(data).toMatchObject({
       type: 'supplier',
       orgLabel: '云岭花卉',
       storeId: null,
       modules: [],
-      landing: 'supplier_home',
+      landing: 'supplier_invites',
       menus: [],
     })
   })

@@ -1,0 +1,63 @@
+.hz-progress {
+  display: flex;
+  padding: 10px 0 14px;
+}
+
+.hz-progress__step {
+  position: relative;
+  flex: 1;
+  text-align: center;
+  color: var(--hz-muted);
+  font-size: var(--hz-font-sm);
+}
+
+.hz-progress__step::before {
+  position: absolute;
+  top: 5px;
+  left: -50%;
+  width: 100%;
+  height: 1px;
+  content: '';
+  background: var(--hz-rule);
+}
+
+.hz-progress__step:first-child::before {
+  display: none;
+}
+
+.hz-progress__dot {
+  position: relative;
+  width: 11px;
+  height: 11px;
+  margin: 0 auto 8px;
+  background: var(--hz-rule);
+  border-radius: 50%;
+}
+
+.hz-progress__step--done .hz-progress__dot {
+  background: var(--hz-green);
+}
+
+.hz-progress__step--done,
+.hz-progress__step--current {
+  color: var(--hz-green);
+}
+
+.hz-progress__step--ended {
+  color: var(--hz-muted);
+}
+
+.hz-progress__label {
+  display: block;
+}
+
+.hz-progress__date {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--hz-font-xs);
+}
+
+.hz-progress__step--current .hz-progress__dot {
+  background: var(--hz-paper);
+  box-shadow: 0 0 0 2px var(--hz-danger);
+}

@@ -24,7 +24,7 @@
         <hz-switch label="{{texts.enabled}}" value="{{form.enabled}}" bind:change="onEnabled" />
       </view>
     </view>
-    <template is="bom-rows" data="{{heading: texts.bom, error: fields.bom, bom: form.bom, add: texts.add}}" />
+    <template is="bom-rows" data="{{heading: texts.bom, error: fields.bom, bomRows,editKey, add: texts.add}}" />
   </block>
 </view>
 <hz-action-bar>

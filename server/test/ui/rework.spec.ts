@@ -1,4 +1,4 @@
-import { copy } from '@huazhong/shared'
+import { copy, financeCopy as f } from '@huazhong/shared'
 import type {
   PaymentDetail,
   ShippingDetail,
@@ -21,56 +21,67 @@ import {
   snap,
   tapText,
   waitData,
+  waitPage,
 } from './mini.ts'
 
 const suite = setupMiniSuite()
 
-test('D17-F D18-F D25-F 付款撤回、预付退款、作废历史完整保留', async () => {
+test('D17-F D18-F D25-F 多付退回在往来页登记，整张DZ与作废历史保留', async () => {
   const { mini, server } = suite()
   const finance = await asMini(mini, server, 'u6')
   const document = await poOf(server, 'PO-260928-004')
   const payment = dataOf<PaymentDetail>(
-    await finance.post('/finance/payments', await paymentInput(server, document, 3000)),
+    await finance.post('/finance/payments', await paymentInput(server, document, 99000)),
   )
   const page = await enter(mini, '/packages/finance/pages/records/index')
   await waitData(page, 'loaded', true)
-  await page.waitFor(800)
-  const tabBar = (await page.$('components\\/hz-tabs\\/index')) as CustomElement | null
-  const tabs = (await tabBar?.$$('.hz-tabs__item')) as CustomElement[] | undefined
-  const paymentTab = tabs?.[1]
-  if (!paymentTab) throw new Error('no payment tab')
-  await paymentTab.tap()
+  await page.callMethod('onKind', { detail: 'payment' })
   await expect.poll(async () => page.data('rows') as Promise<unknown>).toHaveLength(1)
   const card = await page.$('components\\/hz-card\\/index')
   const cardTarget = await card?.$('.hz-card')
   if (!cardTarget) throw new Error('no payment card')
   await cardTarget.tap()
-  await waitData(page, 'paymentView.allocations.0.canRevoke', true)
-  expect(await page.data('paymentView.title')).toBe(payment.no)
-  await tapText(page, copy.rework.revokeAllocation)
-  await waitData(page, 'paymentLayer', 'void')
-  await inputField(page, '#fund-reason', '核销错误')
-  await tapText(page, copy.rework.revokeAllocation)
-  await waitData(page, 'paymentLayer', 'detail')
-  await waitData(page, 'paymentView.allocations.0.canRevoke', false)
-  expect(await page.data('paymentView.allocations.0.sub')).toContain('核销错误')
-  await waitData(page, 'paymentView.canRefund', true)
-  await tapText(page, copy.rework.registerRefund)
-  await waitData(page, 'paymentLayer', 'refund')
-  await pickOption(page, '#refund-date', TODAY)
-  await inputField(page, '#refund-amount', '10')
-  await pickOption(page, '#refund-method', '微信')
-  await tapText(page, copy.rework.registerRefund)
-  await waitData(page, 'paymentLayer', 'detail')
-  await waitData(page, 'paymentView.refunds.0.status', '有效')
-  await tapText(page, copy.rework.voidRefund)
-  await waitData(page, 'paymentLayer', 'void')
-  await inputField(page, '#fund-reason', '退款登记错误')
-  await tapText(page, copy.screen.action.confirmVoid)
-  await waitData(page, 'paymentView.refunds.0.status', '已作废')
-  expect(await page.data('paymentView.refunds.0.meta')).toContain('退款登记错误')
-  expect(await page.data('paymentView.refunds.0.canVoid')).toBe(false)
-  expect(await page.data('paymentView.allocations')).toHaveLength(1)
+  const money = await waitPage(mini, 'packages/finance/pages/money/index')
+  await waitData(money, 'loaded', true)
+  expect(await money.data('view.title')).toBe(payment.no)
+  expect(await money.data('view.statements')).toHaveLength(1)
+  const ledger = await enter(
+    mini,
+    `/packages/finance/pages/supplier/index?id=${document.supplierId}`,
+  )
+  await waitData(ledger, 'canRefund', true)
+  await tapText(ledger, f.refund)
+  await waitData(ledger, 'refundSheet', true)
+  await pickOption(ledger, '#refund-date', TODAY)
+  await inputField(ledger, '#refund-amount', '10')
+  await pickOption(ledger, '#refund-method', '微信')
+  await tapText(ledger, f.confirmRefund)
+  await waitData(ledger, 'refundRows.0.status', '有效')
+  expect(await ledger.data('creditText')).toBe('¥20.00')
+  await tapText(ledger, f.voidRefund)
+  const reason = (await ledger.$('components\\/hz-reason-sheet\\/index')) as CustomElement
+  await waitData(ledger, 'voidRefundId', (await ledger.data('refundRows.0.id')) as string)
+  await inputField(reason, 'components\\/hz-field\\/index', '退款登记错误')
+  await tapText(reason, f.confirmVoid)
+  await waitData(ledger, 'refundRows.0.status', '已作废')
+  expect(await ledger.data('refundRows.0.reason')).toBe('退款登记错误')
+  expect(await ledger.data('refundRows.0.canVoid')).toBe(false)
+  expect(await ledger.data('creditText')).toBe('¥30.00')
+  const detail = await enter(
+    mini,
+    `/packages/finance/pages/money/index?kind=payment&id=${payment.id}`,
+  )
+  await waitData(detail, 'loaded', true)
+  await tapText(detail, f.voidPayment)
+  const voidReason = (await detail.$('components\\/hz-reason-sheet\\/index')) as CustomElement
+  await inputField(voidReason, 'components\\/hz-field\\/index', '付款登记错误')
+  await tapText(voidReason, f.confirmVoid)
+  await waitData(detail, 'view.status', 'voided')
+  expect(await detail.data('view.statements')).toHaveLength(1)
+  expect(await detail.data('view.statements.0.tags')).toContainEqual({
+    text: f.voided,
+    warn: false,
+  })
   await snap(mini, 'rework-funds-full-history')
 })
 
@@ -87,11 +98,16 @@ test('H3 发货专用页面管理员也无金额，少发多发预览无财务�
   await waitData(page, 'loaded', true)
   await page.waitFor(800)
   const line = await page.$('components\\/hz-line-item\\/index')
-  const stepper = (await line?.$('components\\/hz-stepper\\/index')) as CustomElement | null
+  if (!line) throw new Error('no shipping lines')
+  const row = await line.$('.hz-line-item__row')
+  if (!row) throw new Error('no shipping row')
+  await row.tap()
+  const stepper = (await line.$('components\\/hz-stepper\\/index')) as CustomElement | null
   const control = await stepper?.$('miniprogram_npm\\/tdesign-miniprogram\\/stepper\\/stepper')
   const plus = await control?.$('.t-stepper__plus')
   if (!plus) throw new Error('no quantity plus')
   await plus.tap()
+  await tapText(line as CustomElement, '确定')
   await expect
     .poll(async () => page.data('lineViews.0.tags') as Promise<unknown>)
     .toContainEqual({ text: copy.rework.overShipped, warn: true })
@@ -129,4 +145,25 @@ test('G30-F 调岗后日志模块来自历史而非当前岗位', async () => {
     )
   expect(await page.data('groups')).not.toEqual([])
   await snap(mini, 'rework-transferred-employee-logs')
+})
+
+test('底栏有按钮在提交时，同一排其余按钮锁住', async () => {
+  const { mini, server } = suite()
+  await asMini(mini, server, 'u2')
+  const id = await idBy(server.t, 'orders.no', 'SO-260929-018')
+  const page = await enter(mini, `/packages/sales/pages/order-detail/index?id=${id}`)
+  await waitData(page, 'loaded', true)
+  const codes = ((await page.data('buttons')) as { code: string }[]).map((button) => button.code)
+  expect(codes.length).toBeGreaterThan(1)
+  const blockedOf = async () =>
+    Promise.all(
+      ((await page.$$('components\\/hz-button\\/index')) as CustomElement[]).map(
+        async (button) => (await button.data('blocked')) as boolean,
+      ),
+    )
+  expect(await blockedOf()).not.toContain(true)
+  await page.setData({ busy: codes.at(-1) })
+  await expect.poll(async () => (await blockedOf()).filter(Boolean).length).toBe(codes.length - 1)
+  await page.setData({ busy: '' })
+  await expect.poll(async () => (await blockedOf()).filter(Boolean).length).toBe(0)
 })

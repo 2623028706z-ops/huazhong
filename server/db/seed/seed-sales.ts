@@ -1,9 +1,13 @@
+import { shanghaiDateOf } from '@huazhong/shared'
 // 写入阶段 3 的示例数据（sales-data.ts）：产品、订货目录、订单、售后、收款、收付款方式、发号起点
 import type { Tx } from '../client.ts'
 import {
   afterLines,
   afters,
-  allocations,
+  statements,
+  statementLines,
+  settlementLinks,
+  stores,
   catalogCategories,
   catalogItems,
   docSequences,
@@ -25,6 +29,7 @@ import {
   seedProductCategories,
   seedProducts,
   seedReceipts,
+  seedStatementRows,
   seedShipper,
   type SeedOrderLine,
 } from './sales-data.ts'
@@ -37,7 +42,7 @@ export interface SeedIds {
   materials: Map<string, number>
 }
 
-export function idOf<T>(ids: Map<string, T>, key: string): T {
+export function idOf<K extends string | number, T>(ids: Map<K, T>, key: K): T {
   const id = ids.get(key)
   if (id === undefined) throw new Error(`unknown seed key ${key}`)
   return id
@@ -50,7 +55,7 @@ interface LineRef {
   unit: string
 }
 
-// 订单：售后、核销要用它的 id 和明细行
+// 订单：售后、对账单要用它的 id 和明细行
 interface OrderRef {
   id: number
   customerId: number
@@ -232,36 +237,112 @@ async function insertAfters(tx: Tx, ids: SeedIds, refs: Map<string, OrderRef>): 
     await tx.insert(afterLines).values(lines)
   }
 }
+function seedStatementSources(nos: readonly string[], refs: Map<string, OrderRef>) {
+  return nos.map((no) => {
+    const ref = idOf(refs, no)
+    const order = seedOrders.find((o) => o.no === no)
+    if (!order?.shippedAt) throw new Error('missing seed shipped order')
+    return {
+      ref,
+      no,
+      date: shanghaiDateOf(Date.parse(order.shippedAt)),
+      amount: order.lines.reduce((sum, l) => sum + (l.shipped ?? 0) * l.price, 0),
+    }
+  })
+}
+function seedStatementLines(
+  sources: ReturnType<typeof seedStatementSources>,
+  statementId: number,
+  storeNames: Map<number, string>,
+  cashier: number,
+) {
+  return sources.map<typeof statementLines.$inferInsert>((s, sort) => ({
+    statementId,
+    sourceType: 'order',
+    sourceId: s.ref.id,
+    sourceVersion: 1,
+    sourceNo: s.no,
+    sourceDate: s.date,
+    storeId: s.ref.storeId,
+    storeName: idOf(storeNames, s.ref.storeId),
+    amountCents: s.amount,
+    previousPeriod: false,
+    sort,
+    createdBy: cashier,
+  }))
+}
+async function insertStatements(
+  tx: Tx,
+  ids: SeedIds,
+  refs: Map<string, OrderRef>,
+  cashier: number,
+) {
+  const storeNames = new Map((await tx.select().from(stores)).map((s) => [s.id, s.name]))
+  const statementIds = new Map<string, { id: number; dueCents: number }>()
+  for (const example of seedStatementRows) {
+    const sources = seedStatementSources(example.orders, refs)
+    const amount = sources.reduce((sum, s) => sum + s.amount, 0)
+    const row = (
+      await tx
+        .insert(statements)
+        .values({
+          no: example.no,
+          kind: 'customer',
+          customerId: idOf(ids.customers, example.customer),
+          periodFrom: '2026-09-01',
+          periodTo: '2026-09-29',
+          statementDate: '2026-09-29',
+          grossCents: amount,
+          dueCents: amount,
+          status: example.settled ? 'settled' : 'unsettled',
+          settledAt: example.settled ? new Date('2026-09-29T01:10:00.000Z') : null,
+          createdBy: cashier,
+          createdAt: new Date('2026-09-29T01:00:00.000Z'),
+        })
+        .returning()
+    )[0]
+    if (!row) throw new Error('missing seed statement')
+    statementIds.set(row.no, { id: row.id, dueCents: amount })
+    await tx.insert(statementLines).values(seedStatementLines(sources, row.id, storeNames, cashier))
+  }
+  return statementIds
+}
 async function insertReceipts(tx: Tx, ids: SeedIds, refs: Map<string, OrderRef>): Promise<void> {
-  const createdBy = ids.admin
-  const methods = seedMethodNames.map((name, sort) => ({ name, sort, createdBy }))
-  await tx.insert(paymentMethods).values(methods)
   const cashier = idOf(ids.accounts, seedCashier)
+  await tx
+    .insert(paymentMethods)
+    .values(seedMethodNames.map((name, sort) => ({ name, sort, createdBy: ids.admin })))
+  const statementIds = await insertStatements(tx, ids, refs, cashier)
   for (const r of seedReceipts) {
-    const createdAt = new Date(r.createdAt)
-    const [row] = await tx
-      .insert(receipts)
-      .values({
-        no: r.no,
-        receiptDate: r.receiptDate,
-        customerId: idOf(ids.customers, r.customer),
-        amountCents: r.amount,
-        methodName: r.method,
-        note: r.note,
-        createdBy: cashier,
-        createdAt,
-      })
-      .returning()
-    if (!row) continue
-    const allocs = r.allocs.map((a) => ({
-      receiptId: row.id,
-      orderId: idOf(refs, a.order).id,
-      amountCents: a.amount,
-      kind: 'direct' as const,
-      createdBy: cashier,
-      createdAt,
-    }))
-    await tx.insert(allocations).values(allocs)
+    const row = (
+      await tx
+        .insert(receipts)
+        .values({
+          no: r.no,
+          receiptDate: r.receiptDate,
+          customerId: idOf(ids.customers, r.customer),
+          amountCents: r.amount,
+          creditCents: r.creditCents,
+          methodName: r.method,
+          note: r.note,
+          createdBy: cashier,
+          createdAt: new Date(r.createdAt),
+        })
+        .returning()
+    )[0]
+    if (!row) throw new Error('missing seed receipt')
+    await tx.insert(settlementLinks).values(
+      r.statements.map((no) => {
+        const statement = idOf(statementIds, no)
+        return {
+          statementId: statement.id,
+          receiptId: row.id,
+          amountCents: statement.dueCents,
+          createdBy: cashier,
+          createdAt: new Date(r.createdAt),
+        }
+      }),
+    )
   }
 }
 
@@ -295,5 +376,6 @@ export async function insertSales(tx: Tx, ids: SeedIds): Promise<void> {
     ...seedOrders.map((o) => o.no),
     ...seedAfters.map((a) => a.no),
     ...seedReceipts.map((r) => r.no),
+    ...seedStatementRows.map((r) => r.no),
   ])
 }

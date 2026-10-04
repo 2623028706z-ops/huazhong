@@ -1,10 +1,16 @@
-import { contract, copy, formatQty, type OutputOf } from '@huazhong/shared'
+import {
+  contract,
+  copy,
+  redesignCopy,
+  STOCK_AGE_WARNING_DAYS,
+  formatQty,
+  type OutputOf,
+} from '@huazhong/shared'
 import type { FailureView } from '../../../../core/failure-view'
 import { unwatchOnLeave, watch } from '../../../../core/live'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
-import { buttonsOf, canDo } from '../../../../core/actions'
-import type { CodeEvent } from '../../../../core/events'
+import { canDo } from '../../../../core/actions'
 Page({
   ...unwatchOnLeave,
   data: {
@@ -13,9 +19,20 @@ Page({
     failure: null as FailureView | null,
     material: null as OutputOf<typeof contract.getMaterial> | null,
     rows: [] as { label: string; value: string }[],
-    batches: [] as { id: string; date: string; qty: string }[],
-    buttons: [] as ReturnType<typeof buttonsOf>,
-    texts: { stock: copy.screen.title.stock, batches: copy.screen.section.batches },
+    batches: [] as { id: string; date: string; qty: string; age: string; aged: boolean }[],
+    canEdit: false,
+    canStockIn: false,
+    canStockOut: false,
+    canLoss: false,
+    texts: {
+      loss: copy.stock.screen.titles.loss,
+      stockOut: copy.stock.screen.stockOut,
+      edit: redesignCopy.editMaterial,
+      stockIn: copy.stock.screen.stockIn,
+      moves: copy.stock.screen.titles.moves,
+      stock: copy.screen.title.stock,
+      batches: copy.screen.section.batches,
+    },
   },
   id: '',
   onLoad(query: Record<string, string | undefined>) {
@@ -36,7 +53,10 @@ Page({
       loaded: true,
       failure: null,
       material: m,
-      buttons: buttonsOf(m.actions, [{ code: 'stockIn', secondary: true }, { code: 'stockOut' }]),
+      canEdit: canDo(m.actions, 'edit'),
+      canStockIn: canDo(m.actions, 'stockIn'),
+      canStockOut: canDo(m.actions, 'stockOut'),
+      canLoss: canDo(m.actions, 'reportLoss'),
       rows: [
         { label: copy.field.code, value: m.code },
         { label: copy.field.category, value: m.categoryName },
@@ -50,23 +70,37 @@ Page({
       batches: m.batches.map((b) => ({
         id: b.id,
         date: b.inDate,
+        age: redesignCopy.age(b.ageDays),
+        aged: b.ageDays >= STOCK_AGE_WARNING_DAYS,
         qty: formatQty(b.leftQty, m.unit),
       })),
     })
   },
+  onEdit() {
+    void wx.navigateTo({ url: `/packages/warehouse/pages/materials/index?editId=${this.id}` })
+  },
+  onMoves() {
+    void wx.navigateTo({ url: `/packages/warehouse/pages/moves/index?materialId=${this.id}` })
+  },
+  onStockOut() {
+    if (this.data.canStockOut)
+      void wx.navigateTo({
+        url: `/packages/warehouse/pages/doc-form/index?kind=out&materialId=${this.id}`,
+      })
+  },
+  onLoss() {
+    if (this.data.canLoss)
+      void wx.navigateTo({
+        url: `/packages/warehouse/pages/doc-form/index?kind=loss&materialId=${this.id}`,
+      })
+  },
+  onStockIn() {
+    if (this.data.canStockIn)
+      void wx.navigateTo({
+        url: `/packages/warehouse/pages/doc-form/index?kind=in&materialId=${this.id}`,
+      })
+  },
   onFailureAction() {
     void this.load()
-  },
-  onAction(event: CodeEvent) {
-    const code = event.currentTarget.dataset.code
-    if (
-      (code !== 'stockIn' && code !== 'stockOut') ||
-      !this.data.material ||
-      !canDo(this.data.material.actions, code)
-    )
-      return
-    void wx.navigateTo({
-      url: `/packages/warehouse/pages/doc-form/index?kind=${code === 'stockIn' ? 'in' : 'out'}&materialId=${this.id}`,
-    })
   },
 })

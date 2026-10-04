@@ -37,6 +37,21 @@ export function editDraft(): EditDraft | null {
   return draft
 }
 
+export function reviewEdit(order: OrderDetail, catalog: readonly StoreCatalogItem[] | null): void {
+  if (!draft || draft.orderId !== order.id) return
+  draft = {
+    ...draft,
+    version: order.version,
+    discontinued: draft.lines
+      .filter((line) =>
+        catalog
+          ? !catalog.some((item) => item.productId === line.productId)
+          : order.lines.some((item) => item.productId === line.productId && item.discontinued),
+      )
+      .map((line) => line.productId),
+  }
+}
+
 export function endEdit(): void {
   draft = null
 }
@@ -93,6 +108,7 @@ export function cartLinesOf(lines: readonly CartLine[], isEdit: boolean) {
   const discontinued = isEdit ? (draft?.discontinued ?? []) : []
   return lines.map((line) => ({
     key: line.productId,
+    removable: discontinued.includes(line.productId),
     name: line.name,
     tags: discontinued.includes(line.productId)
       ? [{ text: copy.screen.tag.discontinued, warn: true }]

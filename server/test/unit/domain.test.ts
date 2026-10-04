@@ -23,6 +23,7 @@ const staff = (modules: Viewer['modules']): Viewer => ({
   customerId: null,
   supplierId: null,
   orgLabel: null,
+  storeName: null,
 })
 const admin: Viewer = { ...staff(moduleKeys), accountId: 1, type: 'admin', name: '周总' }
 const store: Viewer = {
@@ -33,6 +34,7 @@ const store: Viewer = {
   storeId: 11,
   customerId: 3,
   orgLabel: '晨曦花艺 · 滨江店',
+  storeName: '滨江店',
 }
 const supplier: Viewer = {
   ...staff([]),
@@ -89,8 +91,8 @@ describe('身份', () => {
   test('操作人快照：系统、员工、门店和供应商带归属', () => {
     expect(actorLabelOf(null)).toBe('系统')
     expect(actorLabelOf(admin)).toBe('周总')
-    expect(actorLabelOf(store)).toBe('陈女士（晨曦花艺 · 滨江店）')
-    expect(actorLabelOf(supplier)).toBe('林先生（春禾花材）')
+    expect(actorLabelOf(store)).toBe('门店 滨江店')
+    expect(actorLabelOf(supplier)).toBe('供应商 春禾花材')
   })
 })
 

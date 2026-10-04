@@ -9,11 +9,13 @@ import { Inject, Injectable } from '@nestjs/common'
 import { and, asc, eq, ilike, or, sql, type SQL } from 'drizzle-orm'
 import type { Db, Tx } from '../../../db/client.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
-import type { PaymentLedger } from '../../common/payment-ledger.ts'
 import { WhDocReads } from './wh-doc-reads.ts'
 import { materialCategories, materials, stockBatches } from '../../../db/schema/index.ts'
+import { Clock } from '../../common/clock.ts'
+import { agedStockWhere } from './stock-age.ts'
 import { DB } from '../../common/db.ts'
 import { pageOf } from '../../common/domain/cursor.ts'
+import { exactNumber } from '../../common/domain/units.ts'
 import { afterCursor } from '../../common/page.ts'
 
 interface InventoryQuery {
@@ -21,6 +23,7 @@ interface InventoryQuery {
   categoryId?: string | undefined
   cursor?: string | undefined
   limit: number
+  aged?: boolean | undefined
 }
 
 // 搜索词里的 % _ \ 当普通字符
@@ -39,10 +42,11 @@ export class WarehouseService {
   constructor(
     @Inject(DB) private readonly db: Db,
     private readonly docs: WhDocReads,
+    private readonly clock: Clock,
   ) {}
 
-  docCards(executor: Db | Tx, viewer: Viewer, ids: number[], ledger?: PaymentLedger) {
-    return this.docs.cardsOf(executor, viewer, ids, ledger)
+  docCards(executor: Db | Tx, viewer: Viewer, ids: number[]) {
+    return this.docs.cardsOf(executor, viewer, ids)
   }
   docDetail(executor: Db | Tx, viewer: Viewer, id: number) {
     return this.docs.detail(executor, viewer, id)
@@ -51,10 +55,10 @@ export class WarehouseService {
   // 一种花材的当前库存（相关子查询，放在以 materials 为主表的查询里）
   private stockQtyOf(): SQL<number> {
     const total = this.db
-      .select({ total: sql<number>`coalesce(sum(${stockBatches.leftQty}), 0)::int` })
+      .select({ total: sql`coalesce(sum(${stockBatches.leftQty}), 0)` })
       .from(stockBatches)
       .where(eq(stockBatches.materialId, materials.id))
-    return sql<number>`(${total})`
+    return sql<number>`(${total})`.mapWith(exactNumber)
   }
 
   // 全部花材（含库存 0、含停用），按编码升序
@@ -75,6 +79,11 @@ export class WarehouseService {
       .where(
         and(
           materialSearch(query.q),
+          query.aged === undefined
+            ? undefined
+            : query.aged
+              ? agedStockWhere(this.clock.today())
+              : sql`NOT (${agedStockWhere(this.clock.today())})`,
           query.categoryId === undefined
             ? undefined
             : eq(materials.categoryId, Number(query.categoryId)),

@@ -20,9 +20,11 @@
 | 主数据 | 只停用不删除（`enabled BOOLEAN NOT NULL DEFAULT true`）；外键一律 `ON DELETE RESTRICT` |
 | 状态 | PostgreSQL 原生 enum（Drizzle `pgEnum`）存英文码；英文码和中文名只在 `shared` 包定义，`pgEnum` 直接取 `shared` 的枚举值，见第 2 节 |
 | 例外 | 复合主键的支撑表（`account_modules`、`doc_sequences`、`idempotency_keys`）只有各自列出的字段；只插入的表（`operation_logs`、`stock_moves`）没有 `updated_at` |
-| JSONB | 只用在改单记录、改价记录的 `items`，盘点单的分类快照，日志的 `before`、`after`；其余都是独立表 |
-| 算出来的值 | 应收、已收、未收、预收、收款状态、应付、付款状态、库存、在途、可申请售后数量，以及单据的 `actions`、`lockedReason` 都不存，按第 8 节查询时算 |
+| JSONB | 只用在变更记录、改价记录的 `items`，盘点单的分类快照，日志的 `before`、`after`；其余都是独立表 |
+| 算出来的值 | 往来未收 / 待付、未结清、未对账、多收 / 多付余额、逾期、库存、库龄、在途、可申请售后数量和 `actions`、`lockedReason` 都不存，按第 8 节查询时算；对账单开单金额和来源快照保存，业务单据不保存收付款状态 |
 | 业务参数 | 上限、有效期、分页、编码前缀等只引用 `shared/config` 的配置名（05 第 1.6 节），本文不写数字 |
+
+`INTEGER` 持久化金额、单价和数量的输入上限统一引用 `shared/rules` 的 `STORED_INT_MAX`，越界返回字段级 `VALIDATION_FAILED`；售后保存总额也必须在该存储范围内。这是当前列类型的技术边界，不新增业务额度规则。派生金额、库存等汇总不套用单列上限：SQL 乘法先转 `BIGINT` 再求和，映射及后端累计必须保持 JavaScript 安全整数；超出精确表示范围拒绝计算，不静默舍入。
 
 下文每张表都含公共列：`id`、`created_at`、`updated_at`、`created_by`；标「有版本」的另含 `version`。表格里不再重复。
 
@@ -35,9 +37,9 @@
 | PO | 采购单 | BS | 报损单 |
 | YQ | 填报邀请 | PD | 盘点单 |
 | SK | 收款 | FK | 付款 |
-| TK | 预收退款、预付退款 | — | — |
+| TK | 多收退回、多付退回 | DZ | 客户 / 供应商对账单 |
 
-核销、退货、库存批次、出入库流水没有单号，只用 `id`。
+对账单明细、结清关联、多收抵扣来源、退货、库存批次、出入库流水没有单号，只用 `id`。
 
 ## 2. 枚举码与中文名
 
@@ -53,14 +55,15 @@
 | `after_origin` | `store` 门店提交、`sales` 销售新建 |
 | `after_reason` | `damaged` 花材损坏、`qty_mismatch` 数量不符、`quality` 品质问题、`other` 其他 |
 | `record_status`（收款、付款、退款共用） | `valid` 有效、`voided` 已作废 |
-| `alloc_kind`（收款核销、付款核销共用） | `direct` 登记时核销、`prepaid` 核销预收 / 预付 |
-| `refund_kind` | `receipt` 预收退款、`payment` 预付退款 |
+| `statement_kind` | `customer` 客户对账单、`supplier` 供应商对账单 |
+| `statement_status` | `unsettled` 未结清、`settled` 已结清、`voided` 已作废；没有部分结清 |
+| `refund_kind` | `receipt` 多收退回、`payment` 多付退回 |
 | `invite_status` | `pending` 待填报、`submitted` 已提交、`cancelled` 已取消 |
 | `po_status` | `to_receive` 待收货、`received` 已收货、`rejected` 已拒收、`cancelled` 已取消、`voided` 已作废 |
 | `wh_doc_kind` | `in` 手工入库、`out` 手工出库、`loss` 报损 |
 | `wh_doc_status` | `stocked_in` 已入库、`stocked_out` 已出库、`lost` 已报损、`voided` 已作废 |
 | `stocktake_status` | `done` 已盘点 |
-| `move_type` | `po_in` 采购入库、`po_return` 采购退货、`po_void` 采购单作废、`manual_in` 手工入库、`in_void` 入库作废、`manual_out` 手工出库、`out_void` 出库作废、`loss` 报损、`loss_void` 报损作废、`check_gain` 盘点盘盈、`check_loss` 盘点盘亏 |
+| `move_type` | `po_in` 采购入库、`po_return` 采购退货、`po_void` 采购单作废、`manual_in` 手工入库、`in_void` 入库作废、`manual_out` 手工出库、`out_void` 出库作废、`loss` 报损、`loss_void` 报损作废、`check_gain` 盘盈、`check_loss` 盘亏 |
 | `account_type` | `admin` 管理员、`staff` 员工、`store` 门店、`supplier` 供应商 |
 | `module_key` | `sales` 销售、`shipping` 发货、`purchase` 采购、`warehouse` 仓库、`finance` 财务 |
 | `file_status` | `pending` 待检测、`ok` 通过、`rejected` 不通过 |
@@ -69,9 +72,6 @@
 
 | 名称 | 英文码 → 中文 | 算法见 |
 |---|---|---|
-| 发货单收款状态（接口字段 `payStatus`） | `unpaid` 未收、`partial` 部分收、`paid` 已收（门店端显示未付、部分付、已付） | 第 8 节 |
-| 售后抵扣标记 | `offsetByAfter` 布尔：应收 0 且售后 > 0 | 第 8 节 |
-| 付款状态（接口字段 `apStatus`） | `unpaid` 未付、`partial` 部分付、`paid` 已付、`no_pay` 无需付款 | 第 8 节 |
 | 采购需求 | `invited` 已邀请（缺货 / 够用由 `leftQty` 正负得出，不另返回）；`shipFrom`、`shipTo` 这种花材涉及订单的最早、最晚出货日期 | 第 8 节 |
 | 采购单标记 | `changed` 改单、`repriced` 改价、`all_returned` 已全部退货 | 有记录即为真 |
 | 订单标记 | `changed` 改单、`repriced`（明细单价 ≠ 目录价）、`cancelRequested`（有待处理的取消申请）、`shortShipped` 少发、`overShipped` 多发（有一行实发少于、多于订单数量） | 同上 |
@@ -79,11 +79,13 @@
 
 状态标签颜色见 02 章，和中文名一起放在 `shared` 的状态表里。
 
+外部端（门店、供应商）不出现「已作废」（2026-10-03 改版）：订单、采购单、售后的 `voided` 照常存储和返回，门店端、供应商端显示成「已取消」、原因行写「取消原因」；员工端照常显示已作废（03 章第 3 节、05 章）。
+
 ## 3. 账号与公共
 
 ### 3.1 `accounts` 账号（有版本）
 
-员工、管理员、门店账号、供应商端账号都在这一张表。供应商端账号只存这一份（原型在采购供应商资料和公共用户表各存一份）。
+员工、管理员、门店账号、供应商账号都在这一张表。供应商账号只存这一份（原型在采购供应商资料和公共用户表各存一份）。
 
 | 字段 | 类型与约束 | 说明 | 原型字段 |
 |---|---|---|---|
@@ -100,7 +102,7 @@
 
 第一个管理员没有人创建它：插入时先从 `accounts_id_seq` 取号，`id` 和 `created_by` 都写这个号（`OVERRIDING SYSTEM VALUE`），其余账号的 `created_by` 是真实的操作人。
 
-索引：部分唯一 `(phone) WHERE enabled`；部分唯一 `(openid) WHERE openid IS NOT NULL`；部分唯一 `(store_id) WHERE type='store' AND enabled`（一店一账号）；部分唯一 `(supplier_id) WHERE type='supplier' AND enabled`（一家一个供应商端账号）。
+索引：部分唯一 `(phone) WHERE enabled`；部分唯一 `(openid) WHERE openid IS NOT NULL`；部分唯一 `(store_id) WHERE type='store' AND enabled`（一店一账号）；部分唯一 `(supplier_id) WHERE type='supplier' AND enabled`（一家一个供应商账号）。
 
 门店账号显示的组织名「客户 · 门店」、供应商账号的组织名都从关联表取，不另存（原型的 `org`）。
 
@@ -119,13 +121,13 @@
 
 | 字段 | 类型与约束 | 说明 | 原型字段 |
 |---|---|---|---|
-| module | `module_key NULL` | 门店端的操作记在 `sales`，供应商端的记在 `purchase`（原型如此）；账号类操作（绑定、解绑微信，新增、修改员工）为 `NULL`，界面叫「公共」，只有管理员能看（03 章第 8.5 节） | `module` |
+| module | `module_key NULL` | 门店端的操作记在 `sales`，供应商端的记在 `purchase`（原型如此）；账号类操作（绑定、解绑微信，新建、修改员工）为 `NULL`，界面叫「公共」，只有管理员能看（03 章第 8.5 节） | `module` |
 | kind | `TEXT NOT NULL` | 对象类别，例如「订单」「售后」「采购到货」 | `kind` |
 | action | `TEXT NOT NULL` | 例如「确认订单」「作废售后」 | `action` |
 | target_type | `TEXT NOT NULL` | 表名，例如 `orders` | 无 |
 | target_id | `BIGINT NULL` | | 无 |
 | target_label | `TEXT NOT NULL` | 单号或对象名，用于列表显示 | `target` |
-| actor_label | `TEXT NOT NULL` | 快照：员工是姓名，外部账号是「姓名（组织）」，自动动作是「系统」 | `actor` |
+| actor_label | `TEXT NOT NULL` | 快照：员工是姓名；外部账号写「门店 滨江店」「供应商 春禾花材」，不写岗位；自动动作是「系统」 | `actor` |
 | reason | `TEXT NOT NULL DEFAULT ''` | | `reason` |
 | before | `JSONB NULL` | 修改前的业务视图（中文名、元为单位都可以，只用于展示） | `before` |
 | after | `JSONB NULL` | 修改后 | `after` |
@@ -146,12 +148,12 @@
 
 | 表 | 字段（类型与约束） | 说明 | 原型字段 |
 |---|---|---|---|
-| `customers` | `name TEXT NOT NULL UNIQUE`、`enabled`、有版本 | 客户（往来单位），对账按客户。在客户门店页新建、改名、启用 / 停用；停用规则见 03 章第 5 节 | `customers[]`（原型没有 enabled，新加） |
+| `customers` | `name TEXT NOT NULL UNIQUE`、`enabled`、`term_days INTEGER NULL CHECK (term_days >= 0)`、`opening_debt_cents INTEGER NOT NULL DEFAULT 0 CHECK (opening_debt_cents >= 0)`、有版本 | 客户（往来单位），对账按客户、明细按门店。销售维护名称、启用状态；财务维护账期和期初欠款。期初欠款只在开第一张对账单前可改，首张有效对账单保存该金额；首张作废后释放期初欠款占用，下一张重新带入，不重复计算 | `customers[]` |
 | `stores` | `customer_id → customers.id NOT NULL`、`name TEXT NOT NULL`、`contact`、`phone`、`address` 都是 `TEXT NOT NULL DEFAULT ''`、`enabled`、有版本 | 唯一 `(customer_id, name)`。填了登录手机号（有启用的门店账号）时 `contact` 不能为空，门店账号的 `accounts.name` 跟着 `contact` 改（服务层，同一事务）。停用规则见 03 章第 2、5 节 | `stores[]` |
 | `product_categories` | `name TEXT NOT NULL UNIQUE`、`sort INTEGER NOT NULL DEFAULT 0` | 产品内部分类（单品、花束…），只在产品管理里用（2026-10-03 确认）。按 `sort, id` 排；没有产品（含停用的产品）时可以删除（03 章第 5 节） | `cats[]` |
 | `products` | `name TEXT NOT NULL UNIQUE`、`category_id → product_categories.id`、`unit TEXT NOT NULL`、`image_file_id → files.id NULL`、`enabled`、有版本 | 成品。停用规则见 03 章第 5 节；原型没有产品级启用，新加 | `products[]` |
 | `product_bom_lines` | `product_id → products.id`、`material_id → materials.id`、`qty INTEGER NOT NULL CHECK (qty > 0)` | 配方，唯一 `(product_id, material_id)`；每个产品至少一行（服务层）。直接关联花材，原型的「配方对不上花材资料」在新版不会出现 | `bom[]` |
-| `catalog_categories` | `customer_id → customers.id`、`name TEXT NOT NULL`、`sort INTEGER NOT NULL DEFAULT 0` | 订货分类：每个客户一套，门店订货页按它分组（2026-10-03 确认）。唯一 `(customer_id, name)`；按 `sort, id` 排；有目录项（含停用的）时不能删 | — |
+| `catalog_categories` | `customer_id → customers.id`、`name TEXT NOT NULL`、`sort INTEGER NOT NULL DEFAULT 0` | 订货分类：每个客户一套，门店订货页按它分组（2026-10-03 确认）。唯一 `(customer_id, name)`；按 `sort, id` 排；有目录产品（含停用的）时不能删 | — |
 | `catalog_items` | `customer_id → customers.id`、`product_id → products.id`、`category_id → catalog_categories.id NOT NULL`、`customer_code TEXT NOT NULL DEFAULT ''`、`price_cents INTEGER NOT NULL CHECK (price_cents >= 0)`、`enabled`、有版本 | 订货目录：每个客户一份价目。唯一 `(customer_id, product_id)`；`customer_code` 是客户产品编码（`''` 为没填），部分唯一索引 `(customer_id, customer_code) WHERE customer_code <> ''`；`category_id` 须是同一客户的分类（服务层校验），索引 `(category_id)`。`enabled=false` 即停用。改 `price_cents` 时同一事务更新这个客户待确认订单里这种产品的 `order_lines.price_cents`、`list_price_cents`（03 章第 8.1 节） | `directory[客户][]` |
 
 ### 4.2 `orders` 订单（有版本）
@@ -239,6 +241,8 @@
 
 状态流转：`pending` → `processed` / `closed`；`processed` → `voided`。
 
+售后详情的 `closedAt` 只投影该售后对应「关闭售后」日志的真实时间，不新增实体列；未关闭或历史缺少关闭日志时为 null，不用申请日期替代。关闭写入和日志在同一事务内，响应立即带关闭时间。
+
 ### 4.6 `after_lines` 售后明细
 
 | 字段 | 类型与约束 | 说明 | 原型字段 |
@@ -263,9 +267,9 @@
 | file_id | `→ files.id NOT NULL` | 只能引用 `purpose='after_image' AND status='ok'` | `images[]` |
 | sort | `SMALLINT NOT NULL` | | |
 
-只有门店提交的售后有图片，销售新建的不带。门店提交时原因为 `damaged`、`quality` 的行至少 1 张（服务层校验，2026-10-02 梳理确认）。唯一 `(after_line_id, file_id)`；每行最多 `AFTER_IMAGE_MAX_COUNT` 张（服务层校验，单张 ≤ `IMAGE_MAX_BYTES` 在签名时限制，配置在 `shared/config`）。
+只有门店提交的售后有图片，销售新建的不带。门店提交时四种原因均需问题说明且每行至少 1 张图片（服务层校验）。唯一 `(after_line_id, file_id)`；每行最多 `AFTER_IMAGE_MAX_COUNT` 张（服务层校验，单张 ≤ `IMAGE_MAX_BYTES` 在签名时限制，配置在 `shared/config`）。
 
-### 4.8 `store_invites` 门店邀请下单
+### 4.8 `store_invites` 门店邀请（邀请订货）
 
 销售给门店生成分享邀请，门店打开后用手机号快速验证绑定门店账号。同一门店同一时间只有一条有效邀请；门店账号已绑定微信时不能再用邀请绑定，要销售或管理员先在门店资料里解绑。
 
@@ -291,12 +295,14 @@
 | name | `TEXT NOT NULL UNIQUE` | 必填不重复 | `name` |
 | contact / phone / address | `TEXT NOT NULL DEFAULT ''` | | `contact`、`phone`、`address` |
 | enabled | `BOOLEAN NOT NULL DEFAULT true` | 停用后已下的单照常收货付款；待填报邀请自动取消 | `enabled` |
+| term_days | `INTEGER NULL CHECK (term_days >= 0)` | 账期天数；空值不生成付款截止、不算逾期 | — |
+| opening_debt_cents | `INTEGER NOT NULL DEFAULT 0 CHECK (opening_debt_cents >= 0)` | 财务维护的期初欠款，仅开首张对账单前可改；首张有效对账单保存，作废释放占用 | — |
 
-供应商端账号在 `accounts`（`type='supplier'`），是否开通 = 有一条启用的供应商账号（原型的 `account`、`loginPhone`）。
+供应商账号在 `accounts`（`type='supplier'`），是否开通 = 有一条启用的供应商账号（原型的 `account`、`loginPhone`）。
 
 修改供应商账号登录手机号时，同一事务清空 `openid`、`bound_at` 并提升账号版本；供应商资料版本也提升（阶段 4 确认）。
 
-停用供应商或关闭供应商端账号时保留原账号及其 `openid`、`bound_at`，更新状态并提升账号和供应商版本；重新启用同一账号后原微信可继续使用。若同时修改登录手机号，仍清空微信绑定（阶段 4 确认）。
+停用供应商或关闭供应商账号时保留原账号及其 `openid`、`bound_at`，更新状态并提升账号和供应商版本；重新启用同一账号后原微信可继续使用。若同时修改登录手机号，仍清空微信绑定（阶段 4 确认）。
 
 ### 5.2 `purchase_orders` 采购单（有版本）
 
@@ -314,7 +320,7 @@
 | cancel_reason / cancelled_by / cancelled_at | `NULL` | 取消原因必填；`cancelled_by` 可以是采购员或供应商账号 | `closeReason`、`cancelAt` |
 | void_reason / voided_by / voided_at | `NULL` | 仓库作废已收货采购单（必填原因） | 无 |
 
-原型的 `payable`、`repriced` 不存：应付按第 8 节算，改价看 `price_changes` 有没有记录。约束 `CHECK (status <> 'voided' OR (received_at IS NOT NULL AND void_reason IS NOT NULL))`。索引：`(status, order_date DESC)`、`(supplier_id, status)`。
+原型的 `payable`、`repriced` 不存：采购金额按第 8 节算，改价看 `price_changes` 有没有记录；所属有效对账单通过 `statement_lines` 查询，业务单据没有已付 / 待付或付款状态。约束 `CHECK (status <> 'voided' OR (received_at IS NOT NULL AND void_reason IS NOT NULL))`。索引：`(status, order_date DESC)`、`(supplier_id, status)`。
 
 状态流转：新建或填报提交 → `to_receive`；`to_receive` → `received`（实收有大于 0 的行）/ `rejected`（实收全 0）/ `cancelled`（采购取消，或供应商取消自己填报生成的单）；`received` → `voided`（仓库作废，前提见 03 章第 5 节，同一事务按净实收扣回库存，先扣本单批次）。
 
@@ -340,7 +346,7 @@
 
 | 表 | 字段 | 说明 | 原型字段 |
 |---|---|---|---|
-| `po_changes` | `po_id NOT NULL`、`actor_label`、`reason TEXT NOT NULL DEFAULT ''`、`items JSONB NOT NULL`（字符串数组，含换供应商） | 采购改单、供应商改单记录，三端可见，有记录即标「改单」；采购改单原因必填，供应商改单选填（服务层校验） | `changes[]` |
+| `po_changes` | `po_id NOT NULL`、`actor_label`、`reason TEXT NOT NULL DEFAULT ''`、`items JSONB NOT NULL`（字符串数组，含换供应商） | 采购改单、供应商改单的变更记录，三端可见，有记录即标「改单」；采购改单原因必填，供应商改单选填（服务层校验） | `changes[]` |
 | `price_changes` | `po_id NULL`、`wh_doc_id NULL`、`actor_label`、`reason TEXT NOT NULL`、`items JSONB NOT NULL`（`[{name, fromCents, toCents}]`） | 采购单和手工入库单共用；`CHECK (num_nonnulls(po_id, wh_doc_id) = 1)`；收货时改价、收货后改价都写这里 | `priceChanges[]` |
 | `purchase_returns` | `po_id NOT NULL`、`actor_label` | 一次退货一条，不用原因 | `returns[]` |
 | `purchase_return_lines` | `return_id NOT NULL ON DELETE CASCADE`、`po_line_id NOT NULL`、`name`、`qty INTEGER CHECK (qty > 0)` | 每种花材累计不超过实收、库存（服务层校验） | `returns[].items[]` |
@@ -351,12 +357,12 @@
 |---|---|---|---|
 | no | `TEXT NOT NULL UNIQUE` | YQ-… | `id` |
 | invite_date | `DATE NOT NULL` | | `date` |
-| supplier_id | `→ suppliers.id NOT NULL` | 必须有启用的供应商端账号（服务层校验） | `supplier` |
+| supplier_id | `→ suppliers.id NOT NULL` | 必须有启用的供应商账号（服务层校验） | `supplier` |
 | buyer_id | `→ accounts.id NOT NULL` | | `buyer` |
 | status | `invite_status NOT NULL` | | `status` |
 | submitted_at | `NULL` | | `submittedAt` |
 | cancelled_by / cancelled_at | `NULL` | 自动取消时 `cancelled_by` 为空 | `cancelAt` |
-| cancel_note | `TEXT NULL` | 自动取消写「停用供应商，自动取消」「关闭供应商端账号，自动取消」 | `cancelNote` |
+| cancel_note | `TEXT NULL` | 自动取消写「停用供应商，自动取消」「关闭供应商账号，自动取消」 | `cancelNote` |
 
 生成的采购单由 `purchase_orders.invite_id` 反查。索引：`(status, supplier_id)`。
 
@@ -379,30 +385,30 @@
 
 | 表 | 字段（类型与约束） | 说明 | 原型字段 |
 |---|---|---|---|
-| `material_categories` | `name TEXT NOT NULL UNIQUE`、`sort INTEGER NOT NULL DEFAULT 0` | 花材分类，可新增、改名（改名只改这一行，花材跟着变） | `cats[]` |
-| `materials` | `code TEXT NOT NULL UNIQUE`、`name TEXT NOT NULL`、`category_id → material_categories.id NOT NULL`、`unit TEXT NOT NULL`、`enabled`、有版本 | 名称可以重复，编码不能重复；新建默认 `MATERIAL_CODE_PREFIX` + 现有最大数字 + 1，可改。改单位不换算已有数量，只记日志 | `materials[]` |
+| `material_categories` | `name TEXT NOT NULL UNIQUE`、`sort INTEGER NOT NULL DEFAULT 0` | 花材分类，可新建、改名（改名只改这一行，花材跟着变） | `cats[]` |
+| `materials` | `code TEXT NOT NULL UNIQUE`、`name TEXT NOT NULL`、`category_id → material_categories.id NOT NULL`、`unit TEXT NOT NULL`、`enabled`、有版本 | 名称可以重复，编码不能重复；新建默认 `MATERIAL_CODE_PREFIX` + 现有最大数字 + 1，可改。已有库存、业务记录或配方引用时锁定单位，见 03 章第 8.3 节 | `materials[]` |
 | `out_categories` | `name TEXT NOT NULL UNIQUE`、`enabled`、`sort` | 出库分类；至少保留一个启用的（服务层校验）。初始：生产领用、门店零售、样品、其他 | `outCats[]` |
 
 停用花材的规则见 03 章第 8.3 节。
 
 ### 6.2 `stock_batches` 库存批次
 
-阶段 2 提前录入的开发批次来源为 `seed`，`source_id=NULL`，仅用于种子数据；阶段 4 新收货的批次必须是 `source_type=po`、`source_id=采购单ID`。数据库约束保证这两种来源与 ID 对应。
+批次来源：`po`（采购收货）、`wh`（手工入库）、`stocktake`（盘点盘盈），`source_id` 必填来源单据 ID；`seed`（`source_id=NULL`）是阶段 2 开发批次留下的来源，枚举和约束暂时保留，种子数据不再使用，删不删留到后续迁移评估（2026-10-03 改版，B9）。演示库存由上线建账盘点和采购收货生成（07 章第 12.4 节）。数据库约束保证来源与 ID 对应。
 
-每次入库（采购收货、手工入库、盘点盘盈）生成一个批次。阶段 4 只生成采购收货批次；手工入库、盘点盘盈在阶段 5 接入（阶段 4 确认）。
+每次入库（采购收货、手工入库、盘点盘盈）生成一个批次。
 
 | 字段 | 类型与约束 | 说明 | 原型字段 |
 |---|---|---|---|
 | material_id | `→ materials.id NOT NULL` | | `material` |
 | in_date | `DATE NOT NULL` | 入库日期，先进先出按 `(in_date, id)` | `date` |
-| source_type | `TEXT NOT NULL` | 阶段 4：`seed`（开发初始批次）/ `po`（采购收货）；手工入库、盘盈来源阶段 5 扩展 | 无 |
-| source_id | `BIGINT NULL` | 开发 `seed` 批次为空，`po` 批次必填采购单 ID（数据库 `CHECK`）；采购退货先扣这张单的批次 | 无 |
+| source_type | `TEXT NOT NULL` | `po` / `wh` / `stocktake`；`seed` 保留不用（见上） | 无 |
+| source_id | `BIGINT NULL` | `seed` 为空，其余必填来源单据 ID（数据库 `CHECK`）；采购退货先扣这张单的批次 | 无 |
 | qty | `INTEGER NOT NULL CHECK (qty > 0)` | 入库数量 | `qty` |
 | left_qty | `INTEGER NOT NULL CHECK (left_qty >= 0 AND left_qty <= qty)` | 剩余，扣减时 `SELECT … FOR UPDATE` 后更新 | `left` |
 
 索引：`(material_id, in_date, id) WHERE left_qty > 0`（部分索引，只扫有剩余的批次）、`(source_type, source_id)`。
 
-阶段 4 在花材详情显示批次的入库日期和剩余数量；阶段 5 的出入库记录显示为「MM-DD 入库」。批次不需要单号（阶段 4 确认）。
+花材详情显示批次入库日期、剩余数量和 `ageDays`（上海今天 − `in_date` 的日历天数）。只算 `left_qty>0` 的批次，满 `STOCK_AGE_WARNING_DAYS` 天提醒先用；花材行取最老的剩余批次库龄。出入库记录日期写完整年月日，不截掉年份。员工库存查询不返回库龄，批次不需要单号。
 
 ### 6.3 `stock_moves` 出入库流水
 
@@ -423,7 +429,7 @@
 
 库存 = `SUM(stock_batches.left_qty)`，也等于 `SUM(stock_moves.qty)`；两者不一致说明有 bug，接口测试里要核对。
 
-开发种子数据例外：阶段 2 预置了初始库存及阶段 5 才接入的历史出库、报损余额，没有完整流水。阶段 4 测试按每次收退货前后核对「批次剩余数量变化 = 同次流水数量合计」；完整种子流水随阶段 5 补齐。正式业务的收退货始终在同一事务写批次和流水。
+种子数据不例外（2026-10-03 改版，B9）：演示库存全部由盘点、采购收货、报损、手工出库单据生成，批次和流水在同一事务写入，接口测试直接核对每种花材「库存 = 批次剩余合计 = 流水合计」（07 章第 12.4、12.8 节）。
 
 ### 6.4 `wh_docs` 手工入库、手工出库、报损（有版本）
 
@@ -452,6 +458,10 @@
 
 ### 6.5 `stocktakes` 盘点单
 
+`stocktake_lines.last_move_id BIGINT NOT NULL DEFAULT 0 CHECK (last_move_id >= 0)`：持有花材锁时、盘点调整前，该花材库存流水的最大 `id`（无流水为 0）；无差异盘点同样保存。索引 `(material_id, last_move_id)`。原单据的 `po_in` / `manual_in` / `manual_out` / `loss` 流水只要任一 `id <=` 同花材盘点边界，就禁止整单作废；读投影和库存写入复查共用判断。不同花材的流水顺序不互相比较。
+
+迁移 `0010` 对当前项目已有盘点按该花材升级时的最大流水 ID 保守补边界：历史时间戳不能还原实际加锁顺序，因此该花材升级前单据可能一并锁定。升级后新流水正常判断；不读取或迁移旧项目数据。
+
 | 字段 | 类型与约束 | 说明 | 原型字段 |
 |---|---|---|---|
 | no | `TEXT NOT NULL UNIQUE` | PD-… | `id` |
@@ -464,128 +474,145 @@
 |---|---|---|---|
 | `stocktake_lines` | `stocktake_id NOT NULL ON DELETE CASCADE`、`material_id`、`name`、`unit`、`book_qty INTEGER CHECK (book_qty >= 0)`、`actual_qty INTEGER CHECK (actual_qty >= 0)`、`diff_qty INTEGER GENERATED ALWAYS AS (actual_qty - book_qty) STORED` | 所选分类的全部花材（停用的也列）；`book_qty` 是打开盘点时的账面快照，确认时按当前库存复查，变了返回 `STALE`「库存已变化，已刷新账面数，请核对后再确认」（05 第 9 节）；有差异的行生成盘盈批次或按先进先出盘亏 | `lines[]` |
 
-## 7. 财务
+## 7. 财务（2026-10-04 对账单模型）
 
-阶段 4 确认：收付款记录「收款 / 付款」是页面标签，不是新增存储字段；`kind` 只选择 `receipts` 或 `payments` 查询。
+按 `spec-redesign-changes.md` 替换按业务单据核销。统一 `statements` 通过 `kind` 区分客户、供应商，`partyId` 是接口投影，数据库使用各自真实外键 `customer_id` / `supplier_id`，避免不同表的 id 混用。原 `allocations`、`payment_allocations`、撤回核销和全账重分配算法全部取消；不保留兼容分支或旧收付款状态。
 
-| 表 | 字段（类型与约束） | 说明 | 原型字段 |
-|---|---|---|---|
-| `payment_methods` | `name TEXT NOT NULL`、`enabled`、`sort` | 收付款方式一份列表，收款、付款、退款通用；唯一 `name`；至少一种启用（服务层校验）。2026-10-03 确认：收付款方式合并成一份，去掉 `kind` 列和 `method_kind` 枚举，迁移 0009 先把同名行合并（留 id 最小的行，任一启用则启用，顺序取最小）再加唯一约束 | `methods.receive/pay` |
-
-### 7.1 `receipts` 收款（有版本）
-
-| 字段 | 类型与约束 | 说明 | 原型字段 |
-|---|---|---|---|
-| no | `TEXT NOT NULL UNIQUE` | SK-… | `id` |
-| receipt_date | `DATE NOT NULL` | 不晚于今天（服务层） | `date` |
-| customer_id | `→ customers.id NOT NULL` | 按客户登记 | `customer` |
-| amount_cents | `INTEGER NOT NULL CHECK (amount_cents > 0)` | | `amount` |
-| method_name | `TEXT NOT NULL` | 快照；登记时必须是启用的收付款方式 | `method` |
-| note | `TEXT NOT NULL DEFAULT ''` | | `note` |
-| status | `record_status NOT NULL DEFAULT 'valid'` | | `status` |
-| void_reason / voided_by / voided_at | `NULL` | `CHECK (status <> 'voided' OR void_reason IS NOT NULL)` | `voidReason`、`voidAt` |
-
-索引 `(customer_id, status)`、`(receipt_date DESC)`。
-
-### 7.2 `allocations` 收款核销
-
-| 字段 | 类型与约束 | 说明 | 原型字段 |
-|---|---|---|---|
-| receipt_id | `→ receipts.id NOT NULL` | | `receipt` |
-| order_id | `→ orders.id NOT NULL` | 发货单（已发货订单） | `order` |
-| amount_cents | `INTEGER NOT NULL CHECK (amount_cents > 0)` | 登记金额 | `amount` |
-| kind | `alloc_kind NOT NULL` | 登记收款时核销 / 以后核销预收 | `kind` |
-| revoked_at / revoked_by | `NULL` | 撤回单条核销或作废收款时写上 | 无（原型靠收款状态过滤） |
-| revoke_reason | `TEXT NULL` | 单条撤回必填；作废收款时写「作废收款」 | 无 |
-
-索引：`(order_id) WHERE revoked_at IS NULL`、`(receipt_id) WHERE revoked_at IS NULL`。同一收款、同一发货单可以有多条，不做唯一约束。
-
-「登记金额」和「实际生效金额」不同：售后后来冲减应收时，核销按第 8 节重算，超出的部分回到这笔收款的预收。
-
-有效核销判断为 `receipts.status='valid' AND allocations.revoked_at IS NULL`，即使生效金额为 0 也阻止作废对应业务单据。财务详情不能过滤掉 0 生效或已撤回记录；核销归 `allocations.created_by`，不是一律归收款的登记人。撤回时 `revoked_at`、`revoked_by`、非空 `revoke_reason` 一起写，作废来源时只撤回尚有效的条目，不覆盖原撤回原因和时间。
-
-### 7.3 `payments` 付款（有版本）
-
-2026-10-02 梳理确认：付款按供应商登记实际付出的金额，不再绑定单张单据；核销记在 `payment_allocations`。
-
-| 字段 | 类型与约束 | 说明 | 原型字段 |
-|---|---|---|---|
-| no | `TEXT NOT NULL UNIQUE` | FK-… | `id` |
-| pay_date | `DATE NOT NULL` | 不晚于今天（服务层） | `date` |
-| supplier_id | `→ suppliers.id NOT NULL` | | `supplier` |
-| amount_cents | `INTEGER NOT NULL CHECK (amount_cents > 0)` | 实际付出的金额 | `amount` |
-| method_name / note | `TEXT` | 快照 | `method`、`note` |
-| status | `record_status NOT NULL DEFAULT 'valid'` | | `status` |
-| void_reason / voided_by / voided_at | `NULL` | | `voidReason`、`voidAt` |
-
-索引 `(supplier_id, status)`、`(pay_date DESC)`。不再有「付过款」判断，退货、改价不看付款记录（03 章第 4 节）。
-
-### 7.4 `payment_allocations` 付款核销
+### 7.1 `statements` 对账单（有版本）
 
 | 字段 | 类型与约束 | 说明 |
 |---|---|---|
-| payment_id | `→ payments.id NOT NULL` | |
-| po_id | `→ purchase_orders.id NULL` | 已收货采购单 |
-| wh_doc_id | `→ wh_docs.id NULL` | 手工入库单，阶段 5 接入 |
-| amount_cents | `INTEGER NOT NULL CHECK (amount_cents > 0)` | 登记金额 |
-| kind | `alloc_kind NOT NULL` | 登记付款时核销 / 以后核销预付 |
-| revoked_at / revoked_by / revoke_reason | `NULL` | 同 `allocations` |
+| no / kind | `TEXT NOT NULL UNIQUE` / `statement_kind NOT NULL` | DZ-…；客户 / 供应商 |
+| customer_id / supplier_id | 各 `BIGINT NULL` → 对应往来方表 | `CHECK (num_nonnulls(customer_id,supplier_id)=1)`；与 kind 对应 |
+| period_from / period_to | `DATE NOT NULL`，起始不晚于结束 | 对账期间；默认本月 1 日至上海今天 |
+| statement_date | `DATE NOT NULL` | 开单日期由服务端写今天 |
+| due_date | `DATE NULL` | 开单日期 + 开单时账期；未设账期则为空，不追随以后设置变化 |
+| note | `TEXT NOT NULL DEFAULT ''` | 备注；开单后业务内容不编辑 |
+| gross_cents | `BIGINT NOT NULL` | 已选经济来源正负额之和；可为负 |
+| opening_debt_cents | `INTEGER NOT NULL DEFAULT 0 CHECK (opening_debt_cents>=0)` | 仅首张有效对账单带入，保存当时期初欠款 |
+| credit_deducted_cents | `BIGINT NOT NULL CHECK (credit_deducted_cents>=0)` | 开单时自动抵扣的既有多收 / 多付快照；明细见 credit_uses |
+| due_cents | `BIGINT NOT NULL CHECK (due_cents>=0)` | 开单固定应收 / 应付，不逐笔部分付款 |
+| credit_generated_cents | `BIGINT NOT NULL CHECK (credit_generated_cents>=0)` | 原始金额为负时差额产生的多收 / 多付，不丢弃此来源 |
+| status | `statement_status NOT NULL` | 未结清 / 已结清 / 已作废 |
+| settled_at | `TIMESTAMPTZ(3) NULL` | 0 元、负额单开单即结清；正额单收付款时写入，作废资金时清空 |
+| void_reason / voided_by / voided_at | `NULL` | 原因必填，三者一起写 |
 
-约束 `CHECK (num_nonnulls(po_id, wh_doc_id) = 1)`。索引：`(po_id) WHERE revoked_at IS NULL`、`(wh_doc_id) WHERE revoked_at IS NULL`、`(payment_id) WHERE revoked_at IS NULL`。
+`created_by`、`created_at` 即开单人、开单时间。kind 与往来外键一致；作废状态必须有非空原因及人、时间；已结清必须有 settled_at，未结清没有 settled_at。`due_cents=max(gross_cents+opening_debt_cents-credit_deducted_cents,0)`，`credit_generated_cents=max(-(gross_cents+opening_debt_cents),0)`，抵扣不得超过已有多收余额与原始正额。金额汇总保存为安全范围内的 BIGINT，不把多张单合计截成单列 INTEGER。
 
-有效、归属、撤回元数据和历史展示规则同收款核销，判断改用 `payments.status` 和 `payment_allocations.created_by`；不能给 `payment_id` 加唯一约束，一笔付款允许多条核销。服务层核对付款、目标单据属于同一供应商，且目标为有效已收货采购单或阶段 5 的手工入库单。
+索引 `(customer_id,statement_date DESC,id)`、`(supplier_id,statement_date DESC,id)`、`(kind,status,due_date)`；同一往来方仅一张未作废单可以占用正额期初欠款（部分唯一索引）。开单、作废均先锁往来方，首单资格不能并发重复取得。作废不删除快照；存在有效收付款关联的对账单不能作废，资金作废逆转关联后可再作废对账单，历史关联保留但不阻止。
 
-### 7.5 `refunds` 预收退款、预付退款（有版本）
+### 7.2 `statement_lines` 对账单来源明细
 
 | 字段 | 类型与约束 | 说明 |
 |---|---|---|
-| no | `TEXT NOT NULL UNIQUE` | TK-… |
-| kind | `refund_kind NOT NULL` | |
-| receipt_id | `→ receipts.id NULL` | 预收退款：从哪笔收款退 |
-| payment_id | `→ payments.id NULL` | 预付退款：从哪笔付款退 |
-| refund_date | `DATE NOT NULL` | 不晚于今天（服务层） |
-| amount_cents | `INTEGER NOT NULL CHECK (amount_cents > 0)` | 不超过登记时这笔的预收、预付（服务层，锁住这笔收付款） |
-| method_name / note | `TEXT` | 快照；登记时必须是启用的收付款方式（2026-10-03 确认：收付款方式合并成一份） |
-| status | `record_status NOT NULL DEFAULT 'valid'` | |
-| void_reason / voided_by / voided_at | `NULL` | |
+| statement_id | `BIGINT NOT NULL → statements.id` | 所属对账单 |
+| source_type / source_id | `TEXT NOT NULL` / `BIGINT NOT NULL` | order、after、po、purchase_return、price_change、wh；由服务层校验真实来源、同一往来方、来源状态 |
+| parent_type / parent_id | `TEXT NULL` / `BIGINT NULL` | 退货 / 改价证据的原单类型 po 或 wh 及 id；供只读来源跳转，主行为空 |
+| source_version | `INTEGER NULL` | 开单时版本；只插入的退货、改价记录为空 |
+| source_no / source_date | `TEXT NOT NULL` / `DATE NOT NULL` | 单号、业务日期快照；order 取实际 shipped_at 上海日期，after 取 processed_at，po 取 received_at，wh 取 doc_date |
+| store_id / store_name | `BIGINT NULL → stores.id` / `TEXT NULL` | 客户来源必有门店，供应商来源为空；门店名为开单快照 |
+| amount_cents | `BIGINT NOT NULL` | 发货正额、售后负额；供应商净实收及退货 / 改价呈现口径见 03 章，不重复冲减 |
+| carries_amount | `BOOLEAN NOT NULL DEFAULT true` | 计入 gross_cents 的经济行；已包含在净实收中的退货 / 改价记录只作证据，置 false |
+| previous_period | `BOOLEAN NOT NULL` | 业务日期早于期间开始标「上期未对账」，默认勾选 |
+| sort | `INTEGER NOT NULL` | 客户按门店、来源日期、类型、id 稳定排序 |
+| released_at | `TIMESTAMPTZ(3) NULL` | 对账单作废时释放来源占用，保留历史 |
 
-约束：`CHECK ((kind='receipt') = (receipt_id IS NOT NULL))`、`CHECK ((kind='payment') = (payment_id IS NOT NULL))`、`CHECK (num_nonnulls(receipt_id, payment_id) = 1)`。索引 `(receipt_id) WHERE status='valid'`、`(payment_id) WHERE status='valid'`。作废收款、付款前要先作废它的有效退款（服务层）。
+唯一 `(statement_id,source_type,source_id)`；部分唯一 `(source_type,source_id) WHERE released_at IS NULL`，数据库阻止一张业务来源进两张有效对账单。没有独立单号。开单选中的采购单还关联其截至开单的退货、改价记录，按统一口径固化；主单和其相关记录一起锁定、释放。对账单未作废时，订单 / 售后作废、采购退货 / 改价 / 作废、手工入库改价 / 作废均禁止，不受结清状态影响。新处理的售后是独立来源，进入下一张对账单。
 
-作废带版本条件、提升 `version`，`void_reason` 必须为非空文本，`voided_by`、`voided_at` 同时写入。查询退款历史不过滤 `voided`，金额计算只取 `valid`；财务退款归 `created_by`，外部端只返回日期、金额、状态等可见字段，不返回内部操作权限和备注。
+### 7.3 `receipts` / `payments` 收付款（各有版本）
+
+| 字段 | 类型与约束 | 说明 |
+|---|---|---|
+| no | `TEXT NOT NULL UNIQUE` | receipts 为 SK-…；payments 为 FK-… |
+| customer_id / supplier_id | 对应表的 `BIGINT NOT NULL` 外键 | 收款按客户，付款按供应商；每张表只含自己的外键 |
+| receipt_date / pay_date | `DATE NOT NULL` | 对应表只含自己的日期，不晚于上海今天 |
+| amount_cents | `INTEGER NOT NULL CHECK (amount_cents>0)` | 实际收 / 付金额 |
+| discount_cents | `INTEGER NOT NULL DEFAULT 0 CHECK (discount_cents>=0)` | 优惠金额，选填 |
+| discount_reason | `TEXT NOT NULL DEFAULT ''` | 优惠>0 时必须非空 |
+| credit_cents | `BIGINT NOT NULL CHECK (credit_cents>=0)` | min(实际金额,max(0,实际金额 + 优惠 − 本次结清合计))；未选对账单时优惠为 0，整笔实际金额形成多收 / 多付 |
+| method_name / note | `TEXT NOT NULL` / `TEXT NOT NULL DEFAULT ''` | 启用收付款方式的名称快照、备注 |
+| status | `record_status NOT NULL DEFAULT 'valid'` | 有效 / 已作废 |
+| void_reason / voided_by / voided_at | `NULL` | 作废时一起写；原因必填 |
+
+优惠原因用 CHECK 约束；资金与所勾对账单属于同一往来方，且每张均未结清，`amount+discount` 必须足额，否则全部不写。优惠不能超过所勾合计；没勾对账单时优惠必须为 0，不凭空生成现金余额。索引 `(customer_id,status)` 或 `(supplier_id,status)`、业务日期倒序。`credit_cents` 保存首次生成额，余额由有效 credit_uses 算；不会随业务单据后来变化重分配。作废只允许登记人、管理员；来源多收已抵入有效后续对账单时禁用并返回对应 DZ 单号；已有有效退款占用须先作废退款。
+
+### 7.4 `settlement_links` 收付款与对账单结清关联
+
+| 字段 | 类型与约束 | 说明 |
+|---|---|---|
+| statement_id | `BIGINT NOT NULL → statements.id` | 本笔结清的对账单 |
+| receipt_id / payment_id | 各 `BIGINT NULL` → 对应资金表 | 二选一，与对账单 kind、往来方一致 |
+| amount_cents | `BIGINT NOT NULL CHECK (amount_cents>0)` | 等于该对账单 due_cents，整张结清，不是任意核销输入 |
+| reversed_at | `TIMESTAMPTZ(3) NULL` | 来源收付款作废时标记，保留关联历史 |
+
+`CHECK (num_nonnulls(receipt_id,payment_id)=1)`；部分唯一 `(statement_id) WHERE reversed_at IS NULL`。一笔资金可结清多张对账单，一张单可在资金作废后由另一笔重新结清；不存在多笔有效资金部分结清一张的状态。有效关联仅取来源资金有效且 reversed_at 为空；资金作废在同一事务逆转关联和对账单状态、提升对账单版本。
+
+### 7.5 `credit_uses` 多收 / 多付来源与去向
+
+| 字段 | 类型与约束 | 说明 |
+|---|---|---|
+| source_receipt_id / source_payment_id / source_statement_id | 各 `BIGINT NULL` → receipts / payments / statements | 恰好一项；收付款 credit_cents 或负额对账单 credit_generated_cents 是来源 |
+| statement_id / refund_id | 各 `BIGINT NULL` → statements / refunds | 恰好一项；用于新对账单自动抵扣，或多收 / 多付退回 |
+| amount_cents | `BIGINT NOT NULL CHECK (amount_cents>0)` | 本来源实际使用额 |
+| released_at | `TIMESTAMPTZ(3) NULL` | 目标对账单 / 退款作废后释放占用，保留历史 |
+
+来源、去向须属于同一往来方且种类匹配，不能自抵。先锁往来方，来源按 `(created_at,id,固定来源类型序)` 消耗，直到所需抵扣或退款额足够；数据库二选一约束与服务层余额校验共同保证无负余额。索引有效来源指针和各目标指针。负额对账单也能被后续抵扣 / 退款；已有有效去向时不能作废来源对账单，先作废去向并恢复余额。此表只追溯往来余额，不涉及发货单 / 采购单核销。
+
+### 7.6 `refunds` 多收退回 / 多付退回（有版本）
+
+| 字段 | 类型与约束 | 说明 |
+|---|---|---|
+| no / kind | `TEXT NOT NULL UNIQUE` / `refund_kind NOT NULL` | TK-…；receipt 多收退回，payment 多付退回 |
+| customer_id / supplier_id | 各 `BIGINT NULL` → 对应往来方表 | 与 kind 匹配且恰好一项；按往来方总余额退回，可跨多个来源 |
+| refund_date | `DATE NOT NULL` | 不晚于上海今天 |
+| amount_cents | `INTEGER NOT NULL CHECK (amount_cents>0)` | 不超过当前该往来方可用多收 / 多付余额 |
+| method_name / note | `TEXT NOT NULL` / `TEXT NOT NULL DEFAULT ''` | 启用收付款方式快照、备注 |
+| status | `record_status NOT NULL DEFAULT 'valid'` | 有效 / 已作废 |
+| void_reason / voided_by / voided_at | `NULL` | 非空原因、人、时间一起写；提升 version |
+
+退款消费的全部来源在 credit_uses 记录，不限定单笔收款 / 付款。索引 `(customer_id,status)`、`(supplier_id,status)`、`refund_date DESC`。财务保留有效及作废历史，金额计算只取有效；作废归登记人或管理员，释放各来源占用。
+
+### 7.7 `payment_methods` 收付款方式
+
+`name TEXT NOT NULL UNIQUE`、`enabled BOOLEAN`、`sort INTEGER`。收款、付款、退款共用一份，至少一种启用；记录保存名称快照，修改名称不重写历史。不再有 kind 列或两份方式。
+
 
 ## 8. 查询时算的值
 
-算法（名称和公式）见 03 章第 4 节，本节不复述，只写每个值取哪些表和字段，以及 03 没写的实现要点。都由后端 service 算好返回，前端不算；同一个值只写一个函数，各模块调用它；对账、采购需求这类统计可以直接写 SQL。
+业务公式以 03 章第 4 节为准。同一值由一个公共 service 计算，列表批量查询，前端只展示。对账单开单金额已保存为不可编辑快照，资金只整张结清、余额只沿 credit_uses 来源追溯，不再按业务单据重算收付款。
 
-| 值（接口字段） | 用到的表和字段 | 实现要点 |
+| 值（接口字段） | 来源 | 实现要点 |
 |---|---|---|
-| 订单金额、发货金额（`amountCents`） | `order_lines.qty`、`shipped_qty`、`price_cents` | 发货前按 `qty`，已发货按 `shipped_qty` |
-| 售后金额（`afterCents`）、应收 | `afters.amount_cents`（`status='processed'`） | 应收不小于 0 |
-| 已收、未收（`unpaidCents`）、预收（`prepaidCents`）、`payStatus`、`offsetByAfter` | `allocations`（`revoked_at IS NULL`）、`receipts`（`status='valid'`、`amount_cents`）、`refunds`（`kind='receipt'`、`status='valid'`）；发货单只算 `status='shipped'` | 按客户取核销，按 `(created_at,id)` 升序逐条算生效金额 = min(登记金额, 发货单剩余应收, 这笔收款金额 − 有效退款 − 已生效核销)，≤ 0 记 0。`payStatus`：未收 ≤ 0 为 `paid`，已收 > 0 为 `partial`，否则 `unpaid`；`offsetByAfter` = 应收 0 且售后 > 0。作废售后、作废收款、撤回核销、作废退款后不改核销登记金额，重算即可 |
-| 已付、待付、预付（`prepaidCents`）、`apStatus` | `payment_allocations`（`revoked_at IS NULL`）、`payments`（`status='valid'`）、`refunds`（`kind='payment'`、`status='valid'`）；单据只算 `received` 采购单、`stocked_in` 手工入库单 | 和收款同一个函数（参数换表），按供应商算。`apStatus`：应付 0 为 `no_pay`；待付 ≤ 0 为 `paid`；已付 > 0 为 `partial`；否则 `unpaid` |
-| 可申请售后数量（`maxQty`） | `order_lines.shipped_qty`、`after_lines.qty`（所属售后 `status IN ('pending','processed')`） | 处理某张售后时排除这张本身 |
-| 门店售后申请期限 | `orders.shipped_at` | `shipped_at` 的上海日期 + `AFTER_APPLY_DAYS` ≥ 今天才在期限内；只限门店申请（`applyAfter`），销售新建不看 |
-| 对账按出货日期筛选 | `orders.ship_date` | `from`、`to` 只筛发货单和对账格里的发货金额、售后、已收、未收；预收按客户全部有效收款和核销算，不受筛选影响 |
-| 供应商对账、待付款范围 | `purchase_orders.status/received_at`、`wh_docs.status/doc_date`、付款账本 | 对账保留有效正应付的未付、部分付、已付单；待付款再限 `unpaidCents>0`。收货日期取 `received_at` 的上海日期，手工入库取 `doc_date`；日期只筛单据和对应金额汇总，预付按供应商完整账本计算，不能先按日期裁核销再重算 |
-| 应付（`payableCents`）、`allReturned` | `purchase_order_lines.received_qty`、`returned_qty`、`price_cents`；`wh_doc_lines.qty`、`price_cents` | 阶段 4 只算采购单；手工入库单阶段 5 接入。`allReturned`：已收货且每行 `returned_qty = received_qty`；全部退货后采购单不再有 `return` 或 `reprice` 操作（阶段 4 确认） |
-| 可退数量（`maxReturnQty`） | `received_qty − returned_qty`、这种花材的库存 | 取两者较小值 |
-| 库存（`stockQty`、`bookQty`） | `stock_batches.left_qty` | 和流水的核对见 6.3 |
-| 在途（`inTransitQty`）、需求（`needQty`）、余量（`leftQty`）、`invited`、`shipFrom`、`shipTo` | `purchase_order_lines.qty`（采购单 `to_receive`）；`order_lines.qty × product_bom_lines.qty`（订单 `to_ship`、出货日期在区间内）；`invite_lines`（邀请 `pending`）；`min/max(orders.ship_date)` | 按花材汇总，一条 SQL 算完；`shipFrom`、`shipTo` 是这种花材涉及订单的出货日期范围，不是筛选区间 |
-| 需求列表顺序、逾期提示、在途来源 | 上述需求、`orders.ship_date/status`、`purchase_orders` 和明细、`suppliers` | 列表按缺货组优先、`shipFrom`、花材编码、id；`shortageOnly` 只影响展示，不改区间订单数和计算。`overdue` 按 `to_ship AND ship_date<上海今天` 取订单数和 min/max 日期，不加进当前需求；在途来源只列待收货采购单，无到货日期字段 |
+| 订单金额 / 发货金额 `amountCents` | order_lines 的 qty / shipped_qty × price_cents | 发货前用订货数量，发货后用实发；业务单据详情不再返回 payStatus 或已收 / 未收 |
+| 采购金额 `amountCents` | 实收前 qty × order_price_cents，收货后净实收 × price_cents；手工入库 qty × price_cents | 详情明细合计仍叫采购金额；应付仅在财务对账中用 |
+| 售后金额 `afterCents` | processed 的 afters.amount_cents | 开单按 processed_at 日期作为独立负额来源；未处理展示「待处理」 |
+| 所属对账单 `statement` | 未释放 statement_lines → 非 voided statements | `{id,no,status}` 或 null（「未对账」）；源业务单据不存冗余 statement_id 或收付款状态 |
+| 未结清 `unsettledCents` | statements.status=unsettled 的 due_cents 合计 | 无部分结清；用于财务首页已开单待收 / 待付 |
+| 未对账 `unstatementedCents` | 有效已发货、processed 售后 / received 采购单、stocked_in 手工入库，排除有效 statement_lines 占用 | 来源按实际发货 / 处理 / 收货 / 入库日期；正负同口径，早于新开期间也作为上期未对账，不漏掉 |
+| 多收 / 多付 `creditCents` | 有效 receipts/payments.credit_cents + 非作废 statements.credit_generated_cents − 有效 credit_uses.amount_cents | 每来源余额非负；释放的去向不扣；来源负额单也计算，退款不再重复额外减一次 |
+| 财务往来未收 / 待付 `outstandingCents` | 未结清 + 未对账 + 尚未进有效首单的期初欠款 − 多收 / 多付 | 取 max(0,以上净额)，余额与未对账不按列表日期裁账；分别返回以上组成 |
+| 对账截止 `lastStatementTo` / 最近收付款 | 最近非作废 statements.period_to / 有效收付款业务日期 | 没有对账单为 null（未对过账） |
+| 逾期 `overdueDays`、`overdueCents` | 未结清 statements.due_date | 未设账期不逾期；上海今天>due_date 才算，最早逾期天数用于销售黄条 |
+| 门店对账 `storeAmountCents` | 当前门店的 statement_lines 经济行之和 | 不分摊客户多收、优惠或收款；门店未结清按未结清对账单里的本店金额，只投影本店来源 |
+| 可申请售后 `maxQty` | 实发 − pending/processed after_lines.qty | 处理时排除本张；期限用 shipped_at 上海日期 + AFTER_APPLY_DAYS |
+| 全部退货 `allReturned` / 可退 `maxReturnQty` | received_qty、returned_qty、库存 | 可退取净实收与库存较小值；全部退货禁用退货和改价 |
+| 库存 `stockQty/bookQty` | SUM(stock_batches.left_qty) | 与流水合计核对；已有库存批次的 in_date 不随加回变更 |
+| 库龄 `ageDays/oldestAgeDays/aged` | 剩余批次 in_date | 上海日历天数；最老剩余批次≥STOCK_AGE_WARNING_DAYS 为 aged，库存为 0 则 oldestAgeDays=null；仓库分 aged / 其他，员工库存查询不返回库龄 |
+| 在途 / 需求 / 余量 / 邀请 `inTransitQty/needQty/leftQty/invited/shipFrom/shipTo` | to_receive 采购 qty；区间内 to_ship 订单 qty × 当前配方；pending invite_lines | 未提交邀请不算在途；实际涉及订单 min/max ship_date；来源在途可点采购单 |
+| 需求列表顺序 / 逾期提示 | 上述数据 | 缺货优先、shipFrom、编码、id；shortageOnly 不改计算。overdue 只查今天以前 to_ship 订单，不并入当前区间 |
 
-核销选资金来源按收付款 `(created_at,id)`，自动填目标按出货 / 收货日期、单据类型、id，重算按核销 `(created_at,id)`，三种排序分别稳定。每笔有效资金必须满足「生效核销合计 + 有效退款合计 + 余额 = amount_cents」，余额不负、单据不超收付。
+财务多表读取采用同一一致性快照；写操作先锁客户 / 供应商，再复查所选来源或对账单版本、状态、金额和当前余额。只检查提交相关对象，不生成 ledgerToken、不传全账 expected、不对历史单据重新分配收付款。目录 previewToken、采购 reviewToken 仍保留各自用途，不作为持久化业务字段。批量确认订单 / 发货不新增批量单据表；每张单独版本校验、事务和日志，返回成功及失败结果。配货勾选仅在当前手机保存、发货后清除，不入数据库。
 
-财务表单 `ledgerToken`、目录复制 `previewToken`、采购确认 `reviewToken` 都是查询时生成的不可伪造快照凭据，不作为业务字段存库。凭据覆盖具体对象、来源记录版本 / 状态 / 撤回信息及相应金额；服务端按 05 章复查，金额先变后恢复也不能绕过。财务多表读取须使用同一一致性快照；同一账本写操作先锁客户 / 供应商，再按统一锁序复查，不拼接不同时刻的读结果。
 
 ### 8.1 `actions` 和 `lockedReason`
 
 - 不存库。每次返回详情或列表项（以及列表级 `actions`）时，service 按「账号角色 + 数据归属 + 单据当前状态」算出 `actions`（`[{ code, enabled, disabledReason, reasonRequired }]`，操作码见 05 第 1.5 节）和 `lockedReason`，文案在 `shared/copy`。
 - `enabled: false` 和 `disabledReason`、`reasonRequired` 同样是查询时算的；能否换供应商（`changeSupplier`）也在这里算（看 `purchase_orders.invite_id`），不存布尔字段。
-- 用到的判断（有没有有效核销、可申请数量、应付、门店是否启用、单据归属）复用第 8 节表里的同一批函数，写接口的前置校验也调同一个函数，不另写一份。
-- 归属（03 章第 2 节）：取消、作废、撤回只给归属人和管理员 `enabled: true`；同模块其他人返回 `enabled: false`、`disabledReason`「这张单由 … 经办，请找管理员」。
-- 归属不是通用 `created_by`：销售自建订单归创建人，门店订单确认后归 `confirmed_by`；门店售后归 `processed_by`，销售自建售后归创建人；采购自建单归创建人，供应商填报单取消归 `buyer_id`、收货后作废归 `received_by`；邀请归 `buyer_id`；核销、退款归各自 `created_by`。门店、供应商本人允许的操作按 03 章例外处理。
+- 用到的判断（是否已进有效对账单、余额去向、可申请数量、采购金额、门店是否启用、单据归属）复用第 8 节表里的同一批函数，写接口的前置校验也调同一个函数，不另写一份。
+- 归属（03 章第 2 节）：取消、作废只给归属人和管理员 `enabled: true`；同模块其他人返回 `enabled: false`、`disabledReason`「这张单由 … 经办，请找管理员」。
+- 归属不是通用 `created_by`：销售自建订单归创建人，门店订单确认后归 `confirmed_by`；门店售后归 `processed_by`，销售自建售后归创建人；采购自建单归创建人，供应商填报单取消归 `buyer_id`、收货后作废归 `received_by`；邀请归 `buyer_id`；收付款、退款归各自 `created_by`；对账单作废按 03 章规则。门店、供应商本人允许的操作按 03 章例外处理。
 - 发货视图、财务只读售后视图分别投影数据和 `actions`，不按账号是否兼有其他模块来放宽视图。普通订单、销售售后视图仍按账号权限并集，不为隐藏金额存另一份订单。
-- 列表查询一次算完整页的 `actions`，不在循环里逐条查库（例如一条 SQL 带出每张单是否有有效核销）。
+- 列表查询一次算完整页的 `actions`，不在循环里逐条查库（例如一条 SQL 带出每张单所属有效对账单）。
 
 ## 9. ER 关系概览
 
@@ -614,10 +641,18 @@ erDiagram
   files ||--o{ after_line_images : file
   orders ||--o{ order_cancel_requests : cancel_requests
   customers ||--o{ receipts : pays
-  receipts ||--o{ allocations : allocates
-  orders ||--o{ allocations : settled
-  receipts ||--o{ refunds : refunded
-  payments ||--o{ refunds : refunded
+  customers ||--o{ statements : reconciles
+  suppliers ||--o{ statements : reconciles
+  statements ||--o{ statement_lines : sources
+  statements ||--o{ settlement_links : settled
+  receipts ||--o{ settlement_links : settles
+  payments ||--o{ settlement_links : settles
+  receipts ||--o{ credit_uses : credit_source
+  payments ||--o{ credit_uses : credit_source
+  statements ||--o{ credit_uses : credit_source_or_target
+  customers ||--o{ refunds : credit_refunded
+  suppliers ||--o{ refunds : credit_refunded
+  refunds ||--o{ credit_uses : consumes
   suppliers ||--o{ invites : invited
   invites ||--o{ invite_lines : needs
   invites ||--o{ invite_supply_lines : supplies
@@ -629,12 +664,9 @@ erDiagram
   purchase_orders ||--o{ purchase_returns : returns
   purchase_returns ||--o{ purchase_return_lines : lines
   suppliers ||--o{ payments : paid
-  payments ||--o{ payment_allocations : allocates
-  purchase_orders ||--o{ payment_allocations : settled
   wh_docs ||--o{ wh_doc_lines : lines
   wh_docs ||--o{ wh_doc_images : images
   wh_docs ||--o{ price_changes : repriced
-  wh_docs ||--o{ payment_allocations : settled
   suppliers ||--o{ wh_docs : stock_in_from
   out_categories ||--o{ wh_docs : out_category
   material_categories ||--o{ materials : groups
@@ -643,14 +675,14 @@ erDiagram
   stocktakes ||--o{ stocktake_lines : lines
 ```
 
-`stock_batches.source_*`、`stock_moves.doc_*`、`operation_logs.target_*` 是多态引用（类型 + id），不建外键，由服务层保证。
+`statement_lines.source_*`、`stock_batches.source_*`、`stock_moves.doc_*`、`operation_logs.target_*` 是多态引用（类型 + id），不建外键，由服务层保证。
 
-表数量：46 张。账号与公共 6 张（含 `doc_sequences`、`idempotency_keys`、`files` 3 张支撑表），销售 14 张（含 `store_invites`、`order_cancel_requests`），采购 10 张，仓库 10 张（含 `wh_doc_images`），财务 6 张（含 `payment_allocations`、`refunds`）。
+表数量：48 张。账号与公共 6 张，销售 14 张，采购 10 张，仓库 10 张，财务 8 张（payment_methods、statements、statement_lines、receipts、payments、settlement_links、credit_uses、refunds）。
 
 ## 10. 模型约束与技术表示
 
 以下三条已写入当前模型和接口，属于现行实现约束：
 
 1. 同一订单同一产品只允许一行明细（原型按产品去重），`order_lines`、`purchase_order_lines`、`wh_doc_lines` 都加了唯一约束。
-2. 核销预收、预付时多笔收款、付款按登记时间先后扣（原型 `finSaveReceive`），本文照此写在 05 章，没有单独字段。
+2. 多收 / 多付抵扣和退回按来源登记时间、id、固定类型顺序消耗，credit_uses 保存来源和去向；开单金额不随后续业务改动重算。
 3. `stores`、`suppliers` 的联系人、电话、地址统一写成 `TEXT NOT NULL DEFAULT ''`（没填就是空字符串，接口也返回 `""`），阶段 3、4 加列时按这个写。

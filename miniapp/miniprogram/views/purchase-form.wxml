@@ -12,20 +12,18 @@
     <template wx:elif="{{!editable && inviteView}}" is="invite-body" data="{{...inviteView}}" />
     <template wx:elif="{{!editable && poView}}" is="po-body" data="{{...poView}}" />
     <block wx:elif="{{editable}}">
-      <template wx:if="{{mode === 'supply'}}" is="info" data="{{...inviteView.info}}" />
+      <block wx:if="{{mode === 'supply'}}"><hz-progress steps="{{inviteView.progress}}" /><template is="info" data="{{...inviteView.info}}" /></block>
       <view wx:else class="u-card u-form-card">
         <hz-picker id="supplier-picker" wx:if="{{mode === 'invite' ? !editing : canChangeSupplier}}" label="{{texts.supplier}}" placeholder="{{texts.supplierPlaceholder}}" value="{{form.supplierId}}" options="{{supplierOptions}}" error="{{fields.supplierId}}" bind:change="onSupplier" />
         <view wx:else class="u-sheet-row"><text>{{texts.supplier}}</text><text>{{supplierName}}</text></view>
-        <hz-field wx:if="{{mode === 'po' && !supplierEditing}}" label="{{texts.note}}" value="{{form.note}}" bind:change="onNote" />
       </view>
       <view class="u-section">
-        <text class="u-section__title">{{texts.lines}}</text>
-        <hz-line-item lines="{{lineViews}}" mode="price" quantity-only="{{mode === 'invite'}}" removable bind:qty="onQty" bind:price="onPrice" bind:remove="onRemove" />
+        <hz-line-item title="{{texts.lines}}" lines="{{lineViews}}" mode="price" edit-key="{{editKey}}" quantity-only="{{mode === 'invite'}}" removable bind:qty="onQty" bind:price="onPrice" bind:remove="onRemove" />
         <hz-add-button text="{{texts.add}}" bind:press="onOpenPick" />
       </view>
-      <view wx:if="{{mode !== 'invite' && (lineViews.length > 1 || (mode === 'po' && editing))}}" class="u-card u-form-card">
-        <view wx:if="{{lineViews.length > 1}}" class="u-sheet-row"><text>{{texts.total}}</text><text class="u-serif-amount">{{amount}}</text></view>
-        <hz-field wx:if="{{mode === 'po' && editing}}" label="{{texts.editReason}}" placeholder="{{supplierEditing ? texts.reasonOptional : ''}}" value="{{form.reason}}" error="{{fields.reason}}" bind:change="onReason" />
+      <view wx:if="{{mode === 'po'}}" class="u-card u-form-card">
+        <hz-field wx:if="{{!supplierEditing}}" label="{{texts.note}}" value="{{form.note}}" bind:change="onNote" />
+        <hz-field wx:if="{{editing}}" label="{{texts.editReason}}" placeholder="{{supplierEditing ? texts.reasonOptional : ''}}" value="{{form.reason}}" error="{{fields.reason}}" bind:change="onReason" />
       </view>
     </block>
   </view>
@@ -35,13 +33,10 @@
     <view class="u-sheet-form u-sheet-plain">
       <hz-notice wx:for="{{reviewWarnings}}" wx:key="index" text="{{item}}" />
       <hz-notice text="{{texts.allowOverGap}}" />
-      <view wx:for="{{reviewDemand}}" wx:key="name" class="u-info__line"><text>{{item.name}} · {{item.left}}</text><text class="u-info__meta">{{item.summary}}</text></view>
-      <hz-button wx:for="{{reviewInvites}}" wx:key="inviteId" kind="text" text="{{item.no + ' · ' + item.supplierName}}" data-key="{{item.inviteId}}" bind:press="onReviewInvite" />
+      <view wx:for="{{reviewDemand}}" wx:key="name" class="u-info__line"><text>{{item.name}}{{texts.separator}}{{item.left}}</text><text class="u-info__meta">{{item.summary}}</text></view>
+      <hz-button wx:for="{{reviewInvites}}" wx:key="inviteId" kind="text" text="{{texts.no + ' ' + item.no + texts.separator + texts.supplier + ' ' + item.supplierName}}" data-key="{{item.inviteId}}" bind:press="onReviewInvite" />
     </view>
     <hz-button slot="footer" kind="secondary" text="{{texts.backToReview}}" bind:press="onReviewCancel" /><hz-button slot="footer" id="review-continue" text="{{texts.continueSubmit}}" bind:press="onReviewConfirm" />
-  </hz-sheet>
-  <hz-sheet id="review-invite" show="{{reviewInviteSheet}}" title="{{texts.inviteTitle}}" back bind:close="onReviewInviteClose" bind:back="onReviewInviteClose">
-    <view class="u-sheet-form u-sheet-plain"><hz-error wx:if="{{reviewError}}" message="{{reviewError}}" /><hz-skeleton wx:elif="{{!reviewInviteView}}" type="detail" /><template wx:else is="invite-body" data="{{...reviewInviteView}}" /></view>
   </hz-sheet>
   <hz-confirm id="hz-confirm" />
 </template>

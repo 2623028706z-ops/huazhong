@@ -5,10 +5,12 @@ page {
   --hz-ink: #3b2a24; /* 标题、正文、金额、选中的文字 */
   --hz-muted: #7a5a4a; /* 次要文字、箭头 */
   --hz-paper: #fffbf6; /* 亮格：底栏、实底卡片、选中的格子 */
-  --hz-card: #fffbf6db; /* 卡片（亮格 86%） */
   --hz-bg: #f6ebdf; /* 浅杏墙：页面底色 */
   --hz-hair: #ecd4c6; /* 描边、禁用按钮底色 */
   --hz-line: #f8ebe4; /* 卡片内分隔线 */
+  --hz-rule-frame: #3b2a244d;
+  --hz-press: #f3e2d6;
+  --hz-press-wall: #fffbf680;
   --hz-rule: #3b2a2433; /* 墙上的细线（墨色 20%）：首页窗格、次按钮描边 */
   --hz-tint: #f8ebe4; /* 头像底色 */
   --hz-green: #4c6a48; /* 完成 */
@@ -24,14 +26,11 @@ page {
   /* 字体 */
   --hz-serif: 'HZ Serif', 'Songti SC', serif; /* 思源宋体子集，core/font.ts 加载 */
   --hz-font: 14px;
-  --hz-font-badge: 10px; /* 底栏角标 */
   --hz-font-xs: 11px;
   --hz-font-sm: 12px;
-  --hz-font-note: 13px; /* 只读明细第二行、记录、弹层区块、身份行 */
-  --hz-font-md: 15px; /* 按钮、卡片对象、明细名称、金额、步进器数字 */
-  --hz-font-lg: 16px; /* 入口卡名称、弹层标题 */
-  --hz-font-title: 17px;
-  --hz-font-amount: 18px; /* 对账格金额 */
+  --hz-font-md: 16px; /* 按钮、卡片对象、明细名称、金额、步进器数字 */
+  --hz-font-lg: 18px; /* 入口卡名称、弹层标题 */
+  --hz-font-todo: 28px;
   --hz-font-hero: 22px; /* 门店、供应商首页主卡名称 */
 
   /* 图标（iconfont 用字号定大小） */
@@ -45,7 +44,8 @@ page {
   --hz-icon-hero: 32px; /* 首页主卡图标 */
 
   /* 尺寸 */
-  --hz-radius: 12px;
+  --hz-radius: 10px;
+  --hz-radius-button: 8px;
   --hz-radius-inner: 9px;
   --hz-radius-sheet: 14px;
   --hz-radius-pill: 999px; /* 状态标签、标记、胶囊、角标 */
@@ -57,8 +57,6 @@ page {
 
   /* 间距 */
   --hz-gap-page: 16px; /* 列表、详情、表单页左右 */
-  --hz-gap-home: 20px; /* 铺品牌背景的页面左右：各首页、我的、模块首页、登录页 */
-  --hz-gap-bar: 14px; /* 顶栏、搜索栏、底栏 */
   --hz-gap-sheet: 16px; /* 弹层内容 */
   --hz-card-pad: 16px;
   --hz-card-gap: 10px;

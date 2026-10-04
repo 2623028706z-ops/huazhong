@@ -23,6 +23,13 @@ export class StockController {
   detail(@CurrentViewer() viewer: Viewer, @Input() input: In<'getWhDoc'>) {
     return this.reads.detailRead(viewer, Number(input.params.id))
   }
+  @Route(contract.getFinanceWhDoc)
+  finance(@CurrentViewer() viewer: Viewer, @Input() input: In<'getFinanceWhDoc'>) {
+    return this.reads.detailRead(
+      { ...viewer, type: 'staff', modules: ['finance'] },
+      Number(input.params.id),
+    )
+  }
   @Route(contract.createWhDoc)
   create(@CurrentViewer() viewer: Viewer, @Input() input: In<'createWhDoc'>) {
     return this.writes.create(viewer, input.body, input.idempotencyKey)

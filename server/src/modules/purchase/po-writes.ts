@@ -7,7 +7,7 @@ import { gateAction } from '../../common/domain/actions.ts'
 import { actorLabelOf, type Viewer } from '../../common/domain/viewer.ts'
 import type { ParsedInput } from '../../common/endpoint.ts'
 import { found } from '../../common/scope.ts'
-import { owns } from '../../common/ledger.ts'
+import { owns } from '../../common/statements.ts'
 import { WriteService, type WriteContext } from '../../common/write.service.ts'
 import { PurchaseDemand } from './demand.ts'
 import {
@@ -91,6 +91,7 @@ export class PoWrites {
         return this.reads.detail(ctx.tx, viewer, po.id)
       },
       { endpoint: contract.createPurchaseOrder, key },
+      { exclusive: true },
     )
   }
   update(viewer: Viewer, id: number, input: Update) {

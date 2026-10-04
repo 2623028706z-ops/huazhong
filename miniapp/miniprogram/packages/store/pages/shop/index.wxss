@@ -65,11 +65,33 @@ page {
 .hz-shop__buy {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
 }
 
-.hz-shop__bar {
+.hz-shop__product .u-thumbs__item {
+  width: 84px;
+  height: 84px;
+  flex: none;
+  border-radius: var(--hz-radius-button);
+}
+
+.hz-shop__plus {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--hz-brand);
+  border: 1px solid var(--hz-brand);
   display: flex;
-  flex-direction: column;
   justify-content: center;
-  min-height: var(--hz-tap);
+  align-items: center;
+  font-size: var(--hz-font-lg);
+}
+
+.hz-shop__placeholder {
+  background: var(--hz-tint);
+  color: var(--hz-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

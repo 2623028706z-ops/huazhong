@@ -1,8 +1,10 @@
-// X4 订单表单（06 章 X4）：新建（从 X2）、修改（edit）、修改并确认（editAndConfirm）。
+// X4 订单表单（06 章 X4）：新建（从 X2）、修改（edit）、确认（confirm）。
 // 状态区 → 客户、门店（只在新建时可选，只列启用的）→ 出货日期 → 备注 → 明细 →「添加产品」→ 订单金额 → 修改原因
 import {
   contract,
   copy,
+  redesignCopy,
+  formatMoney,
   type CatalogItem,
   type CustomerItem,
   type OrderDetail,
@@ -18,10 +20,11 @@ import { showSuccess } from '../../../../core/toast'
 import { loadCustomers } from '../../../../views/customers'
 import {
   addableOf,
-  amountRowsOf,
   blankForm,
   checkCreate,
   checkUpdate,
+  checkConfirm,
+  linesChanged,
   formOf,
   lineOfCatalog,
   lineViewsOf,
@@ -32,16 +35,16 @@ import {
 const titles: Record<FormMode, string> = {
   create: copy.screen.title.createOrder,
   edit: copy.screen.title.editOrder,
-  editAndConfirm: copy.screen.title.editAndConfirm,
+  confirm: copy.screen.title.confirmOrder,
 }
 const submitTexts: Record<FormMode, string> = {
   create: copy.screen.action.confirm,
   edit: copy.screen.action.saveEdit,
-  editAndConfirm: copy.screen.action.editAndConfirm,
+  confirm: copy.screen.action.confirm,
 }
 
 function modeOf(value: string | undefined): FormMode {
-  return value === 'edit' || value === 'editAndConfirm' ? value : 'create'
+  return value === 'edit' || value === 'confirm' ? value : 'create'
 }
 
 function storeOptionsOf(customers: readonly CustomerItem[], customerId: string) {
@@ -54,6 +57,8 @@ function storeOptionsOf(customers: readonly CustomerItem[], customerId: string) 
 Page({
   data: {
     changed: false,
+    linesChanged: false,
+    overdue: '',
     mode: 'create',
     title: '',
     submitText: '',
@@ -68,8 +73,8 @@ Page({
     customerOptions: [] as { id: string; name: string }[],
     storeOptions: [] as { id: string; name: string }[],
     lineViews: [] as ReturnType<typeof lineViewsOf>,
-    amountRows: [] as ReturnType<typeof amountRowsOf>,
     pickSheet: false,
+    editKey: '',
     picks: [] as ReturnType<typeof addableOf>,
     saving: false,
     texts: {
@@ -140,6 +145,15 @@ Page({
     if (!catalog) return
     this.order = order
     this.setData({
+      overdue: order.overdue
+        ? redesignCopy.overdueNotice(
+            order.customerName,
+            formatMoney(order.overdue.amountCents),
+            order.overdue.days,
+          )
+        : '',
+    })
+    this.setData({
       loaded: true,
       realtime: '',
       customerRows: [
@@ -165,8 +179,8 @@ Page({
     this.setData({
       form,
       initial,
+      linesChanged: linesChanged(form, initial),
       lineViews: lineViewsOf(form.lines),
-      amountRows: amountRowsOf(form.lines),
     })
     markChanged(this, isChanged(initial, form))
   },
@@ -182,6 +196,16 @@ Page({
     this.setData({ storeOptions: storeOptionsOf(this.customers, customerId) })
     // 换了客户：门店和明细都跟着这个客户的目录重来
     this.update({ customerId, storeId: '', lines: [] }, 'customerId')
+    const customer = this.customers.find((row) => row.id === customerId)
+    this.setData({
+      overdue: customer?.overdue
+        ? redesignCopy.overdueNotice(
+            customer.name,
+            formatMoney(customer.overdue.amountCents),
+            customer.overdue.days,
+          )
+        : '',
+    })
     await this.loadCatalog(customerId)
   },
   onStore(event: DetailEvent<string>) {
@@ -212,7 +236,11 @@ Page({
     this.update({ lines: this.data.form.lines.filter((_, i) => i !== event.detail) }, 'lines')
   },
   onOpenPick() {
-    this.setData({ pickSheet: true, picks: addableOf(this.catalog, this.data.form.lines) })
+    this.setData({
+      editKey: '',
+      pickSheet: true,
+      picks: addableOf(this.catalog, this.data.form.lines),
+    })
   },
   onClosePick() {
     this.setData({ pickSheet: false })
@@ -220,7 +248,10 @@ Page({
   onPick(event: KeyEvent) {
     const item = this.catalog.find((entry) => entry.productId === event.currentTarget.dataset.key)
     this.setData({ pickSheet: false })
-    if (item) this.update({ lines: [...this.data.form.lines, lineOfCatalog(item)] }, 'lines')
+    if (item) {
+      this.update({ lines: [...this.data.form.lines, lineOfCatalog(item)] }, 'lines')
+      this.setData({ editKey: item.productId })
+    }
   },
   showFields(fields: Record<string, string>) {
     this.setData({
@@ -251,14 +282,22 @@ Page({
     this.afterSubmit(await request(contract.createOrder, { body: checked.body }, options))
   },
   async submitUpdate(order: OrderDetail): Promise<void> {
-    const checked = checkUpdate(this.data.form, order.version)
+    const checked =
+      this.data.mode === 'confirm'
+        ? checkConfirm(this.data.form, this.data.initial, order.version)
+        : checkUpdate(this.data.form, order.version)
     if (!checked.ok) {
       this.showFields(checked.fields)
       return
     }
     this.setData({ saving: true, formError: '' })
     const input = { params: { id: order.id }, body: checked.body }
-    this.afterSubmit(await request(contract.updateOrder, input))
+    this.afterSubmit(
+      await request(
+        this.data.mode === 'confirm' ? contract.confirmOrder : contract.updateOrder,
+        input,
+      ),
+    )
   },
   afterSubmit(result: Result<OrderDetail>) {
     this.setData({ saving: false })

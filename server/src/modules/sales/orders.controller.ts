@@ -36,6 +36,13 @@ export class OrdersController {
   get(@CurrentViewer() viewer: Viewer, @Input() input: In<'getOrder'>): Promise<OrderDetail> {
     return this.reads.detail(viewer, Number(input.params.id))
   }
+  @Route(contract.getFinanceOrder)
+  finance(@CurrentViewer() viewer: Viewer, @Input() input: In<'getFinanceOrder'>) {
+    return this.reads.detail(
+      { ...viewer, type: 'staff', modules: ['finance'] },
+      Number(input.params.id),
+    )
+  }
   @Route(contract.getShippingOrder)
   shipping(@CurrentViewer() viewer: Viewer, @Input() input: In<'getShippingOrder'>) {
     return this.reads.shipping(viewer, Number(input.params.id))
@@ -44,6 +51,16 @@ export class OrdersController {
   @Route(contract.createOrder)
   create(@CurrentViewer() viewer: Viewer, @Input() input: In<'createOrder'>): Promise<OrderDetail> {
     return this.sales.create(viewer, input.body, input.idempotencyKey)
+  }
+
+  @Route(contract.batchConfirmOrders)
+  batchConfirm(@CurrentViewer() viewer: Viewer, @Input() input: In<'batchConfirmOrders'>) {
+    return this.sales.batchConfirm(viewer, input.body)
+  }
+
+  @Route(contract.batchShipOrders)
+  batchShip(@CurrentViewer() viewer: Viewer, @Input() input: In<'batchShipOrders'>) {
+    return this.sales.batchShip(viewer, input.body)
   }
 
   @Route(contract.confirmOrder)

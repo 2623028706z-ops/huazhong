@@ -1,32 +1,11 @@
-<hz-cover mode="soft" />
-<hz-navbar title="{{title}}" back="{{back}}" roles="{{roles}}" person="{{person}}" transparent />
+<hz-cover mode="soft" /><hz-navbar title="{{title}}" back="{{back}}" transparent />
 <view class="hz-module-home">
-  <!-- 待办出系统错误时入口照常可用，留在页面里提示，不整页（2026-10-05） -->
   <hz-state wx:if="{{failure.kind === 'page' && failure.state !== 'internal'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
-  <block wx:else>
-    <hz-error wx:if="{{failure}}" message="{{failure.message}}" request-id="{{failure.requestId}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
-    <hz-entry-grid wx:if="{{entries.length > 0}}" entries="{{entries}}" compact bind:select="onEntry" />
-    <view wx:if="{{hasTodos}}" class="hz-module-home__todos">
-      <view class="hz-module-home__head">
-        <text class="u-section__title">{{texts.todos}}</text>
-        <hz-button wx:if="{{todoCount > 0}}" kind="text" text="{{texts.viewAll}}" bind:press="onAll" />
-        <hz-button wx:elif="{{idleText}}" kind="text" text="{{idleText}}" bind:press="onAll" />
-      </view>
-      <hz-state wx:if="{{todos.length === 0 && !failure}}" object="{{todoEmpty}}" />
-      <view wx:for="{{todos}}" wx:key="id" data-key="{{item.id}}" bindtap="onTodo">
-        <hz-card
-          date="{{item.date}}"
-          status-kind="{{item.statusKind}}"
-          status="{{item.status}}"
-          title="{{item.title}}"
-          total="{{item.total}}"
-          meta="{{item.meta}}"
-          amount="{{item.amount}}"
-          amount-text="{{item.amountText}}"
-          tags="{{item.tags}}"
-        />
-      </view>
-    </view>
+  <block wx:else><hz-error wx:if="{{failure}}" message="{{failure.message}}" request-id="{{failure.requestId}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
+    <view class="hz-module-home__todos"><view wx:for="{{todos}}" wx:key="key" class="u-card hz-module-home__todo" data-key="{{item.key}}" bindtap="onTodo"><text class="hz-module-home__label">{{item.label}}</text><text class="hz-module-home__count {{item.count===0?'hz-module-home__count--zero':''}}">{{item.count}}</text><text wx:if="{{item.amount}}" class="u-serif-amount">{{item.amount}}</text></view></view>
+    <text class="u-section__title">{{texts.common}}</text>
+    <hz-entry-grid entries="{{common}}" bind:select="onEntry" />
+    <text wx:if="{{masters.length}}" class="u-section__title">{{texts.masters}}</text><hz-entry-grid wx:if="{{masters.length}}" entries="{{masters}}" compact bind:select="onEntry" />
+    <view wx:if="{{!back && !tabs.length}}" class="u-detail-third"><hz-button kind="text" text="{{texts.my}}" bind:press="onMy" /></view>
   </block>
-</view>
-<hz-tabbar wx:if="{{tabs.length > 0}}" tabs="{{tabs}}" current="home" />
+</view><hz-tabbar wx:if="{{tabs.length}}" tabs="{{tabs}}" current="home" />

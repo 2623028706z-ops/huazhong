@@ -15,7 +15,7 @@ import { OrdersController } from './orders.controller.ts'
 import { ProductService } from './products.ts'
 import { SalesOrderWrites } from './sales-orders.ts'
 import { SalesService } from './sales.service.ts'
-import { StoreHomeService } from './store-home.ts'
+import { StoreCatalogService } from './store-catalog.ts'
 import { StoreInviteService } from './store-invites.ts'
 import { StoreOrderWrites } from './store-orders.ts'
 import { StoreWrites } from './stores.ts'
@@ -45,7 +45,7 @@ import { StoreWrites } from './stores.ts'
     CategoryService,
     CatalogService,
     CatalogCategoryService,
-    StoreHomeService,
+    StoreCatalogService,
     SalesService,
   ],
   exports: [SalesService],

@@ -21,10 +21,11 @@ import {
 import { Clock } from '../../common/clock.ts'
 import { DB } from '../../common/db.ts'
 import { enabledAction } from '../../common/domain/actions.ts'
+import { exactNumber } from '../../common/domain/units.ts'
 import type { ParsedInput } from '../../common/endpoint.ts'
 import { dateBetween } from '../../common/page.ts'
 import { found } from '../../common/scope.ts'
-import { ledgerToken } from '../../common/ledger.ts'
+import { snapshotToken } from '../../common/domain/token.ts'
 import type { WriteContext } from '../../common/write.service.ts'
 
 type Query = ParsedInput<typeof contract.listPurchaseDemand>['query']
@@ -35,11 +36,11 @@ type InviteSource = Demand['mats'][number]['invites']
 const materialKey = sql`${materials}.${sql.identifier(materials.id.name)}`
 const stockQty =
   sql<number>`coalesce((SELECT sum(left_qty) FROM stock_batches WHERE material_id = ${materialKey}), 0)`
-    .mapWith(Number)
+    .mapWith(exactNumber)
     .as('stock_qty')
 const inTransitQty =
   sql<number>`coalesce((SELECT sum(l.qty) FROM purchase_order_lines l JOIN purchase_orders p ON p.id = l.po_id WHERE l.material_id = ${materialKey} AND p.status = 'to_receive'), 0)`
-    .mapWith(Number)
+    .mapWith(exactNumber)
     .as('in_transit_qty')
 const inviteSources =
   sql<InviteSource>`coalesce((SELECT jsonb_agg(jsonb_build_object('inviteId', i.id::text, 'no', i.no, 'supplierId', s.id::text, 'supplierName', s.name, 'needQty', l.need_qty) ORDER BY i.invite_date, i.id) FROM invite_lines l JOIN invites i ON i.id = l.invite_id JOIN suppliers s ON s.id = i.supplier_id WHERE l.material_id = ${materialKey} AND i.status = 'pending'), '[]'::jsonb)`.as(
@@ -65,6 +66,16 @@ async function reviewMaterials(executor: Db | Tx, lines: ReviewInput['lines']) {
     .orderBy(asc(materials.id))
 }
 type ReviewMaterials = Awaited<ReturnType<typeof reviewMaterials>>
+function demandQtyView(row: Demand['mats'][number]) {
+  return {
+    ...row,
+    needQty: exactNumber(row.needQty),
+    stockQty: exactNumber(row.stockQty),
+    inTransitQty: exactNumber(row.inTransitQty),
+    leftQty: exactNumber(row.leftQty),
+  }
+}
+
 function reviewDemand(input: ReviewInput, demand: Demand, mats: ReviewMaterials) {
   return input.lines.map((line) => {
     const mat = found(mats.find((row) => String(row.id) === line.materialId))
@@ -74,7 +85,7 @@ function reviewDemand(input: ReviewInput, demand: Demand, mats: ReviewMaterials)
       needQty,
       stockQty: mat.stockQty,
       inTransitQty: mat.inTransitQty,
-      leftQty: mat.stockQty + mat.inTransitQty - needQty,
+      leftQty: exactNumber(BigInt(mat.stockQty) + BigInt(mat.inTransitQty) - BigInt(needQty)),
     }
   })
 }
@@ -135,7 +146,7 @@ export class PurchaseDemand {
         unit: materials.unit,
         enabled: materials.enabled,
         needQty: sql<number>`sum(${orderLines.qty}::bigint * ${productBomLines.qty})`
-          .mapWith(Number)
+          .mapWith(exactNumber)
           .as('need_qty'),
         stockQty,
         inTransitQty,
@@ -184,7 +195,8 @@ export class PurchaseDemand {
       orderCount: found(result).orderCount,
       overdue: found(overdue),
       mats: found(result)
-        .mats.filter((row) => query.shortageOnly !== true || row.leftQty < 0)
+        .mats.map(demandQtyView)
+        .filter((row) => query.shortageOnly !== true || row.leftQty < 0)
         .sort(
           (a, b) =>
             Math.max(-b.leftQty, 0) - Math.max(-a.leftQty, 0) ||
@@ -218,7 +230,7 @@ export class PurchaseDemand {
           .map(({ orderId, shipDate: _date, ...line }) => ({
             ...line,
             orderId: String(orderId),
-            materialQty: line.qty * line.bomQty,
+            materialQty: exactNumber(line.qty * line.bomQty),
           })),
       })),
     }
@@ -243,7 +255,7 @@ export class PurchaseDemand {
     const currentDemand = reviewDemand(input, demand, mats)
     const warnings = reviewWarnings(input, currentDemand, mats)
     return {
-      reviewToken: ledgerToken({ input, supplier, mats, currentDemand }),
+      reviewToken: snapshotToken({ input, supplier, mats, currentDemand }),
       currentDemand,
       warnings,
     }

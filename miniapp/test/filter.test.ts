@@ -37,6 +37,10 @@ describe('筛选日期按上海日期算', () => {
   it('今天是今天到今天', () => {
     expect(rangeOf(withDate('today'), today)).toEqual({ from: today, to: today })
   })
+  it('明天和未来七天支持跨月', () => {
+    expect(rangeOf(withDate('tomorrow'), today)).toEqual({ from: '2026-10-01', to: '2026-10-01' })
+    expect(rangeOf(withDate('next7Days'), today)).toEqual({ from: today, to: '2026-10-06' })
+  })
   it('近 7 天是今天往前 6 天到今天', () => {
     expect(rangeOf(withDate('last7Days'), today)).toEqual({ from: '2026-09-24', to: today })
   })
@@ -62,9 +66,11 @@ describe('条件胶囊', () => {
     ])
     expect(hasConditions(value)).toBe(true)
   })
-  it('自定义日期写「09-01 至 09-15」', () => {
+  it('自定义日期写完整年月日', () => {
     const value = withDate('custom', { from: '2026-09-01', to: '2026-09-15' })
-    expect(chipsOf(value, [customers], today)).toEqual([{ key: 'date', text: '09-01 至 09-15' }])
+    expect(chipsOf(value, [customers], today)).toEqual([
+      { key: 'date', text: '2026-09-01 至 2026-09-15' },
+    ])
   })
   it('只选了状态不出圆点', () => {
     expect(hasConditions({ ...emptyFilter, status: 'to_ship' })).toBe(false)
@@ -128,12 +134,14 @@ describe('筛选弹层', () => {
     expect(segmentsOf(emptyFilter, today).map((s) => s.text)).toEqual([
       '全部',
       '今天',
+      '明天',
+      '未来 7 天',
       '近 7 天',
       '本月',
       '自定义',
     ])
     const custom = withDate('custom', { from: '2026-09-01', to: '2026-09-15' })
-    expect(segmentsOf(custom, today).at(-1)?.text).toBe('09-01 至 09-15')
+    expect(segmentsOf(custom, today).at(-1)?.text).toBe('2026-09-01 至 2026-09-15')
   })
   it('对象行没选写「全部客户」，选了写名字', () => {
     expect(dimensionRowsOf(emptyFilter, [customers])[0]?.text).toBe('全部客户')

@@ -1,27 +1,29 @@
 import { describe, expect, it } from 'vitest'
 import {
-  copy,
+  financeCopy as f,
   type Action,
-  type AfterDetail,
-  type Allocation,
   type ShippingDetail,
-  type PaymentAllocation,
+  type StatementCard,
+  type StatementDraft,
+  type StatementSource,
+  type ReceiptDetail,
 } from '@huazhong/shared'
 import { buttonsOf } from '../miniprogram/core/actions'
-import { afterSheetOf } from '../miniprogram/packages/finance/pages/customer/view'
-import { allocRowsOf, paymentAllocRowsOf } from '../miniprogram/views/receipt-view'
 import { shippingRowOf, shippingViewOf } from '../miniprogram/views/order'
 import {
-  autoFillAll,
-  checkAllocate,
-  fillText,
-  checkPayment,
   checkReceipt,
+  checkPayment,
+  settlementSummaryOf,
   type ReceiveForm,
 } from '../miniprogram/packages/finance/pages/receive/form'
+import {
+  draftTotalsOf,
+  checkStatement,
+} from '../miniprogram/packages/finance/pages/statement-form/form'
+import { statementRowOf, sourceRoute } from '../miniprogram/views/statement'
+import { fundViewOf } from '../miniprogram/views/receipt-view'
 import { checkPurchaseForm, type PurchaseForm } from '../miniprogram/views/purchase-form-data'
 import { checkForm, type FormLine } from '../miniprogram/packages/store/pages/after-form/form'
-
 const action = (code: Action['code']): Action => ({
   code,
   enabled: true,
@@ -36,6 +38,10 @@ const shipping: ShippingDetail = {
   origin: 'store',
   orderDate: '2026-10-01',
   shipDate: '2026-10-02',
+  confirmedAt: '2026-10-01T00:00:00.000Z',
+  contactName: '收货人',
+  contactPhone: '13800000000',
+  address: '上海',
   customerId: '1',
   customerName: '客户',
   storeId: '1',
@@ -44,7 +50,6 @@ const shipping: ShippingDetail = {
   lineCount: 1,
   units: [{ unit: '束', qty: 12 }],
   changed: true,
-  repriced: true,
   cancelRequested: false,
   actions: [],
   lockedReason: null,
@@ -77,6 +82,7 @@ const shipping: ShippingDetail = {
       id: '1',
       reason: '客户活动取消',
       status: 'lapsed',
+      requestedBy: '门店',
       requestedAt: '2026-10-01T00:00:00.000Z',
       handledAt: '2026-10-02T00:00:00.000Z',
       rejectReason: null,
@@ -90,35 +96,7 @@ const shipping: ShippingDetail = {
   voidReason: null,
   voidedAt: null,
 }
-const allocation: Allocation = {
-  id: '1',
-  kind: 'direct',
-  createdAt: '2026-10-01T00:00:00.000Z',
-  createdBy: { id: '1', name: '财务' },
-  registeredCents: 1200,
-  effectiveCents: 0,
-  status: 'valid',
-  revokedAt: null,
-  revokedBy: null,
-  revokeReason: null,
-  actions: [action('revokeAllocation')],
-  receiptId: '1',
-  receiptNo: 'SK-001',
-  orderId: '1',
-  orderNo: 'SO-001',
-}
-const form: ReceiveForm = {
-  receiptDate: '2026-10-02',
-  amountText: '20',
-  methodName: '微信',
-  note: '保留',
-  allocs: [
-    { orderId: '1', orderNo: 'SO-001', version: 2, unpaidCents: 1000, text: '10' },
-    { orderId: '2', orderNo: 'SO-002', version: 3, unpaidCents: 1500, text: '5' },
-  ],
-}
-
-describe('阶段3/4返工视图', () => {
+describe('重新设计的业务视图', () => {
   it('H2/H3专用视图任何嵌套节点均不生成金额字段，保留多发和历史', () => {
     const rendered = JSON.stringify({
       card: shippingRowOf(shipping),
@@ -132,70 +110,6 @@ describe('阶段3/4返工视图', () => {
     })
     expect(shippingViewOf(shipping).changes).toHaveLength(1)
   })
-  it('D18-F零生效有效核销仍展示登记金额与撤回操作，撤回后保留完整历史', () => {
-    expect(allocRowsOf([allocation], 'order')[0]).toMatchObject({
-      canRevoke: true,
-      amount: copy.rework.allocationAmounts(1200, 0),
-    })
-    const revoked: Allocation = {
-      ...allocation,
-      status: 'revoked',
-      actions: [],
-      revokedAt: '2026-10-02T00:00:00.000Z',
-      revokedBy: { id: '2', name: '管理员' },
-      revokeReason: '登记错误',
-    }
-    const row = allocRowsOf([revoked], 'order')[0]
-    expect(row?.canRevoke).toBe(false)
-    expect(row?.sub).toContain('已撤回')
-    expect(row?.sub).toContain('登记错误')
-    expect(row?.sub).toContain('管理员')
-  })
-  it('付款核销与收款历史对称，不按有效金额过滤', () => {
-    const payment: PaymentAllocation = {
-      ...allocation,
-      paymentId: '1',
-      paymentNo: 'FK-001',
-      docType: 'po',
-      docId: '2',
-      docNo: 'PO-001',
-      actions: [action('revokePaymentAllocation')],
-    }
-    expect(paymentAllocRowsOf([payment])[0]).toMatchObject({
-      key: '1',
-      canRevoke: true,
-      amount: copy.rework.allocationAmounts(1200, 0),
-    })
-  })
-  it('财务售后即使收到管理员作废action也保持只读', () => {
-    const after: AfterDetail = {
-      id: '1',
-      no: 'SH-001',
-      version: 1,
-      status: 'processed',
-      origin: 'sales',
-      afterDate: '2026-10-02',
-      orderId: '1',
-      orderNo: 'SO-001',
-      customerName: '客户',
-      storeName: '门店',
-      lineName: '花束',
-      lineCount: 0,
-      units: [],
-      amountCents: 0,
-      actions: [action('voidAfter')],
-      lockedReason: null,
-      shipDate: '2026-10-02',
-      note: null,
-      lines: [],
-      processedAt: null,
-      closeReason: null,
-      voidReason: null,
-      voidedAt: null,
-      notice: null,
-    }
-    expect(afterSheetOf(after)).toMatchObject({ canVoid: false, voidRequired: false })
-  })
   it('新增取消、作废、退款操作只由actions控制并显示中文文案', () => {
     expect(
       buttonsOf(
@@ -205,82 +119,6 @@ describe('阶段3/4返工视图', () => {
     ).toEqual(['申请取消', '作废采购单'])
   })
 })
-
-describe('账本凭据和多单核销', () => {
-  it('F4提交全账凭据和全部候选版本，纯预收也需要凭据', () => {
-    const checked = checkReceipt(form, '1', '2026-10-02', 'ledger-a')
-    expect(checked.ok).toBe(true)
-    if (checked.ok)
-      expect(checked.body).toMatchObject({
-        ledgerToken: 'ledger-a',
-        expected: [
-          { orderId: '1', version: 2, unpaidCents: 1000 },
-          { orderId: '2', version: 3, unpaidCents: 1500 },
-        ],
-      })
-    expect(checkReceipt({ ...form, allocs: [] }, '1', '2026-10-02', '').ok).toBe(false)
-    expect(checkAllocate(form, '1', 'ledger-a').ok).toBe(true)
-  })
-  it('F7按供应商登记、多单核销、剩余转预付；不发送旧docId/poId付款语义', () => {
-    const paymentForm = {
-      ...form,
-      allocs: form.allocs.map((line) => ({ ...line, docType: 'po' as const, docId: line.orderId })),
-    }
-    const checked = checkPayment(paymentForm, '9', 'ledger-b', false)
-    expect(checked.ok).toBe(true)
-    if (checked.ok) {
-      expect(checked.body).toMatchObject({
-        supplierId: '9',
-        ledgerToken: 'ledger-b',
-        amountCents: 2000,
-        allocs: [
-          { docType: 'po', docId: '1', amountCents: 1000 },
-          { docType: 'po', docId: '2', amountCents: 500 },
-        ],
-      })
-      expect(checked.body).not.toHaveProperty('docId')
-      expect(checked.body).not.toHaveProperty('poId')
-    }
-    expect(checkPayment({ ...form, allocs: [] }, '9', 'ledger-b', false).ok).toBe(true)
-    expect(checkPayment({ ...form, allocs: [] }, '9', 'ledger-b', true).ok).toBe(false)
-  })
-  it('按候选单据顺序默认填入，剩余可形成预付/预收', () => {
-    expect(autoFillAll(form.allocs, 1800).map((line) => line.text)).toEqual(['10.00', '8.00'])
-    expect(autoFillAll(form.allocs, 3000).map((line) => line.text)).toEqual(['10.00', '15.00'])
-  })
-  it('手工入库单只整单付款：钱不够付满就不填，少填提交前报错', () => {
-    const stockIn = {
-      orderId: 'wh:1',
-      docType: 'wh' as const,
-      docId: '1',
-      orderNo: 'RK-1',
-      version: 1,
-      unpaidCents: 1000,
-      text: '',
-    }
-    const lines = [
-      stockIn,
-      {
-        orderId: 'po:2',
-        docType: 'po' as const,
-        docId: '2',
-        orderNo: 'PO-2',
-        version: 1,
-        unpaidCents: 1500,
-        text: '',
-      },
-    ]
-    expect(autoFillAll(lines, 800).map((line) => line.text)).toEqual(['', '8.00'])
-    expect(autoFillAll(lines, 1200).map((line) => line.text)).toEqual(['10.00', '2.00'])
-    expect(fillText(lines, 0, 800)).toBe('')
-    expect(fillText(lines, 0, 1000)).toBe('10.00')
-    const partial = { ...form, amountText: '5.00', allocs: [{ ...stockIn, text: '5.00' }] }
-    const checked = checkPayment(partial, '9', 'ledger-b', false)
-    expect(checked.ok).toBe(false)
-    expect(JSON.stringify(checked)).toContain(copy.stock.stockInPayWhole)
-  })
-})
-
 describe('采购复核及外部表单', () => {
   const purchase: PurchaseForm = {
     supplierId: '1',
@@ -315,20 +153,247 @@ describe('采购复核及外部表单', () => {
     const checked = checkPurchaseForm(purchase, 'po', 1, { supplierEditing: true })
     if (checked.ok) expect(checked.body).not.toHaveProperty('note')
   })
-  it('售后破损/质量必传图片，数量不符/其他选填', () => {
-    const line: FormLine = {
-      orderLineId: '1',
-      name: '花束',
-      maxText: '最多2束',
-      qty: 1,
-      maxQty: 2,
-      reason: 'damaged',
-      description: '问题说明',
-      images: [],
+})
+
+function statement(id: string, dueCents: number): StatementCard {
+  return {
+    id,
+    no: `DZ-${id}`,
+    version: 2,
+    kind: 'customer',
+    partyId: '1',
+    partyName: '客户',
+    periodFrom: '2026-10-01',
+    periodTo: '2026-10-02',
+    statementDate: '2026-10-02',
+    dueDate: '2026-10-12',
+    settledAt: null,
+    amountCents: dueCents,
+    dueCents,
+    sourceCount: 1,
+    status: 'unsettled',
+    overdueDays: 0,
+    actions: [],
+    lockedReason: null,
+  }
+}
+const receipt: ReceiveForm = {
+  receiptDate: '2026-10-02',
+  amountText: '25.00',
+  discountText: '',
+  discountReason: '',
+  methodName: '微信',
+  note: '保留',
+  statements: [statement('1', 1000), statement('2', 1500)],
+}
+describe('按完整对账单结清', () => {
+  it('只提交所选对账单ID与版本，不提交逐单金额、核销或ledgerToken', () => {
+    const checked = checkReceipt(receipt, '1', '2026-10-02')
+    expect(checked.ok).toBe(true)
+    if (checked.ok) {
+      expect(checked.body.statements).toEqual([
+        { id: '1', version: 2 },
+        { id: '2', version: 2 },
+      ])
+      expect(checked.body).not.toHaveProperty('allocs')
+      expect(checked.body).not.toHaveProperty('ledgerToken')
+      expect(checked.body).not.toHaveProperty('expected')
     }
-    expect(checkForm('1', [line]).ok).toBe(false)
-    expect(checkForm('1', [{ ...line, reason: 'quality' }]).ok).toBe(false)
-    expect(checkForm('1', [{ ...line, reason: 'qty_mismatch' }]).ok).toBe(true)
-    expect(checkForm('1', [{ ...line, reason: 'other', description: '其他问题' }]).ok).toBe(true)
+  })
+  it('不足整单金额必须填优惠或少选，优惠必须有原因', () => {
+    const short = checkReceipt({ ...receipt, amountText: '20' }, '1', '2026-10-02')
+    expect(short).toMatchObject({ ok: false, fields: { amountCents: f.insufficient('¥5.00') } })
+    expect(
+      checkReceipt({ ...receipt, amountText: '20', discountText: '5' }, '1', '2026-10-02').ok,
+    ).toBe(false)
+    expect(
+      checkReceipt(
+        { ...receipt, amountText: '20', discountText: '5', discountReason: '抹零' },
+        '1',
+        '2026-10-02',
+      ).ok,
+    ).toBe(true)
+  })
+  it('未选择对账单允许整笔多收，不能登记无对应欠款的优惠', () => {
+    expect(checkReceipt({ ...receipt, statements: [] }, '1', '2026-10-02').ok).toBe(true)
+    expect(
+      checkReceipt(
+        { ...receipt, statements: [], discountText: '1', discountReason: '抹零' },
+        '1',
+        '2026-10-02',
+      ).ok,
+    ).toBe(false)
+    expect(checkReceipt({ ...receipt, receiptDate: '2026-10-03' }, '1', '2026-10-02').ok).toBe(
+      false,
+    )
+  })
+  it('付款与收款对称，并以实际付款超过所选应付计算多付预览', () => {
+    const checked = checkPayment({ ...receipt, amountText: '30' }, '9', '2026-10-02')
+    expect(checked.ok).toBe(true)
+    if (checked.ok)
+      expect(checked.body).toMatchObject({
+        supplierId: '9',
+        payDate: '2026-10-02',
+        statements: [
+          { id: '1', version: 2 },
+          { id: '2', version: 2 },
+        ],
+      })
+    expect(settlementSummaryOf({ ...receipt, amountText: '30' }, true)).toContain('多付 ¥5.00')
+  })
+})
+function source(
+  type: StatementSource['type'],
+  id: string,
+  amountCents: number,
+  carriesAmount = true,
+): StatementSource {
+  return {
+    type,
+    id,
+    version: 1,
+    sourceNo: `来源-${id}`,
+    sourceDate: '2026-10-01',
+    storeId: null,
+    storeName: null,
+    amountCents,
+    carriesAmount,
+    previousPeriod: false,
+    selected: true,
+  }
+}
+const supplierDraft: StatementDraft = {
+  kind: 'supplier',
+  partyId: '1',
+  partyName: '供应商',
+  partyVersion: 1,
+  periodFrom: '2026-10-01',
+  periodTo: '2026-10-02',
+  creditCents: 100,
+  openingDebtCents: 200,
+  sources: [
+    source('po', '1', 800),
+    source('purchase_return', '2', -200, false),
+    source('price_change', '3', 50, false),
+  ],
+  totals: { grossCents: 1000, creditDeductedCents: 100, dueCents: 900, creditGeneratedCents: 0 },
+}
+describe('对账单金额和受限视图', () => {
+  it('供应商主行已经是净实收现价，退货和改价凭据不再参与加减', () => {
+    expect(draftTotalsOf(supplierDraft, ['po:1', 'purchase_return:2', 'price_change:3'])).toEqual(
+      supplierDraft.totals,
+    )
+    expect(
+      checkStatement(supplierDraft, ['po:1', 'purchase_return:2', 'price_change:3'], '备注').ok,
+    ).toBe(true)
+  })
+  it('客户负净额和多收抵扣分别计算，最低应收为0', () => {
+    const draft = {
+      ...supplierDraft,
+      kind: 'customer' as const,
+      creditCents: 500,
+      openingDebtCents: 0,
+      sources: [source('order', '1', 100), source('after', '2', -300)],
+    }
+    expect(draftTotalsOf(draft, ['order:1', 'after:2'])).toEqual({
+      grossCents: -200,
+      creditDeductedCents: 0,
+      dueCents: 0,
+      creditGeneratedCents: 200,
+    })
+  })
+  it('门店卡片只取storeAmountCents，供应商金额叫应收，保留全日期与截止', () => {
+    const card = { ...statement('1', 9999), storeAmountCents: 1234 }
+    const row = statementRowOf(card, 'store')
+    expect(row.fields).toContainEqual({ label: f.storeAmount, value: '¥12.34', amount: true })
+    expect(JSON.stringify(row)).not.toContain('¥99.99')
+    expect(statementRowOf(card, 'supplier').fields).toContainEqual({
+      label: f.receivable,
+      value: '¥99.99',
+      amount: true,
+    })
+  })
+  it('财务来源路由携带只读scope，并分别走销售和仓库页面', () => {
+    expect(sourceRoute(source('order', '1', 100))).toBe(
+      '/packages/sales/pages/order-detail/index?scope=finance&sourceType=order&id=1',
+    )
+    expect(sourceRoute(source('wh', '2', 200))).toBe(
+      '/packages/warehouse/pages/doc-detail/index?scope=finance&sourceType=wh&id=2',
+    )
+  })
+  it('收款详情保留作废关联历史与多收信息，没有核销入口', () => {
+    const fund: ReceiptDetail = {
+      id: '1',
+      no: 'SK-1',
+      version: 1,
+      customerId: '1',
+      customerName: '客户',
+      receiptDate: '2026-10-02',
+      amountCents: 3000,
+      discountCents: 0,
+      discountReason: '',
+      creditCents: 500,
+      creditBalanceCents: 500,
+      methodName: '微信',
+      note: '',
+      createdBy: { id: '1', name: '财务' },
+      createdAt: '2026-10-02T00:00:00.000Z',
+      status: 'voided',
+      voidReason: '登记错误',
+      voidedAt: '2026-10-03T00:00:00.000Z',
+      voidedBy: { id: '1', name: '财务' },
+      statements: [
+        {
+          id: '1',
+          no: 'DZ-1',
+          dueCents: 2500,
+          amountCents: 2500,
+          status: 'unsettled',
+          reversedAt: '2026-10-03T00:00:00.000Z',
+        },
+      ],
+      refunds: [],
+      actions: [],
+      lockedReason: null,
+    }
+    const view = fundViewOf(fund)
+    expect(view.statements[0]?.tags).toContainEqual({ text: f.voided, warn: false })
+    expect(view.rows).toContainEqual({ label: f.credited, value: '¥5.00' })
+    expect(view).not.toHaveProperty('allocations')
+  })
+})
+describe('门店售后编辑校验', () => {
+  const line: FormLine = {
+    orderLineId: '1',
+    name: '花束',
+    unit: '束',
+    code: null,
+    maxText: '最多2束',
+    qty: 1,
+    maxQty: 2,
+    reason: 'damaged',
+    description: '问题说明',
+    images: [],
+  }
+  it.each(['damaged', 'quality', 'qty_mismatch', 'other'])(
+    '全部问题原因%s均要求说明与图片',
+    (reason) => {
+      expect(checkForm('1', [{ ...line, reason }]).ok).toBe(false)
+      const complete = {
+        ...line,
+        reason,
+        images: [
+          { fileId: '1', url: 'https://example.com/a.png', thumbUrl: 'https://example.com/a.png' },
+        ],
+      }
+      expect(checkForm('1', [complete]).ok).toBe(true)
+      expect(checkForm('1', [{ ...complete, description: '' }]).ok).toBe(false)
+    },
+  )
+  it('弹窗和提交都不能超过原订单允许售后的数量', () => {
+    expect(checkForm('1', [{ ...line, qty: 3 }])).toMatchObject({
+      ok: false,
+      fields: { 'lines.0.qty': '最多2束' },
+    })
   })
 })

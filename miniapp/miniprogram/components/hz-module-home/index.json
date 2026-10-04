@@ -9,6 +9,6 @@
     "hz-tabbar": "../hz-tabbar/index",
     "hz-entry-grid": "../hz-entry-grid/index",
     "hz-card": "../hz-card/index",
-    "hz-button": "../hz-button/index"
+    "hz-button": "/components/hz-button/index"
   }
 }

@@ -1,4 +1,4 @@
-// 客户和门店的公共查询：应收（ar:<customerId>）的推送按门店过滤，核销重算可能影响这个客户的每家门店
+// 客户和门店的公共查询：往来账（ar:<customerId>）的推送按门店过滤，对账变化通知客户的每家门店。
 import { appError } from '@huazhong/shared'
 import { eq } from 'drizzle-orm'
 import type { Db, Tx } from '../../db/client.ts'
@@ -12,7 +12,7 @@ export async function customerStoreIds(executor: Db | Tx, customerId: number): P
   return rows.map((row) => String(row.id))
 }
 
-// 行锁客户：串行化同一客户的核销，登记收款、作废收款、作废售后互斥（05 章第 10 节）
+// 行锁客户：同一客户的对账、收款和业务来源改动互斥（05 章第 10 节）。
 export async function lockCustomer(tx: Tx, customerId: number): Promise<void> {
   const [row] = await tx
     .select({ id: customers.id })

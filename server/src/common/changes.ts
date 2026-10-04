@@ -14,3 +14,26 @@ export const changesPayloadSchema = z.object({
 })
 export type ChangesPayload = z.infer<typeof changesPayloadSchema>
 export type ChangeScope = ChangesPayload['scope']
+
+export function encodeChanges(payload: ChangesPayload): string[] {
+  const text = JSON.stringify(payload)
+  if (Buffer.byteLength(text) <= CHANGES_PAYLOAD_MAX_BYTES) return [text]
+  const { changes, scope } = payload
+  if (Buffer.byteLength(JSON.stringify(scope)) > CHANGES_PAYLOAD_MAX_BYTES / 2) {
+    const key = scope.storeIds.length >= scope.supplierIds.length ? 'storeIds' : 'supplierIds'
+    const ids = scope[key]
+    if (ids.length > 1) {
+      const middle = Math.ceil(ids.length / 2)
+      return [ids.slice(0, middle), ids.slice(middle)].flatMap((part) =>
+        encodeChanges({ changes, scope: { ...scope, [key]: part } }),
+      )
+    }
+  }
+  if (changes.length > 1) {
+    const middle = Math.ceil(changes.length / 2)
+    return [changes.slice(0, middle), changes.slice(middle)].flatMap((part) =>
+      encodeChanges({ changes: part, scope }),
+    )
+  }
+  throw new Error('single change payload too large')
+}

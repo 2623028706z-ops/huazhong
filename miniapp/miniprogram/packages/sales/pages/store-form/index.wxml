@@ -1,0 +1,36 @@
+<hz-navbar title="{{title}}" back guard="{{changed}}" />
+<hz-state wx:if="{{failure.kind==='page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<view wx:else class="u-list">
+  <hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" />
+  <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+  <hz-skeleton wx:if="{{!loaded && !failure}}" type="form" />
+  <block wx:if="{{loaded}}">
+    <view class="u-card u-form-card">
+      <view wx:if="{{editingStore}}" class="u-sheet-head">
+        <text class="u-sheet-head__title">{{storeForm.name}}</text>
+        <text class="u-sheet-head__meta">{{customerName}}</text>
+      </view>
+      <hz-error wx:if="{{formError}}" message="{{formError}}" />
+      <view class="u-sheet-row"><text>{{texts.customer}}</text><text>{{customerName}}</text></view>
+      <hz-field label="{{texts.name}}" value="{{storeForm.name}}" error="{{fields.name}}" data-field="name" bind:change="patchStore" />
+      <hz-field label="{{texts.contact}}" value="{{storeForm.contact}}" error="{{fields.contact}}" data-field="contact" bind:change="patchStore" />
+      <hz-field label="{{texts.phone}}" value="{{storeForm.phone}}" error="{{fields.phone}}" type="number" data-field="phone" bind:change="patchStore" />
+      <hz-field label="{{texts.address}}" value="{{storeForm.address}}" error="{{fields.address}}" data-field="address" bind:change="patchStore" />
+      <hz-switch label="{{texts.enabled}}" value="{{storeForm.enabled}}" data-field="enabled" bind:change="patchStore" />
+    </view>
+    <view class="u-card u-form-card">
+      <hz-field label="{{texts.loginPhone}}" value="{{storeForm.loginPhone}}" type="number" error="{{fields.loginPhone}}" data-field="loginPhone" bind:change="patchStore" />
+      <view wx:if="{{canUnbind}}" class="u-sheet-form__row">
+        <text>{{texts.wechat}}</text>
+        <view class="u-sheet-form__value"><text>{{texts.bound}}</text><hz-button kind="text" text="{{texts.unbind}}" bind:press="onUnbind" /></view>
+      </view>
+      <view wx:if="{{invite}}" class="u-sheet-form__group">
+        <text class="u-field__label">{{texts.invite}}</text>
+        <block wx:if="{{shared}}"><text class="u-info__meta">{{shared.expiresText}}</text><hz-button kind="secondary" text="{{texts.share}}" open-type="share" /></block>
+        <hz-button wx:else kind="secondary" text="{{texts.generate}}" disabled="{{!invite.enabled}}" reason="{{invite.reason}}" loading="{{saving}}" bind:press="onGenerateInvite" />
+      </view>
+    </view>
+  </block>
+</view>
+<hz-action-bar><hz-button text="{{texts.saveStore}}" loading="{{saving}}" disabled="{{!loaded}}" bind:press="onSaveStore" /></hz-action-bar>
+<hz-confirm id="hz-confirm" />

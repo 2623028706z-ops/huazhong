@@ -1,27 +1,30 @@
 // 当前账号：登录落点、底栏、身份行、退出登录（05 章第 2 节、06 章第 1 节）。
 // 能进哪些模块、「我的」有哪些入口只看 /me 的 modules、menus、landing，前端不按角色推算
-import { contract, copy, roleLabelOf, type Me, type ModuleKey } from '@huazhong/shared'
-import { clearCarts, countOf, loadCart } from './cart'
+import {
+  contract,
+  copy,
+  redesignCopy,
+  roleLabelOf,
+  type Me,
+  type ModuleKey,
+} from '@huazhong/shared'
+import { clearCarts } from './cart'
 import { viewOf, type FailureView, type Phase } from './failure-view'
 import { request, type Failure } from './request'
 
 const LOGIN_URL = '/pages/login/index'
 const HOME_URL = '/pages/home/index'
 const MY_URL = '/pages/my/index'
-const STORE_HOME_URL = '/packages/store/pages/home/index'
-const CART_URL = '/packages/store/pages/cart/index'
-const SUPPLIER_HOME_URL = '/packages/supplier/pages/home/index'
-
 export function moduleHomeUrl(key: ModuleKey): string {
   return `/packages/${key}/pages/home/index`
 }
 
 export function landingUrl(me: Me): string {
   switch (me.landing) {
-    case 'store_home':
-      return STORE_HOME_URL
-    case 'supplier_home':
-      return SUPPLIER_HOME_URL
+    case 'store_shop':
+      return '/packages/store/pages/shop/index'
+    case 'supplier_invites':
+      return '/packages/supplier/pages/invites/index'
     case 'home':
       return HOME_URL
     default:
@@ -37,32 +40,64 @@ interface Tab {
   badge: number
 }
 
-// 「首页」就是登录落点；门店多一个「购物车」，角标是本机购物车件数（06 章第 4 节）。
-// 供应商的「填报」在阶段 4 加（08 章）
+// 账号落点与底栏统一；单岗位仓库保留库存入口。
 export function tabsOf(me: Me, supplyCount = 0): Tab[] {
-  const home = { key: 'home', icon: 'house', text: copy.tab.home, url: landingUrl(me), badge: 0 }
   const my = { key: 'my', icon: 'user-round', text: copy.tab.my, url: MY_URL, badge: 0 }
-  if (me.type === 'supplier')
+  if (me.type === 'store' || me.type === 'supplier') return externalTabsOf(me, supplyCount, my)
+  const home = { key: 'home', icon: 'house', text: copy.tab.home, url: landingUrl(me), badge: 0 }
+  if (me.landing === 'module:warehouse')
     return [
       home,
       {
-        key: 'supply',
-        icon: 'clipboard-pen',
-        text: copy.screen.tab.supply,
-        url: '/packages/supplier/pages/invites/index',
-        badge: supplyCount,
+        key: 'stock',
+        icon: 'boxes',
+        text: redesignCopy.stock,
+        url: '/packages/warehouse/pages/stock/index',
+        badge: 0,
       },
       my,
     ]
-  if (me.type !== 'store') return [home, my]
-  const cart = {
-    key: 'cart',
-    icon: 'shopping-cart',
-    text: copy.screen.tab.cart,
-    url: CART_URL,
-    badge: countOf(loadCart(me.id)),
-  }
-  return [home, cart, my]
+  return me.landing.startsWith('module:') ? [] : [home, my]
+}
+
+function externalTabsOf(me: Me, supplyCount: number, my: Tab): Tab[] {
+  if (me.type === 'store')
+    return [
+      {
+        key: 'shop',
+        icon: 'flower-2',
+        text: copy.screen.title.shop,
+        url: '/packages/store/pages/shop/index',
+        badge: 0,
+      },
+      {
+        key: 'orders',
+        icon: 'file-text',
+        text: redesignCopy.orders,
+        url: '/packages/store/pages/orders/index',
+        badge: 0,
+      },
+      my,
+    ]
+  if (me.type === 'supplier')
+    return [
+      {
+        key: 'supply',
+        icon: 'clipboard-pen',
+        text: redesignCopy.supply,
+        url: '/packages/supplier/pages/invites/index',
+        badge: supplyCount,
+      },
+      {
+        key: 'orders',
+        icon: 'file-text',
+        text: redesignCopy.purchaseOrders,
+        url: '/packages/supplier/pages/orders/index',
+        badge: 0,
+      },
+      my,
+    ]
+  return []
 }
 
 // 身份行：员工「岗位 · 名字」，门店「客户 · 门店 · 联系人」，供应商「供应商 · 联系人」
@@ -71,7 +106,7 @@ export function identityOf(me: Me): { lead: string; person: string } {
   return { lead, person: me.name }
 }
 
-// 只有一个模块的员工：模块首页是一级页面（没有返回、有底栏）
+// 只有一个模块的员工：模块首页是登录落点；仅仓库有模块底栏
 export function isLandingModule(me: Me, key: ModuleKey): boolean {
   return me.landing === `module:${key}`
 }

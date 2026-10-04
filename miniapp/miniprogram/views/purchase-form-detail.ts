@@ -3,11 +3,24 @@ import { canDo } from '../core/actions'
 import { request } from '../core/request'
 import { failureOf } from '../core/session'
 import { poViewOf } from './purchase'
-import { inviteViewOf } from './invite-detail'
+import { inviteViewOf, openInvitePo } from './invite-detail'
 import { poFormOf, inviteFormOf } from './purchase-form-data'
 import type { PurchaseFormHost as Host } from './purchase-form'
 
 export const purchaseFormDetails = {
+  async loadDetail(this: Host, preserve = false) {
+    return this.data.mode === 'po' ? this.loadPo(preserve) : this.loadInvite(preserve)
+  },
+  // 用户点实时提示条才换成最新内容，丢弃本地草稿（02 章第 5 节）
+  onRealtime(this: Host) {
+    void this.load(false)
+  },
+  onFailureAction(this: Host) {
+    void this.load()
+  },
+  onPo(this: Host) {
+    openInvitePo(this.invite, this.data.mode === 'supply')
+  },
   async loadPo(this: Host, preserve: boolean) {
     const result = await request(
       this.data.supplierEditing ? contract.supplierPurchaseOrder : contract.getPurchaseOrder,
@@ -70,7 +83,7 @@ export const purchaseFormDetails = {
       supplierName: result.data.supplierName,
       canChangeSupplier: false,
       editable,
-      inviteView: inviteViewOf(result.data),
+      inviteView: inviteViewOf(result.data, this.data.mode === 'supply'),
     })
     this.render(inviteFormOf(result.data), true)
     return true

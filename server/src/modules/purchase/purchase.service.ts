@@ -1,13 +1,18 @@
 // 跨模块只从这里取采购单、锁定单据和发送变更通知。
-import { TODO_PREVIEW_COUNT, type contract, type OutputOf } from '@huazhong/shared'
+import {
+  redesignCopy,
+  STOCK_AGE_WARNING_DAYS,
+  type contract,
+  type OutputOf,
+} from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
-import { eq, type SQL } from 'drizzle-orm'
+import { and, count, countDistinct, eq, gt, sql, type SQL } from 'drizzle-orm'
 import type { Db, Tx } from '../../../db/client.ts'
-import { invites, purchaseOrders } from '../../../db/schema/index.ts'
+import { invites, purchaseOrders, stockBatches } from '../../../db/schema/index.ts'
+import { Clock } from '../../common/clock.ts'
 import { DB } from '../../common/db.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import type { WriteContext } from '../../common/write.service.ts'
-import { InviteReads } from './invite-reads.ts'
 import { PoReads } from './po-reads.ts'
 import { lockPo, notifyPo } from './purchase-common.ts'
 
@@ -15,8 +20,8 @@ import { lockPo, notifyPo } from './purchase-common.ts'
 export class PurchaseService {
   constructor(
     @Inject(DB) private readonly db: Db,
+    private readonly clock: Clock,
     private readonly po: PoReads,
-    private readonly invite: InviteReads,
   ) {}
   detail(executor: Db | Tx, viewer: Viewer, id: number) {
     return this.po.detail(executor, viewer, id)
@@ -33,21 +38,39 @@ export class PurchaseService {
   ) {
     notifyPo(ctx, row)
   }
-  async purchaseTodos(viewer: Viewer): Promise<OutputOf<typeof contract.moduleTodos>> {
-    const cards = await this.invite.cards(this.db, viewer, eq(invites.status, 'pending'))
-    return {
-      count: cards.length,
-      items: cards.slice(0, TODO_PREVIEW_COUNT).map((invite) => ({ kind: 'invite', invite })),
-    }
+  async purchaseTodos(_viewer: Viewer): Promise<OutputOf<typeof contract.moduleTodos>> {
+    const [invite] = await this.db
+      .select({ n: count() })
+      .from(invites)
+      .where(eq(invites.status, 'pending'))
+    const [po] = await this.db
+      .select({ n: count() })
+      .from(purchaseOrders)
+      .where(eq(purchaseOrders.status, 'to_receive'))
+    const rows = [
+      { key: 'pendingInvites', label: redesignCopy.pendingInviteTodo, count: invite?.n ?? 0 },
+      { key: 'pendingPurchaseOrders', label: redesignCopy.pendingPoTodo, count: po?.n ?? 0 },
+    ]
+    return { count: rows.reduce((n, row) => n + row.count, 0), rows }
   }
-  async warehouseTodos(viewer: Viewer): Promise<OutputOf<typeof contract.moduleTodos>> {
-    const cards = await this.po.cards(this.db, viewer, eq(purchaseOrders.status, 'to_receive'))
-    cards.reverse()
-    return {
-      count: cards.length,
-      items: cards
-        .slice(0, TODO_PREVIEW_COUNT)
-        .map((purchaseOrder) => ({ kind: 'purchaseOrder', purchaseOrder })),
-    }
+  async warehouseTodos(_viewer: Viewer): Promise<OutputOf<typeof contract.moduleTodos>> {
+    const [po] = await this.db
+      .select({ n: count() })
+      .from(purchaseOrders)
+      .where(eq(purchaseOrders.status, 'to_receive'))
+    const [aged] = await this.db
+      .select({ n: countDistinct(stockBatches.materialId) })
+      .from(stockBatches)
+      .where(
+        and(
+          gt(stockBatches.leftQty, 0),
+          sql`${stockBatches.inDate} <= ${this.clock.today()}::date - ${STOCK_AGE_WARNING_DAYS}`,
+        ),
+      )
+    const rows = [
+      { key: 'pendingReceives', label: redesignCopy.toReceive, count: po?.n ?? 0 },
+      { key: 'agedStock', label: redesignCopy.agedCount, count: aged?.n ?? 0 },
+    ]
+    return { count: rows.reduce((n, row) => n + row.count, 0), rows }
   }
 }

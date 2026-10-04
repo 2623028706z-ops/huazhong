@@ -1,0 +1,17 @@
+<hz-navbar title="{{title}}" back guard="{{changed}}" />
+<hz-state wx:if="{{failure.kind==='page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
+<view wx:else class="u-list"><hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" /><hz-skeleton wx:if="{{!loaded && !failure}}" type="form" /><block wx:if="{{loaded}}">  <view class="u-card u-form-card">
+    <hz-error wx:if="{{error}}" message="{{error}}" />
+    <hz-field label="{{texts.name}}" value="{{form.name}}" error="{{fields.name}}" data-field="name" bind:change="onText" />
+    <hz-field label="{{texts.contact}}" value="{{form.contact}}" error="{{fields.contact}}" data-field="contact" bind:change="onText" />
+    <hz-field label="{{texts.phone}}" value="{{form.phone}}" error="{{fields.phone}}" type="number" data-field="phone" bind:change="onText" />
+    <hz-field label="{{texts.address}}" value="{{form.address}}" error="{{fields.address}}" data-field="address" bind:change="onText" />
+    <hz-switch label="{{texts.enabled}}" value="{{form.enabled}}" bind:change="onEnabled" />
+  </view><view class="u-card u-form-card">
+    <hz-switch label="{{texts.supplierAccount}}" value="{{form.account.enabled}}" bind:change="onAccount" />
+    <hz-field wx:if="{{form.account.enabled}}" label="{{texts.supplierLoginPhone}}" value="{{form.account.loginPhone}}" error="{{fields['account.loginPhone']}}" bind:change="onLoginPhone" />
+  </view>
+<view wx:if="{{supplierId}}" class="u-card u-form-card"><hz-button kind="text" text="{{texts.orders}}" bind:press="onOrders" /><hz-button kind="text" text="{{texts.invites}}" bind:press="onInvites" /></view></block></view>
+<hz-action-bar><hz-button text="{{texts.save}}" loading="{{saving}}" disabled="{{!loaded}}" bind:press="onSave" /></hz-action-bar>
+
+<hz-confirm id="hz-confirm" />

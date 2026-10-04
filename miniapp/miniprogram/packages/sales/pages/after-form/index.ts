@@ -1,30 +1,37 @@
 // X7 售后表单（06 章 X7）：处理（processAfter，从 X6）、新建（从 X3、X5）。
 // 原订单、客户门店 → 明细（数量上限 maxQty；单价默认发货单价）→ 售后金额合计 → 处理说明（选填）
-import { contract, copy, type AfterDetail, type OrderDetail } from '@huazhong/shared'
+import {
+  contract,
+  copy,
+  redesignCopy,
+  formatMoney,
+  type AfterDetail,
+  type OrderDetail,
+} from '@huazhong/shared'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
+import { centsOfText } from '../../../../core/money'
 import { unplacedErrorOf } from '../../../../core/form'
 import type { FailureView } from '../../../../core/failure-view'
-import { markChanged, syncUnloadAlert } from '../../../../core/guard'
+import { formOnLeave, markChanged, syncUnloadAlert } from '../../../../core/guard'
 import { newIdempotencyKey, request, type Result } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
+import { watch } from '../../../../core/live'
 import { previewImage, reasonOptions } from '../../../../views/after'
 import { rowsOf } from '../../../../views/order'
 import {
-  amountTextsOf,
   checkCreate,
   checkProcess,
   createLineOf,
   lineErrorsOf,
   processLinesOf,
-  totalRowsOf,
   type FormLine,
   type LineErrors,
 } from './form'
 
-type IndexDetail<T> = DetailEvent<T, { index: number }>
-
+const emptyLineErrors: LineErrors = { qty: '', price: '', reason: '', description: '' }
 Page({
+  ...formOnLeave,
   data: {
     changed: false,
     isProcess: false,
@@ -32,10 +39,26 @@ Page({
     loaded: false,
     failure: null as FailureView | null,
     formError: '',
+    realtime: '',
     info: [] as { label: string; value: string }[],
     lines: [] as FormLine[],
-    amountTexts: [] as string[],
-    totalRows: [] as ReturnType<typeof totalRowsOf>,
+    lineViews: [] as {
+      key: string
+      name: string
+      qty: number
+      unit: string
+      priceCents: number
+      amountCents: number
+      tags: never[]
+      meta: string
+      qtyError: string
+      priceError: string
+    }[],
+    draftErrors: emptyLineErrors,
+    draftAmount: '',
+    editIndex: -1,
+    editor: false,
+    draft: null as FormLine | null,
     lineErrors: [] as LineErrors[],
     note: '',
     reasonOptions,
@@ -53,6 +76,11 @@ Page({
       save: copy.action.saveAfter,
       pickTitle: copy.screen.title.pickProduct,
       noPick: copy.state.empty(copy.screen.empty.addableProducts),
+      subtotal: redesignCopy.subtotal,
+      confirm: redesignCopy.confirm,
+      remove: copy.screen.action.delete,
+      yuan: copy.unit.yuan,
+      qty: redesignCopy.qty,
     },
   },
   id: '',
@@ -69,8 +97,15 @@ Page({
     this.setData({ isProcess, title })
     void this.load()
   },
-  onUnload() {
-    syncUnloadAlert(false)
+  onShow() {
+    syncUnloadAlert(this.data.changed)
+    if (this.data.isProcess)
+      watch(this, [`after:${this.id}`], () => {
+        this.setData({ realtime: copy.screen.realtime.editing })
+      })
+  },
+  onRealtime() {
+    void this.load()
   },
   async load(): Promise<void> {
     if (this.data.isProcess) await this.loadAfter()
@@ -82,6 +117,12 @@ Page({
       this.setData({ failure: failureOf(result.failure, 'load') })
       return
     }
+    const order = await request(contract.getOrder, { params: { id: result.data.orderId } })
+    if (!order.ok) {
+      this.setData({ failure: failureOf(order.failure, 'load') })
+      return
+    }
+    this.order = order.data
     this.showAfter(result.data)
   },
   showAfter(after: AfterDetail) {
@@ -89,13 +130,15 @@ Page({
     this.setData({
       loaded: true,
       failure: null,
+      realtime: '',
       note: after.note ?? '',
       info: rowsOf([
         [copy.screen.label.sourceOrder, after.orderNo],
+        [copy.field.shipDate, after.shipDate],
         [copy.screen.label.customerStore, copy.org.store(after.customerName, after.storeName)],
       ]),
     })
-    this.setLines(processLinesOf(after), false)
+    this.setLines(processLinesOf(after, this.order ?? undefined), false)
   },
   async loadOrder(): Promise<void> {
     const result = await request(contract.getOrder, { params: { id: this.orderId } })
@@ -110,6 +153,7 @@ Page({
       failure: null,
       info: rowsOf([
         [copy.screen.label.sourceOrder, order.no],
+        [copy.field.shipDate, order.shipDate],
         [copy.screen.label.customerStore, copy.org.store(order.customerName, order.storeName)],
       ]),
     })
@@ -117,35 +161,78 @@ Page({
   setLines(lines: FormLine[], changed = true) {
     this.setData({
       lines,
-      amountTexts: amountTextsOf(lines),
-      totalRows: totalRowsOf(lines),
+
       lineErrors: lineErrorsOf({}, lines.length),
       formError: '',
     })
+    this.renderLines()
     markChanged(this, changed)
   },
   update(index: number, patch: Partial<FormLine>) {
     this.setLines(this.data.lines.map((line, i) => (i === index ? { ...line, ...patch } : line)))
   },
-  onQty(event: IndexDetail<number>) {
-    this.update(event.currentTarget.dataset.index, { qty: event.detail })
+  renderLines() {
+    this.setData({
+      lineViews: this.data.lines.map((line, index) => ({
+        key: line.id,
+        name: line.name,
+        code: line.code,
+        qty: line.qty,
+        unit: line.unit,
+        priceCents: centsOfText(line.priceText) ?? 0,
+        amountCents: line.qty * (centsOfText(line.priceText) ?? 0),
+        tags: [],
+        meta: line.maxText,
+        qtyError: this.data.lineErrors[index]?.qty ?? '',
+        priceError: this.data.lineErrors[index]?.price ?? '',
+      })),
+    })
   },
-  onPrice(event: IndexDetail<string>) {
-    this.update(event.currentTarget.dataset.index, { priceText: event.detail })
+  onEditLine(event: DetailEvent<number>) {
+    const index = event.detail
+    const line = this.data.lines[index]
+    if (line)
+      this.setData({
+        editIndex: index,
+        editor: true,
+        draft: { ...line },
+        draftErrors: this.data.lineErrors[index] ?? emptyLineErrors,
+        draftAmount: formatMoney(line.qty * (centsOfText(line.priceText) ?? 0)),
+      })
   },
-  onReason(event: IndexDetail<string>) {
-    this.update(event.currentTarget.dataset.index, { reason: event.detail })
+  onDraft(event: DetailEvent<string | number, { field: string }>) {
+    if (this.data.draft) {
+      const draft = { ...this.data.draft, [event.currentTarget.dataset.field]: event.detail }
+      this.setData({
+        draft,
+        draftErrors: emptyLineErrors,
+        draftAmount: formatMoney(draft.qty * (centsOfText(draft.priceText) ?? 0)),
+      })
+    }
   },
-  onDescription(event: IndexDetail<string>) {
-    this.update(event.currentTarget.dataset.index, { description: event.detail })
+  onCloseEditor() {
+    this.setData({ editor: false })
+  },
+  onConfirmEditor() {
+    const draft = this.data.draft
+    if (!draft) return
+    const checked = this.after
+      ? checkProcess([draft], this.data.note, this.after.version)
+      : checkCreate([draft], this.data.note, this.orderId)
+    if (!checked.ok) {
+      this.setData({ draftErrors: lineErrorsOf(checked.fields, 1)[0] ?? emptyLineErrors })
+      return
+    }
+    this.update(this.data.editIndex, draft)
+    this.setData({ editor: false })
+  },
+  onRemoveEdited() {
+    this.setLines(this.data.lines.filter((_, index) => index !== this.data.editIndex))
+    this.setData({ editor: false })
   },
   onNote(event: DetailEvent<string>) {
     this.setData({ note: event.detail })
     markChanged(this, true)
-  },
-  onRemoveLine(event: DetailEvent<unknown, { index: number }>) {
-    const { index } = event.currentTarget.dataset
-    this.setLines(this.data.lines.filter((_, i) => i !== index))
   },
   onOpenPick() {
     const added = new Set(this.data.lines.map((line) => line.id))
@@ -160,13 +247,24 @@ Page({
   onPick(event: KeyEvent) {
     const line = this.order?.lines.find((l) => l.id === event.currentTarget.dataset.key)
     this.setData({ pickSheet: false })
-    if (line) this.setLines([...this.data.lines, createLineOf(line)])
+    if (line) {
+      this.setLines([...this.data.lines, createLineOf(line)])
+      this.onEditLine({ detail: this.data.lines.length - 1 } as DetailEvent<number>)
+    }
   },
   showFields(fields: Record<string, string>) {
     this.setData({
       lineErrors: lineErrorsOf(fields, this.data.lines.length),
-      formError: unplacedErrorOf(fields, ['lines.*.qty', 'lines.*.priceCents', 'lines.*.reason']),
+      formError: unplacedErrorOf(fields, [
+        'lines.*.qty',
+        'lines.*.priceCents',
+        'lines.*.reason',
+        'lines.*.description',
+      ]),
     })
+    this.renderLines()
+    const key = Object.keys(fields).find((field) => /^lines\.\d+\./.test(field))
+    if (key) this.onEditLine({ detail: Number(key.split('.')[1]) } as DetailEvent<number>)
   },
   async onSubmit(): Promise<void> {
     const { lines, note } = this.data

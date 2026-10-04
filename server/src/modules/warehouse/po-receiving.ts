@@ -10,13 +10,19 @@ import {
 import { Clock } from '../../common/clock.ts'
 import { gateAction } from '../../common/domain/actions.ts'
 import { actorLabelOf, type Viewer } from '../../common/domain/viewer.ts'
+import { priceChangesText } from '../../common/domain/log-view.ts'
 import type { ParsedInput } from '../../common/endpoint.ts'
 import { found } from '../../common/scope.ts'
 import { WriteService, type WriteContext } from '../../common/write.service.ts'
 import { PurchaseService } from '../purchase/purchase.service.ts'
 import { applyPoPrices, assertPoLines } from './po-prices.ts'
 import { receiveStock, returnStock } from './stock-writes.ts'
-import { lockSupplierLedger, notifySupplierFinance, owns } from '../../common/ledger.ts'
+import {
+  lockSupplierLedger,
+  notifySupplierFinance,
+  owns,
+  assertSourceUnstatemented,
+} from '../../common/statements.ts'
 
 type In<K extends keyof typeof contract> = ParsedInput<(typeof contract)[K]>['body']
 function warehouseLog(row: { id: number; no: string }, action: string) {
@@ -43,6 +49,7 @@ export class PoReceiving {
       )
       await lockSupplierLedger(ctx.tx, pointer.supplierId)
       const po = await this.purchase.lock(ctx.tx, id)
+      await assertSourceUnstatemented(ctx.tx, 'po', id)
       const detail = await this.purchase.detail(ctx.tx, viewer, id)
       if (!owns(viewer, po.receivedBy ?? po.createdBy)) throw appError.forbidden()
       gateAction(detail, {
@@ -122,7 +129,7 @@ export class PoReceiving {
           [copy.records.poChange]: stocked
             .map((line) => `${line.name} ${line.qty} ${line.unit}`)
             .join(copy.separator),
-          [copy.records.priceChange]: changes,
+          [copy.records.priceChange]: priceChangesText(changes),
         },
       })
       this.purchase.notify(ctx, { ...po, version: po.version + 1 })
@@ -150,14 +157,13 @@ export class PoReceiving {
   reprice(viewer: Viewer, id: number, input: In<'repricePurchaseOrder'>) {
     return this.writes.run(viewer, async (ctx) => {
       const po = await this.purchase.lock(ctx.tx, id)
+      await assertSourceUnstatemented(ctx.tx, 'po', id)
       const detail = await this.purchase.detail(ctx.tx, viewer, id)
       gateAction(detail, {
         code: 'reprice',
         version: input.version,
         stale: copy.finance.poStale,
-        missing: detail.allocations.some((row) => row.status === 'valid')
-          ? copy.finance.poRepricePaid
-          : copy.finance.poAllReturned,
+        missing: copy.finance.poAllReturned,
       })
       assertPoLines(detail, input.lines, false)
       const changes = await applyPoPrices(ctx, detail, input)
@@ -166,7 +172,7 @@ export class PoReceiving {
       await ctx.log({
         ...warehouseLog(po, copy.log.action.repricePurchaseOrder),
         reason: input.reason,
-        after: { [copy.records.priceChange]: changes },
+        after: { [copy.records.priceChange]: priceChangesText(changes) },
       })
       this.purchase.notify(ctx, { ...po, version: po.version + 1 })
       await notifySupplierFinance(ctx, po.supplierId)
@@ -176,14 +182,13 @@ export class PoReceiving {
   returns(viewer: Viewer, id: number, input: In<'returnPurchaseOrder'>) {
     return this.writes.run(viewer, async (ctx) => {
       const po = await this.purchase.lock(ctx.tx, id)
+      await assertSourceUnstatemented(ctx.tx, 'po', id)
       const detail = await this.purchase.detail(ctx.tx, viewer, id)
       gateAction(detail, {
         code: 'return',
         version: input.version,
         stale: copy.finance.poStale,
-        missing: detail.allocations.some((row) => row.status === 'valid')
-          ? copy.finance.poReturnPaid
-          : copy.finance.poAllReturned,
+        missing: copy.finance.poAllReturned,
       })
       assertPoLines(detail, input.lines, false)
       const lines = input.lines.map((line) => {
@@ -196,6 +201,7 @@ export class PoReceiving {
           name: old.name,
           unit: old.unit,
           qty: line.qty,
+          priceCents: old.priceCents,
           poLineId: Number(old.id),
         }
       })
@@ -204,7 +210,11 @@ export class PoReceiving {
       await this.bump(ctx, id)
       await ctx.log({
         ...warehouseLog(po, copy.log.action.returnPurchaseOrder),
-        after: { [copy.records.returns]: lines },
+        after: {
+          [copy.records.returns]: lines
+            .map((line) => `${line.name} ${line.qty} ${line.unit}`)
+            .join(copy.separator),
+        },
       })
       this.purchase.notify(ctx, { ...po, version: po.version + 1 })
       await notifySupplierFinance(ctx, po.supplierId)
@@ -220,7 +230,7 @@ export class PoReceiving {
   private async recordReturn(
     ctx: WriteContext,
     id: number,
-    lines: { poLineId: number; name: string; qty: number }[],
+    lines: { poLineId: number; name: string; qty: number; priceCents: number }[],
   ) {
     const [row] = await ctx.tx
       .insert(purchaseReturns)

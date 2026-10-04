@@ -48,3 +48,9 @@ export function loadInventory() {
 export function loadSupplyMaterials() {
   return loadPages((cursor) => request(contract.supplierMaterials, { query: { cursor } }))
 }
+
+export function loadPendingInvites() {
+  return loadPages((cursor) =>
+    request(contract.listInvites, { query: { status: 'pending', cursor } }),
+  )
+}

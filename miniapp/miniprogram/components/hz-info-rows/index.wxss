@@ -1,0 +1,3 @@
+.hz-info-rows__link {
+  color: var(--hz-green);
+}

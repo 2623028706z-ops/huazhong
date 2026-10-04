@@ -10,6 +10,11 @@
     "hz-action-bar": "/components/hz-action-bar/index",
     "hz-button": "/components/hz-button/index",
     "hz-sheet": "/components/hz-sheet/index",
-    "hz-line-item": "/components/hz-line-item/index"
+    "hz-line-item": "/components/hz-line-item/index",
+    "hz-cover": "/components/hz-cover/index",
+    "hz-brand": "/components/hz-brand/index",
+    "hz-notice": "/components/hz-notice/index",
+    "hz-tabbar": "/components/hz-tabbar/index",
+    "hz-confirm": "/components/hz-confirm/index"
   }
 }

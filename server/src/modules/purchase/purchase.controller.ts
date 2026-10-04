@@ -20,6 +20,10 @@ export class PurchaseController {
   ): Promise<OutputOf<typeof contract.listPurchaseOrders>> {
     return this.reads.list(viewer, input.query)
   }
+  @Route(contract.getFinancePurchaseOrder)
+  finance(@CurrentViewer() viewer: Viewer, @Input() input: In<'getFinancePurchaseOrder'>) {
+    return this.reads.finance(viewer, Number(input.params.id), input.query.sourceType)
+  }
   @Route(contract.getPurchaseOrder)
   detail(
     @CurrentViewer() viewer: Viewer,

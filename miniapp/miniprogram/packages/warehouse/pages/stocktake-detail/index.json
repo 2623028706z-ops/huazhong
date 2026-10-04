@@ -5,6 +5,7 @@
     "hz-state": "/components/hz-state/index",
     "hz-error": "/components/hz-error/index",
     "hz-line-item": "/components/hz-line-item/index",
-    "hz-status": "/components/hz-status/index"
+    "hz-status": "/components/hz-status/index",
+    "hz-tag": "/components/hz-tag/index"
   }
 }

@@ -20,6 +20,7 @@ const data = {
   filter: emptyFilter,
   dimensions: [] as FilterDimension[],
   dateLabel: copy.screen.label.orderDate,
+  searchPlaceholder: copy.filter.search(copy.screen.title.purchaseOrders),
   rows: [] as ReturnType<typeof poRowOf>[],
   loaded: false,
   skeleton: false,
@@ -53,12 +54,14 @@ const methods = {
       this.setData({ sheet: true, detailId: query.id })
       void this.open(query.id)
     }
+    if (query.supplierId)
+      this.setData({ filter: { ...this.data.filter, picks: { supplier: query.supplierId } } })
     if (query.status) this.setData({ filter: { ...this.data.filter, status: query.status } })
     this.list = listOf(
       this,
       async (cursor) => {
-        const { status, from, to, picks } = listQueryOf<PoCard['status']>(this.data.filter)
-        const input = { query: { status, from, to, supplierId: picks.supplier, cursor } }
+        const { status, from, to, picks, q } = listQueryOf<PoCard['status']>(this.data.filter)
+        const input = { query: { status, from, to, q, supplierId: picks.supplier, cursor } }
         const result = await request(
           this.data.kind === 'supplier'
             ? contract.supplierPurchaseOrders

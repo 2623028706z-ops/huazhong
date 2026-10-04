@@ -2,16 +2,9 @@ import { type PoDetail, type InviteDetail } from '@huazhong/shared'
 import { sql } from 'drizzle-orm'
 import pg from 'pg'
 import { afterEach, beforeEach, expect, test } from 'vitest'
-import {
-  createPo,
-  inviteOf,
-  payInput,
-  poInput,
-  poOf,
-  receiveInput,
-  stockQty,
-} from './support/purchase.ts'
+import { createPo, inviteOf, poInput, poOf, receiveInput, stockQty } from './support/purchase.ts'
 import { dataOf, idBy, startSales, type SalesApp } from './support/sales.ts'
+import { statementInput } from './support/statements.ts'
 
 let s: SalesApp
 beforeEach(async () => {
@@ -44,10 +37,11 @@ test.each(['修改', '取消'])('03 §6 收货与采购%s互斥', async (kind) =
   const after = dataOf<PoDetail>(await purchase.get(`/purchase-orders/${po.id}`))
   expect(await stockQty(s, '向日葵')).toBe(after.status === 'received' ? 120 : 60)
 })
-test.each(['退货', '改价'])('03 §6 登记付款与%s互斥', async (kind) => {
+test.each(['退货', '改价'])('03 §6 新建对账单与%s互斥', async (kind) => {
   const po = await poOf(s, 'PO-260928-004'),
     wh = await s.as('u5'),
     finance = await s.as('u6')
+  const snapshot = await statementInput(s, 'supplier', po.supplierId, [{ type: 'po', id: po.id }])
   const other =
     kind === '退货'
       ? wh.post(`/purchase-orders/${po.id}/returns`, {
@@ -59,12 +53,12 @@ test.each(['退货', '改价'])('03 §6 登记付款与%s互斥', async (kind) =
           reason: '让价',
           lines: [{ poLineId: po.lines[0]?.id, priceCents: 750 }],
         })
-  const results = await Promise.all([finance.post('/finance/payments', payInput(po)), other])
+  const results = await Promise.all([finance.post('/finance/statements', snapshot), other])
   expect(results.map((res) => res.status).sort()).toEqual([200, 409])
   const after = dataOf<PoDetail>(await finance.get(`/purchase-orders/${po.id}`))
   if (results[0].status === 200)
-    expect(after).toMatchObject({ apStatus: 'paid', payableCents: 96000 })
-  else expect(after.apStatus).toBe('unpaid')
+    expect(after).toMatchObject({ statement: { status: 'unsettled' }, amountCents: 96000 })
+  else expect(after.statement).toBeNull()
 })
 test('03 §6 不同采购单退同种花材不超扣库存', async () => {
   const first = await createPo(s),
