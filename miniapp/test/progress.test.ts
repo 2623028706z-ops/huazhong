@@ -51,7 +51,7 @@ describe('详情进度的当前状态与灰色终点', () => {
         .map((step) => step.label),
     ).toEqual(['待确认'])
   })
-  it('实际节点使用上海完整日期并保留单一红圈，作废追加灰格且清除当前状态', () => {
+  it('实际节点使用上海完整日期，走完不留红圈，作废追加灰格', () => {
     const shipped = {
       ...order,
       status: 'shipped' as const,
@@ -63,11 +63,9 @@ describe('详情进度的当前状态与灰色终点', () => {
       '2026-10-02',
       '2026-10-04',
     ])
-    expect(
-      orderProgress(shipped)
-        .filter((step) => step.state === 'current')
-        .map((step) => step.label),
-    ).toEqual(['已发货'])
+    // 流程走完：最后一格「已发货」也算已走过，不再留红圈（2026-10-05）
+    expect(orderProgress(shipped).at(-1)).toMatchObject({ label: '已发货', state: 'done' })
+    expect(orderProgress(shipped).some((step) => step.state === 'current')).toBe(false)
     const steps = orderProgress({
       ...shipped,
       status: 'voided',
@@ -89,21 +87,21 @@ describe('详情进度的当前状态与灰色终点', () => {
     }
     expect(states[1]?.at(-1)?.date).toBe('2026-10-02')
   })
-  it('售后处理、采购收货和邀请提交定位到已发生的当前节点', () => {
+  it('售后处理、采购收货和邀请提交是走完的最后一格，不留红圈', () => {
     expect(
       afterProgress({ ...after, status: 'processed', processedAt: '2026-10-02T00:00:00.000Z' }).at(
         -1,
       ),
-    ).toEqual({ label: '已处理', date: '2026-10-02', state: 'current' })
+    ).toEqual({ label: '已处理', date: '2026-10-02', state: 'done' })
     expect(
       poProgress({ ...po, status: 'received', receivedAt: '2026-10-02T00:00:00.000Z' }).at(-1),
-    ).toEqual({ label: '已收货', date: '2026-10-02', state: 'current' })
+    ).toEqual({ label: '已收货', date: '2026-10-02', state: 'done' })
     expect(
       inviteProgress({
         ...invite,
         status: 'submitted',
         submittedAt: '2026-10-02T00:00:00.000Z',
       }).at(-1),
-    ).toEqual({ label: '已提交', date: '2026-10-02', state: 'current' })
+    ).toEqual({ label: '已提交', date: '2026-10-02', state: 'done' })
   })
 })

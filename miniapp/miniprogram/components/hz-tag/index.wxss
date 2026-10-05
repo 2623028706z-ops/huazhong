@@ -3,9 +3,10 @@
   background: var(--hz-grey-bg);
 }
 
+/* 异常标记（改价、少发、多收、拒收、取消申请中）：暖红褐，和琥珀色的「待办」状态分开（2026-10-05） */
 .hz-tag--warn {
-  color: var(--hz-amber);
-  background: var(--hz-amber-bg);
+  color: var(--hz-alert);
+  background: var(--hz-alert-bg);
 }
 
 .hz-tag--danger {

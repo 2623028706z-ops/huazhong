@@ -87,7 +87,7 @@ function lineTagsOf(line: OrderLine, shipped: boolean): Tag[] {
     })
   }
   if (line.over) tags.push({ text: copy.rework.overShipped, warn: true })
-  if (line.discontinued && !shipped) tags.push({ text: copy.screen.tag.discontinued, warn: true })
+  if (line.discontinued && !shipped) tags.push({ text: copy.screen.tag.discontinued, warn: false })
   return tags
 }
 
@@ -288,7 +288,11 @@ export function shippingInfoOf(order: ShippingDetail) {
       [copy.field.shipDate, shipDateText(order.shipDate)],
       [redesignCopy.shipper, order.shippedBy],
       // 带时分的值太长，放第二列会把整列撑宽、挤掉左列单号，单占一行
-      [redesignCopy.shippedAt, order.shippedAt ? formatTime(order.shippedAt) : null, { wide: true }],
+      [
+        redesignCopy.shippedAt,
+        order.shippedAt ? formatTime(order.shippedAt) : null,
+        { wide: true },
+      ],
       [
         redesignCopy.contact,
         [order.contactName, order.contactPhone].filter(Boolean).join(' ') || redesignCopy.notFilled,
@@ -314,7 +318,11 @@ function orderInfoOf(order: OrderDetail, forStore: boolean, finance: boolean) {
       [copy.field.shipDate, shipDateText(order.shipDate)],
       [redesignCopy.shipper, forStore ? null : order.shippedBy],
       // 带时分的值太长，放第二列会把整列撑宽、挤掉左列单号，单占一行
-      [redesignCopy.shippedAt, order.shippedAt ? formatTime(order.shippedAt) : null, { wide: true }],
+      [
+        redesignCopy.shippedAt,
+        order.shippedAt ? formatTime(order.shippedAt) : null,
+        { wide: true },
+      ],
       [
         redesignCopy.statement,
         order.status === 'shipped' ? statementText(order.statement) : null,

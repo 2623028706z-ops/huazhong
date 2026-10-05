@@ -19,6 +19,7 @@
     <hz-notice wx:if="{{item.notice}}" text="{{item.notice}}" />
     <text wx:if="{{item.qtyError || item.priceError}}" class="u-field__error">{{item.qtyError || item.priceError}}</text>
   </view>
+  <view wx:if="{{!lines.length && mode !== 'view'}}" class="hz-line-item__empty">{{texts.empty}}</view>
   <view wx:if="{{note}}" class="hz-line-item__note"><text>{{noteLabel}}</text><text>{{note}}</text></view>
   <view wx:if="{{addText}}" class="hz-line-item__add u-tap" bindtap="onAdd"><text class="hz-icon hz-icon--plus"></text><text>{{addText}}</text></view>
   <view class="hz-line-item__totals"><view class="hz-line-item__total"><text class="hz-line-item__total-label">{{texts.totalQty}}</text><text class="hz-line-item__total-qty">{{totalQty}}</text></view><view wx:if="{{!quantityOnly}}" class="hz-line-item__total hz-line-item__total--amount"><text class="hz-line-item__total-label">{{texts.totalAmount}}</text><text class="hz-line-item__total-amount">{{totalAmount}}</text></view></view>

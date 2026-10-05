@@ -111,7 +111,7 @@ export function cartLinesOf(lines: readonly CartLine[], isEdit: boolean) {
     removable: discontinued.includes(line.productId),
     name: line.name,
     tags: discontinued.includes(line.productId)
-      ? [{ text: copy.screen.tag.discontinued, warn: true }]
+      ? [{ text: copy.screen.tag.discontinued, warn: false }]
       : [],
     amountCents: lineCents(line.qty, line.priceCents),
     qty: line.qty,

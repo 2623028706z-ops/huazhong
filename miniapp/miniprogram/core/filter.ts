@@ -173,7 +173,12 @@ export function tabsOf(kind: string, codes: string[], counts: Record<string, num
     const status = statusOf(kind, code)
     if (!status) continue
     const wait = status.tone === 'wait' && counts[code] !== undefined
-    tabs.push({ code, text: status.text, count: wait ? (counts[code] ?? 0) : 0, showCount: wait })
+    tabs.push({
+      code,
+      text: status.text,
+      count: wait ? (counts[code] ?? 0) : 0,
+      showCount: wait && (counts[code] ?? 0) > 0,
+    })
   }
   return tabs
 }

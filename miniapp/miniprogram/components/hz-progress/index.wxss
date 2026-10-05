@@ -38,15 +38,16 @@
   border-radius: 50%;
 }
 
-/* 已走过：品牌色圆点和连线，字深色加粗；当前：空心点 + 光圈，字品牌色；没走到：灰；取消、作废：灰色终点 */
+/* 已走过：墨色圆点和连线，字深色；当前：品牌色空心点 + 光圈，字品牌色（红色只给当前这一步）；
+   流程走完时最后一格也是「已走过」；没走到：灰；取消、作废：灰色终点（2026-10-05） */
 .hz-progress__step--done .hz-progress__dot {
-  background: var(--hz-brand);
-  border-color: var(--hz-brand);
+  background: var(--hz-ink);
+  border-color: var(--hz-ink);
 }
 
 .hz-progress__step--done::before,
 .hz-progress__step--current::before {
-  background: var(--hz-brand);
+  background: var(--hz-ink);
 }
 
 .hz-progress__step--done {

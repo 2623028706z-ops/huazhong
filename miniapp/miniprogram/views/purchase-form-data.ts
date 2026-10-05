@@ -107,7 +107,7 @@ export function purchaseLineViews(
         : line.needQty === null
           ? ''
           : copy.screen.needQty(line.needQty, line.unit),
-    tags: line.enabled ? [] : [{ text: copy.screen.tag.discontinued, warn: true }],
+    tags: line.enabled ? [] : [{ text: copy.screen.tag.discontinued, warn: false }],
     readonly: mode === 'supply' && !line.enabled,
   }))
 }

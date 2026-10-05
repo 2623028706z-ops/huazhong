@@ -3,7 +3,8 @@ page {
   /* 颜色 */
   --hz-brand: #b75d45; /* 陶土红：logo、图标、主按钮底、选中短线，不做文字色 */
   --hz-ink: #3b2a24; /* 标题、正文、金额、选中的文字 */
-  --hz-muted: #7a5a4a; /* 次要文字、箭头 */
+  --hz-muted: #6f5141; /* 次要文字、字段名、箭头（2026-10-05 加深一档） */
+  --hz-ink-soft: #4a342b; /* 次要字段的值：比字段名深、比正文浅 */
   --hz-paper: #fffbf6; /* 亮格：底栏、实底卡片、选中的格子 */
   --hz-bg: #f6ebdf; /* 浅杏墙：页面底色 */
   --hz-hair: #ecd4c6; /* 描边、禁用按钮底色 */
@@ -11,12 +12,15 @@ page {
   --hz-rule-frame: #3b2a244d;
   --hz-press: #f3e2d6;
   --hz-press-wall: #fffbf680;
-  --hz-rule: #3b2a2433; /* 墙上的细线（墨色 20%）：首页窗格、次按钮描边 */
+  --hz-rule: #3b2a2433; /* 墙上的细线（墨色 20%）：次按钮描边、页签底线 */
+  --hz-rule-soft: #3b2a241f; /* 窗格里格子之间的线（墨色 12%，2026-10-05 减淡） */
   --hz-tint: #f8ebe4; /* 头像底色 */
   --hz-green: #4c6a48; /* 完成 */
   --hz-green-bg: #e7ecdf;
   --hz-amber: #8a5a1e; /* 等待、警告标记 */
   --hz-amber-bg: #f6e7d2;
+  --hz-alert: #9b4a2f; /* 异常标记：改价、少发、多收、拒收等差异（2026-10-05 加） */
+  --hz-alert-bg: #f7e2d8;
   --hz-grey: #6f665f; /* 结束、无效 */
   --hz-grey-bg: #eeeae5;
   --hz-danger: #a3313d; /* 报错（玫瑰红） */
@@ -33,6 +37,7 @@ page {
   --hz-font-xs: 11px;
   --hz-font-sm: 12px;
   --hz-font-row: 13px; /* 卡片字段行、筛选、页底灰字 */
+  --hz-label-w: 52px; /* 字段名固定宽（4 个 13px 字），字段名缩到 12px 后值仍对齐 */
   --hz-font-group: 15px; /* 分组标题（宋体） */
   --hz-font-total: 19px; /* 明细合计金额（宋体） */
   --hz-font-md: 16px; /* 按钮、卡片对象、明细名称、金额、步进器数字 */
@@ -58,6 +63,7 @@ page {
   --hz-radius-pill: 999px; /* 胶囊、角标 */
   --hz-radius-check: 4px; /* 勾选框、状态标签（定稿 .tag） */
   --hz-radius-line: 1px; /* 标签下划线 */
+  --hz-radius-pane: 20px 20px 2px 2px; /* 空状态小窗格：拱顶 */
   --hz-tap: 44px;
   --hz-nav: 44px;
   --hz-tabbar: 62px;

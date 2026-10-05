@@ -5,8 +5,9 @@
   justify-content: center;
   height: var(--hz-tap);
   font-size: var(--hz-font);
-  letter-spacing: 0.1em;
-  border: 1px dashed var(--hz-rule);
+  font-weight: 600;
+  background: var(--hz-paper);
+  border: 1px dashed var(--hz-rule-frame);
   border-radius: var(--hz-radius);
 }
 

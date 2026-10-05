@@ -102,7 +102,7 @@ export function sourceRowOf(source: StatementSource, supplier = false): FinanceR
         amount: true,
       },
     ],
-    tags: source.previousPeriod ? [{ text: f.previousPeriod, warn: true }] : [],
+    tags: source.previousPeriod ? [{ text: f.previousPeriod, warn: false }] : [],
   }
 }
 export interface ListRow {
@@ -136,7 +136,7 @@ function listRowOf(source: StatementSource, selected: ReadonlySet<string> | null
     amountLabel: sourceAmountLabels[source.type],
     amount: formatMoney(source.amountCents),
     notes: [`${sourceDateLabels[source.type]} ${source.sourceDate}`],
-    tags: source.previousPeriod ? [{ text: f.previousPeriod, warn: true }] : [],
+    tags: source.previousPeriod ? [{ text: f.previousPeriod, warn: false }] : [],
     ...(selected && source.previousPeriod && source.carriesAmount
       ? { selectable: true, selected: selected.has(key) }
       : {}),

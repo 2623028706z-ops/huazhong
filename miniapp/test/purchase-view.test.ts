@@ -101,7 +101,7 @@ describe('邀请详情展示', () => {
     expect(views[0]).toMatchObject({
       readonly: true,
       meta: '需求 70 枝',
-      tags: [{ text: '已停用', warn: true }],
+      tags: [{ text: '已停用', warn: false }],
       priceError: '请填写单价',
     })
     expect(inviteViewOf(invite)).toMatchObject({

@@ -251,6 +251,7 @@
 .u-sheet-row {
   display: flex;
   gap: var(--hz-row-pad);
+  align-items: baseline;
   justify-content: space-between;
 }
 
@@ -361,7 +362,12 @@
 }
 
 .u-list__group {
-  padding: var(--hz-line-gap) 4px 0;
+  padding: 14px 4px 0;
+  margin-bottom: -4px;
+}
+
+.u-list__group:first-child {
+  padding-top: 0;
 }
 
 .u-list__end {
@@ -645,8 +651,9 @@
   padding: 0 var(--hz-gap-page) 0 var(--hz-line-gap);
 }
 
-/* scroll-view 里 gap 不生效：直接子卡片自己留 10px，标签行和第一张卡片之间同样 10px，底部留 12px */
-.u-split__main > view[data-key] {
+/* scroll-view 里 gap 不生效：直接子卡片自己留 10px，标签行和第一张卡片之间同样 10px，底部留 12px。
+   WXSS 不认属性选择器（原来写 view[data-key]，卡片之间只剩 2px），改用类名 */
+.u-split__item {
   margin-bottom: var(--hz-card-gap);
 }
 
@@ -794,4 +801,11 @@
 .u-check--on {
   background: var(--hz-brand);
   box-shadow: none;
+}
+
+/* 列表下面的一句说明（门店售后「要申请售后…」）：居中，和空状态对齐；放全局，用到模板的页面都生效 */
+.u-list-hint {
+  display: block;
+  margin-top: 0;
+  text-align: center;
 }

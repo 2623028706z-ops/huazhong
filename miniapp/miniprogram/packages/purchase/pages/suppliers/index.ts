@@ -16,6 +16,8 @@ function rowOf(s: Supplier) {
       {
         label: copy.screen.label.accountStatus,
         value: s.hasAccount ? copy.screen.label.accountOpened : copy.screen.label.accountNotOpened,
+        // 没开通退成次要灰字，和「已开通」一眼分开（2026-10-05）
+        minor: !s.hasAccount,
       },
       { label: copy.screen.label.contactPhone, value: s.phone, phone: s.phone, wide: true },
     ],

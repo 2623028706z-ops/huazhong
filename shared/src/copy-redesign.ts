@@ -22,6 +22,7 @@ export const redesignCopy = {
   loss: '报损',
   stocktake: '盘点',
   productLines: '产品明细',
+  emptyLines: '还没有明细，点下面添加',
   materialLines: '花材明细',
   qty: '数量',
   actual: '实发',

@@ -57,6 +57,7 @@ Component({
     maxQty: Number.MAX_SAFE_INTEGER,
     texts: {
       lines: redesignCopy.productLines,
+      empty: redesignCopy.emptyLines,
       qty: redesignCopy.qty,
       actual: redesignCopy.actual,
       purchaseQty: redesignCopy.purchaseQty,

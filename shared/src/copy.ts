@@ -281,6 +281,7 @@ export const copy = {
   state: {
     loading: '加载中',
     empty: (object: string) => `暂无${object}`,
+    emptyHint: (object: string) => `有新的${object}会显示在这里`,
     offline: '网络已断开，恢复后自动刷新',
     linkInvalid: '邀请已失效',
     allLoaded: '已显示全部',

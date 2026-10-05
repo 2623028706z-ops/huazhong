@@ -83,7 +83,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--hz-row-pad) var(--hz-card-pad) var(--hz-line-gap);
+
+  /* 卡片 u-rows 已经留了左右 16，这里不再加，标题和行内容左边对齐（2026-10-05） */
+  padding: var(--hz-row-pad) 0 var(--hz-line-gap);
   border-bottom: 1px solid var(--hz-line);
 }
 
@@ -102,7 +104,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: var(--hz-row-pad) var(--hz-card-pad);
+  padding: var(--hz-row-pad) 0;
 }
 
 .hz-stock-batch__main {

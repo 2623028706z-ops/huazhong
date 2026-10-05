@@ -1,5 +1,0 @@
-.hz-orders__hint {
-  display: block;
-  text-align: center;
-  margin-top: var(--hz-gap-controls);
-}

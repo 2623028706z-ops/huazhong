@@ -9,17 +9,19 @@
   --td-button-primary-color: var(--hz-on-brand);
   --td-button-primary-active-bg-color: var(--hz-brand);
   --td-button-primary-active-border-color: var(--hz-brand);
-  --td-button-primary-disabled-bg: var(--hz-hair);
-  --td-button-primary-disabled-border-color: var(--hz-hair);
-  --td-button-primary-disabled-color: var(--hz-muted);
+
+  /* 不能点：浅灰描边 + 灰字，不用淡红实底（淡红看着反而像能点，2026-10-05） */
+  --td-button-primary-disabled-bg: transparent;
+  --td-button-primary-disabled-border-color: var(--hz-rule);
+  --td-button-primary-disabled-color: var(--hz-grey);
   --td-button-default-outline-color: var(--hz-ink);
   --td-button-default-outline-border-color: var(--hz-rule);
   --td-button-default-outline-active-bg-color: var(--hz-paper);
   --td-button-default-outline-active-border-color: var(--hz-rule);
   --td-button-default-outline-disabled-color: var(--hz-muted);
-  --td-button-default-disabled-bg: var(--hz-hair);
-  --td-button-default-disabled-border-color: var(--hz-hair);
-  --td-button-default-disabled-color: var(--hz-muted);
+  --td-button-default-disabled-bg: transparent;
+  --td-button-default-disabled-border-color: var(--hz-rule);
+  --td-button-default-disabled-color: var(--hz-grey);
   --td-bg-color-container: transparent;
 }
 
@@ -77,10 +79,18 @@
 }
 
 /* 页底灰字（第三个操作、少用的危险操作）：灰色、不加粗、无下划线 */
+
+/* 页面最下面的第三个操作：居中、灰字（02 章：第三项操作用灰色），不再贴左挂在卡片外（2026-10-05） */
+.hz-button--quiet {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+}
+
 .hz-button__text--quiet {
   font-size: var(--hz-font);
   font-weight: 500;
-  color: var(--hz-ink);
+  color: var(--hz-muted);
   text-decoration: underline;
   text-decoration-color: var(--hz-rule);
 }
@@ -125,4 +135,9 @@
   left: 0;
   margin: 0;
   color: var(--hz-amber);
+}
+
+/* 不能点的主按钮也画浅灰描边（TDesign 的描边画在 ::after 上，小程序里不显示，同次按钮一样用内阴影） */
+.hz-button--off .hz-button__inner {
+  box-shadow: inset 0 0 0 1px var(--hz-rule);
 }

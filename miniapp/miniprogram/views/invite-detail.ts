@@ -35,7 +35,7 @@ function invitedLineOf(
     hideAmount: submitted && !supply,
     tags: [
       ...(submitted && !supply ? [{ text: copy.screen.notSupplied, warn: true }] : []),
-      ...(line.enabled ? [] : [{ text: copy.screen.tag.discontinued, warn: true }]),
+      ...(line.enabled ? [] : [{ text: copy.screen.tag.discontinued, warn: false }]),
     ],
   }
 }

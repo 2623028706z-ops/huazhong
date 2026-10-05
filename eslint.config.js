@@ -167,7 +167,8 @@ export default tseslint.config(
         },
         {
           // 开发者工具只转语法、不补方法；iOS 15.4 以前的微信没有这两个，真机会直接报错
-          selector: "CallExpression[callee.property.name='at'], MemberExpression[object.name='Object'][property.name='hasOwn']",
+          selector:
+            "CallExpression[callee.property.name='at'], MemberExpression[object.name='Object'][property.name='hasOwn']",
           message: '不用 .at() 和 Object.hasOwn：老手机的微信不支持，改用下标和 hasOwnProperty。',
         },
       ],

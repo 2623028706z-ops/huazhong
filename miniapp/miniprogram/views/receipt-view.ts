@@ -16,20 +16,21 @@ function voidRows(fund: Fund) {
     { label: f.voidedAt, value: fund.voidedAt ? formatTime(fund.voidedAt) : '', wide: true },
   ]
 }
-// 信息卡顺序：单号、收款日期、方式、收款金额、优惠金额、多收、优惠原因、登记人、登记时间、备注
+// 信息卡顺序（2026-10-05 按主次重排，两列成对）：收款日期 | 收款金额、方式 | 多收、优惠金额 | 优惠原因，
+// 次要的单号 | 登记人、登记时间、备注放最后
 function fundRows(fund: Fund) {
   const payment = 'payDate' in fund
   return [
-    { label: f.no, value: fund.no },
     {
       label: payment ? f.paymentDate : f.receiptDate,
       value: payment ? fund.payDate : fund.receiptDate,
     },
-    { label: payment ? f.paymentMethod : f.receiptMethod, value: fund.methodName },
     { label: payment ? f.paymentAmount : f.receiptAmount, value: formatMoney(fund.amountCents) },
-    { label: f.discount, value: formatMoney(fund.discountCents) },
+    { label: payment ? f.paymentMethod : f.receiptMethod, value: fund.methodName },
     { label: payment ? f.supplierCredited : f.credited, value: formatMoney(fund.creditCents) },
+    { label: f.discount, value: formatMoney(fund.discountCents) },
     { label: f.discountReason, value: fund.discountReason || '—' },
+    { label: f.no, value: fund.no },
     { label: f.registeredBy, value: fund.createdBy.name },
     { label: f.registeredAt, value: formatTime(fund.createdAt), wide: true },
     { label: f.note, value: fund.note || '—', wide: true },

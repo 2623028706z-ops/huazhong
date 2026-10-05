@@ -21,7 +21,7 @@ export function unplacedErrorOf(fields: Record<string, string>, located: string[
 }
 
 // 按单位合计数量：15 束 · 60 枝
-export function unitTotalsTextOf(lines: { unit: string; qty: number }[]) {
+function unitTotalsTextOf(lines: { unit: string; qty: number }[]) {
   const totals = new Map<string, number>()
   for (const line of lines) totals.set(line.unit, (totals.get(line.unit) ?? 0) + line.qty)
   return formatUnitTotals([...totals].map(([unit, qty]) => ({ unit, qty })))

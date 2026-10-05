@@ -21,7 +21,7 @@ interface Tag {
 function rowOf(item: CatalogItem) {
   // 目录停用、产品停用都标「已停用」，两者都有只标一个，警告样式（2026-10-05 确认）
   const tags: Tag[] =
-    item.enabled && item.productEnabled ? [] : [{ text: copy.screen.tag.discontinued, warn: true }]
+    item.enabled && item.productEnabled ? [] : [{ text: copy.screen.tag.discontinued, warn: false }]
   // 行上只放名称、订货价，第二行标记 + 编码（都没有就不出第二行）；配方在目录产品页查看
   return {
     productId: item.productId,

@@ -161,7 +161,7 @@ test('重核发现产品停用时保留行并标停用，不悄悄移除数量',
   catalogEnabled = false
   await invoke(page, 'onSubmit')
   expect(page.data.cartRows).toMatchObject([
-    { qty: 3, tags: [{ text: copy.screen.tag.discontinued, warn: true }] },
+    { qty: 3, tags: [{ text: copy.screen.tag.discontinued, warn: false }] },
   ])
   expect(updates()).toHaveLength(1)
 })

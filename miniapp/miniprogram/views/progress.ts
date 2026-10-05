@@ -56,7 +56,7 @@ function shipmentStep(order: OrderProgress): ProgressStep {
   if (order.status === 'cancelled')
     return { label: redesignCopy.cancelled, date: dayOf(order.cancelledAt), state: 'ended' }
   if (order.status === 'shipped' || order.status === 'voided')
-    return { label: redesignCopy.shipped, date: dayOf(order.shippedAt), state: 'current' }
+    return { label: redesignCopy.shipped, date: dayOf(order.shippedAt), state: 'done' }
   // 还没确认时第三格写最终的「已发货」（灰），确认后才变成当前的「待发货」
   if (order.status !== 'to_ship') return { label: redesignCopy.shipped, date: '', state: 'pending' }
   return {
@@ -85,7 +85,7 @@ export function afterProgress(after: AfterProgress): ProgressStep[] {
     {
       label: after.status === 'closed' ? redesignCopy.closed : redesignCopy.processed,
       date: dayOf(after.status === 'closed' ? after.closedAt : after.processedAt),
-      state: after.status === 'closed' ? 'ended' : processed ? 'current' : 'pending',
+      state: after.status === 'closed' ? 'ended' : processed ? 'done' : 'pending',
     },
   ]
   return after.status === 'voided' ? appendVoid(steps, after.voidedAt) : steps
@@ -103,7 +103,7 @@ export function afterStaffProgress(after: AfterProgress): ProgressStep[] {
     return [submitted, { label: redesignCopy.closed, date: dayOf(after.closedAt), state: 'ended' }]
   const steps: ProgressStep[] = [
     submitted,
-    { label: redesignCopy.processed, date: dayOf(after.processedAt), state: 'current' },
+    { label: redesignCopy.processed, date: dayOf(after.processedAt), state: 'done' },
   ]
   return after.status === 'voided' ? appendVoid(steps, after.voidedAt) : steps
 }
@@ -114,13 +114,11 @@ function receivedStep(po: PoProgress): ProgressStep {
       date: dayOf(po.status === 'rejected' ? po.receivedAt : po.cancelledAt),
       state: 'ended',
     }
+  const received = po.status === 'received' || po.status === 'voided'
   return {
-    label:
-      po.status === 'received' || po.status === 'voided'
-        ? redesignCopy.received
-        : redesignCopy.toReceive,
+    label: received ? redesignCopy.received : redesignCopy.toReceive,
     date: dayOf(po.receivedAt),
-    state: 'current',
+    state: received ? 'done' : 'current',
   }
 }
 export function poProgress(po: PoProgress): ProgressStep[] {
@@ -141,7 +139,7 @@ export function inviteProgress(invite: InviteProgress): ProgressStep[] {
           ? redesignCopy.submitted
           : redesignCopy.toSupply,
       date: dayOf(invite.submittedAt ?? invite.cancelledAt),
-      state: cancelled ? 'ended' : 'current',
+      state: cancelled ? 'ended' : invite.status === 'submitted' ? 'done' : 'current',
     },
   ]
 }

@@ -14,8 +14,19 @@
   color: var(--hz-muted);
 }
 
+/* 退出登录：页面最下面居中灰字，不用整行描边按钮（比上面的入口还抢眼，2026-10-05） */
 .hz-profile__logout {
+  display: flex;
+  justify-content: center;
   margin-top: 24px;
+}
+
+.hz-profile__logout-text {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--hz-row-pad);
+  font-size: var(--hz-font);
+  color: var(--hz-muted);
 }
 
 .hz-profile__dev {

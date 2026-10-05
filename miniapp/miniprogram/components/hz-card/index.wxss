@@ -30,6 +30,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(140px, auto);
   gap: 2px 8px;
+  align-items: baseline;
   margin-top: 8px;
 }
 
@@ -48,7 +49,8 @@
 
 .hz-card__label {
   flex: none;
-  width: 4em;
+  width: var(--hz-label-w);
+  font-size: var(--hz-font-sm);
   color: var(--hz-muted);
   white-space: nowrap;
 }
@@ -95,5 +97,12 @@
 
 .hz-card__field--minor .hz-card__value {
   font-size: var(--hz-font-sm);
+  color: var(--hz-ink-soft);
+}
+
+/* 金额是 0：退成次要色、不加粗，有数的金额才显眼（2026-10-05） */
+.hz-card__value--zero,
+.hz-card__amount.hz-card__value--zero {
+  font-weight: 400;
   color: var(--hz-muted);
 }

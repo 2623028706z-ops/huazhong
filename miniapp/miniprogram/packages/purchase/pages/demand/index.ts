@@ -49,8 +49,8 @@ function rowsOf(mats: Mat[], selected: string[]) {
     stockText: formatQty(m.stockQty, m.unit),
     transitText: formatQty(m.inTransitQty, m.unit),
     tags: [
-      ...(m.invited ? [{ text: copy.screen.invited, warn: true }] : []),
-      ...(!m.enabled ? [{ text: copy.screen.tag.discontinued, warn: true }] : []),
+      ...(m.invited ? [{ text: copy.screen.invited, warn: false }] : []),
+      ...(!m.enabled ? [{ text: copy.screen.tag.discontinued, warn: false }] : []),
     ],
   }))
 }

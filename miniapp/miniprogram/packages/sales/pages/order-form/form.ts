@@ -107,7 +107,7 @@ export function lineViewsOf(lines: readonly FormLine[]) {
     key: line.productId,
     name: line.name,
     code: line.code,
-    tags: line.discontinued ? [{ text: copy.screen.tag.discontinued, warn: true }] : [],
+    tags: line.discontinued ? [{ text: copy.screen.tag.discontinued, warn: false }] : [],
     amountCents: lineCentsOf(line),
     qty: line.qty,
     unit: line.unit,

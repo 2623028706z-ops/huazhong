@@ -1,5 +1,9 @@
+/* 能点的值（电话、对账单）：墨色 + 浅灰下划线；红字只留给主按钮、选中、待办数 */
 .hz-info-rows__link {
-  color: var(--hz-brand);
+  color: var(--hz-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--hz-rule-frame);
+  text-underline-offset: 3px;
 }
 
 /* 两列并排（订单、发货单信息卡）：字段名 4 字宽、值紧跟，wide 占整行 */
@@ -7,6 +11,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(140px, auto);
   gap: 2px 8px;
+  align-items: baseline;
 }
 
 .hz-info-rows__cell {
@@ -26,7 +31,8 @@
 
 .hz-info-rows__label {
   flex: none;
-  width: 4em;
+  width: var(--hz-label-w);
+  font-size: var(--hz-font-sm);
   color: var(--hz-muted);
   white-space: nowrap;
 }
@@ -39,10 +45,15 @@
   overflow-wrap: anywhere;
 }
 
-/* 次要字段（单号、日期、经办人、来源、编码、备注，02 章第 6 节）：值小一号、次要色；
-   字段名不缩小，否则 4 字宽跟着变窄，值和上下行对不齐 */
+/* 次要字段（单号、日期、经办人、来源、编码、备注，02 章第 6 节）：值小一号、用比字段名深一档的颜色，
+   保证「字段名浅、值深」；字段名固定宽，值和上下行对齐 */
 .hz-info-rows__minor .hz-info-rows__value,
 .hz-info-rows__minor .u-sheet-row__value {
   font-size: var(--hz-font-sm);
-  color: var(--hz-muted);
+  color: var(--hz-ink-soft);
+}
+
+/* 只读信息行（一列）的字段名同两列：12px 浅色；表单里的字段名不受影响，保持和输入框一致 */
+.hz-info-rows__name {
+  font-size: var(--hz-font-sm);
 }

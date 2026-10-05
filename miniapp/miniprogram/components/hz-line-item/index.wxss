@@ -120,13 +120,7 @@
   color: var(--hz-muted);
 }
 
-.hz-line-item__total-qty {
-  font-family: var(--hz-serif);
-  font-size: var(--hz-font-total);
-  font-weight: 700;
-  color: var(--hz-ink);
-}
-
+.hz-line-item__total-qty,
 .hz-line-item__total-amount {
   font-family: var(--hz-serif);
   font-size: var(--hz-font-total);
@@ -219,4 +213,12 @@
   text-align: center;
   font-size: var(--hz-icon-sm);
   color: var(--hz-muted);
+}
+
+/* 可编辑明细还没有行：表头下面放一句提示，免得只剩表头和 0 合计（2026-10-05） */
+.hz-line-item__empty {
+  padding: 22px var(--hz-card-pad);
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+  text-align: center;
 }

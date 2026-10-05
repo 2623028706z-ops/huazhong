@@ -16,6 +16,7 @@
         "miniprogram/pages/**/index.ts",
         "miniprogram/packages/*/pages/**/index.ts",
         "miniprogram/components/*/index.ts",
+        "miniprogram/packages/*/components/*/index.ts",
         "test/**/*.test.ts"
       ],
       "project": ["miniprogram/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"]

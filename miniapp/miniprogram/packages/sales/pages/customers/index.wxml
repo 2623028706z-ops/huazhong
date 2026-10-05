@@ -17,7 +17,7 @@
       </view>
       <hz-tabs class="u-split__tabs" items="{{sections}}" value="{{section}}" bind:change="onSection" />
       <block wx:if="{{section==='stores'}}">      <text wx:if="{{stores.length === 0}}" class="u-info__meta">{{texts.noStores}}</text>
-      <view wx:for="{{stores}}" wx:key="id" data-key="{{item.id}}" bindtap="onOpen">
+      <view wx:for="{{stores}}" wx:key="id" class="u-split__item" data-key="{{item.id}}" bindtap="onOpen">
         <hz-card row="{{item}}" />
       </view>
 </block><block wx:else>      <text wx:if="{{groups.length === 0}}" class="u-info__meta">{{catalogTexts.empty}}</text>

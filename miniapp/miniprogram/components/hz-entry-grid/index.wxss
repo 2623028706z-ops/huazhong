@@ -1,4 +1,4 @@
-/* 一整块细线窗格：外框和格子之间都是 --hz-rule，不铺底色（docs/design/mock-art.html） */
+/* 一整块细线窗格：外框 --hz-rule-frame，格子之间淡一档 --hz-rule-soft（2026-10-05），不铺底色（docs/design/mock-art.html） */
 .hz-entry-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -14,7 +14,7 @@
   justify-content: space-between;
   min-height: 118px;
   padding: 18px var(--hz-card-pad) var(--hz-card-pad);
-  border-top: 1px solid var(--hz-rule);
+  border-top: 1px solid var(--hz-rule-soft);
 }
 
 /* 第一行不要上线，右列加左线 */
@@ -23,7 +23,7 @@
 }
 
 .hz-entry-grid__cell:nth-child(even) {
-  border-left: 1px solid var(--hz-rule);
+  border-left: 1px solid var(--hz-rule-soft);
 }
 
 .hz-entry-grid__cell--wide {
@@ -45,11 +45,10 @@
   color: var(--hz-brand);
 }
 
-/* 定稿 .pane .nm：宋体 500 18、字距 3 */
+/* 入口名：宋体 500 16、字距 0（2026-10-05 从 18 + 字距 3 缩一档，原来比页面标题还抢眼） */
 .hz-entry-grid__name {
-  font-size: var(--hz-font-lg);
+  font-size: var(--hz-font-md);
   font-weight: 500;
-  letter-spacing: 3px;
 }
 
 .hz-entry-grid__go {

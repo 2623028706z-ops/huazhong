@@ -105,7 +105,7 @@ describe('去掉条件', () => {
 })
 
 describe('状态标签行', () => {
-  it('全部在最前；等待类带数，完成、结束类不带', () => {
+  it('全部在最前；等待类有数才带（0 不显示），完成、结束类不带', () => {
     const tabs = tabsOf('orderStatus', ['pending_confirm', 'to_ship', 'shipped'], {
       pending_confirm: 2,
       to_ship: 0,
@@ -113,7 +113,7 @@ describe('状态标签行', () => {
     expect(tabs).toEqual([
       { code: '', text: '全部', count: 0, showCount: false },
       { code: 'pending_confirm', text: '待确认', count: 2, showCount: true },
-      { code: 'to_ship', text: '待发货', count: 0, showCount: true },
+      { code: 'to_ship', text: '待发货', count: 0, showCount: false },
       { code: 'shipped', text: '已发货', count: 0, showCount: false },
     ])
   })

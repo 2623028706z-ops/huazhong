@@ -14,7 +14,7 @@
       <hz-line-item wx:if="{{canShip}}" lines="{{lineViews}}" mode="qty" quantity-only picking bind:packed="onPacked" min="{{0}}" bind:qty="onQty" />
       <hz-line-item wx:else lines="{{lineViews}}" quantity-only picking bind:packed="onPacked" />
     </view>
-    <hz-field wx:if="{{canShip}}" label="{{texts.shipNote}}" type="textarea" placeholder="{{texts.optional}}" value="{{shipNote}}" bind:change="onNote" />
+    <view wx:if="{{canShip}}" class="u-card u-form-card"><hz-field label="{{texts.shipNote}}" type="textarea" placeholder="{{texts.optional}}" value="{{shipNote}}" bind:change="onNote" /></view>
     <hz-records wx:if="{{view.changes.length > 0}}" type="orderChange" items="{{view.changes}}" />
     <template wx:for="{{view.requests}}" wx:key="id" is="info-card" data="{{rows: item.rows}}" />
   </block>
