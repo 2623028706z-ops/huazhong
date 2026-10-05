@@ -1,7 +1,14 @@
 <import src="detail.wxml" />
+<!-- 到货差异黄条（06 章 C4）：点「知道了」发 onAckDiff -->
+<template name="po-diff">
+  <hz-notice wx:if="{{diff}}" warn title="{{diff.title}}" lines="{{diff.lines}}" meta="{{diff.meta}}" action="{{diff.action}}" loading="{{diff.loading}}" bind:action="onAckDiff" />
+</template>
+<!-- 采购单详情：进度条 → 提示条（状态、到货差异）→ 信息卡 → 明细 → 记录（02 章第 6 节第 21 条） -->
 <template name="po-body">
-  <hz-notice wx:if="{{notice}}" text="{{notice}}" />
+  <!-- 可不传：diff（供应商端没有到货差异） -->
   <hz-progress steps="{{progress}}" />
+  <hz-notice wx:if="{{notice}}" text="{{notice}}" />
+  <template is="po-diff" data="{{diff}}" />
   <template is="info" data="{{...info}}" />
   <view class="u-section">
     <hz-line-item material title="{{linesHeading}}" qty-label="{{qtyLabel}}" lines="{{lines}}" />

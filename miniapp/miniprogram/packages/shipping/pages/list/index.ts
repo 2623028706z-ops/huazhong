@@ -1,6 +1,7 @@
-// H2 发货单（06 章 H2）：状态（待发货、已发货）+ 搜索（客户、门店）；待发货里也列出货日期以后的单。点开 → H3
+// H2 发货单（06 章 H2）：状态（待发货、已发货）+ 搜索（客户、门店）；待发货里也列出货日期以后的单。点开 → H3。
+// 首页进来（不带状态）默认停在「待发货」。批量按统一勾选写法（views/batch.ts）：「全部」「待发货」能勾，
+// 出货日期没到的后台给的 ship 是禁用，不能勾；发完弹「发货结果」，从送货单、详情返回还停在弹层上
 import { contract, copy, redesignCopy, type ShippingCard } from '@huazhong/shared'
-import { canDo } from '../../../../core/actions'
 import { clearPicking, loadPicking } from '../../../../core/picking'
 import type { KeyEvent, DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
@@ -9,8 +10,10 @@ import type { PagedList } from '../../../../core/list'
 import { confirmAsk } from '../../../../core/guard'
 import { failureOf } from '../../../../core/session'
 import { request } from '../../../../core/request'
+import { allToggled, checkOf, showsChecks, toggled, type Picked } from '../../../../views/batch'
 import { listHandlers, listOf, listQueryOf, showList } from '../../../../views/list'
 import { shippingRowOf } from '../../../../views/order'
+import { shipResultOf, type ShipResultRow } from '../../../../views/ship-result'
 import { pullToRefresh } from '../../../../core/live'
 
 type ShipStatus = 'to_ship' | 'shipped'
@@ -21,6 +24,8 @@ function statusOf(value: string): ShipStatus | undefined {
   return statuses.find((status) => status === value)
 }
 
+// 能批量发货的页签
+const SHIPPABLE: ShipStatus = 'to_ship'
 const BATCH_PREVIEW_COUNT = 3
 const DUE = 'due'
 const dimensions: FilterDimension[] = [
@@ -37,31 +42,38 @@ Page({
     searchPlaceholder: copy.screen.label.searchShipments,
     dimensions,
     filter: emptyFilter,
-    rows: [] as (Omit<ReturnType<typeof shippingRowOf>, 'fields'> & {
-      fields: { label: string; value: string; wide?: boolean }[]
-    })[],
+    rows: [] as (ReturnType<typeof shippingRowOf> & ReturnType<typeof checkOf>)[],
+    selection: true,
     loaded: false,
     skeleton: false,
     done: false,
     failure: null as FailureView | null,
     emptyObject: copy.screen.empty.shipments,
     allLoaded: copy.state.allLoaded,
-    selected: [] as { id: string; version: number; no: string }[],
+    selected: [] as Picked[],
     batchText: redesignCopy.shipMany(0),
     batchBusy: false,
+    result: false,
+    resultHead: '',
+    resultRows: [] as ShipResultRow[],
     texts: {
       allSelected: redesignCopy.allSelected,
+      resultTitle: copy.flow.ship.resultTitle,
+      gotIt: redesignCopy.gotIt,
     },
   },
   cards: [] as ShippingCard[],
   list: null as PagedList<ShippingCard> | null,
   onLoad(query: Record<string, string | undefined>) {
+    // 不带状态（发货首页「发货单」入口）默认待发货；status=all 才是全部
+    const status = query.status === undefined ? 'to_ship' : (statusOf(query.status) ?? '')
     this.setData({
       filter: {
         ...emptyFilter,
-        status: statusOf(query.status ?? '') ?? '',
+        status,
         picks: query.dueOnly === 'true' ? { [DUE]: 'true' } : {},
       },
+      selection: showsChecks(status, SHIPPABLE),
     })
     this.list = listOf(
       this,
@@ -83,55 +95,34 @@ Page({
   onShow() {
     showList(this, ['orders'])
   },
+  // 待发货的卡右下写配货 n/m 种（配货勾选存在本机）
   rowOf(order: ShippingCard) {
-    const row = shippingRowOf(order)
+    const packed = loadPicking(order.id).length
     return {
-      ...row,
-      selectable: order.status === 'to_ship',
-      selectDisabled: !canDo(order.actions, 'ship'),
-      selected: this.data.selected.some((p) => p.id === order.id),
-      fields: [
-        ...row.fields,
-        ...(order.status === 'to_ship'
-          ? [
-              {
-                label: redesignCopy.picking,
-                value: redesignCopy.packedState(loadPicking(order.id).length, order.lineCount),
-                good: loadPicking(order.id).length >= order.lineCount,
-              },
-            ]
-          : []),
-      ],
+      ...shippingRowOf(order),
+      ...checkOf(order, 'ship', this.data.selected),
+      note: order.status === 'to_ship' ? redesignCopy.packedState(packed, order.lineCount) : '',
     }
   },
-  renderSelection() {
-    this.setData({
-      rows: this.cards.map((order) => this.rowOf(order)),
-      batchText: redesignCopy.shipMany(this.data.selected.length),
-    })
+  renderSelection(selected: Picked[]) {
+    this.setData({ selected, batchText: redesignCopy.shipMany(selected.length) })
+    this.setData({ rows: this.cards.map((order) => this.rowOf(order)) })
   },
   onFilter(event: DetailEvent<FilterValue>) {
-    this.setData({ filter: event.detail, selected: [], batchText: redesignCopy.shipMany(0) })
+    this.setData({
+      filter: event.detail,
+      selection: showsChecks(event.detail.status, SHIPPABLE),
+      selected: [],
+      batchText: redesignCopy.shipMany(0),
+    })
     void this.list?.refresh()
   },
   onToggle(event: KeyEvent) {
     const order = this.cards.find((row) => row.id === event.currentTarget.dataset.key)
-    if (!order || !canDo(order.actions, 'ship')) return
-    const selected = this.data.selected.some((row) => row.id === order.id)
-      ? this.data.selected.filter((row) => row.id !== order.id)
-      : [...this.data.selected, { id: order.id, version: order.version, no: order.no }]
-    this.setData({ selected })
-    this.renderSelection()
+    if (order) this.renderSelection(toggled(this.data.selected, order, 'ship'))
   },
   onSelectAll() {
-    const eligible = this.cards.filter((row) => canDo(row.actions, 'ship'))
-    const all = eligible.every((row) => this.data.selected.some((p) => p.id === row.id))
-    this.setData({
-      selected: all
-        ? []
-        : eligible.map((row) => ({ id: row.id, version: row.version, no: row.no })),
-    })
-    this.renderSelection()
+    this.renderSelection(allToggled(this.data.selected, this.cards, 'ship'))
   },
   async onOpenBatch() {
     const { selected } = this.data
@@ -167,15 +158,25 @@ Page({
       return
     }
     for (const row of result.data.succeeded) clearPicking(row.id)
-    const message = result.data.failed.length
-      ? redesignCopy.shipmentResult(
-          result.data.failed.length,
-          [...new Set(result.data.failed.map((row) => row.reason))].join(copy.separator),
-        )
-      : redesignCopy.shippedMany(result.data.succeeded.length)
-    this.setData({ selected: [], batchText: redesignCopy.shipMany(0) })
+    const view = shipResultOf(result.data)
+    this.setData({
+      selected: [],
+      batchText: redesignCopy.shipMany(0),
+      result: true,
+      resultHead: view.head,
+      resultRows: view.rows,
+    })
     await this.list?.refresh()
-    void wx.showToast({ title: message, icon: 'none' })
+  },
+  // 结果弹层里点一行：发出的进送货单，没发出的进这张单；返回时弹层还在
+  onResultRow(event: KeyEvent) {
+    const row = this.data.resultRows.find((item) => item.id === event.currentTarget.dataset.key)
+    if (!row) return
+    const page = row.failed ? 'ship' : 'delivery'
+    void wx.navigateTo({ url: `/packages/shipping/pages/${page}/index?id=${row.id}` })
+  },
+  onCloseResult() {
+    this.setData({ result: false })
   },
   onOpen(event: KeyEvent) {
     void wx.navigateTo({

@@ -52,7 +52,7 @@ export function processLinesOf(
   }))
 }
 
-export function createLineOf(line: OrderLine): FormLine {
+export function createLineOf(line: OrderLine, qty = 1): FormLine {
   const maxQty = line.maxQty ?? 0
   return {
     id: line.id,
@@ -61,7 +61,7 @@ export function createLineOf(line: OrderLine): FormLine {
     unit: line.unit,
     maxQty,
     maxText: copy.screen.maxQty(maxQty),
-    qty: 1,
+    qty,
     priceText: textOfCents(line.priceCents),
     reason: '',
     description: '',

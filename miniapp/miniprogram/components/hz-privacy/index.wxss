@@ -1,6 +1,6 @@
 .hz-privacy {
   display: flex;
-  gap: 8px;
+  gap: var(--hz-space-2);
   align-items: center;
   justify-content: center;
   min-height: var(--hz-tap);

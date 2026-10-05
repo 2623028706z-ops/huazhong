@@ -10,10 +10,11 @@
   --td-button-primary-active-bg-color: var(--hz-brand);
   --td-button-primary-active-border-color: var(--hz-brand);
 
-  /* 不能点：浅灰描边 + 灰字，不用淡红实底（淡红看着反而像能点，2026-10-05） */
-  --td-button-primary-disabled-bg: transparent;
-  --td-button-primary-disabled-border-color: var(--hz-rule);
-  --td-button-primary-disabled-color: var(--hz-grey);
+  /* 不能点的主按钮：保留主色调淡（相当于 opacity .4）+ 白字，和次按钮拉开（第 4 批第 3 条，2026-10-06）。
+     用半透明底色而不是整颗 opacity，白字不跟着变淡 */
+  --td-button-primary-disabled-bg: var(--hz-brand-off);
+  --td-button-primary-disabled-border-color: transparent;
+  --td-button-primary-disabled-color: var(--hz-on-brand);
   --td-button-default-outline-color: var(--hz-ink);
   --td-button-default-outline-border-color: var(--hz-rule);
   --td-button-default-outline-active-bg-color: var(--hz-paper);
@@ -46,7 +47,7 @@
 .hz-button__spinner {
   width: 14px;
   height: 14px;
-  margin-right: 8px;
+  margin-right: var(--hz-space-2);
   border: 2px solid currentcolor;
   border-top-color: transparent;
   border-radius: 50%;
@@ -60,7 +61,7 @@
 }
 
 .hz-button__reason {
-  margin-top: 4px;
+  margin-top: var(--hz-space-1);
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);
   text-align: center;
@@ -84,7 +85,7 @@
 .hz-button--quiet {
   display: flex;
   justify-content: center;
-  padding-top: 4px;
+  padding-top: var(--hz-space-1);
 }
 
 .hz-button__text--quiet {
@@ -97,7 +98,7 @@
 
 /* 明确可点：文字后接 ›，和灰掉的停用样子分开 */
 .hz-button__text--quiet::after {
-  margin-left: 2px;
+  margin-left: var(--hz-space-1);
   content: '›';
 }
 
@@ -117,14 +118,14 @@
 .hz-button--round {
   --td-button-medium-height: 44px;
   --td-button-border-radius: var(--hz-radius-pill);
-  --td-button-medium-padding-horizontal: 26px;
+  --td-button-medium-padding-horizontal: var(--hz-space-5);
   --td-button-primary-disabled-bg: var(--hz-bar-off);
   --td-button-primary-disabled-border-color: var(--hz-bar-off);
   --td-button-primary-disabled-color: var(--hz-bar-off-text);
 }
 
 .hz-button--round .hz-button__inner {
-  letter-spacing: 2px;
+  letter-spacing: 0; /* 02 章：字距一律 0 */
 }
 
 /* 停用原因放到结算条上方（定位到结算条），不撑高胶囊 */
@@ -135,9 +136,4 @@
   left: 0;
   margin: 0;
   color: var(--hz-amber);
-}
-
-/* 不能点的主按钮也画浅灰描边（TDesign 的描边画在 ::after 上，小程序里不显示，同次按钮一样用内阴影） */
-.hz-button--off .hz-button__inner {
-  box-shadow: inset 0 0 0 1px var(--hz-rule);
 }

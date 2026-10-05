@@ -5,12 +5,15 @@ import { screen, financeCopy } from './copy-screen.ts'
 import { reworkCopy, recordsCopy } from './copy-rework.ts'
 import { logCopy } from './copy-log.ts'
 import { stockCopy } from './copy-stock.ts'
+import { redesignCopy } from './copy-redesign.ts'
+import { flowCopy } from './copy-flow.ts'
 
 // 同一行里并列的几项之间（身份行、卡片第 3 行）
 const SEPARATOR = '　　'
 
 export const copy = {
   rework: reworkCopy,
+  flow: flowCopy,
   stock: stockCopy,
   separator: SEPARATOR,
   error: {
@@ -95,7 +98,7 @@ export const copy = {
   },
   // 订单、发货（03 章第 5、8.1 节，05 章第 4–6 节）
   order: {
-    shipDatePending: '待定',
+    shipDatePending: redesignCopy.waiting,
     shipDateRequired: '请选择出货日期',
     linesRequired: '请添加产品并填写有效数量',
     storeLinesRequired: '请先选择产品',
@@ -186,7 +189,7 @@ export const copy = {
     customerStale: '客户刚被修改，已刷新成最新内容',
     storeStale: '门店刚被修改，已刷新成最新内容',
     productNameRequired: '请填写产品名称',
-    productNameTaken: '已有同名产品',
+    productNameTaken: '这个客户已有同名产品',
     categoryRequired: '请选择分类',
     unitRequired: '请填写单位',
     bomRequired: '请至少添加一种花材',
@@ -202,9 +205,6 @@ export const copy = {
     catalogCategoryRequired: '请选择订货分类',
     customerCodeTaken: '这个客户下已有相同的产品编码',
     catalogCategoryNotEmpty: '分类中仍有目录产品，请先换分类',
-    // 目录弹层里改了配方，保存前确认（配方是产品本身的，所有客户共用）
-    sharedBomTitle: '配方所有客户共用',
-    sharedBomBody: '改后所有客户的这个产品都会变。',
   },
   // 财务收款部分（03 章第 4、8.4 节，05 章第 10 节）
   finance: {
@@ -337,6 +337,8 @@ export const copy = {
   placeholder: {
     choose: '请选择',
     optional: '选填',
+    // 整页表单必填项空着时的浅色占位字（02 章 hz-field，2026-10-06 第 4 批）
+    fill: '请填写',
   },
   // 阶段 3 页面（06 章 S1–S9、X1–X11、H1–H3、F1–F9、M2）
   screen,

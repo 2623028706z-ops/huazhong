@@ -63,7 +63,7 @@
   display: flex;
   flex: 1;
   align-items: center;
-  gap: 16px;
+  gap: var(--hz-space-4);
   min-width: 0;
 }
 
@@ -79,7 +79,7 @@
   right: -9px;
   min-width: 17px;
   height: 17px;
-  padding: 0 4px;
+  padding: 0 var(--hz-space-1);
   box-sizing: border-box;
   border: 1.5px solid var(--hz-ink);
   border-radius: var(--hz-radius-pill);
@@ -98,7 +98,7 @@
 }
 
 .u-bar-total__meta {
-  margin-top: 1px;
+  margin-top: 1px; /* 1px 视觉微调：合计金额和小字之间 */
   font-size: var(--hz-font-xs);
   opacity: 0.7;
 }
@@ -122,7 +122,7 @@
 .u-pill {
   display: inline-block;
   height: 19px;
-  padding: 0 7px;
+  padding: 0 var(--hz-space-2);
   font-size: var(--hz-font-xs);
   font-weight: 500;
   line-height: 19px;
@@ -131,21 +131,21 @@
 }
 
 /* 表单字段：hz-field、hz-picker、hz-choices 共用（02 章第 4 节）。
-   页面卡片里是定稿 .cell 一行：字段名在左、值靠右、行间细线，选择项右边 ›，金额是右边小框；
+   页面卡片里是定稿 .cell 一行：字段名在左、值靠右、不带框、行间细线，选择项右边 ›，金额、备注也一样（表单对齐 A）；
    弹层里（.u-sheet-form）换回整条输入框——行样子靠下面这组变量切换 */
 .u-field {
   display: flex;
   flex-flow: row wrap;
   align-items: center;
-  column-gap: 10px;
+  column-gap: var(--hz-space-2);
   min-height: var(--hz-field-row, 48px);
-  margin-top: -1px;
+  margin-top: -1px; /* 负值 1px：上下两行的细线叠成一条 */
   font-size: var(--hz-font);
   border-top: 1px solid var(--hz-field-line, var(--hz-line));
 }
 
 .u-field__label {
-  width: 72px;
+  width: var(--hz-field-label-width, var(--hz-label-w-form));
   flex: none;
   font-size: var(--hz-field-label, var(--hz-font));
   color: var(--hz-muted);
@@ -157,7 +157,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
+  gap: var(--hz-space-2);
   min-height: var(--hz-field-box, 48px);
   padding: 0 var(--hz-field-pad, 0);
   color: var(--hz-ink);
@@ -178,11 +178,8 @@
   --hz-field-bg: var(--hz-paper);
   --hz-field-ring: inset 0 0 0 1px var(--hz-hair);
   --hz-field-ring-on: inset 0 0 0 1.5px var(--hz-brand);
-  --hz-field-num: auto;
-  --hz-field-num-flex: 1;
-  --hz-field-num-h: var(--hz-input);
   --hz-field-area: var(--hz-textarea);
-  --hz-field-area-pad: 10px;
+  --hz-field-area-pad: var(--hz-space-2);
 }
 
 .u-field__box--focus {
@@ -194,7 +191,7 @@
 }
 
 .u-field__box--placeholder {
-  color: var(--hz-muted);
+  color: var(--hz-placeholder);
 }
 
 .u-field__icon {
@@ -204,7 +201,7 @@
 
 .u-field__error {
   flex-basis: 100%;
-  padding-bottom: 8px;
+  padding-bottom: var(--hz-space-2);
   font-size: var(--hz-font-sm);
   color: var(--hz-danger);
 }
@@ -227,7 +224,7 @@
 .u-sheet-head {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--hz-space-1);
 }
 
 .u-sheet-head__title {
@@ -278,7 +275,7 @@
 .u-sheet-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--hz-space-3);
   padding: var(--hz-row-pad) var(--hz-gap-sheet);
   border-top: 1px solid var(--hz-line);
 }
@@ -286,7 +283,7 @@
 .u-sheet-form__group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--hz-space-1);
   padding-top: var(--hz-line-gap);
   border-top: 1px solid var(--hz-line);
 }
@@ -317,7 +314,7 @@
 
 /* 小标题：弹层里的「下单日期」、组件总览的分组说明 */
 .u-caption {
-  margin-bottom: 8px;
+  margin-bottom: var(--hz-space-2);
 }
 
 /* 铺品牌背景的页面（各首页、我的）：左右 16px，抬头下面 32px 开始放窗格 */
@@ -329,15 +326,15 @@
   display: flex;
   flex-direction: column;
   gap: var(--hz-card-gap);
-  margin-top: 32px;
+  margin-top: 32px; /* 32px：首页抬头和窗格之间的大留白（定稿），超出 5 档 */
 }
 
-/* 列表页：左右 16px，卡片间距 10px */
+/* 列表页：左右 16px，卡片间距 --hz-card-gap（8px） */
 .u-list {
   display: flex;
   flex-direction: column;
   gap: var(--hz-card-gap);
-  padding: 12px var(--hz-gap-page);
+  padding: var(--hz-space-3) var(--hz-gap-page);
 }
 
 /* 组标题只一种（02 章第 6 节第 2 条）：页面卡片外 13px 墨色加粗。
@@ -348,12 +345,12 @@
   font-family: var(--hz-serif);
   font-size: var(--hz-font-group);
   font-weight: 600;
-  letter-spacing: 1px;
+  letter-spacing: 0; /* 02 章：字距一律 0 */
   color: var(--hz-ink);
 }
 
 .u-section__count {
-  margin-left: 8px;
+  margin-left: var(--hz-space-2);
   font-family: var(--hz-sans);
   font-size: var(--hz-font-sm);
   font-weight: 400;
@@ -362,8 +359,8 @@
 }
 
 .u-list__group {
-  padding: 14px 4px 0;
-  margin-bottom: -4px;
+  padding: var(--hz-space-3) var(--hz-space-1) 0;
+  margin-bottom: -4px; /* 负值：分组标题贴近下面的卡片 */
 }
 
 .u-list__group:first-child {
@@ -371,14 +368,14 @@
 }
 
 .u-list__end {
-  padding: 12px 0;
+  padding: var(--hz-space-3) 0;
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);
   text-align: center;
 }
 
-/* 详情、表单里的一组：小标题 + 卡片（产品明细、发货信息、变更记录），和上一组多隔 6px；
-   组里卡片之间照常 10px，小标题和下面的卡片只隔 6px */
+/* 详情、表单里的一组：小标题 + 卡片（产品明细、发货信息、变更记录），和上一组多隔 8px；
+   组里卡片之间照常 --hz-card-gap（8px），小标题和下面的卡片只隔 4px（组内比组间近） */
 .u-section {
   display: flex;
   flex-direction: column;
@@ -387,8 +384,21 @@
 }
 
 .u-section__title {
-  margin: 8px 0 calc(var(--hz-line-gap) - var(--hz-card-gap));
-  padding: 0 4px;
+  margin: var(--hz-space-2) 0 calc(var(--hz-space-1) - var(--hz-card-gap));
+  padding: 0 var(--hz-space-1);
+}
+
+/* 组标题右边带一句小字（配方明细「每束用量 · 2 种花材」）：小字用无衬线，不进宋体子集 */
+.u-section__title--split {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.u-section__title--split .u-caption {
+  font-family: var(--hz-sans);
+  font-weight: 400;
+  letter-spacing: 0;
 }
 
 /* 一张卡里多行、行间细线（订货目录、配方）：比一行一张卡紧凑 */
@@ -399,7 +409,7 @@
 .u-rows__item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--hz-space-1);
   padding: var(--hz-line-gap) 0;
 }
 
@@ -410,9 +420,9 @@
 /* 订货目录第一行（同 hz-card 第 2 行）：名称（主信息，最多两行）、订货价靠右顶齐 */
 .u-rows__head {
   display: flex;
-  gap: 12px;
+  gap: var(--hz-space-3);
   align-items: flex-start;
-  padding-top: 4px;
+  padding-top: var(--hz-space-1);
 }
 
 .u-rows__title {
@@ -434,16 +444,16 @@
 /* 订货目录第二行（同 hz-card 第 3 行）：标记在左，接客户产品编码，次要色 */
 .u-rows__foot {
   display: flex;
-  gap: 8px;
+  gap: var(--hz-space-2);
   align-items: center;
-  padding-bottom: 2px;
+  padding-bottom: var(--hz-space-1);
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);
 }
 
-/* 提醒说明（配方所有客户共用）：琥珀字，不用最弱的灰 */
+/* 提醒说明：琥珀字，不用最弱的灰 */
 .u-note-warn {
-  padding: 10px var(--hz-card-pad);
+  padding: var(--hz-space-2) var(--hz-card-pad);
   font-size: var(--hz-font-sm);
   color: var(--hz-amber);
   background: var(--hz-amber-bg);
@@ -482,7 +492,7 @@
 
 .u-rows__trash {
   flex: none;
-  margin-right: -12px;
+  margin-right: -12px; /* 负值：垃圾桶点击区伸进行的右内边距 */
   font-size: var(--hz-icon);
   color: var(--hz-muted);
 }
@@ -493,7 +503,7 @@
   align-items: center;
   width: 96px;
   height: 36px;
-  padding: 0 10px;
+  padding: 0 var(--hz-space-2);
   background: var(--hz-paper);
   border-radius: var(--hz-radius-inner);
   box-shadow: inset 0 0 0 1px var(--hz-hair);
@@ -527,7 +537,7 @@
   align-items: center;
   justify-content: space-between;
   padding-bottom: var(--hz-line-gap);
-  margin-bottom: 2px;
+  margin-bottom: var(--hz-space-1);
   border-bottom: 1px solid var(--hz-line);
 }
 
@@ -544,7 +554,7 @@
 .u-info__line {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--hz-space-1);
   padding-bottom: var(--hz-line-gap);
   border-bottom: 1px solid var(--hz-line);
 }
@@ -587,7 +597,7 @@
 .u-choice__main {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--hz-space-1);
   min-width: 0;
 }
 
@@ -607,6 +617,42 @@
   color: var(--hz-brand);
 }
 
+/* 添加明细弹层（02 章 hz-pick-sheet）：分组标题、名称加粗；没选时陶土红描边圆「+」，选上后是步进器 */
+.u-pick__head {
+  display: block;
+  padding-top: var(--hz-row-pad);
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+.u-pick__name {
+  font-weight: 600;
+}
+
+.u-pick__plus {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--hz-tap);
+  height: var(--hz-tap);
+  font-size: var(--hz-icon-sm);
+  color: var(--hz-brand);
+  background: radial-gradient(
+    circle,
+    transparent 14px,
+    var(--hz-brand) 14px,
+    var(--hz-brand) 15px,
+    transparent 15px
+  );
+}
+
+.u-pick__summary {
+  align-self: center;
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
 /* 表单里一行一张卡片、行里有多个字段（申请售后、售后表单、配方） */
 .u-form-card {
   display: flex;
@@ -619,7 +665,7 @@
 .u-form-card .u-sheet-row {
   align-items: center;
   min-height: 48px;
-  margin-top: -1px;
+  margin-top: -1px; /* 负值 1px：上下两行的细线叠成一条 */
   font-size: var(--hz-font);
   border-top: 1px solid var(--hz-line);
 }
@@ -676,7 +722,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--hz-space-1);
   min-width: 0;
 }
 
@@ -726,7 +772,7 @@
 .u-detail-third {
   display: flex;
   justify-content: center;
-  padding: 14px var(--hz-gap-page) 6px;
+  padding: var(--hz-space-3) var(--hz-gap-page) var(--hz-space-2);
   color: var(--hz-muted);
 }
 
@@ -745,9 +791,9 @@
 .u-count-table {
   display: grid;
   grid-template-columns: minmax(85px, 1fr) repeat(3, 38px) 28px;
-  gap: 4px;
+  gap: var(--hz-space-1);
   align-items: center;
-  padding: 12px 10px;
+  padding: var(--hz-space-3) var(--hz-space-2);
   font-size: var(--hz-font-sm);
   text-align: right;
   border-bottom: 1px solid var(--hz-hair);
@@ -772,12 +818,29 @@
   box-sizing: border-box;
   width: 100%;
   height: 30px;
-  padding: 0 6px;
+  padding: 0 var(--hz-space-2);
   font-size: var(--hz-font-sm);
   text-align: right;
   background: var(--hz-paper);
   box-shadow: inset 0 0 0 1px var(--hz-hair);
   border-radius: var(--hz-radius-check);
+}
+
+/* 页签、筛选项上的数字角标（hz-tabs、hz-filter-bar 共用）：红底白字小圆 */
+.u-count {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 var(--hz-space-1);
+  margin-left: var(--hz-space-1);
+  font-family: var(--hz-sans);
+  font-size: var(--hz-font-xs);
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--hz-on-brand);
+  text-align: center;
+  background: var(--hz-brand);
+  border-radius: var(--hz-radius-pill);
+  box-sizing: border-box;
 }
 
 /* 勾选框：方框，选中品牌红底白勾（卡片多选、配货打勾、对账单选单共用） */
@@ -797,13 +860,6 @@
 .u-check--on {
   background: var(--hz-brand);
   box-shadow: none;
-}
-
-/* 列表下面的一句说明（门店售后「要申请售后…」）：居中，和空状态对齐；放全局，用到模板的页面都生效 */
-.u-list-hint {
-  display: block;
-  margin-top: 0;
-  text-align: center;
 }
 
 /* 页顶分段单独一块（采购单「采购单 / 填报邀请」），下边距交给下面的列表 */

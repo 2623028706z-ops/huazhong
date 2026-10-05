@@ -11,6 +11,7 @@ import { statementLockedReason } from '../../../common/statements.ts'
 import { actionOf, uniqueActions } from '../../../common/domain/actions.ts'
 import { unitTotalsOf } from '../../../common/domain/units.ts'
 import type { Viewer } from '../../../common/domain/viewer.ts'
+import { unseenOf } from '../../../common/domain/seen.ts'
 
 export interface AfterRow {
   statement?: StatementRef | null
@@ -29,6 +30,8 @@ export interface AfterRow {
   storeId: number
   storeName: string
   amountCents: number | null
+  storeNoticeAt?: Date | null
+  storeSeenAt?: Date | null
 }
 
 export interface AfterLineRow {
@@ -52,6 +55,7 @@ export interface AfterLineRow {
 export interface AfterRoles {
   accountId?: number
   admin?: boolean
+  store?: boolean
   sales: boolean
   finance: boolean
 }
@@ -62,6 +66,7 @@ export function afterRolesOf(viewer: Viewer): AfterRoles {
     finance: viewer.modules.includes('finance'),
     accountId: viewer.accountId,
     admin: viewer.type === 'admin',
+    store: viewer.type === 'store',
   }
 }
 
@@ -99,6 +104,7 @@ export function toAfterCard(
     // 只有已处理的有金额（已关闭、已作废不显示金额，03 章第 7 节）
     statement: row.statement ?? null,
     amountCents: row.status === 'processed' ? row.amountCents : null,
+    unseen: roles.store === true && unseenOf(row.storeNoticeAt, row.storeSeenAt),
     actions: afterActionsOf(roles, row.status)
       .filter(
         (action) =>

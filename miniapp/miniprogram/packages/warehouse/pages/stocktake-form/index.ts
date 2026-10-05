@@ -46,6 +46,7 @@ Page({
     rows: [] as ReturnType<typeof rowsOf>,
     categories: '',
     realtime: '',
+    optional: copy.placeholder.optional,
     texts: {
       ...copy.stock.screen,
       materials: redesignCopy.materialLines,

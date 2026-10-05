@@ -42,7 +42,7 @@ Page({
     filter: emptyFilter,
     dateLabel: copy.screen.label.date,
     rows: [] as ReturnType<typeof moveRowOf>[],
-    head: { name: '', qty: '', unit: '', sub: '', disabled: false, disabledText: '', edit: '' },
+    head: { name: '', qty: '', unit: '', sub: '', disabled: false, disabledText: '' },
     sections: [
       { key: '', text: redesignCopy.all },
       { key: 'in', text: copy.stock.screen.directionIn },
@@ -117,7 +117,6 @@ Page({
         ),
         disabled: false,
         disabledText: '',
-        edit: '',
       },
     })
   },

@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, expect, test } from 'vitest'
 import { accounts, accountModules } from '../db/schema/index.ts'
 import { found } from '../src/common/scope.ts'
-import { startSales, dataOf, idBy, TODAY, type SalesApp } from './support/sales.ts'
+import { startSales, dataOf, idBy, TODAY, type SalesApp, productIdOf } from './support/sales.ts'
 let s: SalesApp
 beforeEach(async () => {
   s = await startSales()
@@ -29,7 +29,11 @@ test('A47 A54 取消和作废非归属人403，兼岗财务售后专用投影仍
       shipDate: TODAY,
       note: '',
       lines: [
-        { productId: await idBy(s.t, 'products.name', '粉玫瑰日常花束'), qty: 1, priceCents: 6800 },
+        {
+          productId: await productIdOf(s.t, '晨曦花艺', '粉玫瑰日常花束'),
+          qty: 1,
+          priceCents: 6800,
+        },
       ],
     }),
   )

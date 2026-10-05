@@ -15,6 +15,7 @@
     "hz-line-item": "/components/hz-line-item/index",
     "hz-realtime-bar": "/components/hz-realtime-bar/index",
     "hz-notice": "/components/hz-notice/index",
-    "hz-records": "/components/hz-records/index"
+    "hz-records": "/components/hz-records/index",
+    "hz-search": "/components/hz-search/index"
   }
 }

@@ -8,13 +8,16 @@ import type { Viewer } from '../../common/domain/viewer.ts'
 import { found } from '../../common/scope.ts'
 import { guardUnique } from '../../common/unique.ts'
 import { WriteService, type WriteContext } from '../../common/write.service.ts'
-import { catalogCategoriesOf, catalogOf } from './catalog.ts'
+import { CatalogReader, catalogCategoriesOf } from './catalog-read.ts'
 
 const NAME_FIELDS = { catalog_categories_name_unique: { name: copy.catalog.categoryNameTaken } }
 
 @Injectable()
 export class CatalogCategoryService {
-  constructor(private readonly writes: WriteService) {}
+  constructor(
+    private readonly writes: WriteService,
+    private readonly reader: CatalogReader,
+  ) {}
 
   // 行锁客户：同一客户的分类写操作排队（新增排序号、整组排序）
   private async lockCustomer(ctx: WriteContext, customerId: number): Promise<string> {
@@ -62,7 +65,7 @@ export class CatalogCategoryService {
       ...change,
     })
     ctx.notify([{ topic: `catalog:${customerId}`, version: null }])
-    return catalogOf(ctx.tx, customerId)
+    return this.reader.of(ctx.tx, customerId)
   }
 
   // 新增的排在最后
@@ -133,11 +136,11 @@ export class CatalogCategoryService {
         new Set(ids).size === ids.length &&
         ids.every((id) => existing.includes(id))
       if (!sameSet) {
-        throw appError.stale(copy.catalog.categoryStale, await catalogOf(ctx.tx, customerId))
+        throw appError.stale(copy.catalog.categoryStale, await this.reader.of(ctx.tx, customerId))
       }
       if (ids.every((id, index) => existing[index] === id)) {
         ctx.unchanged()
-        return catalogOf(ctx.tx, customerId)
+        return this.reader.of(ctx.tx, customerId)
       }
       for (const [index, id] of ids.entries()) {
         await ctx.tx

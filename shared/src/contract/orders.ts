@@ -45,6 +45,8 @@ export const orderCardSchema = z.object({
   changed: z.boolean(),
   repriced: z.boolean(),
   cancelRequested: z.boolean(),
+  // 门店端：取消申请被同意或拒绝、门店还没点开看过（卡片标题前小红点）；员工端恒为 false
+  unseen: z.boolean(),
   actions: z.array(actionSchema),
   lockedReason: z.string().nullable(),
 })
@@ -62,7 +64,7 @@ export const orderLineSchema = z.object({
   listPriceCents: centsSchema,
   // 单价和下单时的目录价不同
   repriced: z.boolean(),
-  // 目录里停用或产品本身停用
+  // 产品已停用（不可订）
   discontinued: z.boolean(),
   // 已发货才有
   shippedQty: z.number().int().nonnegative().nullable(),
@@ -73,6 +75,12 @@ export const orderLineSchema = z.object({
   maxQty: z.number().int().nonnegative().nullable(),
   // 发货前按数量，已发货按实发
   amountCents: centsSchema,
+  // 已发货才有：发货时存下的配方（每单位用量），之后改配方不变；实发 0 的为空数组
+  bom: z
+    .array(
+      z.object({ materialName: z.string(), unit: z.string(), qty: z.number().int().positive() }),
+    )
+    .nullable(),
 })
 export type OrderLine = z.infer<typeof orderLineSchema>
 
@@ -121,7 +129,7 @@ export const orderDetailSchema = orderCardSchema.extend({
 export type OrderDetail = z.infer<typeof orderDetailSchema>
 // 发货端不显示单价和金额（06 章 H3），改价标记也算价格信息
 export const shippingCardSchema = orderCardSchema
-  .omit({ amountCents: true, repriced: true })
+  .omit({ amountCents: true, repriced: true, unseen: true })
   .strict()
 export const shippingLineSchema = orderLineSchema
   .omit({ priceCents: true, listPriceCents: true, amountCents: true, maxQty: true, repriced: true })
@@ -152,7 +160,7 @@ export const orderQuerySchema = pageQuerySchema
   .extend({
     status: z.enum(orderStatuses).optional(),
     customerId: idSchema.optional(),
-    // 单号、客户、门店
+    // 员工：单号、客户、门店；门店：单号、产品名
     q: z.string().trim().optional(),
     // 只要能申请或新建售后的已发货订单（S7、X5 选订单的弹层）
     afterable: z.stringbool().optional(),
@@ -162,6 +170,8 @@ export const orderQuerySchema = pageQuerySchema
   })
   .superRefine(checkDateRange)
 
+// 员工按下单日期倒序。门店（2026-10-06 第 4 批）：待确认（没出货日期）最前、按提交先后；
+// 其次待发货按出货日期近→远；再已发货按出货日期倒序；已取消、已作废最后按下单日期倒序
 export const listOrders = {
   method: 'GET',
   path: '/orders',

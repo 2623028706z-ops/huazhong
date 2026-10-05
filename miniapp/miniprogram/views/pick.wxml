@@ -1,20 +1,20 @@
-<!-- 选择弹层（选订单、选产品、选花材）：页面 <import src="/views/pick.wxml" /> 后用；
-     单选：点一行发 onPick（data-key 是 id）；多选（multi）：点一行发 onPick 切换勾选，
-     底部「添加（n）」发 onPickConfirm；关闭发 onClosePick -->
+<!-- 添加明细弹层（02 章 hz-pick-sheet）：数据和事件见 views/pick.ts；用到的页面要声明 hz-sheet、hz-search、hz-stepper、hz-button、hz-error -->
 <template name="pick-sheet">
-  <!-- 可不传：error、multi、count、confirm（多选时传 multi: true、已勾数量、按钮字） -->
-  <hz-sheet show="{{show}}" title="{{title}}" footer="{{!!multi}}" bind:close="onClosePick">
+  <hz-sheet show="{{show}}" title="{{title}}" footer bind:close="onClosePick">
+    <view class="u-sheet-section"><hz-search paper placeholder="{{placeholder}}" value="{{keyword}}" bind:search="onPickSearch" /></view>
     <view wx:if="{{error}}" class="u-sheet-section"><hz-error message="{{error}}" /></view>
-    <view wx:elif="{{picks.length === 0}}" class="u-sheet-section">{{empty}}</view>
-    <view class="u-sheet-section">
-      <view wx:for="{{picks}}" wx:key="id" class="u-choice {{item.checked ? 'u-choice--on' : ''}}" data-key="{{item.id}}" bindtap="onPick">
-        <view class="u-choice__main">
-          <text>{{item.name}}</text>
-          <text wx:if="{{item.sub}}" class="u-choice__sub">{{item.sub}}</text>
+    <view wx:elif="{{picks.length === 0}}" class="u-sheet-section u-caption">{{empty}}</view>
+    <view wx:else class="u-sheet-section">
+      <block wx:for="{{picks}}" wx:key="id">
+        <text wx:if="{{item.head}}" class="u-pick__head">{{item.head}}</text>
+        <view class="u-choice u-pick__row">
+          <view class="u-choice__main"><text class="u-pick__name">{{item.name}}</text><text wx:if="{{item.sub}}" class="u-choice__sub">{{item.sub}}</text></view>
+          <hz-stepper wx:if="{{item.qty}}" value="{{item.qty}}" min="{{0}}" max="{{item.max || 99999999}}" data-key="{{item.id}}" bind:change="onPickQty" />
+          <view wx:else class="u-pick__plus u-tap" data-key="{{item.id}}" bindtap="onPickPlus"><text class="hz-icon hz-icon--plus"></text></view>
         </view>
-        <text wx:if="{{item.checked}}" class="u-choice__check hz-icon hz-icon--check"></text>
-      </view>
+      </block>
     </view>
-    <hz-button wx:if="{{multi}}" slot="footer" text="{{confirm}}" disabled="{{!count}}" bind:press="onPickConfirm" />
+    <text slot="footer" class="u-pick__summary">{{summary}}</text>
+    <hz-button slot="footer" text="{{confirm}}" disabled="{{!count}}" bind:press="onPickConfirm" />
   </hz-sheet>
 </template>

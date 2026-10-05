@@ -4,51 +4,30 @@ import {
   redesignCopy,
   formatMoney,
   formatTime,
-  formatUnitTotals,
-  labels,
+  noticeCopy,
   type InviteCard,
   type PoCard,
   type PoDetail,
 } from '@huazhong/shared'
 import { lineCents } from '../core/money'
+import { cardAmountOf, cardDateOf, subOf, summaryOf, type CardRow } from './card'
 import { rowsOf } from './order'
 
-// 多种花材的抬头：第一种 + 「等 n 项」，没有花材就空
-function materialTitleOf(names: string[]) {
-  const [first] = names
-  if (!first) return ''
-  return names.length > 1 ? copy.order.moreItems(first, names.length) : first
-}
-
-export function poRowOf(po: PoCard, supplier = false) {
+// 列表卡（06 章 C3、P1）：采购员大字供应商，小字花材摘要 · 下单日期，右状态 + 金额；
+// 供应商大字下单日期，小字花材摘要 · 单号。到货有差异还没看过的标「到货有差异」
+export function poRowOf(po: PoCard, supplier = false): CardRow {
+  const date = cardDateOf(po.orderDate)
   return {
     id: po.id,
-    fields: [
-      { label: redesignCopy.no, value: po.no },
-      { label: redesignCopy.orderDate, value: po.orderDate },
-      { label: copy.screen.label.buyer, value: po.buyerName },
-      {
-        label: redesignCopy.purchaseAmount,
-        value: formatMoney(po.amountCents),
-        amount: true,
-      },
-      // 供应商端：收货后多一项收货日期
-      ...(supplier && po.receivedAt
-        ? [
-            {
-              label: copy.screen.receivedDate,
-              value: formatTime(po.receivedAt).split(' ')[0] ?? '',
-            },
-          ]
-        : []),
-    ],
-    date: po.orderDate,
+    main: supplier ? copy.flow.common.orderedOn(date) : po.supplierName,
+    serif: supplier,
+    sub: supplier
+      ? subOf([summaryOf(po.materialNames), po.no])
+      : subOf([summaryOf(po.materialNames), date]),
     status: po.status,
-    title: supplier ? materialTitleOf(po.materialNames) : po.supplierName,
-    total: formatUnitTotals(po.units),
-    meta: [po.no, po.buyerName].join(copy.separator),
-    amount: po.amountCents,
+    amount: cardAmountOf(po.amountCents),
     tags: [
+      ...(po.diffUnseen ? [{ text: noticeCopy.poDiffTodo, warn: true }] : []),
       ...(po.changed ? [{ text: copy.screen.tag.changed, warn: false }] : []),
       ...(po.repriced ? [{ text: copy.screen.tag.repriced, warn: true }] : []),
       ...(po.allReturned ? [{ text: copy.screen.allReturned, warn: false }] : []),
@@ -56,50 +35,19 @@ export function poRowOf(po: PoCard, supplier = false) {
   }
 }
 
-// 供应商端抬头只写花材（不带自家名字）；采购端抬头写「供应商 · 花材」
-export function inviteRowOf(invite: InviteCard, supplier = false) {
-  const generated =
-    invite.purchaseOrderStatus === null ? '' : labels.poStatus[invite.purchaseOrderStatus]
+// 填报邀请卡（06 章 C3「填报邀请」段、P2）：员工大字供应商，小字花材摘要 · 邀请日期；
+// 供应商大字邀请日期，小字花材摘要。右边状态 + 供货金额（填了才有）
+export function inviteRowOf(invite: InviteCard, supplier = false): CardRow {
+  const date = cardDateOf(invite.inviteDate)
   return {
     id: invite.id,
-    fields: [
-      { label: copy.screen.inviteNo, value: invite.no },
-      { label: redesignCopy.inviteDate, value: invite.inviteDate },
-      { label: redesignCopy.need, value: formatUnitTotals(invite.units) },
-      ...(supplier ? [{ label: copy.screen.label.buyer, value: invite.buyerName }] : []),
-      ...(invite.supplyAmountCents !== null
-        ? [
-            {
-              label: copy.screen.supplyAmount,
-              value: formatMoney(invite.supplyAmountCents),
-              amount: true,
-            },
-          ]
-        : []),
-      ...(invite.purchaseOrderNo
-        ? [
-            {
-              label: redesignCopy.purchaseOrders,
-              value:
-                [invite.purchaseOrderNo, generated].filter(Boolean).join(copy.separator) + ' ›',
-              wide: true,
-            },
-          ]
-        : []),
-    ],
-    date: invite.inviteDate,
+    main: supplier ? copy.flow.common.invitedOn(date) : invite.supplierName,
+    serif: supplier,
+    sub: supplier
+      ? summaryOf(invite.materialNames)
+      : subOf([summaryOf(invite.materialNames), date]),
     status: invite.status,
-    title: supplier
-      ? materialTitleOf(invite.materialNames)
-      : [invite.supplierName, materialTitleOf(invite.materialNames)]
-          .filter(Boolean)
-          .join(copy.separator),
-    total: formatUnitTotals(invite.units),
-    amount: null,
-    meta: [invite.no, invite.buyerName, invite.purchaseOrderNo, generated]
-      .filter(Boolean)
-      .join(copy.separator),
-    tags: [],
+    amount: cardAmountOf(invite.supplyAmountCents),
   }
 }
 
@@ -277,8 +225,4 @@ export function poViewOf(po: PoDetail, supplier = false, finance = false) {
     lines: poLinesOf(po),
     ...poRecordsOf(po),
   }
-}
-
-export function materialPickOf(material: { id: string; name: string; unit: string }) {
-  return { id: material.id, name: material.name, sub: `${redesignCopy.unit} ${material.unit}` }
 }

@@ -21,12 +21,11 @@
         "pages/after-detail/index",
         "pages/after-form/index",
         "pages/customers/index",
-        "pages/products/index",
-        "pages/product-form/index",
+        "pages/catalog/index",
         "pages/order-pick/index",
         "pages/store-form/index",
         "pages/catalog-item/index",
-        "pages/catalog-pick/index"
+        "pages/catalog-copy/index"
       ]
     },
     {
@@ -93,7 +92,8 @@
         "pages/after-form/index",
         "pages/statement/index",
         "pages/after-detail/index",
-        "pages/statement-detail/index"
+        "pages/statement-detail/index",
+        "pages/order-pick/index"
       ]
     },
     {
@@ -133,6 +133,7 @@
   "style": "v2",
   "usingComponents": {
     "hz-progress": "/components/hz-progress/index",
-    "hz-info-rows": "/components/hz-info-rows/index"
+    "hz-info-rows": "/components/hz-info-rows/index",
+    "hz-more": "/components/hz-more/index"
   }
 }

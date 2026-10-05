@@ -21,7 +21,7 @@ export interface FormLine {
   images: UploadedImage[]
 }
 
-export function formLineOf(line: OrderLine): FormLine {
+export function formLineOf(line: OrderLine, qty = 1): FormLine {
   const maxQty = line.maxQty ?? 0
   return {
     orderLineId: line.id,
@@ -30,7 +30,7 @@ export function formLineOf(line: OrderLine): FormLine {
     code: line.customerCode,
     maxQty,
     maxText: copy.screen.maxQty(maxQty),
-    qty: 1,
+    qty,
     reason: '',
     description: '',
     images: [],

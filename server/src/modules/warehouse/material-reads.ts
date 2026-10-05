@@ -20,7 +20,12 @@ import type { Viewer } from '../../common/domain/viewer.ts'
 import type { ParsedInput } from '../../common/endpoint.ts'
 import { afterCursor } from '../../common/page.ts'
 import { found } from '../../common/scope.ts'
-import { materialSearch, WarehouseService } from './warehouse.service.ts'
+import {
+  canManageMaterials,
+  materialManageActions,
+  materialSearch,
+  WarehouseService,
+} from './warehouse.service.ts'
 
 type Executor = Db | Tx
 function materialRows(executor: Executor, where?: SQL) {
@@ -97,7 +102,9 @@ export class MaterialReads {
             enabledAction('stockOut', null),
             enabledAction('reportLoss', null),
           ]
-        : [],
+        : canManageMaterials(viewer)
+          ? [enabledAction('edit', null)]
+          : [],
     }
   }
   async list(
@@ -120,9 +127,7 @@ export class MaterialReads {
       items: page.items.map(toMaterial),
       nextCursor: page.nextCursor,
       nextCode: await nextMaterialCode(this.db),
-      actions: viewer.modules.includes('warehouse')
-        ? [enabledAction('create', null), enabledAction('manageCategories', null)]
-        : [],
+      actions: canManageMaterials(viewer) ? materialManageActions() : [],
     }
   }
   async supplier(
@@ -147,8 +152,9 @@ export class MaterialReads {
   }
   async stock(
     query: ParsedInput<typeof contract.warehouseStock>['query'],
+    viewer: Viewer,
   ): Promise<OutputOf<typeof contract.warehouseStock>> {
-    const page = await this.warehouse.listInventory(query)
+    const page = await this.warehouse.listInventory(query, viewer)
     const batches = await batchesOf(
       this.db,
       page.items.map((row) => Number(row.id)),

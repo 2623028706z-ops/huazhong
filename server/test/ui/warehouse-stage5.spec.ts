@@ -1,6 +1,5 @@
 import { copy, type StatementDetail, type PaymentDetail, type WhDocDetail } from '@huazhong/shared'
 import { expect, test } from 'vitest'
-import type { CustomElement } from 'miniprogram-automator/out/Element.js'
 import { dataOf, idBy, TODAY } from '../support/sales.ts'
 import { stockQtyOf, whDocOf, whIds } from '../support/warehouse.ts'
 import { openStatement } from '../support/statements.ts'
@@ -26,7 +25,7 @@ test('C11: 花材详情新建手工入库后进入本张详情，改价和作废
   const ids = await whIds(server)
   let page = await enter(mini, `${warehouse}/material/index?id=${ids.materialId}`)
   await waitData(page, 'loaded', true)
-  await page.callMethod('onStockIn')
+  await page.callMethod('onAction', { currentTarget: { dataset: { code: 'stockIn' } } })
   page = await waitPage(mini, 'packages/warehouse/pages/doc-form/index')
   await waitData(page, 'loaded', true)
   await waitData(page, 'form.lines.0.materialId', ids.materialId)
@@ -61,7 +60,7 @@ test('C12-F/C20-F/C21: 花材出库入口与分类管理（出库分类页）保
   const before = await stockQtyOf(server, materialId)
   let page = await enter(mini, `${warehouse}/material/index?id=${materialId}`)
   await waitData(page, 'loaded', true)
-  await page.callMethod('onStockOut')
+  await page.callMethod('onAction', { currentTarget: { dataset: { code: 'stockOut' } } })
   page = await waitPage(mini, 'packages/warehouse/pages/doc-form/index')
   await waitData(page, 'loaded', true)
   await waitData(page, 'form.lines.0.materialId', materialId)
@@ -95,7 +94,10 @@ test('C12-F/C20-F/C21: 花材出库入口与分类管理（出库分类页）保
     ((await page.data('categoryOptions')) as { id: string }[]).map((row) => row.id),
   ).not.toContain(sampleId)
   expect(await page.data('form.lines.0.qty')).toBe(2)
-  await pickOption(page, '#doc-category', ids.outCategoryId)
+  // 出库分类是选择弹层（体验改版第 2 批），点一行就选好
+  await page.callMethod('onOpenCategoryPick')
+  await page.callMethod('onCategory', { currentTarget: { dataset: { key: ids.outCategoryId } } })
+  await waitData(page, 'form.outCategoryId', ids.outCategoryId)
   await snap(mini, 'stock-out-form')
   await tapText(page, copy.stock.screen.submit.out)
   page = await waitPage(mini, 'packages/warehouse/pages/doc-detail/index')
@@ -139,14 +141,18 @@ test('C13-F/C22-F: category selection, zero difference, stale preserves actual q
   let page = await enter(mini, `${warehouse}/stocktakes/index`)
   await waitData(page, 'loaded', true)
   await tapText(page, copy.stock.screen.create.stocktake)
-  await waitData(page, 'sheet', true)
-  expect(await page.data('allSelected')).toBe(true)
-  await page.callMethod('onAll', { detail: false })
-  await page.callMethod('onStart')
-  await waitData(page, 'categoryError', copy.stock.categoriesRequired)
-  for (const key of categoryIds)
-    await page.callMethod('onCategory', { currentTarget: { dataset: { key } }, detail: true })
-  await page.callMethod('onStart')
+  await waitData(page, 'stocktakeSheet', true)
+  expect(await page.data('stocktakeAll')).toBe(true)
+  // 「全部分类」一行 key 为空：全选时点它全不选
+  const tapCategory = (key: string) =>
+    page.callMethod('onStocktakeCategory', { currentTarget: { dataset: { key } } })
+  await tapCategory('')
+  await waitData(page, 'stocktakeAll', false)
+  await page.callMethod('onStocktakeStart')
+  await waitData(page, 'stocktakeError', copy.stock.categoriesRequired)
+  for (const key of categoryIds) await tapCategory(key)
+  await waitData(page, 'stocktakeStart', copy.stock.startCount(2))
+  await page.callMethod('onStocktakeStart')
   page = await waitPage(mini, 'packages/warehouse/pages/stocktake-form/index')
   await waitData(page, 'loaded', true)
   const book = (await page.data('form.lines.0.bookQty')) as number
@@ -212,7 +218,7 @@ test('D28/F04: 手工入库经DZ付款，作废资金仍锁定、作废DZ后解�
   const finance = await asMini(mini, server, 'u6')
   let page = await enter(mini, `/packages/finance/pages/statement-detail/index?id=${statement.id}`)
   await waitData(page, 'loaded', true)
-  await page.callMethod('onSource', { currentTarget: { dataset: { key: `wh:${incoming.id}` } } })
+  await page.callMethod('onSource', { detail: `wh:${incoming.id}` })
   page = await waitPage(mini, 'packages/warehouse/pages/doc-detail/index')
   await waitData(page, 'loaded', true)
   expect(await page.data('buttons')).toEqual([])
@@ -234,13 +240,14 @@ test('D28/F04: 手工入库经DZ付款，作废资金仍锁定、作废DZ后解�
     detail: '微信',
   })
   await page.callMethod('onSubmit')
-  await waitPage(mini, 'packages/finance/pages/supplier/index')
+  // 登记完回上一页：手工入库详情
+  await waitPage(mini, 'packages/warehouse/pages/doc-detail/index')
   const settled = dataOf<StatementDetail>(await finance.get(`/finance/statements/${statement.id}`))
   expect(settled.status).toBe('settled')
   await asMini(mini, server, 'p1')
   page = await enter(mini, `/packages/supplier/pages/statement-detail/index?id=${statement.id}`)
   await waitData(page, 'loaded', true)
-  await page.callMethod('onSource', { currentTarget: { dataset: { key: `wh:${incoming.id}` } } })
+  await page.callMethod('onSource', { detail: `wh:${incoming.id}` })
   await waitData(page, 'sourceSheet', true)
   await expect
     .poll(async () => page.data('stockView.info.rows') as Promise<unknown>)
@@ -303,18 +310,19 @@ test('warehouse entries and stock moves: filter records and open the source docu
     )
   page = await enter(mini, `${warehouse}/moves/index?materialId=${incoming.lines[0]?.materialId}`)
   await waitData(page, 'loaded', true)
-  await page.callMethod('onDirection', { currentTarget: { dataset: { key: 'in' } } })
+  await page.callMethod('onDirection', { detail: 'in' })
   await expect.poll(async () => ((await page.data('rows')) as unknown[]).length).toBe(1)
+  // 流水是库存行写法：类型 + 数量，小字时间 / 单号 / 经办人
   const rows = (await page.data('rows')) as {
     id: string
     docId: string
-    fields: { label: string; value: string }[]
+    name: string
+    qty: string
+    unit: string
+    subs: string[]
   }[]
-  expect(rows[0]?.docId).toBe(incoming.id)
-  expect(rows[0]?.fields).toContainEqual({ label: '数量', value: '+10 枝' })
-  const card = (await page.$('components\\/hz-card\\/index')) as CustomElement | null
-  if (!card) throw new Error('no movement card')
-  expect(await card.data('row.headText')).toBe('手工入库')
+  expect(rows[0]).toMatchObject({ docId: incoming.id, name: '手工入库', qty: '+10', unit: '枝' })
+  expect(rows[0]?.subs).toContain(`单号 ${incoming.no}`)
   await snap(mini, 'stock-moves')
   await page.callMethod('onOpen', { currentTarget: { dataset: { key: rows[0]?.id } } })
   page = await waitPage(mini, 'packages/warehouse/pages/doc-detail/index')

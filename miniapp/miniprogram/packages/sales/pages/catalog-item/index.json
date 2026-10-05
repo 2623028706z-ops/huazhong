@@ -8,11 +8,12 @@
     "hz-field": "/components/hz-field/index",
     "hz-picker": "/components/hz-picker/index",
     "hz-switch": "/components/hz-switch/index",
+    "hz-upload": "/components/hz-upload/index",
     "hz-line-item": "/components/hz-line-item/index",
-    "hz-add-button": "/components/hz-add-button/index",
     "hz-button": "/components/hz-button/index",
     "hz-action-bar": "/components/hz-action-bar/index",
     "hz-sheet": "/components/hz-sheet/index",
-    "hz-confirm": "/components/hz-confirm/index"
+    "hz-search": "/components/hz-search/index",
+    "hz-stepper": "/components/hz-stepper/index"
   }
 }

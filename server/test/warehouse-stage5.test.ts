@@ -55,7 +55,7 @@ test('C06/C07/C08/D28/F04: 手工入库进入DZ并锁定，0元赠送仍可对�
     supplier = await app.as('p1'),
     other = await app.as('p2')
   const values = await ids()
-  // D40 种子：客户的发货都已进 DZ，「有未对账」为空；供应商只有云岭（未对账 96000）
+  // D40 种子：客户的发货都已进 DZ，「可开对账单」为空；供应商只有云岭（未对账 96000）
   expect(
     dataOf<{ items: unknown[] }>(await finance.get('/finance/customers?filter=unstatemented'))
       .items,
@@ -73,7 +73,7 @@ test('C06/C07/C08/D28/F04: 手工入库进入DZ并锁定，0元赠送仍可对�
   )
   expect(created.no).toMatch(/^RK-/)
   expect(created).toMatchObject({ amountCents: 5000, statement: null })
-  // D40：有未对账按未对账金额从大到小；入库后春禾计入「供应商可开对账」，开 DZ 后不再计入
+  // D40：可开对账单按未对账金额从大到小；入库后春禾计入「供应商可开对账」，开 DZ 后不再计入
   const readyOf = async () =>
     dataOf<{ items: { partyId: string; unstatementedCents: number }[] }>(
       await finance.get('/finance/suppliers?filter=unstatemented'),

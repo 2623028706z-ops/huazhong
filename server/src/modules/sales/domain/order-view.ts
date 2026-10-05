@@ -9,6 +9,7 @@ import {
 import { actionOf } from '../../../common/domain/actions.ts'
 import { sumOf, unitTotalsOf } from '../../../common/domain/units.ts'
 import { statementLockedReason } from '../../../common/statements.ts'
+import { unseenOf } from '../../../common/domain/seen.ts'
 import { orderActionsOf, type OrderRoles } from './order-actions.ts'
 
 export interface OrderRow {
@@ -33,6 +34,8 @@ export interface OrderRow {
   storeEnabled: boolean
   shippedDay: string | null
   changed: boolean
+  storeNoticeAt?: Date | null
+  storeSeenAt?: Date | null
 }
 
 export function ownsOrder(
@@ -61,9 +64,13 @@ export interface LineRow {
   shippedQty: number | null
   // 这一行待处理、已处理售后的合计
   claimedQty: number
-  // 目录里停用或产品本身停用
+  // 产品已停用
   discontinued: boolean
+  // 发货时存下的配方；没发货或实发 0 的为 null
+  bom: BomSnapshot[] | null
 }
+
+export type BomSnapshot = NonNullable<OrderLine['bom']>[number]
 
 // 待确认、待发货才标「已停用」；已发货的照常显示
 export function isOpenOrder(status: OrderStatus): boolean {
@@ -88,6 +95,7 @@ export function toOrderLine(line: LineRow, open: boolean): OrderLine {
     over: shipped !== null && shipped > line.qty,
     maxQty: shipped === null ? null : Math.max(shipped - line.claimedQty, 0),
     amountCents: (shipped ?? line.qty) * line.priceCents,
+    bom: shipped === null ? null : (line.bom ?? []),
   }
 }
 
@@ -169,6 +177,7 @@ export function toOrderCard(
     amountCents: sumOf(views, (line) => line.amountCents),
     changed: row.changed,
     cancelRequested: row.cancelRequested ?? false,
+    unseen: roles.store && unseenOf(row.storeNoticeAt, row.storeSeenAt),
     repriced: views.some((line) => line.repriced),
     ...actionSet,
   }

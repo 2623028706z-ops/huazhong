@@ -1,7 +1,15 @@
 // 确认发货、新建订单、出货日期（07 章 A08、A09、A20、A23、A36、I04）
 import { type OrderDetail, type TodoRow } from '@huazhong/shared'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
-import { dataOf, idBy, startSales, TODAY, TOMORROW, type SalesApp } from './support/sales.ts'
+import {
+  dataOf,
+  idBy,
+  startSales,
+  TODAY,
+  TOMORROW,
+  type SalesApp,
+  productIdOf,
+} from './support/sales.ts'
 
 let s: SalesApp
 beforeEach(async () => {
@@ -133,7 +141,7 @@ describe('出货日期', () => {
         note: '',
         lines: [
           {
-            productId: await idBy(s.t, 'products.name', '粉玫瑰日常花束'),
+            productId: await productIdOf(s.t, '晨曦花艺', '粉玫瑰日常花束'),
             qty: 3,
             priceCents: 6800,
           },
@@ -160,7 +168,7 @@ describe('出货日期', () => {
         note: '',
         lines: [
           {
-            productId: await idBy(s.t, 'products.name', '粉玫瑰日常花束'),
+            productId: await productIdOf(s.t, '晨曦花艺', '粉玫瑰日常花束'),
             qty: 3,
             priceCents: 6800,
           },
@@ -213,7 +221,7 @@ describe('出货日期', () => {
         note: '',
         lines: [
           {
-            productId: await idBy(s.t, 'products.name', '粉玫瑰日常花束'),
+            productId: await productIdOf(s.t, '晨曦花艺', '粉玫瑰日常花束'),
             qty: 1,
             priceCents: 6800,
           },

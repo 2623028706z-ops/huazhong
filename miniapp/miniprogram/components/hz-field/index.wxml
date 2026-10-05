@@ -1,12 +1,13 @@
 <view class="u-field {{type === 'textarea' ? 'u-field--area' : ''}}">
   <text wx:if="{{label}}" class="u-field__label">{{label}}</text>
   <view
-    class="u-field__box hz-field__box {{type === 'textarea' ? 'hz-field__box--area' : type === 'digit' || type === 'number' ? 'hz-field__box--num' : ''}} {{focused ? 'u-field__box--focus' : ''}} {{error ? 'u-field__box--error' : ''}}"
+    class="u-field__box hz-field__box {{type === 'textarea' ? 'hz-field__box--area' : ''}} {{big ? 'hz-field__box--big' : ''}} {{focused ? 'u-field__box--focus' : ''}} {{error ? 'u-field__box--error' : ''}}"
   >
     <t-textarea
       wx:if="{{type === 'textarea'}}"
       autosize
       t-class="hz-field__control"
+      t-class-textarea="hz-field__area"
       value="{{value}}"
       placeholder="{{placeholder}}"
       bind:focus="onFocus"

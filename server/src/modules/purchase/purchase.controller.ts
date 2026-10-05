@@ -4,6 +4,7 @@ import type { Viewer } from '../../common/domain/viewer.ts'
 import { CurrentViewer, Input, Route, type ParsedInput } from '../../common/endpoint.ts'
 import { PoReads } from './po-reads.ts'
 import { PoWrites } from './po-writes.ts'
+import { PoDiffAck } from './po-diff-ack.ts'
 import { PurchaseDemand } from './demand.ts'
 type In<K extends keyof typeof contract> = ParsedInput<(typeof contract)[K]>
 
@@ -12,7 +13,15 @@ export class PurchaseController {
   constructor(
     private readonly reads: PoReads,
     private readonly writes: PoWrites,
+    private readonly diff: PoDiffAck,
   ) {}
+  @Route(contract.ackPurchaseOrderDiff)
+  ackDiff(
+    @CurrentViewer() viewer: Viewer,
+    @Input() input: In<'ackPurchaseOrderDiff'>,
+  ): Promise<OutputOf<typeof contract.ackPurchaseOrderDiff>> {
+    return this.diff.ack(viewer, Number(input.params.id), input.body)
+  }
   @Route(contract.listPurchaseOrders)
   list(
     @CurrentViewer() viewer: Viewer,

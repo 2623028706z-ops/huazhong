@@ -17,6 +17,13 @@ Component({
   properties: {
     files: { type: Array, value: [] as UploadFile[] },
     max: { type: Number, value: AFTER_IMAGE_MAX_COUNT },
+    // 一行几格：只放一张图的地方（目录产品顶卡）传 1，格子仍是 72px
+    column: { type: Number, value: COLUMNS },
+  },
+  observers: {
+    column(column: number) {
+      this.setData({ gridConfig: { column, width: THUMB_RPX, height: THUMB_RPX } })
+    },
   },
   data: {
     sizeLimit: IMAGE_MAX_BYTES / BYTES_PER_KB,

@@ -1,0 +1,2 @@
+<import src="/views/list.wxml" />
+<hz-navbar title="{{title}}" back /><view class="u-list"><hz-filter-bar search-placeholder="{{texts.search}}" value="{{filter}}" bind:change="onFilter" /><text class="u-info__meta">{{texts.hint}}</text><template is="list-state" data="{{failure,skeleton,loaded,rows,emptyObject}}" /><template is="cards" data="{{rows,statusKind,done,allLoaded}}" /></view>

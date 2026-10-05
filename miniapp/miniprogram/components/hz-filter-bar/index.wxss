@@ -2,13 +2,13 @@
 .hz-filter-bar {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--hz-space-2);
   margin-bottom: calc(var(--hz-gap-controls) - var(--hz-card-gap));
 }
 
 .hz-filter-bar__search {
   display: flex;
-  gap: 8px;
+  gap: var(--hz-space-2);
   align-items: center;
 }
 
@@ -23,12 +23,12 @@
   position: relative;
   display: flex;
   flex: none;
-  gap: 4px;
+  gap: var(--hz-space-1);
   align-items: center;
   justify-content: flex-end;
   min-width: var(--hz-tap);
   height: var(--hz-tap);
-  padding-left: 12px;
+  padding-left: var(--hz-space-3);
   font-size: var(--hz-font-row);
   color: var(--hz-ink);
 }
@@ -63,8 +63,8 @@
 
 .hz-filter-bar__track {
   display: inline-flex;
-  gap: 22px;
-  padding-left: 4px;
+  gap: var(--hz-space-5);
+  padding-left: var(--hz-space-1);
   height: var(--hz-tap);
 }
 
@@ -89,34 +89,16 @@
   left: 50%;
   width: 18px;
   height: 2px;
-  margin-left: -9px;
+  margin-left: -9px; /* 负值：短线宽的一半，用来居中，不是间距 */
   content: '';
   background: var(--hz-brand);
   border-radius: var(--hz-radius-line);
 }
 
-/* 等待类的数：品牌红小号上标 */
-
-/* 待办数：红底白字小圆徽标，0 不显示（2026-10-05，原来是上标小红字，容易看漏） */
-.hz-filter-bar__count {
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  margin-left: 4px;
-  font-size: var(--hz-font-xs);
-  font-weight: 600;
-  line-height: 16px;
-  color: var(--hz-on-brand);
-  text-align: center;
-  background: var(--hz-brand);
-  border-radius: var(--hz-radius-pill);
-  box-sizing: border-box;
-}
-
 /* 条件胶囊：高 28px、亮格底、细线，× 的点击区域 44px */
 .hz-filter-bar__chips {
   display: flex;
-  gap: 8px;
+  gap: var(--hz-space-2);
   align-items: center;
 }
 
@@ -124,7 +106,7 @@
   display: flex;
   flex: 1;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--hz-space-2);
   align-items: center;
   min-width: 0;
 }
@@ -133,7 +115,7 @@
   display: flex;
   align-items: center;
   height: 28px;
-  padding-left: 10px;
+  padding-left: var(--hz-space-2);
   font-size: var(--hz-font-sm);
   color: var(--hz-ink);
   background: var(--hz-paper);
@@ -142,7 +124,7 @@
 }
 
 .hz-filter-bar__chip-x {
-  margin: -8px -8px -8px -12px;
+  margin: -8px -8px -8px -12px; /* 负值：× 的点击区外扩，不撑高胶囊 */
   font-size: var(--hz-icon-xs);
   color: var(--hz-muted);
 }
@@ -150,7 +132,7 @@
 /* 弹层：日期窗格分段 */
 .hz-filter-bar__segments {
   display: flex;
-  padding: 3px;
+  padding: var(--hz-space-1);
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);
   border-radius: var(--hz-radius);
@@ -163,7 +145,7 @@
   align-items: center;
   justify-content: center;
   height: var(--hz-tap);
-  padding: 0 6px;
+  padding: 0 var(--hz-space-2);
   white-space: nowrap;
   border-radius: var(--hz-radius-inner);
 }
@@ -177,7 +159,7 @@
 
 .hz-filter-bar__range {
   display: flex;
-  gap: 8px;
+  gap: var(--hz-space-2);
   margin-top: var(--hz-row-pad);
 }
 
@@ -198,7 +180,7 @@
 
 .hz-filter-bar__row-value {
   display: flex;
-  gap: 4px;
+  gap: var(--hz-space-1);
   align-items: center;
   color: var(--hz-muted);
 }

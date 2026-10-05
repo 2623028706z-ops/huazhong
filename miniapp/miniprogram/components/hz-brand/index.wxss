@@ -1,6 +1,6 @@
 /* 字标高 38px；身份行 13px，日期 12px 次要色（docs/design/mock-art.html） */
 .hz-brand {
-  padding-top: 12px;
+  padding-top: var(--hz-space-3);
 }
 
 .hz-brand__logo {
@@ -12,7 +12,7 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-top: 16px;
+  margin-top: var(--hz-space-4);
   font-size: var(--hz-font-sm);
 }
 

@@ -32,6 +32,7 @@ import { beforeCursor, dateBetween } from '../../common/page.ts'
 import { found } from '../../common/scope.ts'
 import { searchAny } from '../../common/search.ts'
 import { poExtras } from './po-detail.ts'
+import { diffUnseenOf, ownDiffWhere, poDiffOf } from './po-diff.ts'
 import {
   owns,
   sourceStatement,
@@ -80,23 +81,32 @@ function rowsQuery(executor: Executor) {
     .innerJoin(accounts, eq(accounts.id, purchaseOrders.buyerId))
 }
 type PoRow = Awaited<ReturnType<typeof rowsQuery>>[number]
+// 到货差异只给这张单的采购员和管理员看（docs/03 第 8.2 节）
+function seesDiff(viewer: Viewer, po: PoRow['po']): boolean {
+  return viewer.type !== 'supplier' && owns(viewer, po.buyerId)
+}
 type Line = typeof purchaseOrderLines.$inferSelect
 
 function purchaseActions(row: PoRow, viewer: Viewer): Action[] {
   const actions: Action[] = []
+  if (seesDiff(viewer, row.po) && diffUnseenOf(row.po)) actions.push(enabledAction('ackDiff', null))
   if (row.po.status === 'to_receive' && viewer.modules.includes('purchase')) {
     actions.push(enabledAction('editPo', false))
     if (owns(viewer, row.po.buyerId)) actions.push(enabledAction('cancelPo', true))
     if (row.po.inviteId === null) actions.push(enabledAction('changeSupplier', null))
   }
-  if (
+  if (supplierCanEdit(row, viewer))
+    actions.push(enabledAction('supplierEditPo', false), enabledAction('supplierCancelPo', true))
+  return actions
+}
+// 供应商自己改 / 取消：邀请来的单、还没收货、是这家供应商的
+function supplierCanEdit(row: PoRow, viewer: Viewer): boolean {
+  return (
     viewer.type === 'supplier' &&
     row.po.inviteId !== null &&
     row.po.status === 'to_receive' &&
     viewer.supplierId === row.po.supplierId
   )
-    actions.push(enabledAction('supplierEditPo', false), enabledAction('supplierCancelPo', true))
-  return actions
 }
 function actionsOf(row: PoRow, viewer: Viewer, statement: StatementRef | null): Action[] {
   const actions = purchaseActions(row, viewer)
@@ -140,6 +150,7 @@ function cardOf(row: PoRow, lines: Line[], viewer: Viewer, statement: StatementR
     changed: row.changed,
     repriced: row.repriced,
     allReturned: row.allReturned,
+    diffUnseen: seesDiff(viewer, po) && diffUnseenOf(po),
     actions: actionsOf(row, viewer, statement),
     lockedReason: statement ? statementLockedReason(statement.no) : null,
   }
@@ -295,6 +306,7 @@ export class PoReads {
       keywordOf(viewer, query.q),
       dateBetween(purchaseOrders.orderDate, query),
       query.supplierId ? eq(purchaseOrders.supplierId, Number(query.supplierId)) : undefined,
+      query.diffUnseen && viewer.type !== 'supplier' ? ownDiffWhere(viewer) : undefined,
     )
     const rows = await rowsQuery(this.db)
       .where(
@@ -335,10 +347,11 @@ export class PoReads {
     const [row] = await rowsQuery(executor).where(and(eq(purchaseOrders.id, poId), scopeOf(viewer)))
     const current = found(row)
     const lines = await lineRows(executor, [poId])
+    const extras = await poExtras(executor, current.po, lines)
     return {
       ...cardOf(current, lines, viewer, await sourceStatement(executor, 'po', poId)),
       ...(await recordsOf(executor, poId)),
-      ...(await poExtras(executor, current.po, lines)),
+      ...extras,
       note: orNull(current.po.note),
       recvNote: orNull(current.po.recvNote),
       cancelReason: current.po.cancelReason,
@@ -346,6 +359,12 @@ export class PoReads {
       notice: current.repriced ? copy.finance.repriceNotice : null,
       voidReason: current.po.voidReason,
       voidedAt: current.po.voidedAt?.toISOString() ?? null,
+      diff: seesDiff(viewer, current.po)
+        ? await poDiffOf(executor, current.po, lines, {
+            receivedBy: extras.receivedBy,
+            receivedAt: extras.receivedAt,
+          })
+        : null,
     }
   }
 }

@@ -24,10 +24,10 @@
     <view class="u-card u-rows"><template wx:for="{{group.rows}}" wx:key="id" is="hz-stock-row" data="{{...item, openable}}" /></view>
   </block>
 </template>
-<!-- 花材抬头卡（W12、W13）：花材名 + 库存（宋体大字），下面编码 / 分类 / 单位；edit 有值时右下一个「修改花材」 -->
+<!-- 花材抬头卡（W12、W13）：花材名 + 库存（宋体大字），下面编码 / 分类 / 单位。「修改花材」在页面底栏（2026-10-06 第 4 批：卡里不放按钮） -->
 <template name="material-head">
   <view class="u-card hz-stock-head">
     <view class="hz-stock-head__top"><text class="u-serif hz-stock-head__name">{{name}}</text><view class="hz-stock-row__qty"><text class="u-serif-amount hz-stock-head__num">{{qty}}</text><text class="hz-stock-row__unit">{{unit}}</text></view></view>
-    <view class="hz-stock-head__bottom"><text class="hz-stock-row__unit">{{sub}}</text><hz-tag wx:if="{{disabled}}" text="{{disabledText}}" /><hz-button wx:if="{{edit}}" kind="text" text="{{edit}}" bind:press="onEdit" /></view>
+    <view class="hz-stock-head__bottom"><text class="hz-stock-row__unit">{{sub}}</text><hz-tag wx:if="{{disabled}}" text="{{disabledText}}" /></view>
   </view>
 </template>

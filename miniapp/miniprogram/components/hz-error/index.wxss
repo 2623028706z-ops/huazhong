@@ -1,8 +1,8 @@
 .hz-error {
   display: flex;
-  gap: 8px;
+  gap: var(--hz-space-2);
   align-items: center;
-  padding: 10px var(--hz-card-pad);
+  padding: var(--hz-space-2) var(--hz-card-pad);
   font-size: var(--hz-font);
   color: var(--hz-danger);
   background: var(--hz-danger-bg);
@@ -17,11 +17,11 @@
 }
 
 .hz-error__request {
-  margin-top: 2px;
+  margin-top: var(--hz-space-1);
   font-size: var(--hz-font-xs);
 }
 
 /* 文字按钮的 44px 点击区域不撑高提示条 */
 .hz-error__retry {
-  margin: -10px -8px;
+  margin: -10px -8px; /* 负值：文字按钮 44px 点击区不撑高提示条 */
 }

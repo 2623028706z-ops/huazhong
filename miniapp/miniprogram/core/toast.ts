@@ -10,3 +10,8 @@ export function showSuccess(title: string): void {
     duration: TOAST_DURATION_MS,
   })
 }
+
+// 提示一句话（不带图标）：例如换客户清空了明细、再来一单跳过了停用产品
+export function showNotice(title: string): void {
+  void wx.showToast({ title, icon: 'none', duration: TOAST_DURATION_MS })
+}

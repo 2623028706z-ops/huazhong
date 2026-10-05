@@ -1,9 +1,9 @@
 /* 卡片底、墨色字、左侧 2px 陶土线、12px */
 .hz-notice {
   display: flex;
-  gap: 8px;
+  gap: var(--hz-space-2);
   align-items: center;
-  padding: 10px var(--hz-card-pad);
+  padding: var(--hz-space-2) var(--hz-card-pad);
   font-size: var(--hz-font-sm);
   color: var(--hz-ink);
   box-shadow: inset 2px 0 0 var(--hz-brand);
@@ -14,7 +14,52 @@
 }
 
 .hz-notice__close {
-  margin: -10px calc(0px - var(--hz-card-pad)) -10px 0;
+  /* 负值：× 点击区伸进提示条的上下、右内边距 */
+  margin: calc(0px - var(--hz-space-2)) calc(0px - var(--hz-card-pad));
+  margin-left: 0;
   font-size: var(--hz-icon-xs);
   color: var(--hz-muted);
+}
+
+/* 黄色提示条（到货差异）：琥珀浅底 + 琥珀描边，标题加粗、逐行说明，右上「知道了」小胶囊 */
+.hz-notice--warn {
+  align-items: flex-start;
+  padding: var(--hz-card-pad-y) var(--hz-card-pad);
+  background: var(--hz-amber-bg);
+  border: 1px solid var(--hz-amber);
+  border-radius: var(--hz-radius);
+  box-shadow: none;
+}
+
+.hz-notice__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--hz-space-1);
+  min-width: 0;
+}
+
+.hz-notice__title {
+  font-size: var(--hz-font);
+  font-weight: 600;
+  color: var(--hz-ink);
+}
+
+.hz-notice__line {
+  font-size: var(--hz-font-sm);
+  line-height: 18px;
+  color: var(--hz-amber);
+}
+
+.hz-notice__action {
+  flex: none;
+  padding: var(--hz-space-1) var(--hz-space-3);
+  font-size: var(--hz-font-sm);
+  color: var(--hz-amber);
+  border: 1px solid var(--hz-amber);
+  border-radius: var(--hz-radius-pill);
+}
+
+.hz-notice__action--busy {
+  opacity: 0.4;
 }

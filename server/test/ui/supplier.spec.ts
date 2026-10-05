@@ -24,22 +24,32 @@ test('B31 供应商删停用行后提交，已提交合并明细并跳整页采�
     .update(materials)
     .set({ enabled: false })
     .where(eq(materials.id, Number(invite.lines[0]?.materialId)))
-  const page = await enter(mini, `/packages/supplier/pages/supply/index?id=${invite.id}`)
+  let page = await enter(mini, `/packages/supplier/pages/supply/index?id=${invite.id}`)
   await waitData(page, 'loaded', true)
   expect(await page.data('lineViews.0.readonly')).toBe(true)
-  expect(await page.data('lineViews.0.tags')).toEqual([{ text: '已停用', warn: true }])
+  expect(await page.data('lineViews.0.tags')).toEqual([{ text: '已停用', warn: false }])
   await page.callMethod('onSubmit')
   await waitData(page, 'formError', '花材已停用，请删掉这一行再提交')
   await snap(mini, 'supplier-supply-disabled')
   await page.callMethod('onRemove', { detail: 0 })
   const extraId = await idBy(s.t, 'materials.name', '尤加利')
-  await page.callMethod('onPick', { currentTarget: { dataset: { key: extraId } } })
+  await page.callMethod('onPickPlus', { currentTarget: { dataset: { key: extraId } } })
+  await page.callMethod('onPickConfirm')
   await page.callMethod('onPrice', { detail: { index: 0, text: '2.00' } })
   await page.callMethod('onSubmit')
+  // 提交成功回 P1 填报列表（直接打开、没有上一页时换到列表，06 章 P4）
+  await waitPage(mini, 'packages/supplier/pages/invites/index')
+  page = await enter(mini, `/packages/supplier/pages/supply/index?id=${invite.id}`)
+  await waitData(page, 'loaded', true)
   await waitData(page, 'editable', false)
   expect(await page.data('inviteView.lines')).toMatchObject([
-    { subText: '未供', hideAmount: true },
-    { subText: '供 1 枝 × ¥2.00', tags: [{ text: '另报', warn: false }] },
+    // 没供的行标「未供」、不显示金额；另报的花材供 1 枝 × ¥2.00
+    {
+      qty: 0,
+      hideAmount: true,
+      tags: expect.arrayContaining([{ text: copy.screen.notSupplied, warn: true }]) as unknown,
+    },
+    { qty: 1, priceCents: 200, tags: [{ text: '另报', warn: false }] },
   ])
   await snap(mini, 'supplier-submitted-unsupplied-extra')
   const submitted = await inviteOf(s)
@@ -76,13 +86,21 @@ test('F07-F 供应商已结清DZ按整页采购详情进入，只读对账与收
   expect(await detail.data('view.info.rows')).toContainEqual(
     expect.objectContaining({
       label: '对账单',
-      value: `${projected.statement.no} · 已结清`,
+      value: `${projected.statement.no}${copy.separator}已结清`,
       url: `/packages/supplier/pages/statement-detail/index?id=${projected.statement.id}`,
     }),
   )
   expect(JSON.stringify(await detail.data('view.info.rows'))).not.toMatch(/财务|应付|未付|付款进度/)
   await snap(mini, 'supplier-purchase-statement-link')
-  await detail.callMethod('onStatement')
+  // 对账单在信息行里，点这一行进只读对账详情
+  const info = (await detail.$('components\\/hz-info-rows\\/index')) as CustomElement
+  await info.callMethod('onLink', {
+    currentTarget: {
+      dataset: {
+        url: `/packages/supplier/pages/statement-detail/index?id=${projected.statement.id}`,
+      },
+    },
+  })
   const statement = await waitPage(mini, 'packages/supplier/pages/statement-detail/index')
   await waitData(statement, 'loaded', true)
   expect(await statement.data('view.info.title')).toBe(po.supplierName)
@@ -90,9 +108,10 @@ test('F07-F 供应商已结清DZ按整页采购详情进入，只读对账与收
   expect(await statement.data('view.cells')).toContainEqual(
     expect.objectContaining({ label: f.receivable, amountCents: 96000 }),
   )
-  expect(await statement.data('view.settlements')).toHaveLength(1)
+  // 收款记录一段：本张的一笔付款
+  expect(await statement.data('view.receiptSection.groups.0.rows')).toHaveLength(1)
   await snap(mini, 'supplier-statement-settled')
-  await statement.callMethod('onSource', { currentTarget: { dataset: { key: `po:${po.id}` } } })
+  await statement.callMethod('onSource', { detail: `po:${po.id}` })
   const source = await waitPage(mini, 'packages/supplier/pages/po-detail/index')
   await waitData(source, 'loaded', true)
   expect(await source.data('view.info.rows')).toContainEqual(
@@ -261,16 +280,20 @@ test('F03 B12-F 供应商整页采购修改、实时详情与填报关联状态'
     .poll(async () => detail.data('view.lines.0.qty') as Promise<unknown>)
     .toBe(current.lines[0]?.qty)
   const api = await s.as('u4')
+  const input = poInput(current)
   const changed = dataOf<PoDetail>(
     await api.put(`/purchase-orders/${po.id}`, {
-      ...poInput(current),
+      ...input,
+      lines: input.lines.map((line, index) => (index ? line : { ...line, qty: line.qty + 2 })),
       note: '临时补充',
       reason: '联系供应商',
     }),
   )
+  // 采购改单后详情实时刷新；内部备注只给员工看，供应商信息卡不写（06 章 P7）
   await expect
-    .poll(async () => detail.data('view.info.rows') as Promise<unknown>)
-    .toContainEqual({ label: '备注', value: '临时补充' })
+    .poll(async () => detail.data('view.lines.0.qty') as Promise<unknown>)
+    .toBe(changed.lines[0]?.qty)
+  expect(JSON.stringify(await detail.data('view.info.rows'))).not.toContain('临时补充')
   await snap(mini, 'supplier-purchase-detail')
   const list = await enter(mini, '/packages/supplier/pages/invites/index')
   await waitData(list, 'loaded', true)
@@ -289,6 +312,6 @@ test('F03 B12-F 供应商整页采购修改、实时详情与填报关联状态'
   await waitData(supply, 'loaded', true)
   expect(await supply.data('editable')).toBe(false)
   expect(await supply.data('inviteView.info.status')).toBe('submitted')
-  expect(await supply.data('inviteView.poLink')).toBe(`采购单 ${po.no}${copy.separator}已取消`)
+  expect(await supply.data('inviteView.poLink')).toBe(`${po.no}${copy.separator}已取消`)
   await snap(mini, 'supplier-invites-cancelled')
 })

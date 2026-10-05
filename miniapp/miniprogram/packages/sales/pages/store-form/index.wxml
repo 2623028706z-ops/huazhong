@@ -12,14 +12,14 @@
       </view>
       <hz-error wx:if="{{formError}}" message="{{formError}}" />
       <view class="u-sheet-row"><text>{{texts.customer}}</text><text>{{customerName}}</text></view>
-      <hz-field label="{{texts.name}}" value="{{storeForm.name}}" error="{{fields.name}}" data-field="name" bind:change="patchStore" />
-      <hz-field label="{{texts.contact}}" value="{{storeForm.contact}}" error="{{fields.contact}}" data-field="contact" bind:change="patchStore" />
-      <hz-field label="{{texts.phone}}" value="{{storeForm.phone}}" error="{{fields.phone}}" type="number" data-field="phone" bind:change="patchStore" />
-      <hz-field label="{{texts.address}}" value="{{storeForm.address}}" error="{{fields.address}}" data-field="address" bind:change="patchStore" />
+      <hz-field label="{{texts.name}}" value="{{storeForm.name}}" placeholder="{{texts.fill}}" error="{{fields.name}}" data-field="name" bind:change="patchStore" />
+      <hz-field label="{{texts.contact}}" value="{{storeForm.contact}}" placeholder="{{texts.optional}}" error="{{fields.contact}}" data-field="contact" bind:change="patchStore" />
+      <hz-field label="{{texts.phone}}" value="{{storeForm.phone}}" placeholder="{{texts.optional}}" error="{{fields.phone}}" type="number" data-field="phone" bind:change="patchStore" />
+      <hz-field label="{{texts.address}}" value="{{storeForm.address}}" placeholder="{{texts.optional}}" error="{{fields.address}}" data-field="address" bind:change="patchStore" />
       <hz-switch label="{{texts.enabled}}" value="{{storeForm.enabled}}" data-field="enabled" bind:change="patchStore" />
     </view>
     <view class="u-card u-form-card">
-      <hz-field label="{{texts.loginPhone}}" value="{{storeForm.loginPhone}}" type="number" error="{{fields.loginPhone}}" data-field="loginPhone" bind:change="patchStore" />
+      <hz-field label="{{texts.loginPhone}}" value="{{storeForm.loginPhone}}" placeholder="{{texts.optional}}" type="number" error="{{fields.loginPhone}}" data-field="loginPhone" bind:change="patchStore" />
       <view wx:if="{{canUnbind}}" class="u-sheet-form__row">
         <text>{{texts.wechat}}</text>
         <view class="u-sheet-form__value"><text>{{texts.bound}}</text><hz-button kind="text" text="{{texts.unbind}}" bind:press="onUnbind" /></view>

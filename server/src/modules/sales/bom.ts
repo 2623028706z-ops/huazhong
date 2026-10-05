@@ -1,10 +1,8 @@
-// 产品配方明细：产品列表和订货目录共用（05 章第 4 节），按录入顺序
-import type { ProductItem } from '@huazhong/shared'
+// 产品配方明细：订货目录和复制产品共用（05 章第 4 节），按录入顺序
+import type { BomLine } from '@huazhong/shared'
 import { asc, eq, inArray } from 'drizzle-orm'
 import { materials, productBomLines } from '../../../db/schema/index.ts'
 import type { Executor } from './order-rows.ts'
-
-type BomLine = ProductItem['bom'][number]
 
 export async function bomLinesOf(
   executor: Executor,

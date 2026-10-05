@@ -1,5 +1,6 @@
 // 枚举码的中文名和状态标签颜色：只在这里定义（02 章第 2 节、04 章第 2 节）
 import { copy } from './copy.ts'
+import { redesignCopy } from './copy-redesign.ts'
 import type {
   accountTypes,
   afterOrigins,
@@ -71,7 +72,7 @@ export const labels = {
     cancelled: '已取消',
   } satisfies Labels<typeof inviteStatuses>,
   poStatus: {
-    to_receive: '待收货',
+    to_receive: redesignCopy.toReceive,
     received: '已收货',
     rejected: '已拒收',
     cancelled: '已取消',

@@ -32,6 +32,7 @@ import { diffOrder, orderLogView } from './domain/order-diff.ts'
 import { orderableEntries, shippedQtysOf } from './domain/order-rules.ts'
 import {
   catalogEntriesOf,
+  snapshotShippedBom,
   insertChange,
   notifyOrder,
   orderLog,
@@ -349,6 +350,7 @@ export class SalesOrderWrites {
       for (const [lineId, shippedQty] of qtys) {
         await ctx.tx.update(orderLines).set({ shippedQty }).where(eq(orderLines.id, lineId))
       }
+      await snapshotShippedBom(ctx.tx, id, viewer.accountId)
       await ctx.tx
         .update(orders)
         .set({

@@ -37,6 +37,7 @@ describe('采购单', () => {
     )
     expect(todo.rows).toEqual([
       { key: 'shortageMaterials', label: '缺货花材', count: demand.mats.length },
+      { key: 'poDiffs', label: '到货有差异', count: 0 },
     ])
     expect(demand.mats.length).toBeGreaterThan(0)
     expect(todo.count).toBe(todo.rows.reduce((count, row) => count + row.count, 0))

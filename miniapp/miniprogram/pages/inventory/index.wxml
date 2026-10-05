@@ -9,3 +9,4 @@
   <template is="hz-stock-groups" data="{{groups, openable: false}}" />
   <text wx:if="{{done && rows.length > 0}}" class="u-list__end">{{allLoaded}}</text>
 </view>
+<hz-action-bar wx:if="{{canManage || canCreate}}"><hz-button wx:if="{{canManage}}" kind="secondary" text="{{texts.manage}}" bind:press="onManage" /><hz-button wx:if="{{canCreate}}" text="{{texts.create}}" bind:press="onCreate" /></hz-action-bar>

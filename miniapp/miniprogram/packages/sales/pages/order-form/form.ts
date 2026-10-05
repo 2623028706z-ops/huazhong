@@ -10,6 +10,8 @@ import {
   orderCreateSchema,
   orderUpdateSchema,
   shanghaiDateOf,
+  entryCopy,
+  type CatalogCategory,
   type CatalogItem,
   type OrderCreate,
   type OrderDetail,
@@ -17,6 +19,7 @@ import {
 } from '@huazhong/shared'
 import { centsOfText, lineCents, textOfCents } from '../../../../core/money'
 import { checkedOf, type Checked } from '../../../../core/form'
+import type { PickRow } from '../../../../views/pick'
 
 export type FormMode = 'create' | 'edit' | 'confirm'
 
@@ -74,28 +77,44 @@ export function formOf(order: OrderDetail, reason: string): OrderForm {
   }
 }
 
-export function lineOfCatalog(item: CatalogItem): FormLine {
+export function lineOfCatalog(item: CatalogItem, qty = 1): FormLine {
   return {
     productId: item.productId,
     name: item.name,
     code: item.customerCode,
     unit: item.unit,
-    qty: 1,
+    qty,
     priceText: textOfCents(item.listPriceCents),
     discontinued: false,
   }
 }
 
-// 「添加产品」只列这个客户目录里启用、还没加的产品
-export function addableOf(catalog: readonly CatalogItem[], lines: readonly FormLine[]) {
+// 「添加产品」只列这个客户目录里启用、还没加的产品，按订货分类的顺序分组；
+// 小字写客户产品编码 · 订货价（没编码只写订货价），可按名称、编码搜
+export function addableOf(
+  catalog: readonly CatalogItem[],
+  categories: readonly CatalogCategory[],
+  lines: readonly FormLine[],
+): PickRow[] {
   const added = new Set(lines.map((line) => line.productId))
+  const sorted = [...categories].sort((a, b) => a.sort - b.sort)
+  const order = (item: CatalogItem) => sorted.findIndex((c) => c.id === item.categoryId)
   return catalog
-    .filter((item) => item.enabled && item.productEnabled && !added.has(item.productId))
-    .map((item) => ({
-      id: item.productId,
-      name: item.name,
-      sub: `${copy.field.listPrice} ${formatMoney(item.listPriceCents)}`,
-    }))
+    .filter((item) => item.enabled && !added.has(item.productId))
+    .sort((a, b) => order(a) - order(b))
+    .map((item) => {
+      const price = copy.screen.pricePer(formatMoney(item.listPriceCents), item.unit)
+      return {
+        id: item.productId,
+        name: item.name,
+        sub: item.customerCode
+          ? entryCopy.productSub(item.customerCode, price)
+          : entryCopy.productPrice(price),
+        group: item.categoryName,
+        code: item.customerCode,
+        unitCents: item.listPriceCents,
+      }
+    })
 }
 
 function lineCentsOf(line: FormLine): number {

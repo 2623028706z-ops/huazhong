@@ -8,7 +8,7 @@
   flex-direction: column;
   align-items: stretch;
   width: 300px;
-  padding: 22px 18px 16px;
+  padding: var(--hz-space-5) var(--hz-space-4) var(--hz-space-4);
   text-align: center;
   background: var(--hz-paper);
   border-radius: var(--hz-radius-sheet);
@@ -19,7 +19,7 @@
 }
 
 .hz-confirm__body {
-  margin: 6px 0 18px;
+  margin: var(--hz-space-2) 0 var(--hz-space-4);
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);
   white-space: pre-line;
@@ -28,5 +28,5 @@
 .hz-confirm__actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: var(--hz-space-2);
 }

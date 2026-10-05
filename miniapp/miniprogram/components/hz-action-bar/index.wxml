@@ -1,2 +1,2 @@
 <view wx:if="{{!inline}}" class="hz-action-bar__spacer {{tabbar ? 'hz-action-bar__spacer--tabbar' : ''}}"></view>
-<view class="hz-action-bar {{settlement ? 'hz-action-bar--settlement' : ''}} {{tabbar ? 'hz-action-bar--tabbar' : ''}} {{inline ? 'hz-action-bar--inline' : ''}}"><slot /></view>
+<view class="hz-action-bar {{settlement ? 'hz-action-bar--settlement' : ''}} {{tabbar ? 'hz-action-bar--tabbar' : ''}} {{inline ? 'hz-action-bar--inline' : ''}} {{more ? 'hz-action-bar--more' : ''}}"><slot /></view>

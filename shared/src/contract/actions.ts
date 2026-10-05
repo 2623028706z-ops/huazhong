@@ -42,6 +42,8 @@ export const actionCodes = [
   'registerPayment',
   'voidRefund',
   'voidPo',
+  // 采购单到货差异「知道了」（采购）
+  'ackDiff',
   'voidOrder',
   'requestCancel',
   'withdrawCancel',

@@ -10,6 +10,7 @@ import type { Failure } from '../../../../core/request'
 import { newIdempotencyKey, request } from '../../../../core/request'
 import { failureOf, messageOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
+import { subOf, type CardRow } from '../../../../views/card'
 import { listHandlers, listOf, showList } from '../../../../views/list'
 import { pullToRefresh } from '../../../../core/live'
 
@@ -19,17 +20,12 @@ function blank(code = '') {
 function formOf(m: Material) {
   return { code: m.code, name: m.name, unit: m.unit, categoryId: m.categoryId, enabled: m.enabled }
 }
-function rowOf(m: Material) {
+// 花材卡：大字名称，小字编码 · 分类 · 单位
+function rowOf(m: Material): CardRow {
   return {
     id: m.id,
-    fields: [
-      { label: copy.field.code, value: m.code },
-      { label: copy.field.unit, value: m.unit },
-      { label: copy.field.category, value: m.categoryName, wide: true },
-    ],
-    title: m.name,
-    total: m.unit,
-    meta: [m.code, m.categoryName].join(copy.separator),
+    main: m.name,
+    sub: subOf([m.code, m.categoryName, m.unit]),
     tags: m.enabled ? [] : [{ text: copy.tag.disabled, warn: false }],
   }
 }

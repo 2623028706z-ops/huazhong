@@ -102,6 +102,7 @@ export function notifyPo(
     'stock',
     'todo:warehouse',
     'todo:finance',
+    'todo:purchase',
     `payable:po:${row.id}`,
     `ap:${row.supplierId}`,
     `supplier:${row.supplierId}`,

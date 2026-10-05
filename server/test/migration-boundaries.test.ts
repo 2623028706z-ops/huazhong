@@ -166,6 +166,112 @@ describe('K06: actual empty-database migrations and committed enum boundaries', 
     })
   })
 
+  it('0015 splits shared products into per-customer products, remaps order lines and snapshots shipped BOMs', async () => {
+    await withEmptyDatabase(async (pool) => {
+      await runMigrations(createDb(pool), 14)
+      await pool.query(
+        "INSERT INTO accounts (id,created_by,type,name,phone) OVERRIDING SYSTEM VALUE VALUES (1,1,'admin','管理员','13700000001')",
+      )
+      await pool.query(`INSERT INTO material_categories (name,created_by) VALUES ('鲜切花',1)`)
+      await pool.query(`INSERT INTO materials (code,name,unit,category_id,created_by) VALUES
+        ('M-1','玫瑰','枝',1,1),('M-2','尤加利','扎',1,1)`)
+      await pool.query(`INSERT INTO product_categories (name,created_by) VALUES ('花束',1)`)
+      await pool.query(`INSERT INTO products (name,category_id,unit,created_by) VALUES
+        ('玫瑰束',1,'束',1),('旧花束',1,'束',1)`)
+      await pool.query(`INSERT INTO product_bom_lines (product_id,material_id,qty,created_by) VALUES
+        (1,1,10,1),(2,2,4,1)`)
+      await pool.query(`INSERT INTO customers (name,created_by) VALUES ('甲',1),('乙',1),('丙',1)`)
+      await pool.query(`INSERT INTO catalog_categories (customer_id,name,created_by) VALUES
+        (1,'日常',1),(2,'礼赠',1)`)
+      await pool.query(`INSERT INTO catalog_items
+        (customer_id,product_id,category_id,customer_code,price_cents,enabled,created_by) VALUES
+        (1,1,1,'A-1',6800,true,1),(2,1,2,'',7000,false,1)`)
+      await pool.query(
+        `INSERT INTO stores (customer_id,name,created_by) VALUES (1,'甲店',1),(3,'丙店',1)`,
+      )
+      await pool.query(`INSERT INTO orders
+        (no,order_date,ship_date,customer_id,store_id,status,origin,shipped_at,created_by) VALUES
+        ('SO-1','2026-09-01','2026-09-02',1,1,'shipped','sales','2026-09-02T00:00:00Z',1),
+        ('SO-2','2026-09-01','2026-09-02',3,2,'to_ship','sales',null,1)`)
+      await pool.query(`INSERT INTO order_lines
+        (order_id,product_id,name,unit,qty,price_cents,list_price_cents,shipped_qty,sort,created_by) VALUES
+        (1,1,'玫瑰束','束',5,6800,6800,5,0,1),
+        (1,2,'旧花束','束',2,5000,5000,2,1,1),
+        (2,1,'玫瑰束','束',3,6500,6500,null,0,1)`)
+      await runMigrations(createDb(pool))
+
+      const rows =
+        await pool.query(`SELECT c.name AS customer, p.name, p.enabled, p.price_cents AS price,
+          p.customer_code AS code, cc.name AS category,
+          (SELECT string_agg(m.name || '×' || b.qty, ',' ORDER BY m.id) FROM product_bom_lines b
+            JOIN materials m ON m.id = b.material_id WHERE b.product_id = p.id) AS bom
+        FROM products p JOIN customers c ON c.id = p.customer_id
+        JOIN catalog_categories cc ON cc.id = p.category_id ORDER BY c.id, p.name`)
+      expect(rows.rows).toEqual([
+        {
+          customer: '甲',
+          name: '旧花束',
+          enabled: false,
+          price: 5000,
+          code: '',
+          category: '日常',
+          bom: '尤加利×4',
+        },
+        {
+          customer: '甲',
+          name: '玫瑰束',
+          enabled: true,
+          price: 6800,
+          code: 'A-1',
+          category: '日常',
+          bom: '玫瑰×10',
+        },
+        {
+          customer: '乙',
+          name: '玫瑰束',
+          enabled: false,
+          price: 7000,
+          code: '',
+          category: '礼赠',
+          bom: '玫瑰×10',
+        },
+        {
+          customer: '丙',
+          name: '玫瑰束',
+          enabled: false,
+          price: 6500,
+          code: '',
+          category: '未分类',
+          bom: '玫瑰×10',
+        },
+      ])
+      const lines =
+        await pool.query(`SELECT l.name, p.name AS product, p.customer_id = o.customer_id AS own
+        FROM order_lines l JOIN orders o ON o.id = l.order_id JOIN products p ON p.id = l.product_id
+        ORDER BY l.id`)
+      expect(
+        lines.rows.every(
+          (row: { name: string; product: string; own: boolean }) =>
+            row.own && row.name === row.product,
+        ),
+      ).toBe(true)
+      const snapshots = await pool.query(`SELECT l.name, b.material_name, b.unit, b.qty
+        FROM order_line_bom_lines b JOIN order_lines l ON l.id = b.order_line_id ORDER BY l.id`)
+      expect(snapshots.rows).toEqual([
+        { name: '玫瑰束', material_name: '玫瑰', unit: '枝', qty: 10 },
+        { name: '旧花束', material_name: '尤加利', unit: '扎', qty: 4 },
+      ])
+      const gone = await pool.query(
+        `SELECT to_regclass('product_categories') AS a, to_regclass('catalog_items') AS b`,
+      )
+      expect(gone.rows).toEqual([{ a: null, b: null }])
+      await expect(
+        pool.query(`INSERT INTO products (customer_id,name,category_id,unit,price_cents,created_by)
+          VALUES (1,'玫瑰束',1,'束',100,1)`),
+      ).rejects.toMatchObject({ code: '23505', constraint: 'products_customer_name_unique' })
+    })
+  })
+
   it('0009 merges same-name receive/pay methods into one row before the unique name constraint', async () => {
     await withEmptyDatabase(async (pool) => {
       await runMigrations(createDb(pool), 8)

@@ -6,45 +6,29 @@ import {
   formatMoney,
   formatQty,
   formatTime,
-  formatUnitTotals,
   labels,
   type AfterCard,
   type AfterDetail,
 } from '@huazhong/shared'
+import { cardAmountOf, cardDateOf, subOf, type CardRow } from './card'
 import { lineTitleOf, rowsOf } from './order'
 
 // 问题原因下拉（S8、X7）
 export const reasonOptions = afterReasons.map((id) => ({ id, name: labels.afterReason[id] }))
 
-// 金额为 null：门店的待处理写「待确认」，其余写「—」
-function amountTextOf(after: AfterCard, forStore: boolean): string {
-  if (after.amountCents !== null) return ''
-  return forStore && after.status === 'pending' ? copy.after.pendingAmount : copy.screen.noAmount
-}
-
-// 三行卡片：①提交日期 + 状态 ②门店写产品，员工写客户门店 + 总数 ③单号 · 原订单 + 金额
-export function afterRowOf(after: AfterCard, forStore: boolean) {
+// 列表卡（06 章 S7、X5）：员工大字客户 · 门店，小字原订单 · 提交日期，右售后金额；
+// 门店大字问题产品，小字提交日期 · 单号，有结果没看过的标题前小红点
+export function afterRowOf(after: AfterCard, forStore: boolean): CardRow {
+  const date = cardDateOf(after.afterDate)
   return {
     id: after.id,
-    fields: [
-      { label: redesignCopy.no, value: after.no },
-      { label: redesignCopy.submittedDate, value: after.afterDate },
-      { label: redesignCopy.originalOrder, value: after.orderNo },
-      {
-        label: redesignCopy.afterAmount,
-        value: after.amountCents === null ? copy.screen.noAmount : formatMoney(after.amountCents),
-        amount: after.amountCents !== null,
-      },
-    ],
-    date: after.afterDate,
-    status: forStore && after.status === 'voided' ? 'cancelled' : after.status,
-    title: forStore
-      ? `${lineTitleOf(after.lineName, after.lineCount)} ${formatUnitTotals(after.units)}`
+    main: forStore
+      ? lineTitleOf(after.lineName, after.lineCount)
       : copy.org.store(after.customerName, after.storeName),
-    total: formatUnitTotals(after.units),
-    meta: [after.no, after.orderNo].join(copy.separator),
-    amount: after.amountCents,
-    amountText: amountTextOf(after, forStore),
+    sub: forStore ? subOf([date, after.no]) : subOf([after.orderNo, date]),
+    dot: forStore && after.unseen,
+    status: forStore && after.status === 'voided' ? 'cancelled' : after.status,
+    amount: cardAmountOf(after.amountCents),
   }
 }
 

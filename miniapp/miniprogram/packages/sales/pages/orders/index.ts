@@ -1,4 +1,5 @@
-// X2 销售订单（06 章 X2）：搜索（单号、客户、门店）+ 筛选状态、客户、下单日期；三行卡片；底栏「新建订单」（create）
+// X2 销售订单（06 章 X2）：搜索（单号、客户、门店）+ 筛选状态、客户、下单日期；列表卡；底栏「新建订单」（create）。
+// 批量确认按统一勾选写法（views/batch.ts）：「全部」「待确认」页签能勾，勾了底栏换「全选 / 批量确认（n）」
 // 邀请订货在 X8 客户页底栏（2026-10-05 体验改版第 1 批）
 import {
   contract,
@@ -10,18 +11,21 @@ import {
   type OrderCard,
   type OrderStatus,
 } from '@huazhong/shared'
-import { hasAction, canDo } from '../../../../core/actions'
+import { hasAction } from '../../../../core/actions'
 import type { KeyEvent, DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { emptyFilter, type FilterDimension, type FilterValue } from '../../../../core/filter'
 import type { PagedList } from '../../../../core/list'
 import { request } from '../../../../core/request'
+import { allToggled, checkOf, showsChecks, toggled, type Picked } from '../../../../views/batch'
 import { loadCustomers } from '../../../../views/customers'
 import { listHandlers, listOf, listQueryOf, showList } from '../../../../views/list'
 import { orderRowOf } from '../../../../views/order'
 import { pullToRefresh } from '../../../../core/live'
 
 const CUSTOMER = 'customer'
+// 能批量确认的页签
+const CONFIRMABLE = 'pending_confirm'
 const PAGES = '/packages/sales/pages'
 
 Page({
@@ -36,7 +40,8 @@ Page({
     dateLabel: copy.screen.label.orderDate,
     dimensions: [] as FilterDimension[],
     filter: emptyFilter,
-    rows: [] as ReturnType<typeof orderRowOf>[],
+    rows: [] as (ReturnType<typeof orderRowOf> & ReturnType<typeof checkOf>)[],
+    selection: false,
     loaded: false,
     skeleton: false,
     done: false,
@@ -44,7 +49,7 @@ Page({
     emptyObject: copy.screen.empty.orders,
     allLoaded: copy.state.allLoaded,
     canCreate: false,
-    selected: [] as { id: string; version: number; no: string }[],
+    selected: [] as Picked[],
     batchSheet: false,
     batchOrders: [] as { id: string; version: number; no: string; title: string }[],
     batchOverdue: [] as string[],
@@ -61,12 +66,14 @@ Page({
   list: null as PagedList<OrderCard> | null,
   onLoad(query: Record<string, string | undefined>) {
     // 模块首页「查看全部」带状态进来
+    const status = query.status ?? ''
     this.setData({
       filter: {
         ...emptyFilter,
-        status: query.status ?? '',
+        status,
         picks: query.cancelRequested === 'true' ? { status: 'cancelRequested' } : {},
       },
+      selection: showsChecks(status, CONFIRMABLE),
     })
     this.list = listOf(
       this,
@@ -130,41 +137,27 @@ Page({
     })
   },
   rowOf(order: OrderCard) {
-    return {
-      ...orderRowOf(order, false),
-      selectable: order.status === 'pending_confirm',
-      selectDisabled: !canDo(order.actions, 'confirm'),
-      selected: this.data.selected.some((row) => row.id === order.id),
-    }
+    return { ...orderRowOf(order, false), ...checkOf(order, 'confirm', this.data.selected) }
   },
-  renderSelection() {
-    this.setData({
-      rows: this.cards.map((order) => this.rowOf(order)),
-      batchText: redesignCopy.confirmMany(this.data.selected.length),
-    })
+  renderSelection(selected: Picked[]) {
+    this.setData({ selected, batchText: redesignCopy.confirmMany(selected.length) })
+    this.setData({ rows: this.cards.map((order) => this.rowOf(order)) })
   },
   onFilter(event: DetailEvent<FilterValue>) {
-    this.setData({ filter: event.detail, selected: [], batchText: redesignCopy.confirmMany(0) })
+    this.setData({
+      filter: event.detail,
+      selection: showsChecks(event.detail.status, CONFIRMABLE),
+      selected: [],
+      batchText: redesignCopy.confirmMany(0),
+    })
     void this.list?.refresh()
   },
   onToggle(event: KeyEvent) {
     const order = this.cards.find((row) => row.id === event.currentTarget.dataset.key)
-    if (!order || !canDo(order.actions, 'confirm')) return
-    const selected = this.data.selected.some((row) => row.id === order.id)
-      ? this.data.selected.filter((row) => row.id !== order.id)
-      : [...this.data.selected, { id: order.id, version: order.version, no: order.no }]
-    this.setData({ selected })
-    this.renderSelection()
+    if (order) this.renderSelection(toggled(this.data.selected, order, 'confirm'))
   },
   onSelectAll() {
-    const eligible = this.cards.filter((row) => canDo(row.actions, 'confirm'))
-    const all = eligible.every((row) => this.data.selected.some((p) => p.id === row.id))
-    this.setData({
-      selected: all
-        ? []
-        : eligible.map((row) => ({ id: row.id, version: row.version, no: row.no })),
-    })
-    this.renderSelection()
+    this.renderSelection(allToggled(this.data.selected, this.cards, 'confirm'))
   },
   onOpenBatch() {
     if (!this.data.selected.length) return
@@ -201,7 +194,7 @@ Page({
   },
   // 弹层里确认完：清掉勾选、刷新列表，提示成功几单、失败几单
   async onBatchDone(event: DetailEvent<{ message: string }>) {
-    this.setData({ selected: [], batchSheet: false })
+    this.setData({ selected: [], batchSheet: false, batchText: redesignCopy.confirmMany(0) })
     await this.list?.refresh()
     void wx.showToast({ title: event.detail.message, icon: 'none' })
   },

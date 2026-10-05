@@ -1,0 +1,18 @@
+/* 勾选行：圆形勾选框 → 名称 + 小字（单位 · 配方，或不能复制的原因） */
+.hz-copy-row__check {
+  flex: none;
+  border-radius: 50%;
+}
+
+.hz-copy-row__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--hz-space-1);
+  min-width: 0;
+}
+
+/* 重名、停用：不能勾，整行淡一些 */
+.hz-copy-row--off {
+  opacity: 0.55;
+}

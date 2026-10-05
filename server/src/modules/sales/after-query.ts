@@ -70,6 +70,8 @@ function afterRowsQuery(executor: Executor) {
       storeId: afters.storeId,
       storeName: stores.name,
       amountCents: afters.amountCents,
+      storeNoticeAt: afters.storeNoticeAt,
+      storeSeenAt: afters.storeSeenAt,
     })
     .from(afters)
     .innerJoin(orders, eq(orders.id, afters.orderId))
@@ -159,8 +161,9 @@ export async function orderAfterCards(
   return afterCardsOf(executor, rows, viewer)
 }
 
+// 门店售后段底栏「申请售后」→ 选订单页（2026-10-06 第 3 批）
 function listActions(viewer: Viewer) {
-  if (viewer.type === 'store') return []
+  if (viewer.type === 'store') return [actionOf('applyAfter', null, null)]
   return viewer.modules.includes('sales') ? [actionOf('createAfter', null, null)] : []
 }
 

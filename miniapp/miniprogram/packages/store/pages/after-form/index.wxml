@@ -6,19 +6,12 @@
   <hz-error wx:if="{{formError}}" message="{{formError}}" />
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="form" /></block>
   <block wx:else>
-    <template is="info" data="{{rows: info}}" />
-    <view class="u-card u-info">
-      <view class="hz-store-after__row u-info__head"><text>{{texts.lines}}</text><text>{{texts.qty}}</text><text>{{texts.unit}}</text><text>{{texts.reason}}</text></view>
-      <view wx:for="{{tableRows}}" wx:key="orderLineId" class="hz-store-after__row" data-index="{{index}}" bindtap="onEditLine">
-        <view><text class="u-info__title">{{item.name}}</text><text class="u-info__meta">{{texts.code}} {{item.code}}　　{{item.maxText}} {{item.unit}}　　{{item.imageText}}</text></view>
-        <text>{{item.qty}}</text><text>{{item.unit}}</text><text>{{item.reasonText}}</text>
-      </view>
-    </view>
-    <hz-add-button text="{{texts.add}}" bind:press="onOpenPick" />
+    <template is="info" data="{{rows: info, cols: true}}" />
+    <hz-line-item title="{{texts.lines}}" lines="{{lineViews}}" mode="custom" quantity-only add-text="{{texts.add}}" bind:edit="onEditLine" bind:add="onOpenPick" />
   </block>
 </view>
 <hz-action-bar><hz-button text="{{texts.submit}}" loading="{{saving}}" disabled="{{uploading}}" bind:press="onSubmit" /></hz-action-bar>
-<template is="pick-sheet" data="{{show: pickSheet, title: texts.pickTitle, picks, empty: texts.noPick, multi: true, count: pickCount, confirm: pickConfirm}}" />
+<template is="pick-sheet" data="{{show: pickSheet, error: '', title: texts.pickTitle, placeholder: texts.searchProduct, keyword: pickKeyword, picks, empty: texts.noPick, count: pickCount, confirm: pickConfirm, summary: pickSummary}}" />
 <hz-sheet center guard="{{editChanged}}" show="{{editIndex >= 0}}" title="{{editLine.name}}" footer bind:close="onCloseEditor">
   <view class="u-sheet-form">
     <view class="u-sheet-row"><text>{{texts.qty}}</text><view><text>{{editLine.maxText}}</text><hz-stepper value="{{editLine.qty}}" min="{{1}}" max="{{editLine.maxQty}}" data-index="{{editIndex}}" bind:change="onQty" /><text>{{editLine.unit}}</text></view></view>

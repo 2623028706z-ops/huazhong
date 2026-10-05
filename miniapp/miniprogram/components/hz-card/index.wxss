@@ -6,8 +6,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding-bottom: 10px;
+  gap: var(--hz-space-2);
+  padding-bottom: var(--hz-space-2);
   border-bottom: 1px solid var(--hz-line);
 }
 
@@ -29,9 +29,9 @@
 .hz-card__fields {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(140px, auto);
-  gap: 2px 8px;
+  gap: var(--hz-space-1) var(--hz-space-2);
   align-items: baseline;
-  margin-top: 8px;
+  margin-top: var(--hz-space-2);
 }
 
 .hz-card__field {
@@ -77,8 +77,8 @@
 .hz-card__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
+  gap: var(--hz-space-2);
+  margin-top: var(--hz-space-2);
 }
 
 .hz-card__check {
@@ -88,7 +88,7 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  margin: -6px 0 -6px -6px;
+  margin: -6px 0 -6px -6px; /* 负值：32px 勾选点击区外扩，不撑高行 */
 }
 
 .hz-card__value--good {
@@ -105,4 +105,90 @@
 .hz-card__amount.hz-card__value--zero {
   font-weight: 400;
   color: var(--hz-muted);
+}
+
+/* 新样式（对照稿 batch4 .rc）：左大字 + 小字，右状态 / 金额；约 80px 高 */
+.hz-card--rc {
+  display: flex;
+  gap: var(--hz-space-3);
+  align-items: flex-start;
+}
+
+.hz-card__check--rc {
+  margin: -6px; /* 负值：32px 勾选点击区外扩，不撑高行 */
+}
+
+.hz-card__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.hz-card__big {
+  display: flex;
+  gap: var(--hz-space-2);
+  align-items: center;
+  overflow: hidden;
+  font-size: var(--hz-font-md);
+  font-weight: 600;
+  line-height: 24px;
+  color: var(--hz-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hz-card__big--serif {
+  font-family: var(--hz-serif);
+  font-size: var(--hz-font-lg);
+  font-weight: 400;
+}
+
+/* 门店没看过的结果：标题前小红点 */
+.hz-card__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  background: var(--hz-brand);
+  border-radius: var(--hz-radius-pill);
+}
+
+.hz-card__sub {
+  display: block;
+  margin-top: var(--hz-space-1);
+  overflow: hidden;
+  font-size: var(--hz-font-row);
+  color: var(--hz-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hz-card__side {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--hz-space-1);
+  align-items: flex-end;
+  max-width: 50%;
+  text-align: right;
+}
+
+.hz-card__side-text {
+  font-size: var(--hz-font-row);
+  color: var(--hz-ink);
+  white-space: nowrap;
+}
+
+.hz-card__side-text--late {
+  color: var(--hz-alert);
+}
+
+.hz-card__money {
+  font-size: var(--hz-font-lg);
+  color: var(--hz-ink);
+  white-space: nowrap;
+}
+
+.hz-card__note {
+  font-size: var(--hz-font-xs);
+  color: var(--hz-muted);
+  white-space: nowrap;
 }

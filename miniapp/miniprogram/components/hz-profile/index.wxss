@@ -1,7 +1,7 @@
 .hz-profile {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--hz-space-4);
 }
 
 .hz-profile__name {
@@ -32,7 +32,7 @@
 .hz-profile__logout {
   display: flex;
   justify-content: center;
-  margin-top: 24px;
+  margin-top: var(--hz-space-5);
 }
 
 .hz-profile__logout-text {
@@ -44,5 +44,5 @@
 }
 
 .hz-profile__dev {
-  margin-top: 16px;
+  margin-top: var(--hz-space-4);
 }

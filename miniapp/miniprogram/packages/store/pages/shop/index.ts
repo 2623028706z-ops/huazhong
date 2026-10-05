@@ -1,10 +1,12 @@
 // S1 订货（06 章 S1）：顶部客户门店、下单日期、可订款数、搜索（跨分类）→ 左侧分类 + 右侧产品 → 购物车条。
 // 「去下单」打开购物车弹层：改数量、备注、提交都在弹层里，订货一页完成（不再有单独的结算页）。
-// 从订单详情「修改订单」进来是改单模式（?mode=edit）：用单独一份购物车，保存后直接回订单详情，原购物车不变
+// 从订单详情「修改订单」进来是改单模式（?mode=edit）：用单独一份购物车，底栏「核对修改」打开弹层看改了哪些行，
+// 「保存修改」后直接回订单详情，原购物车不变。普通模式搜索框下有「上一单」条，可「再来一单」
 import {
   contract,
   copy,
   fieldsOf,
+  entryCopy,
   financeCopy,
   redesignCopy,
   formatUnitTotals,
@@ -24,18 +26,20 @@ import { unwatch, watch, pullToRefresh } from '../../../../core/live'
 import { lineCents, sumCents } from '../../../../core/money'
 import { confirmAsk, isChanged, syncUnloadAlert } from '../../../../core/guard'
 import { newIdempotencyKey, request, type Result } from '../../../../core/request'
-import { showSuccess } from '../../../../core/toast'
+import { showNotice, showSuccess } from '../../../../core/toast'
 import { tabsOf } from '../../../../core/session'
 import { failureOf } from '../../../../core/session'
 import {
   cartLinesOf,
   cartSourceOf,
   editDraft,
+  editReviewOf,
   endEdit,
   reviewEdit,
   syncWithCatalog,
   type CartSource,
 } from '../../cart-source'
+import { lastOrderViewOf, loadLastOrder, reorderLines } from '../../last-order'
 import { loadShop, type ShopData } from '../../shop-data'
 
 const DETAIL_URL = '/packages/store/pages/order-detail/index'
@@ -110,6 +114,8 @@ Page({
     cartRows: [] as ReturnType<typeof cartLinesOf>,
     tabs: [] as ReturnType<typeof tabsOf>,
     notice: '',
+    lastOrder: null as ReturnType<typeof lastOrderViewOf>,
+    editChanges: [] as ReturnType<typeof editReviewOf>['changes'],
     texts: {
       code: copy.field.customerCode,
       checkout: copy.screen.action.toCheckout,
@@ -117,7 +123,11 @@ Page({
       optional: copy.placeholder.optional,
       orderAmount: copy.screen.label.orderAmount,
       submit: copy.screen.action.submitOrder,
-      confirmEdit: financeCopy.saveChanges,
+      saveEdit: financeCopy.saveChanges,
+      reviewEdit: entryCopy.reviewEdit,
+      changedLines: entryCopy.changedLines,
+      noChange: entryCopy.noChange,
+      reorder: entryCopy.reorder,
       recheck: copy.rework.recheck,
       clear: copy.screen.action.clear,
       picked: copy.screen.title.picked,
@@ -125,6 +135,7 @@ Page({
   },
   source: null as CartSource | null,
   catalog: null as StoreCatalog | null,
+  lastOrder: null as OrderDetail | null,
   lines: [] as CartLine[],
   idempotencyKey: '',
   onLoad(query: Record<string, string | undefined>) {
@@ -145,7 +156,13 @@ Page({
     if (this.data.isEdit) endEdit()
   },
   async load() {
-    const result = await loadShop()
+    const [result, last] = await Promise.all([
+      loadShop(),
+      this.data.isEdit ? null : loadLastOrder(),
+    ])
+    // 上一单读不到不挡订货，只是不显示
+    this.lastOrder = last?.ok ? last.data : null
+    this.setData({ lastOrder: lastOrderViewOf(this.lastOrder) })
     if (!result.ok) {
       this.setData({ failure: failureOf(result.failure, this.data.loaded ? 'refresh' : 'load') })
       return
@@ -173,7 +190,7 @@ Page({
       countText: this.data.isEdit
         ? copy.screen.title.editOrderDated(headerDateOf(true))
         : copy.store.orderableCount(data.home.orderableCount),
-      tabs: tabsOf(data.me),
+      tabs: tabsOf(data.me, data.unseen),
       notice: data.home.lockedReason ?? '',
       categories,
       categoryId: kept ? this.data.categoryId : (categories[0]?.id ?? ''),
@@ -183,22 +200,26 @@ Page({
     this.lines = lines
     const { categoryId, keyword, isEdit } = this.data
     const count = countOf(lines)
+    const review = isEdit ? editReviewOf(lines) : null
     this.setData({
+      editChanges: review?.changes ?? [],
       products: this.catalog ? productRowsOf(this.catalog, categoryId, keyword, lines) : [],
       emptyObject: keyword.trim() ? copy.screen.empty.shopSearch : copy.screen.empty.shop,
       cartCount: count,
       pickedTitle: copy.screen.title.pickedWith(lines.length),
-      cartText: redesignCopy.pickedCount(
-        lines.length,
-        formatUnitTotals(
-          [...new Set(lines.map((line) => line.unit))].map((unit) => ({
-            unit,
-            qty: lines
-              .filter((line) => line.unit === unit)
-              .reduce((sum, line) => sum + line.qty, 0),
-          })),
-        ),
-      ),
+      cartText: review
+        ? entryCopy.editPicked(lines.length, review.diffText)
+        : redesignCopy.pickedCount(
+            lines.length,
+            formatUnitTotals(
+              [...new Set(lines.map((line) => line.unit))].map((unit) => ({
+                unit,
+                qty: lines
+                  .filter((line) => line.unit === unit)
+                  .reduce((sum, line) => sum + line.qty, 0),
+              })),
+            ),
+          ),
       cartTotal: sumCents(lines, (line) => lineCents(line.qty, line.priceCents)),
       cartRows: cartLinesOf(lines, isEdit).map((line) => ({ ...line, removable: true })),
     })
@@ -237,6 +258,22 @@ Page({
       (product) => product.productId === event.currentTarget.dataset.key,
     )
     if (item) this.change(withQty(this.lines, item, 1))
+  },
+  // 再来一单：上一单的产品和数量加进购物车，不直接下单；客户停用（有 notice）时按钮禁用
+  onReorder() {
+    const order = this.lastOrder
+    if (!order || !this.catalog || this.data.notice) return
+    const { lines, skipped } = reorderLines(this.lines, order, this.catalog.items)
+    if (skipped.length === order.lines.length) {
+      showNotice(entryCopy.reorderAllSkipped)
+      return
+    }
+    this.change(lines)
+    showNotice(
+      skipped.length
+        ? entryCopy.reorderSkipped(skipped.join(copy.order.nameSeparator))
+        : entryCopy.reordered,
+    )
   },
   onOpenCart() {
     if (this.lines.length > 0) this.setData({ cartSheet: true })

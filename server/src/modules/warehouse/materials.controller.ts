@@ -62,7 +62,10 @@ export class MaterialsController {
     return this.reads.supplier(input.query)
   }
   @Route(contract.warehouseStock)
-  stock(@Input() input: In<'warehouseStock'>): Promise<OutputOf<typeof contract.warehouseStock>> {
-    return this.reads.stock(input.query)
+  stock(
+    @CurrentViewer() viewer: Viewer,
+    @Input() input: In<'warehouseStock'>,
+  ): Promise<OutputOf<typeof contract.warehouseStock>> {
+    return this.reads.stock(input.query, viewer)
   }
 }

@@ -1,4 +1,11 @@
-import { contract, copy, formatQty, type InventoryItem, type WhDocKind } from '@huazhong/shared'
+import {
+  contract,
+  copy,
+  entryCopy,
+  formatQty,
+  type InventoryItem,
+  type WhDocKind,
+} from '@huazhong/shared'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { checkedOf, unplacedErrorOf } from '../../../../core/form'
@@ -9,7 +16,13 @@ import { newIdempotencyKey, request } from '../../../../core/request'
 import { failureOf, messageOf, type ShownFailure } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
 import { uploadImage, type LocalImage, type UploadedImage } from '../../../../core/upload'
-import { pickOpen, pickPatch, toggled } from '../../../../views/pick'
+import {
+  materialPickOf,
+  pickChosen,
+  pickData,
+  pickHandlers,
+  pickOpen,
+} from '../../../../views/pick'
 import { loadInventory, loadSuppliers } from '../../../../views/purchase-load'
 
 interface Line {
@@ -30,6 +43,12 @@ interface Form {
 }
 const blank: Form = { supplierId: '', outCategoryId: '', reason: '', lines: [], images: [] }
 const placedFields = ['supplierId', 'outCategoryId', 'reason', 'lines.*.qty', 'lines.*.priceCents']
+// 出库分类默认上次用的：按账号记在这台手机上；那个分类已删或停用就不默认
+const CATEGORY_KEY = 'hz-out-category:'
+function storedCategoryOf(accountId: string, options: { id: string }[]): string {
+  const stored: unknown = wx.getStorageSync(`${CATEGORY_KEY}${accountId}`)
+  return typeof stored === 'string' && options.some((item) => item.id === stored) ? stored : ''
+}
 function kindOf(value?: string): WhDocKind {
   return value === 'out' || value === 'loss' ? value : 'in'
 }
@@ -64,12 +83,8 @@ Page({
     categoryOptions: [] as { id: string; name: string }[],
     categoryName: '',
     categoryPick: false,
-    picks: [] as ReturnType<typeof pickOpen>['picks'],
-    pickIds: [] as string[],
-    pickCount: 0,
-    pickConfirm: '',
+    ...pickData(),
     pickSheet: false,
-    editKey: '',
     pickError: '',
     realtime: '',
     submitText: '',
@@ -81,6 +96,7 @@ Page({
       add: copy.screen.action.addMaterial,
       pick: copy.screen.title.pickMaterial,
       noPick: copy.stock.screen.noPickMaterial,
+      searchMaterial: entryCopy.searchMaterial,
       manage: copy.screen.action.manageCategories,
       pickOne: copy.screen.pickOne,
       pickHint: copy.screen.pickHint,
@@ -89,6 +105,8 @@ Page({
   inventory: [] as InventoryItem[],
   materialId: '',
   key: '',
+  accountId: '',
+  lastCategoryId: '',
   onLoad(query: Record<string, string | undefined>) {
     const kind = kindOf(query.kind)
     this.materialId = query.materialId ?? ''
@@ -132,9 +150,11 @@ Page({
     this.setData({ loaded: true, failure: null })
     this.render(form)
   },
+  // 第一次打开没选过的，默认上次用的分类
   validCategoryId() {
     const id = this.data.form.outCategoryId
-    return this.data.categoryOptions.some((option) => option.id === id) ? id : ''
+    if (this.data.categoryOptions.some((option) => option.id === id)) return id
+    return this.data.loaded ? '' : this.lastCategoryId
   },
   async loadOptions() {
     if (this.data.kind === 'in') {
@@ -148,16 +168,23 @@ Page({
       })
     }
     if (this.data.kind === 'out') {
-      const categories = await request(contract.listOutCategories)
+      const [categories, me] = await Promise.all([
+        request(contract.listOutCategories),
+        request(contract.me),
+      ])
       if (!categories.ok) {
         this.setData({ failure: failureOf(categories.failure, 'load') })
         return false
       }
-      this.setData({
-        categoryOptions: categories.data.items
-          .filter((row) => row.enabled)
-          .map((row) => ({ id: row.id, name: row.name })),
-      })
+      const categoryOptions = categories.data.items
+        .filter((row) => row.enabled)
+        .map((row) => ({ id: row.id, name: row.name }))
+      // 拿不到账号就不默认分类，和以前一样手选
+      if (me.ok) {
+        this.accountId = me.data.id
+        this.lastCategoryId = storedCategoryOf(me.data.id, categoryOptions)
+      }
+      this.setData({ categoryOptions })
     }
     return true
   },
@@ -226,38 +253,30 @@ Page({
       {},
     )
   },
+  // 出库、报损的花材写库存，入库只写单位
   onOpenPick() {
     const selected = new Set(this.data.form.lines.map((line) => line.materialId))
+    const withStock = this.data.kind !== 'in'
     this.setData({
-      editKey: '',
       pickSheet: true,
       ...pickOpen(
         this.inventory
-          .filter((row) => !selected.has(row.id) && (this.data.kind !== 'in' || row.enabled))
-          .map((row) => ({
-            id: row.id,
-            name: row.name,
-            sub: copy.stock.available(formatQty(row.stockQty, row.unit)),
-          })),
+          .filter((row) => !selected.has(row.id) && (withStock || row.enabled))
+          .map((row) => materialPickOf(row, withStock)),
       ),
     })
   },
-  onPick(event: KeyEvent) {
-    this.setData(
-      pickPatch(this.data.picks, toggled(this.data.pickIds, event.currentTarget.dataset.key)),
-    )
-  },
-  // 勾选的花材一次加入，数量、单价默认同单项添加
+  ...pickHandlers,
+  // 选好的花材按选的数量一次加入，单价空着；不再打开小窗口
   onPickConfirm() {
     const selected = new Set(this.data.form.lines.map((line) => line.materialId))
-    const added = this.data.pickIds.flatMap((id) => {
+    const added = pickChosen(this.data).flatMap(({ id, qty }) => {
       const item = this.inventory.find((row) => row.id === id)
-      return item && !selected.has(item.id) ? [this.lineOf(item)] : []
+      return item && !selected.has(item.id) ? [{ ...this.lineOf(item), qty }] : []
     })
     this.setData({ pickSheet: false })
-    if (!added.length) return
-    this.render({ ...this.data.form, lines: [...this.data.form.lines, ...added] }, {})
-    this.setData({ editKey: added[added.length - 1]?.materialId ?? '' })
+    if (added.length)
+      this.render({ ...this.data.form, lines: [...this.data.form.lines, ...added] }, {})
   },
   onClosePick() {
     this.setData({ pickSheet: false })
@@ -347,6 +366,8 @@ Page({
         return
       }
       markChanged(this, false)
+      if (this.data.kind === 'out' && this.accountId)
+        wx.setStorageSync(`${CATEGORY_KEY}${this.accountId}`, form.outCategoryId)
       showSuccess(copy.action.saved)
       void wx.redirectTo({ url: `/packages/warehouse/pages/doc-detail/index?id=${result.data.id}` })
     } finally {

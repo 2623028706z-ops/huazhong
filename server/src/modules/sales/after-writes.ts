@@ -103,6 +103,31 @@ async function lockAfter(tx: Tx, viewer: Viewer, id: number) {
   return found(row)
 }
 
+// 售后明细逐行写，带图片的再写图片
+async function insertAfterLines(
+  ctx: WriteContext,
+  afterId: number,
+  lines: readonly NewAfterLine[],
+  accountId: number,
+) {
+  for (const [sort, { imageFileIds, ...line }] of lines.entries()) {
+    const [saved] = await ctx.tx
+      .insert(afterLines)
+      .values({ ...line, afterId, sort, createdBy: accountId })
+      .returning({ id: afterLines.id })
+    if (!saved) throw appError.internal()
+    if (imageFileIds.length === 0) continue
+    await ctx.tx.insert(afterLineImages).values(
+      imageFileIds.map((fileId, index) => ({
+        afterLineId: saved.id,
+        fileId,
+        sort: index,
+        createdBy: accountId,
+      })),
+    )
+  }
+}
+
 @Injectable()
 export class AfterWrites {
   constructor(
@@ -153,26 +178,13 @@ export class AfterWrites {
         amountCents: processed ? sumOf(lines, (line) => line.qty * line.priceCents) : null,
         processedBy: processed ? viewer.accountId : null,
         processedAt: processed ? this.clock.now() : null,
+        // 销售代门店新建的直接是已处理：门店该看结果（2026-10-06 用户定）
+        storeNoticeAt: processed ? this.clock.now() : null,
         createdBy: viewer.accountId,
       })
       .returning({ id: afters.id })
     if (!row) throw appError.internal()
-    for (const [sort, { imageFileIds, ...line }] of lines.entries()) {
-      const [saved] = await ctx.tx
-        .insert(afterLines)
-        .values({ ...line, afterId: row.id, sort, createdBy: viewer.accountId })
-        .returning({ id: afterLines.id })
-      if (!saved) throw appError.internal()
-      if (imageFileIds.length === 0) continue
-      await ctx.tx.insert(afterLineImages).values(
-        imageFileIds.map((fileId, index) => ({
-          afterLineId: saved.id,
-          fileId,
-          sort: index,
-          createdBy: viewer.accountId,
-        })),
-      )
-    }
+    await insertAfterLines(ctx, row.id, lines, viewer.accountId)
     return row.id
   }
 
@@ -306,6 +318,8 @@ export class AfterWrites {
           note: input.note,
           processedBy: viewer.accountId,
           processedAt: this.clock.now(),
+          // 门店该看结果（2026-10-06 第 3 批）：处理、关闭、作废、销售代建都记
+          storeNoticeAt: this.clock.now(),
           version: afterVersionPlusOne,
         })
         .where(eq(afters.id, id))
@@ -337,7 +351,12 @@ export class AfterWrites {
       })
       await ctx.tx
         .update(afters)
-        .set({ status: 'closed', closeReason: input.reason, version: afterVersionPlusOne })
+        .set({
+          status: 'closed',
+          closeReason: input.reason,
+          storeNoticeAt: this.clock.now(),
+          version: afterVersionPlusOne,
+        })
         .where(eq(afters.id, id))
       await ctx.log({ ...afterLog(before, copy.log.action.closeAfter), reason: input.reason })
       const detail = await this.reads.detail(ctx.tx, viewer, id)
@@ -379,6 +398,8 @@ export class AfterWrites {
           voidReason: input.reason,
           voidedBy: viewer.accountId,
           voidedAt: this.clock.now(),
+          // 看过后又被作废也重新提醒门店
+          storeNoticeAt: this.clock.now(),
           version: afterVersionPlusOne,
         })
         .where(eq(afters.id, id))

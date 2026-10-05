@@ -47,6 +47,7 @@ export const listSuppliers = {
   path: '/suppliers',
   grants: ['purchase', 'finance', 'warehouse'],
   query: pageQuerySchema.extend({
+    // 搜供应商名称、联系人（2026-10-06 第 4 批）
     q: z.string().trim().optional(),
     enabled: z.enum(['true', 'false']).optional(),
     hasAccount: z.enum(['true', 'false']).optional(),

@@ -1,6 +1,6 @@
 // H3 发货（06 章 H3）：actions 含 ship 时是表单：状态区 → 客户门店、出货日期、备注 → 明细（订单数量、实发，
 // 默认等于订单数量）→ 合计数量 → 发货备注 → 变更记录。出货日期还没到时按钮禁用、写 disabledReason，实发和备注不能填。
-// 否则只读。确认后回进来的列表
+// 否则只读。发货成功弹「已发货」，留在本页刷新成已发货详情，底栏「返回列表 / 送货单」（2026-10-06 第 3 批）
 import {
   contract,
   copy,
@@ -81,6 +81,8 @@ Page({
     lineViews: [] as ReturnType<typeof lineViewsOf>,
     shipNote: '',
     saving: false,
+    // 刚在本页发完货：底栏多一个「返回列表」
+    justShipped: false,
     texts: {
       contact: redesignCopy.contact,
       address: redesignCopy.address,
@@ -89,6 +91,7 @@ Page({
       optional: copy.placeholder.optional,
       ship: copy.screen.action.ship,
       delivery: redesignCopy.delivery,
+      backToList: copy.flow.ship.backToList,
     },
   },
   id: '',
@@ -180,6 +183,9 @@ Page({
     )
     this.setData({ lines, lineViews: lineViewsOf(lines) })
   },
+  onBackToList() {
+    void wx.navigateBack()
+  },
   onDelivery() {
     void wx.navigateTo({ url: `/packages/shipping/pages/delivery/index?id=${this.id}` })
   },
@@ -217,7 +223,8 @@ Page({
       clearPicking(order.id)
       markChanged(this, false)
       showSuccess(copy.order.shipped)
-      void wx.navigateBack()
+      this.setData({ justShipped: true })
+      this.show(result.data)
       return
     }
     this.showShipFailure(result.failure)

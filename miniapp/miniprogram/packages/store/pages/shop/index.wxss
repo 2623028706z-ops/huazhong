@@ -13,13 +13,13 @@ page {
   display: flex;
   flex-direction: column;
   gap: var(--hz-line-gap);
-  padding: 12px var(--hz-gap-page) 0;
+  padding: var(--hz-space-3) var(--hz-gap-page) 0;
 }
 
 .hz-shop__head {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--hz-space-1);
 }
 
 .hz-shop__body {
@@ -53,9 +53,16 @@ page {
   border-bottom: 0;
 }
 
+/* 价格不缩：放不下步进器时步进器换到下一行靠右，不把「订货价」挤成省略号 */
 .hz-shop__price {
-  flex: 1;
-  min-width: 0;
+  flex: 1 0 auto;
+  max-width: 100%;
+}
+
+.hz-shop__qty {
+  display: flex;
+  align-items: center;
+  gap: var(--hz-space-2);
 }
 
 .hz-shop__info {
@@ -69,15 +76,16 @@ page {
 .hz-shop__title {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--hz-space-1);
 }
 
 /* 价格在左、步进器靠右同一行 */
 .hz-shop__buy {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
-  gap: 6px;
+  gap: var(--hz-space-2);
 }
 
 .hz-shop__product .u-thumbs__item {
@@ -110,4 +118,64 @@ page {
 .hz-shop__clear {
   display: flex;
   justify-content: flex-end;
+}
+
+/* 「上一单」条（06 章 S1）：亮格卡，左图标，中间单号和小字，右侧陶土红描边小按钮「再来一单」 */
+.hz-shop__last {
+  display: flex;
+  gap: var(--hz-row-pad);
+  align-items: center;
+  padding: var(--hz-line-gap) var(--hz-row-pad);
+}
+
+.hz-shop__last-icon {
+  flex: none;
+  font-size: var(--hz-icon);
+  color: var(--hz-muted);
+}
+
+.hz-shop__last-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--hz-space-1);
+  min-width: 0;
+}
+
+.hz-shop__last-title {
+  font-weight: 600;
+}
+
+.hz-shop__reorder {
+  flex: none;
+  padding: var(--hz-space-1) var(--hz-space-3);
+  font-size: var(--hz-font-sm);
+  color: var(--hz-brand);
+  border: 1px solid var(--hz-brand);
+  border-radius: var(--hz-radius-pill);
+}
+
+.hz-shop__reorder--off {
+  color: var(--hz-muted);
+  border-color: var(--hz-hair);
+}
+
+/* 改单核对：改了的行「原数量 → 新数量」 */
+.hz-shop__changes {
+  display: flex;
+  flex-direction: column;
+}
+
+.hz-shop__change-qty {
+  font-weight: 600;
+}
+
+/* 购物车弹层里的订单金额：浅底上用墨色、靠右（底栏的白字配深底） */
+.hz-shop__sheet-total {
+  align-items: flex-end;
+  color: var(--hz-muted);
+}
+
+.hz-shop__sheet-total .u-bar-total__amount {
+  color: var(--hz-ink);
 }

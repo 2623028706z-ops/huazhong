@@ -5,11 +5,12 @@ import {
   contract,
   copy,
   redesignCopy,
+  entryCopy,
   formatMoney,
   type AfterDetail,
   type OrderDetail,
 } from '@huazhong/shared'
-import type { DetailEvent, KeyEvent } from '../../../../core/events'
+import type { DetailEvent } from '../../../../core/events'
 import { centsOfText } from '../../../../core/money'
 import { unplacedErrorOf } from '../../../../core/form'
 import type { FailureView } from '../../../../core/failure-view'
@@ -20,7 +21,7 @@ import { showSuccess } from '../../../../core/toast'
 import { watch } from '../../../../core/live'
 import { previewImage, reasonOptions } from '../../../../views/after'
 import { rowsOf } from '../../../../views/order'
-import { pickOpen, pickPatch, toggled } from '../../../../views/pick'
+import { pickChosen, pickData, pickHandlers, pickOpen } from '../../../../views/pick'
 import {
   checkCreate,
   checkProcess,
@@ -66,10 +67,7 @@ Page({
     note: '',
     reasonOptions,
     pickSheet: false,
-    picks: [] as ReturnType<typeof pickOpen>['picks'],
-    pickIds: [] as string[],
-    pickCount: 0,
-    pickConfirm: '',
+    ...pickData(),
     saving: false,
     texts: {
       lines: copy.screen.section.afterLines,
@@ -82,6 +80,7 @@ Page({
       save: copy.action.saveAfter,
       pickTitle: copy.screen.title.pickProduct,
       noPick: copy.state.empty(copy.screen.empty.addableProducts),
+      searchProduct: entryCopy.searchProduct,
       subtotal: redesignCopy.subtotal,
       confirm: redesignCopy.confirm,
       remove: copy.screen.action.delete,
@@ -257,28 +256,26 @@ Page({
       id: line.id,
       name: line.name,
       sub: copy.screen.maxQty(line.maxQty ?? 0),
+      code: line.customerCode,
+      max: line.maxQty ?? 0,
     }))
     this.setData({ pickSheet: true, ...pickOpen(picks) })
   },
   onClosePick() {
     this.setData({ pickSheet: false })
   },
-  onPick(event: KeyEvent) {
-    this.setData(
-      pickPatch(this.data.picks, toggled(this.data.pickIds, event.currentTarget.dataset.key)),
-    )
-  },
-  // 勾选的产品一次加入（数量默认 1）；只勾一个时直接打开编辑，勾了多个的点行逐个填原因
+  ...pickHandlers,
+  // 选好的产品按选的数量一次加入；售后还要选问题原因，打开加的第一行，其余点行逐个填
   onPickConfirm() {
-    const added = this.data.pickIds.flatMap((id) => {
+    const added = pickChosen(this.data).flatMap(({ id, qty }) => {
       const line = this.order?.lines.find((l) => l.id === id)
-      return line ? [createLineOf(line)] : []
+      return line ? [createLineOf(line, qty)] : []
     })
     this.setData({ pickSheet: false })
     if (!added.length) return
+    const first = this.data.lines.length
     this.setLines([...this.data.lines, ...added])
-    if (added.length === 1)
-      this.onEditLine({ detail: this.data.lines.length - 1 } as DetailEvent<number>)
+    this.onEditLine({ detail: first } as DetailEvent<number>)
   },
   showFields(fields: Record<string, string>) {
     this.setData({

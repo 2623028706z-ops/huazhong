@@ -1,4 +1,4 @@
-import { copy, type OrderDetail, type StatementDetail } from '@huazhong/shared'
+import { copy, redesignCopy, type OrderDetail, type StatementDetail } from '@huazhong/shared'
 import type { CustomElement } from 'miniprogram-automator/out/Element.js'
 import { expect, test } from 'vitest'
 import { dataOf, idBy, TOMORROW } from '../support/sales.ts'
@@ -6,13 +6,41 @@ import { asMini, enter, setupMiniSuite, snap, tapText, waitData, waitPage } from
 
 const suite = setupMiniSuite()
 
-test('X3 确认进入整页，日期备注变化不要求原因，加载明细不弹编辑窗口', async () => {
+test('X3 「确认」弹层只选出货日期，确认后留在详情', async () => {
   const { mini, server } = suite()
   const sales = await asMini(mini, server, 'u2')
   const id = await idBy(server.t, 'orders.no', 'SO-260929-018')
   const detail = await enter(mini, `/packages/sales/pages/order-detail/index?id=${id}`)
   await waitData(detail, 'loaded', true)
   await detail.callMethod('onAction', { currentTarget: { dataset: { code: 'confirm' } } })
+  await waitData(detail, 'confirmSheet', true)
+  const sheet = (await detail.$(
+    'packages\\/sales\\/components\\/hz-order-confirm\\/index',
+  )) as CustomElement
+  await expect.poll(async () => sheet.data('rows') as Promise<unknown>).toHaveLength(1)
+  await sheet.callMethod('onDate', { detail: TOMORROW })
+  await snap(mini, 'redesign-confirm-sheet')
+  await sheet.callMethod('onConfirm')
+  await waitData(detail, 'confirmSheet', false)
+  expect((await mini.currentPage())?.path).toBe('packages/sales/pages/order-detail/index')
+  expect(dataOf<OrderDetail>(await sales.get(`/orders/${id}`))).toMatchObject({
+    status: 'to_ship',
+    shipDate: TOMORROW,
+  })
+  await waitData(detail, 'view.info.status', 'to_ship')
+})
+
+test('X3 「修改后确认」进整页，日期备注变化不要求原因，加载明细不弹编辑窗口', async () => {
+  const { mini, server } = suite()
+  const sales = await asMini(mini, server, 'u2')
+  const id = await idBy(server.t, 'orders.no', 'SO-260929-018')
+  const detail = await enter(mini, `/packages/sales/pages/order-detail/index?id=${id}`)
+  await waitData(detail, 'loaded', true)
+  // 灰字「修改后确认」在底栏，和「确认」同属确认权限
+  expect(await detail.data('buttons')).toContainEqual(
+    expect.objectContaining({ code: 'confirmEdit', text: redesignCopy.confirmWithEdit }),
+  )
+  await detail.callMethod('onAction', { currentTarget: { dataset: { code: 'confirmEdit' } } })
   const form = await waitPage(mini, 'packages/sales/pages/order-form/index')
   await waitData(form, 'loaded', true)
   expect(await form.data('mode')).toBe('confirm')
@@ -96,4 +124,88 @@ test('H4/F15 从真实单据生成完整图片，送货单不授财务权限', a
   await expect.poll(async () => image.data('image') as Promise<unknown>).toMatch(/\S+/)
   expect(await image.data('error')).toBe('')
   await snap(mini, 'redesign-statement-image')
+})
+
+test('H2 批量发货后弹结果层，点已发出的一行进送货单，返回弹层还在', async () => {
+  const { mini, server } = suite()
+  const shipping = await asMini(mini, server, 'u7')
+  type Cards = { items: { id: string }[] }
+  const before = dataOf<Cards>(await shipping.get('/shipping/orders?status=to_ship')).items
+  expect(before.length).toBeGreaterThan(0)
+  const page = await enter(mini, '/packages/shipping/pages/list/index')
+  await waitData(page, 'loaded', true)
+  // 不带状态进来默认待发货
+  expect(await page.data('filter.status')).toBe('to_ship')
+  await page.callMethod('onSelectAll')
+  await waitData(
+    page,
+    'selected',
+    before.map(({ id }) => expect.objectContaining({ id }) as unknown),
+  )
+  await page.callMethod('onConfirmBatch')
+  await waitData(page, 'result', true)
+  const left = new Set(
+    dataOf<Cards>(await shipping.get('/shipping/orders?status=to_ship')).items.map(({ id }) => id),
+  )
+  const shipped = before.filter(({ id }) => !left.has(id))
+  expect(shipped.length).toBeGreaterThan(0)
+  expect(await page.data('resultHead')).toBe(
+    copy.flow.ship.resultHead(shipped.length, before.length - shipped.length),
+  )
+  const rows = (await page.data('resultRows')) as { id: string; failed: boolean }[]
+  expect(rows.filter((row) => !row.failed).map((row) => row.id)).toEqual(
+    expect.arrayContaining(shipped.map(({ id }) => id)),
+  )
+  await snap(mini, 'redesign-batch-ship-result')
+  await page.callMethod('onResultRow', { currentTarget: { dataset: { key: shipped[0]?.id } } })
+  await waitPage(mini, 'packages/shipping/pages/delivery/index')
+  await mini.navigateBack()
+  await waitPage(mini, 'packages/shipping/pages/list/index')
+  expect(await page.data('result')).toBe(true)
+  await page.callMethod('onCloseResult')
+  await waitData(page, 'result', false)
+})
+
+test('S3 门店底栏「订单」角标和段名数字来自没看过的结果（取消申请被拒绝）', async () => {
+  const { mini, server } = suite()
+  const sales = await server.as('u2')
+  const order = dataOf<OrderDetail>(
+    await sales.get(`/orders/${await idBy(server.t, 'orders.no', 'SO-260929-018')}`),
+  )
+  dataOf(
+    await sales.post('/orders/batch-confirm', {
+      orders: [{ id: order.id, version: order.version }],
+      shipDate: TOMORROW,
+    }),
+  )
+  // 门店申请取消、销售拒绝：取消申请有了结果，门店还没看过（03 章第 8.5 节）
+  const storeApi = await server.as('s1')
+  const toShip = dataOf<OrderDetail>(await sales.get(`/orders/${order.id}`))
+  const requested = dataOf<OrderDetail>(
+    await storeApi.post(`/store/orders/${order.id}/cancel-request`, {
+      version: toShip.version,
+      reason: '临时不要了',
+    }),
+  )
+  dataOf(
+    await sales.post(`/orders/${order.id}/cancel-request/reject`, {
+      version: requested.version,
+      reason: '花材已备好',
+    }),
+  )
+  const store = await asMini(mini, server, 's1')
+  const unseen = dataOf<{ total: number; orders: number; afters: number }>(
+    await store.get('/store/unseen'),
+  )
+  expect(unseen.orders).toBeGreaterThan(0)
+  const page = await enter(mini, '/packages/store/pages/orders/index')
+  await waitData(page, 'loaded', true)
+  await expect
+    .poll(async () => page.data('tabs') as Promise<unknown>)
+    .toContainEqual(expect.objectContaining({ key: 'orders', badge: unseen.total }))
+  expect(await page.data('segmentCounts')).toEqual({
+    orders: unseen.orders,
+    afters: unseen.afters,
+  })
+  await snap(mini, 'redesign-store-tab-badge')
 })

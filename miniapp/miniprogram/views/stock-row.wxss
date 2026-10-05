@@ -24,7 +24,7 @@
   display: flex;
   gap: var(--hz-line-gap);
   align-items: baseline;
-  padding: 0 4px;
+  padding: 0 var(--hz-space-1);
 }
 
 .hz-stock-group__count {
@@ -122,7 +122,7 @@
   display: flex;
   flex: 1;
   flex-wrap: wrap;
-  gap: 0 12px;
+  gap: 0 var(--hz-space-3);
   min-width: 0;
 }
 

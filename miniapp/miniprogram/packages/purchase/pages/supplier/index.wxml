@@ -2,14 +2,14 @@
 <hz-state wx:if="{{failure.kind==='page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
 <view wx:else class="u-list"><hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" /><hz-skeleton wx:if="{{!loaded && !failure}}" type="form" /><block wx:if="{{loaded}}">  <view class="u-card u-form-card">
     <hz-error wx:if="{{error}}" message="{{error}}" />
-    <hz-field label="{{texts.name}}" value="{{form.name}}" error="{{fields.name}}" data-field="name" bind:change="onText" />
-    <hz-field label="{{texts.contact}}" value="{{form.contact}}" error="{{fields.contact}}" data-field="contact" bind:change="onText" />
-    <hz-field label="{{texts.phone}}" value="{{form.phone}}" error="{{fields.phone}}" type="number" data-field="phone" bind:change="onText" />
-    <hz-field label="{{texts.address}}" value="{{form.address}}" error="{{fields.address}}" data-field="address" bind:change="onText" />
+    <hz-field label="{{texts.name}}" placeholder="{{texts.fill}}" value="{{form.name}}" error="{{fields.name}}" data-field="name" bind:change="onText" />
+    <hz-field label="{{texts.contact}}" placeholder="{{texts.optional}}" value="{{form.contact}}" error="{{fields.contact}}" data-field="contact" bind:change="onText" />
+    <hz-field label="{{texts.phone}}" placeholder="{{texts.optional}}" value="{{form.phone}}" error="{{fields.phone}}" type="number" data-field="phone" bind:change="onText" />
+    <hz-field label="{{texts.address}}" placeholder="{{texts.optional}}" value="{{form.address}}" error="{{fields.address}}" data-field="address" bind:change="onText" />
     <hz-switch label="{{texts.enabled}}" value="{{form.enabled}}" bind:change="onEnabled" />
   </view><view class="u-card u-form-card">
     <hz-switch label="{{texts.supplierAccount}}" value="{{form.account.enabled}}" bind:change="onAccount" />
-    <hz-field wx:if="{{form.account.enabled}}" label="{{texts.supplierLoginPhone}}" value="{{form.account.loginPhone}}" error="{{fields['account.loginPhone']}}" bind:change="onLoginPhone" />
+    <hz-field wx:if="{{form.account.enabled}}" label="{{texts.supplierLoginPhone}}" placeholder="{{texts.fill}}" value="{{form.account.loginPhone}}" error="{{fields['account.loginPhone']}}" bind:change="onLoginPhone" />
   </view>
 <view wx:if="{{supplierId}}" class="u-card u-rows"><view class="u-rows__item"><view class="u-rows__head" bindtap="onOrders"><text class="u-rows__title">{{texts.orders}}</text><text class="hz-icon hz-icon--chevron-right u-info__meta"></text></view></view><view class="u-rows__item"><view class="u-rows__head" bindtap="onInvites"><text class="u-rows__title">{{texts.invites}}</text><text class="hz-icon hz-icon--chevron-right u-info__meta"></text></view></view></view></block></view>
 <hz-action-bar><hz-button text="{{texts.save}}" loading="{{saving}}" disabled="{{!loaded}}" bind:press="onSave" /></hz-action-bar>

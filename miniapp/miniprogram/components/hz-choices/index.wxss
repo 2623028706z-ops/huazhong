@@ -2,7 +2,7 @@
 .hz-choices {
   display: flex;
   flex-wrap: wrap;
-  column-gap: 8px;
+  column-gap: var(--hz-space-2);
 }
 
 .hz-choices__tap {
@@ -13,7 +13,7 @@
 
 .hz-choices__item {
   height: 32px;
-  padding: 0 14px;
+  padding: 0 var(--hz-space-3);
   font-size: var(--hz-font);
   line-height: 30px;
   color: var(--hz-muted);

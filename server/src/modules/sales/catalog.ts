@@ -1,349 +1,287 @@
-// 订货目录（05 章第 4 节）：每个客户一份价目和一套订货分类。改了目录价，同一事务把这个客户待确认订单里
-// 这种产品的单价、目录价快照改成新价（订单 version +1），只记在「修改订货目录」日志里，不写变更记录（阶段 3 确认）。
-// 目录弹层一次保存一个目录项，可以一起换产品本身的配方（所有客户共用，2026-10-03 确认）
+// 订货目录（05 章第 4 节）：产品归客户（2026-10-05 确认），名称、单位、产品图、配方、订货价、订货分类、
+// 客户产品编码、可订一起在这个客户的目录里新建、修改，改了只影响这个客户。
+// 改了订货价，同一事务把这个客户待确认订单里这种产品的单价、目录价快照改成新价（订单 version +1），
+// 只记在日志里，不写变更记录（阶段 3 确认）
 import {
   appError,
   contract,
   copy,
   formatMoney,
+  formatQty,
   type Catalog,
-  type CatalogCategory,
   type CatalogItem,
-  type CatalogItemSave,
+  type CatalogItemCreate,
+  type CatalogItemUpdate,
 } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
-import { enabledAction } from '../../common/domain/actions.ts'
-import { snapshotToken } from '../../common/domain/token.ts'
-import { lockCustomer } from '../../common/org.ts'
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import type { Db } from '../../../db/client.ts'
 import {
-  catalogCategories,
-  catalogItems,
-  customers,
+  materials,
   orderLines,
   orders,
+  productBomLines,
   products,
 } from '../../../db/schema/index.ts'
 import { DB } from '../../common/db.ts'
+import { lockCustomer } from '../../common/org.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import { found } from '../../common/scope.ts'
 import { guardUnique } from '../../common/unique.ts'
 import { WriteService, type WriteContext } from '../../common/write.service.ts'
-import { bomLinesOf } from './bom.ts'
-import type { Executor } from './order-rows.ts'
-import { ProductService } from './products.ts'
-import { insertCatalogCopy } from './catalog-copy.ts'
+import { FilesService } from '../files/files.service.ts'
+import { CatalogReader } from './catalog-read.ts'
 
-const CODE_FIELDS = {
-  catalog_items_customer_code_unique: { customerCode: copy.catalog.customerCodeTaken },
+export const CATALOG_UNIQUE_FIELDS = {
+  products_customer_name_unique: { name: copy.catalog.productNameTaken },
+  products_customer_code_unique: { customerCode: copy.catalog.customerCodeTaken },
 }
 
-export async function catalogCategoriesOf(
-  executor: Executor,
-  customerId: number,
-): Promise<CatalogCategory[]> {
-  const itemCount = executor
-    .select({ total: sql<number>`count(*)::int` })
-    .from(catalogItems)
-    .where(eq(catalogItems.categoryId, catalogCategories.id))
-  const rows = await executor
-    .select({
-      id: catalogCategories.id,
-      name: catalogCategories.name,
-      sort: catalogCategories.sort,
-      itemCount: sql<number>`(${itemCount})`,
-    })
-    .from(catalogCategories)
-    .where(eq(catalogCategories.customerId, customerId))
-    .orderBy(asc(catalogCategories.sort), asc(catalogCategories.id))
-  return rows.map((row) => ({ ...row, id: String(row.id) }))
-}
+type ItemInput = CatalogItemCreate & { version?: number }
 
-async function itemsOf(executor: Executor, customerId: number): Promise<CatalogItem[]> {
-  const rows = await executor
-    .select({
-      productId: catalogItems.productId,
-      name: products.name,
-      unit: products.unit,
-      categoryId: catalogItems.categoryId,
-      categoryName: catalogCategories.name,
-      customerCode: catalogItems.customerCode,
-      productEnabled: products.enabled,
-      enabled: catalogItems.enabled,
-      listPriceCents: catalogItems.priceCents,
-      version: catalogItems.version,
-      productVersion: products.version,
-    })
-    .from(catalogItems)
-    .innerJoin(products, eq(products.id, catalogItems.productId))
-    .innerJoin(catalogCategories, eq(catalogCategories.id, catalogItems.categoryId))
-    .where(eq(catalogItems.customerId, customerId))
-    .orderBy(asc(catalogCategories.sort), asc(catalogCategories.id), asc(products.id))
-  const bom = await bomLinesOf(
-    executor,
-    rows.map((row) => row.productId),
-  )
-  return rows.map((row) => ({
-    ...row,
-    productId: String(row.productId),
-    categoryId: String(row.categoryId),
-    bom: bom.get(row.productId) ?? [],
-  }))
-}
-
-export async function catalogOf(executor: Executor, customerId: number): Promise<Catalog> {
-  const [customer] = await executor
-    .select({ name: customers.name })
-    .from(customers)
-    .where(eq(customers.id, customerId))
-  const categories = await catalogCategoriesOf(executor, customerId)
-  const items = await itemsOf(executor, customerId)
-  return {
-    customerId: String(customerId),
-    customerName: found(customer).name,
-    categories,
-    items,
-    actions: items.length === 0 ? [enabledAction('copyCatalog', false)] : [],
-  }
-}
-
-// 日志里一个目录项的样子
+// 日志里一个产品的样子
 function itemView(item: {
+  name: string
+  unit: string
   categoryName: string
   customerCode: string
   priceCents: number
   enabled: boolean
+  bom: readonly { materialName: string; unit: string; qty: number }[]
 }): Record<string, string> {
   return {
+    [copy.field.objectName]: item.name,
+    [copy.field.unit]: item.unit,
     [copy.field.catalogCategory]: item.categoryName,
     [copy.field.customerCode]: item.customerCode,
     [copy.field.listPrice]: formatMoney(item.priceCents),
+    [copy.field.bom]: item.bom
+      .map((line) => `${line.materialName} ${formatQty(line.qty, line.unit)}`)
+      .join(copy.order.nameSeparator),
     [copy.field.status]: item.enabled ? copy.statusValue.orderable : copy.statusValue.discontinued,
   }
 }
 
-interface ExistingItem {
-  id: number
-  productId: number
-  categoryId: number
-  customerCode: string
-  priceCents: number
-  enabled: boolean
-  version: number
-}
+const bomKey = (lines: readonly { materialId: string; qty: number }[]) =>
+  JSON.stringify(lines.map((line) => [line.materialId, line.qty]))
 
-function sameItem(row: ExistingItem, input: CatalogItemSave): boolean {
+function sameItem(item: CatalogItem, input: ItemInput): boolean {
   return (
-    row.categoryId === Number(input.categoryId) &&
-    row.customerCode === input.customerCode &&
-    row.priceCents === input.priceCents &&
-    row.enabled === input.enabled
+    item.name === input.name &&
+    item.unit === input.unit &&
+    item.imageFileId === input.imageFileId &&
+    item.categoryId === input.categoryId &&
+    item.customerCode === input.customerCode &&
+    item.listPriceCents === input.priceCents &&
+    item.enabled === input.enabled &&
+    bomKey(item.bom) === bomKey(input.bom)
   )
 }
+
+// 要改的产品须在这个客户的最新目录里、版本没变；新建时为 null
+function beforeOf(latest: Catalog, productId: number | null, version?: number): CatalogItem | null {
+  if (productId === null) return null
+  const before = latest.items.find((item) => item.productId === String(productId))
+  if (!before) throw appError.notFound()
+  if (before.version !== version) throw appError.stale(copy.catalog.catalogStale, latest)
+  return before
+}
+
+// 分类须是这个客户的；名称、编码同客户不重复；改的时候须有变化
+function checkInput(latest: Catalog, before: CatalogItem | null, input: ItemInput): void {
+  if (!latest.categories.some((c) => c.id === input.categoryId))
+    throw appError.validation({ categoryId: copy.catalog.catalogCategoryRequired })
+  const others = latest.items.filter((item) => item.productId !== before?.productId)
+  if (others.some((item) => item.name === input.name))
+    throw appError.validation({ name: copy.catalog.productNameTaken })
+  const code = input.customerCode
+  if (code !== '' && others.some((item) => item.customerCode === code))
+    throw appError.validation({ customerCode: copy.catalog.customerCodeTaken })
+  if (before && sameItem(before, input)) throw appError.businessRule(copy.error.noChange)
+}
+
+type Synced = { id: number; no: string; storeId: number; version: number }[]
 
 @Injectable()
 export class CatalogService {
   constructor(
     @Inject(DB) private readonly db: Db,
     private readonly writes: WriteService,
-    private readonly products: ProductService,
+    private readonly reader: CatalogReader,
+    private readonly files: FilesService,
   ) {}
 
   get(customerId: number): Promise<Catalog> {
-    return catalogOf(this.db, customerId)
-  }
-  private async copySnapshot(executor: Executor, customerId: number, sourceId: number) {
-    if (customerId === sourceId) throw appError.businessRule(copy.rework.catalogCopySame)
-    const source = await catalogOf(executor, sourceId)
-    const target = await catalogOf(executor, customerId)
-    if (target.items.length > 0) throw appError.businessRule(copy.rework.catalogCopyNotEmpty)
-    const items = source.items.filter((item) => item.enabled && item.productEnabled)
-    const preview = {
-      copyCount: items.length,
-      skipCount: source.items.length - items.length,
-      previewToken: snapshotToken({ source, target }),
-    }
-    return { source, target, items, preview }
-  }
-  preview(customerId: number, sourceId: number) {
-    return this.db.transaction(
-      async (tx) => (await this.copySnapshot(tx, customerId, sourceId)).preview,
-      { isolationLevel: 'repeatable read', accessMode: 'read only' },
-    )
-  }
-  copy(
-    viewer: Viewer,
-    customerId: number,
-    input: { fromCustomerId: string; previewToken: string },
-    key: string,
-  ) {
-    return this.writes.run(
-      viewer,
-      async (ctx) => {
-        const sourceId = Number(input.fromCustomerId)
-        for (const id of [...new Set([customerId, sourceId])].sort((a, b) => a - b))
-          await lockCustomer(ctx.tx, id)
-        const snapshot = await this.copySnapshot(ctx.tx, customerId, sourceId)
-        if (snapshot.preview.previewToken !== input.previewToken)
-          throw appError.stale(copy.rework.catalogCopyStale, snapshot.preview)
-        if (!snapshot.items.length) throw appError.businessRule(copy.rework.catalogCopyEmpty)
-        await insertCatalogCopy(ctx, { ...snapshot, customerId, accountId: viewer.accountId })
-        await ctx.log({
-          module: 'sales',
-          kind: copy.log.kind.catalog,
-          action: copy.log.action.copyCatalog,
-          targetType: 'customers',
-          targetId: customerId,
-          targetLabel: snapshot.target.customerName,
-          after: { 来源: snapshot.source.customerName, 产品数: String(snapshot.items.length) },
-        })
-        ctx.notify([{ topic: `catalog:${customerId}`, version: null }])
-        return catalogOf(ctx.tx, customerId)
-      },
-      { endpoint: contract.copyCatalog, key },
-    )
+    return this.reader.of(this.db, customerId)
   }
 
-  // 新加或修改一个目录项；停用的产品不能新加进目录（已在目录里的可以改成停用）
-  saveItem(
+  create(
     viewer: Viewer,
     customerId: number,
-    productId: number,
-    input: CatalogItemSave,
+    input: CatalogItemCreate,
+    key: string,
   ): Promise<Catalog> {
     return guardUnique(
-      () => this.writes.run(viewer, (ctx) => this.saveItemIn(ctx, customerId, productId, input)),
-      CODE_FIELDS,
+      () =>
+        this.writes.run(
+          viewer,
+          (ctx) => this.save(ctx, viewer, { customerId, productId: null }, input),
+          {
+            endpoint: contract.createCatalogItem,
+            key,
+          },
+        ),
+      CATALOG_UNIQUE_FIELDS,
     )
   }
 
-  private async saveItemIn(
-    ctx: WriteContext,
+  update(
+    viewer: Viewer,
     customerId: number,
     productId: number,
-    input: CatalogItemSave,
+    input: CatalogItemUpdate,
   ): Promise<Catalog> {
-    await lockCustomer(ctx.tx, customerId)
-    const latest = await catalogOf(ctx.tx, customerId)
-    const stale = () => Promise.reject(appError.stale(copy.catalog.catalogStale, latest))
-    const row = await this.lockItem(ctx, customerId, productId)
-    if (row?.version !== input.version) return stale()
-    const category = latest.categories.find((c) => c.id === input.categoryId)
-    if (!category) throw appError.validation({ categoryId: copy.catalog.catalogCategoryRequired })
-    const name = await this.productName(ctx, productId, row === undefined)
-    const bomChanged = input.product
-      ? await this.products.replaceBomIn(ctx, productId, input.product, stale)
-      : false
-    const itemChanged = row === undefined || !sameItem(row, input)
-    if (!itemChanged && !bomChanged) throw appError.businessRule(copy.error.noChange)
-    if (itemChanged) {
-      await this.writeItem(ctx, { customerId, productId, name, category, input, row, latest })
-    }
-    ctx.notify([{ topic: `catalog:${customerId}`, version: null }])
-    return catalogOf(ctx.tx, customerId)
+    return guardUnique(
+      () =>
+        this.writes.run(viewer, (ctx) => this.save(ctx, viewer, { customerId, productId }, input)),
+      CATALOG_UNIQUE_FIELDS,
+    )
   }
 
-  // 行锁这个客户的目录（和门店下单、改单的共享锁互斥）；返回这一项（新加的为 undefined）
-  private async lockItem(ctx: WriteContext, customerId: number, productId: number) {
-    const rows: ExistingItem[] = await ctx.tx
-      .select({
-        id: catalogItems.id,
-        productId: catalogItems.productId,
-        categoryId: catalogItems.categoryId,
-        customerCode: catalogItems.customerCode,
-        priceCents: catalogItems.priceCents,
-        enabled: catalogItems.enabled,
-        version: catalogItems.version,
-      })
-      .from(catalogItems)
-      .where(eq(catalogItems.customerId, customerId))
-      .orderBy(asc(catalogItems.id))
-      .for('update')
-    return rows.find((r) => r.productId === productId)
-  }
-
-  // 产品须存在；新加进目录的还须启用
-  private async productName(ctx: WriteContext, productId: number, adding: boolean) {
-    const [row] = await ctx.tx
-      .select({ name: products.name, enabled: products.enabled })
-      .from(products)
-      .where(eq(products.id, productId))
-    const product = found(row)
-    if (adding && !product.enabled) {
-      throw appError.businessRule(copy.catalog.productDisabledForCatalog(product.name))
-    }
-    return product.name
-  }
-
-  private async writeItem(
+  // 先锁客户、再锁这个客户的全部产品（和门店下单、改单的共享锁互斥），再按最新目录核对
+  private async save(
     ctx: WriteContext,
-    w: {
-      customerId: number
-      productId: number
-      name: string
-      category: CatalogCategory
-      input: CatalogItemSave
-      row: ExistingItem | undefined
-      latest: Catalog
-    },
-  ): Promise<void> {
-    const { customerId, productId, input, row } = w
-    const values = await this.upsertItem(ctx, w)
+    viewer: Viewer,
+    target: { customerId: number; productId: number | null },
+    input: ItemInput,
+  ): Promise<Catalog> {
+    const { customerId } = target
+    await lockCustomer(ctx.tx, customerId)
+    await ctx.tx
+      .select({ id: products.id })
+      .from(products)
+      .where(eq(products.customerId, customerId))
+      .orderBy(asc(products.id))
+      .for('update')
+    const latest = await this.reader.of(ctx.tx, customerId)
+    const before = beforeOf(latest, target.productId, input.version)
+    checkInput(latest, before, input)
+    await this.assertRefs(ctx, viewer, input, before)
+    const id = await this.writeRow(ctx, viewer, input, { customerId, before })
+    const bomChanged = !before || bomKey(before.bom) !== bomKey(input.bom)
+    if (bomChanged) await this.replaceBom(ctx, viewer, id, input)
     const synced =
-      row && row.priceCents !== input.priceCents
-        ? await this.syncPending(ctx, customerId, productId, input.priceCents)
+      before && before.listPriceCents !== input.priceCents
+        ? await this.syncPending(ctx, customerId, id, input.priceCents)
         : []
+    const next = await this.reader.of(ctx.tx, customerId)
+    const after = found(next.items.find((item) => item.productId === String(id)))
+    await this.announce(ctx, { customerId, latest, before, after }, { synced, bomChanged })
+    return next
+  }
+
+  // 记日志、推送：目录；改了配方推采购需求；同步了待确认订单推这些订单
+  private async announce(
+    ctx: WriteContext,
+    items: { customerId: number; latest: Catalog; before: CatalogItem | null; after: CatalogItem },
+    effects: { synced: Synced; bomChanged: boolean },
+  ): Promise<void> {
+    const { customerId, before, after } = items
+    const { synced, bomChanged } = effects
+    const view = (item: CatalogItem) => itemView({ ...item, priceCents: item.listPriceCents })
     const nos = synced.map((order) => order.no).join(copy.order.nameSeparator)
-    const beforeName = w.latest.categories.find((c) => c.id === String(row?.categoryId))?.name
     await ctx.log({
       module: 'sales',
       kind: copy.log.kind.catalog,
-      action: copy.log.action.updateCatalog,
-      targetType: 'customers',
-      targetId: customerId,
-      targetLabel: `${w.latest.customerName}${copy.separator}${w.name}`,
+      action: before ? copy.log.action.updateProduct : copy.log.action.createProduct,
+      targetType: 'products',
+      targetId: Number(after.productId),
+      targetLabel: `${items.latest.customerName}${copy.separator}${after.name}`,
       reason: synced.length === 0 ? '' : copy.order.syncedByCatalog(nos),
-      before: row ? itemView({ ...row, categoryName: beforeName ?? '' }) : {},
-      after: itemView({ ...values, categoryName: w.category.name }),
+      before: before ? view(before) : {},
+      after: view(after),
     })
-    if (synced.length === 0) return
-    ctx.notify(
-      [
-        ...synced.map((order) => ({ topic: `order:${order.id}` as const, version: order.version })),
-        { topic: 'orders' as const, version: null },
-      ],
-      { storeIds: synced.map((order) => String(order.storeId)) },
-    )
+    ctx.notify([
+      { topic: `catalog:${customerId}`, version: null },
+      ...(bomChanged ? [{ topic: 'demand' as const, version: null }] : []),
+    ])
+    if (synced.length > 0)
+      ctx.notify(
+        [
+          ...synced.map((order) => ({
+            topic: `order:${order.id}` as const,
+            version: order.version,
+          })),
+          { topic: 'orders' as const, version: null },
+        ],
+        { storeIds: synced.map((order) => String(order.storeId)) },
+      )
   }
 
-  // 已有的改，新的加进目录；返回写进去的值（日志用）
-  private async upsertItem(
+  // 配方花材都存在，不在原配方里的还须启用；换了产品图须已上传通过
+  private async assertRefs(
     ctx: WriteContext,
-    w: {
-      customerId: number
-      productId: number
-      input: CatalogItemSave
-      row: ExistingItem | undefined
-    },
-  ) {
-    const { customerId, productId, input, row } = w
+    viewer: Viewer,
+    input: ItemInput,
+    before: CatalogItem | null,
+  ): Promise<void> {
+    const ids = input.bom.map((line) => Number(line.materialId))
+    const rows = await ctx.tx
+      .select({ id: materials.id, enabled: materials.enabled })
+      .from(materials)
+      .where(inArray(materials.id, ids))
+    const kept = new Set(before?.bom.map((line) => Number(line.materialId)) ?? [])
+    const usable = ids.every((id) => {
+      const row = rows.find((r) => r.id === id)
+      return row !== undefined && (row.enabled || kept.has(id))
+    })
+    if (!usable) throw appError.validation({ bom: copy.catalog.bomMaterialUnavailable })
+    const imageId = input.imageFileId
+    if (imageId !== null && imageId !== before?.imageFileId)
+      await this.files.assertUsable(ctx.tx, viewer, 'product_image', [Number(imageId)])
+  }
+
+  private async writeRow(
+    ctx: WriteContext,
+    viewer: Viewer,
+    input: ItemInput,
+    target: { customerId: number; before: CatalogItem | null },
+  ): Promise<number> {
+    const { customerId, before } = target
     const values = {
+      name: input.name,
+      unit: input.unit,
+      imageFileId: input.imageFileId === null ? null : Number(input.imageFileId),
       categoryId: Number(input.categoryId),
       customerCode: input.customerCode,
       priceCents: input.priceCents,
       enabled: input.enabled,
     }
-    if (row) {
+    if (before) {
+      const id = Number(before.productId)
       await ctx.tx
-        .update(catalogItems)
-        .set({ ...values, version: sql`${catalogItems.version} + 1` })
-        .where(eq(catalogItems.id, row.id))
-    } else {
-      const createdBy = ctx.viewer?.accountId ?? 0
-      await ctx.tx.insert(catalogItems).values({ ...values, customerId, productId, createdBy })
+        .update(products)
+        .set({ ...values, version: sql`${products.version} + 1` })
+        .where(eq(products.id, id))
+      return id
     }
-    return values
+    const [row] = await ctx.tx
+      .insert(products)
+      .values({ ...values, customerId, createdBy: viewer.accountId })
+      .returning({ id: products.id })
+    return found(row).id
+  }
+
+  private async replaceBom(ctx: WriteContext, viewer: Viewer, productId: number, input: ItemInput) {
+    await ctx.tx.delete(productBomLines).where(eq(productBomLines.productId, productId))
+    await ctx.tx.insert(productBomLines).values(
+      input.bom.map((line) => ({
+        productId,
+        materialId: Number(line.materialId),
+        qty: line.qty,
+        createdBy: viewer.accountId,
+      })),
+    )
   }
 
   // 按 id 升序行锁这个客户含这种产品的待确认订单，单价和目录价快照改成新价
@@ -352,7 +290,7 @@ export class CatalogService {
     customerId: number,
     productId: number,
     priceCents: number,
-  ) {
+  ): Promise<Synced> {
     const pending = await ctx.tx
       .selectDistinct({ id: orders.id })
       .from(orders)

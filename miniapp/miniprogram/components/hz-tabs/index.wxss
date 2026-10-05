@@ -20,19 +20,19 @@
 }
 
 .hz-tabs--big {
-  gap: 26px;
-  padding: 2px 4px 0;
+  gap: var(--hz-space-5);
+  padding: var(--hz-space-1) var(--hz-space-1) 0;
   border-bottom: 0;
 }
 
 .hz-tabs--big .hz-tabs__item {
   position: relative;
   min-height: 0;
-  padding-bottom: 9px;
+  padding-bottom: var(--hz-space-2);
   font-family: var(--hz-serif);
   font-size: var(--hz-font-total);
   font-weight: 500;
-  letter-spacing: 2px;
+  letter-spacing: 0; /* 02 章：字距一律 0 */
   border-bottom: 0;
 }
 
@@ -47,7 +47,7 @@
   left: 50%;
   width: 20px;
   height: 2.5px;
-  margin-left: -10px;
+  margin-left: -10px; /* 负值：短线宽的一半，用来居中，不是间距 */
   background: var(--hz-brand);
   border-radius: var(--hz-radius-line);
 }

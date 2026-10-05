@@ -35,7 +35,9 @@ test('B16 H06 D08 整张DZ结清，多付草稿在往来变化后保留，作废
   const page = await waitPage(mini, 'packages/finance/pages/receive/index')
   await waitData(page, 'loaded', true)
   await expect.poll(async () => page.data('rows') as Promise<unknown>).toHaveLength(1)
-  await page.callMethod('onStatement', { currentTarget: { dataset: { key: selected.id } } })
+  // 从往来页进来，未结清对账单默认全勾上，金额预填合计（06 章付款页）
+  expect(await page.data('rows.0.selected')).toBe(true)
+  expect(await page.data('form.statements.0.id')).toBe(selected.id)
   expect(await page.data('form.amountText')).toBe('960.00')
   for (const [key, detail] of Object.entries({
     receiptDate: TODAY,
@@ -79,12 +81,14 @@ test('B16 H06 D08 整张DZ结清，多付草稿在往来变化后保留，作废
   await recordPage.callMethod('onOpen', { currentTarget: { dataset: { key: payment.id } } })
   const money = await waitPage(mini, 'packages/finance/pages/money/index')
   await waitData(money, 'loaded', true)
-  expect(await money.data('view.statements')).toHaveLength(1)
+  expect(await money.data('view.statements.0.rows')).toHaveLength(1)
   await money.callMethod('onVoid')
   await money.callMethod('onSubmitVoid', { detail: '付错账户' })
   await waitData(money, 'view.status', 'voided')
-  expect(await money.data('view.statements')).toHaveLength(1)
-  expect(await money.data('view.statements.0.tags')).toContainEqual({ text: f.voided, warn: false })
+  // 作废后仍列出原来结清的那张，置灰；对账单回到未结清
+  expect(await money.data('view.statements.0.rows')).toMatchObject([
+    { muted: true, tags: [{ text: f.unsettled, warn: true }] },
+  ])
   expect(
     dataOf<StatementDetail>(await finance.get(`/finance/statements/${selected.id}`)).status,
   ).toBe('unsettled')
@@ -102,10 +106,12 @@ test('B17 对账单被作废后重新核对撤下选择，付款草稿可登记�
   const input = await paymentInput(s, po)
   const selected = input.statements[0]
   if (!selected) throw new Error('no statement')
-  const page = await enter(
-    mini,
+  // 付款页总是从别的页进来，登记完回上一页（这里是 F6 往来页）
+  await enter(mini, `/packages/finance/pages/supplier/index?id=${po.supplierId}`)
+  await mini.navigateTo(
     `/packages/finance/pages/receive/index?kind=payment&supplierId=${po.supplierId}&statementId=${selected.id}`,
   )
+  const page = await waitPage(mini, 'packages/finance/pages/receive/index')
   await waitData(page, 'form.statements.0.id', selected.id)
   await page.callMethod('onField', {
     detail: TODAY,
@@ -137,7 +143,11 @@ test('B17 对账单被作废后重新核对撤下选择，付款草稿可登记�
   await expect.poll(async () => page.data('rows') as Promise<unknown>).toEqual([])
   expect(await page.data('form.statements')).toEqual([])
   expect(await page.data('form.amountText')).toBe('210')
-  expect(await page.data('summary')).toBe('未结清 ¥0.00　　优惠金额 ¥0.00　　多付 ¥210.00')
+  expect(await page.data('summary')).toEqual({
+    due: '应付 ¥0.00',
+    meta: '付款 + 优惠 ¥210.00\u3000多付 ¥210.00',
+    short: false,
+  })
   await snap(mini, 'finance-no-statement-credit-draft')
   await page.callMethod('onSubmit')
   await waitPage(mini, 'packages/finance/pages/supplier/index')

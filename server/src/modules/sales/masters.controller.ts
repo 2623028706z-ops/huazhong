@@ -4,8 +4,6 @@ import {
   type CustomerItem,
   type Me,
   type OutputOf,
-  type ProductCategory,
-  type ProductItem,
   type StoreCatalog,
   type StoreInviteView,
   type StoreItem,
@@ -21,9 +19,8 @@ import {
 } from '../../common/endpoint.ts'
 import { CatalogCategoryService } from './catalog-categories.ts'
 import { CatalogService } from './catalog.ts'
-import { CategoryService } from './categories.ts'
+import { CatalogCopyService } from './catalog-copy.ts'
 import { CustomerService } from './customers.ts'
-import { ProductService } from './products.ts'
 import { StoreCatalogService } from './store-catalog.ts'
 import { StoreInviteService } from './store-invites.ts'
 import { StoreWrites } from './stores.ts'
@@ -115,80 +112,12 @@ export class CustomersController {
   }
 }
 
-@Controller()
-export class ProductsController {
-  constructor(
-    private readonly products: ProductService,
-    private readonly categories: CategoryService,
-  ) {}
-
-  @Route(contract.listProductCategories)
-  listCategories(): Promise<OutputOf<typeof contract.listProductCategories>> {
-    return this.categories.list()
-  }
-
-  @Route(contract.createProductCategory)
-  createCategory(
-    @CurrentViewer() viewer: Viewer,
-    @Input() input: In<'createProductCategory'>,
-  ): Promise<ProductCategory> {
-    return this.categories.create(viewer, input.body.name, input.idempotencyKey)
-  }
-
-  @Route(contract.updateProductCategory)
-  renameCategory(
-    @CurrentViewer() viewer: Viewer,
-    @Input() input: In<'updateProductCategory'>,
-  ): Promise<ProductCategory> {
-    return this.categories.rename(viewer, Number(input.params.id), input.body.name)
-  }
-
-  @Route(contract.orderProductCategories)
-  orderCategories(
-    @CurrentViewer() viewer: Viewer,
-    @Input() input: In<'orderProductCategories'>,
-  ): Promise<OutputOf<typeof contract.orderProductCategories>> {
-    return this.categories.reorder(viewer, input.body.ids)
-  }
-
-  @Route(contract.deleteProductCategory)
-  deleteCategory(
-    @CurrentViewer() viewer: Viewer,
-    @Input() input: In<'deleteProductCategory'>,
-  ): Promise<Record<string, never>> {
-    return this.categories.remove(viewer, Number(input.params.id))
-  }
-
-  @Route(contract.listProducts)
-  list(
-    @CurrentViewer() viewer: Viewer,
-    @Input() input: In<'listProducts'>,
-  ): Promise<OutputOf<typeof contract.listProducts>> {
-    return this.products.list(viewer, input.query)
-  }
-
-  @Route(contract.createProduct)
-  create(
-    @CurrentViewer() viewer: Viewer,
-    @Input() input: In<'createProduct'>,
-  ): Promise<ProductItem> {
-    return this.products.create(viewer, input.body, input.idempotencyKey)
-  }
-
-  @Route(contract.updateProduct)
-  update(
-    @CurrentViewer() viewer: Viewer,
-    @Input() input: In<'updateProduct'>,
-  ): Promise<ProductItem> {
-    return this.products.update(viewer, Number(input.params.id), input.body)
-  }
-}
-
-// 订货目录、订货分类（X11）和门店订货页
+// 订货目录（含产品）、订货分类和门店订货页
 @Controller()
 export class CatalogController {
   constructor(
     private readonly catalogs: CatalogService,
+    private readonly copies: CatalogCopyService,
     private readonly catalogCategories: CatalogCategoryService,
     private readonly storeCatalogs: StoreCatalogService,
   ) {}
@@ -197,16 +126,17 @@ export class CatalogController {
   getCatalog(@Input() input: In<'getCatalog'>): Promise<Catalog> {
     return this.catalogs.get(Number(input.params.customerId))
   }
-  @Route(contract.previewCatalogCopy)
-  previewCopy(@Input() input: In<'previewCatalogCopy'>) {
-    return this.catalogs.preview(
+  @Route(contract.catalogCopySources)
+  copySources(@Input() input: In<'catalogCopySources'>) {
+    const from = input.query.fromCustomerId
+    return this.copies.sources(
       Number(input.params.customerId),
-      Number(input.query.fromCustomerId),
+      from === undefined ? null : Number(from),
     )
   }
   @Route(contract.copyCatalog)
   copyCatalog(@CurrentViewer() viewer: Viewer, @Input() input: In<'copyCatalog'>) {
-    return this.catalogs.copy(
+    return this.copies.copy(
       viewer,
       Number(input.params.customerId),
       input.body,
@@ -214,13 +144,22 @@ export class CatalogController {
     )
   }
 
-  @Route(contract.saveCatalogItem)
-  saveCatalogItem(
+  @Route(contract.createCatalogItem)
+  createCatalogItem(
     @CurrentViewer() viewer: Viewer,
-    @Input() input: In<'saveCatalogItem'>,
+    @Input() input: In<'createCatalogItem'>,
+  ): Promise<Catalog> {
+    const customerId = Number(input.params.customerId)
+    return this.catalogs.create(viewer, customerId, input.body, input.idempotencyKey)
+  }
+
+  @Route(contract.updateCatalogItem)
+  updateCatalogItem(
+    @CurrentViewer() viewer: Viewer,
+    @Input() input: In<'updateCatalogItem'>,
   ): Promise<Catalog> {
     const { customerId, productId } = input.params
-    return this.catalogs.saveItem(viewer, Number(customerId), Number(productId), input.body)
+    return this.catalogs.update(viewer, Number(customerId), Number(productId), input.body)
   }
 
   @Route(contract.createCatalogCategory)

@@ -1,3 +1,7 @@
 <view class="hz-tabs {{big ? 'hz-tabs--big' : ''}}">
-  <view wx:for="{{items}}" wx:key="key" class="hz-tabs__item {{value === item.key ? 'hz-tabs__item--on' : ''}}" data-key="{{item.key}}" bindtap="onPick">{{item.text}}</view>
+  <view wx:for="{{items}}" wx:key="key" class="hz-tabs__item {{value === item.key ? 'hz-tabs__item--on' : ''}}" data-key="{{item.key}}" bindtap="onPick">
+    <text>{{item.text}}</text>
+    <text wx:if="{{counts[item.key]}}" class="u-count">{{format.formatCount(counts[item.key])}}</text>
+  </view>
 </view>
+<wxs src="../../core/format.wxs" module="format" />

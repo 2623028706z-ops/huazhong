@@ -27,6 +27,16 @@
   color: var(--hz-ink);
 }
 
+/* 标题行右上的入口（slot="extra"，如「盘点记录 ›」），没有就不占地方 */
+.hz-sheet__extra {
+  position: absolute;
+  top: 0;
+  right: var(--hz-gap-sheet);
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
 .hz-sheet__title {
   font-size: var(--hz-font-lg);
   letter-spacing: 0.08em;

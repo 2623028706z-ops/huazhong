@@ -1,5 +1,6 @@
 <import src="/views/list.wxml" />
+<import src="/views/stocktake-pick.wxml" />
 <hz-navbar title="{{title}}" back />
 <view class="u-list"><template is="list-state" data="{{failure,skeleton,loaded,rows,emptyObject}}" /><template is="cards" data="{{rows,statusKind,done,allLoaded}}" /></view>
 <hz-action-bar wx:if="{{canCreate}}"><hz-button text="{{texts.create}}" bind:press="onCreate" /></hz-action-bar>
-<hz-sheet show="{{sheet}}" title="{{texts.select}}" footer bind:close="onClose"><view class="u-sheet-form"><hz-error wx:if="{{categoryError}}" message="{{categoryError}}" /><hz-switch label="{{texts.selectAll}}" value="{{allSelected}}" bind:change="onAll" /><hz-switch wx:for="{{categories}}" wx:key="id" label="{{item.name}}" value="{{item.selected}}" data-key="{{item.id}}" bind:change="onCategory" /></view><hz-button slot="footer" text="{{startText}}" bind:press="onStart" /></hz-sheet>
+<template is="stocktake-sheet" data="{{stocktakeSheet,stocktakeTexts,stocktakeError,stocktakeAll,stocktakeCategories,stocktakeStart}}" />

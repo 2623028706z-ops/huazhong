@@ -1,4 +1,4 @@
-// 产品内部分类、产品、配方、订货分类、订货目录、门店邀请（04 章第 4.1、4.8 节）
+// 订货分类、产品（即订货目录）、配方、门店邀请（04 章第 4.1、4.8 节）
 import { sql } from 'drizzle-orm'
 import {
   bigint,
@@ -17,24 +17,50 @@ import { files } from './files.ts'
 import { customers, stores } from './org.ts'
 import { materials } from './warehouse.ts'
 
-// 产品内部分类（单品、花束…），只在产品管理里用；没有产品（含停用的）时可以删除（03 章第 5 节）
-export const productCategories = pgTable('product_categories', {
-  ...commonColumns(),
-  name: text().notNull().unique(),
-  sort: integer().notNull().default(0),
-})
+// 订货分类：每个客户一套，门店订货页按它分组；分类下有产品（含停用的）时不能删（2026-10-03 确认）
+export const catalogCategories = pgTable(
+  'catalog_categories',
+  {
+    ...commonColumns(),
+    customerId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => customers.id, { onDelete: 'restrict' }),
+    name: text().notNull(),
+    sort: integer().notNull().default(0),
+  },
+  (t) => [unique('catalog_categories_name_unique').on(t.customerId, t.name)],
+)
 
-export const products = pgTable('products', {
-  ...commonColumns(),
-  version: versionColumn(),
-  name: text().notNull().unique(),
-  categoryId: bigint({ mode: 'number' })
-    .notNull()
-    .references(() => productCategories.id, { onDelete: 'restrict' }),
-  unit: text().notNull(),
-  imageFileId: bigint({ mode: 'number' }).references(() => files.id, { onDelete: 'restrict' }),
-  enabled: boolean().notNull().default(true),
-})
+// 产品即订货目录（2026-10-05 确认）：每个产品属于一个客户，名称、单位、产品图、配方、订货价、
+// 订货分类、客户产品编码、可订都只属于这个客户。enabled=false 即停用。分类必须是同一客户的（服务层校验）；
+// 客户产品编码选填（'' 为没填），同一客户内不重复
+export const products = pgTable(
+  'products',
+  {
+    ...commonColumns(),
+    version: versionColumn(),
+    customerId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => customers.id, { onDelete: 'restrict' }),
+    name: text().notNull(),
+    categoryId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => catalogCategories.id, { onDelete: 'restrict' }),
+    unit: text().notNull(),
+    imageFileId: bigint({ mode: 'number' }).references(() => files.id, { onDelete: 'restrict' }),
+    customerCode: text().notNull().default(''),
+    priceCents: integer().notNull(),
+    enabled: boolean().notNull().default(true),
+  },
+  (t) => [
+    unique('products_customer_name_unique').on(t.customerId, t.name),
+    uniqueIndex('products_customer_code_unique')
+      .on(t.customerId, t.customerCode)
+      .where(sql`${t.customerCode} <> ''`),
+    index('products_category_idx').on(t.categoryId),
+    check('products_price_nonnegative', sql`${t.priceCents} >= 0`),
+  ],
+)
 
 // 配方：每个产品至少一行（服务层）
 export const productBomLines = pgTable(
@@ -52,50 +78,6 @@ export const productBomLines = pgTable(
   (t) => [
     unique().on(t.productId, t.materialId),
     check('product_bom_lines_qty_positive', sql`${t.qty} > 0`),
-  ],
-)
-
-// 订货分类：每个客户一套，门店订货页按它分组；分类下有目录项（含停用的）时不能删（2026-10-03 确认）
-export const catalogCategories = pgTable(
-  'catalog_categories',
-  {
-    ...commonColumns(),
-    customerId: bigint({ mode: 'number' })
-      .notNull()
-      .references(() => customers.id, { onDelete: 'restrict' }),
-    name: text().notNull(),
-    sort: integer().notNull().default(0),
-  },
-  (t) => [unique('catalog_categories_name_unique').on(t.customerId, t.name)],
-)
-
-// 订货目录：每个客户一份价目；enabled=false 即停用。分类必选；客户产品编码选填（'' 为没填），
-// 同一客户内不重复
-export const catalogItems = pgTable(
-  'catalog_items',
-  {
-    ...commonColumns(),
-    version: versionColumn(),
-    customerId: bigint({ mode: 'number' })
-      .notNull()
-      .references(() => customers.id, { onDelete: 'restrict' }),
-    productId: bigint({ mode: 'number' })
-      .notNull()
-      .references(() => products.id, { onDelete: 'restrict' }),
-    categoryId: bigint({ mode: 'number' })
-      .notNull()
-      .references(() => catalogCategories.id, { onDelete: 'restrict' }),
-    customerCode: text().notNull().default(''),
-    priceCents: integer().notNull(),
-    enabled: boolean().notNull().default(true),
-  },
-  (t) => [
-    unique().on(t.customerId, t.productId),
-    uniqueIndex('catalog_items_customer_code_unique')
-      .on(t.customerId, t.customerCode)
-      .where(sql`${t.customerCode} <> ''`),
-    index('catalog_items_category_idx').on(t.categoryId),
-    check('catalog_items_price_nonnegative', sql`${t.priceCents} >= 0`),
   ],
 )
 

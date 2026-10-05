@@ -8,6 +8,7 @@ import {
   startSales,
   TODAY,
   type SalesApp,
+  productIdOf,
 } from './support/sales.ts'
 import { connect } from './support/ws.ts'
 
@@ -30,7 +31,11 @@ test('H09 销售改城西店的单：只有城西店收到，滨江店收不到�
       shipDate: TODAY,
       note: '',
       lines: [
-        { productId: await idBy(s.t, 'products.name', '粉玫瑰日常花束'), qty: 3, priceCents: 6800 },
+        {
+          productId: await productIdOf(s.t, '晨曦花艺', '粉玫瑰日常花束'),
+          qty: 3,
+          priceCents: 6800,
+        },
       ],
     }),
   )

@@ -34,7 +34,7 @@ const entries = [
 
 // 模块首页的小一号入口（仓库首页的入口数，图标先借现有的）
 const moduleEntries = [
-  { key: 'recv', icon: 'truck', text: '待收', disabled: false },
+  { key: 'recv', icon: 'truck', text: '待收货', disabled: false },
   { key: 'in', icon: 'plus', text: '手工入库', disabled: false },
   { key: 'out', icon: 'minus', text: '手工出库', disabled: false },
   { key: 'loss', icon: 'trash-2', text: '报损', disabled: false },

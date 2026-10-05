@@ -1,6 +1,6 @@
 // 半屏弹层（02 章第 4 节）：亮格底；左上关闭（back 时换成返回）、衬线标题居中；最高 75%；
 // 点遮罩关闭。guard 为 true 时关闭、返回前先问「放弃修改吗？」（页面上要有 hz-confirm）。
-// footer 为 true 时底部有一行按钮区，按钮放进 slot="footer"
+// footer 为 true 时底部有一行按钮区，按钮放进 slot="footer"；标题行右上的入口放进 slot="extra"
 import type { DetailEvent } from '../../core/events'
 import { confirmLeave } from '../../core/guard'
 

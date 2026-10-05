@@ -4,20 +4,15 @@ import {
   financeCopy as f,
   financeTexts,
   formatMoney,
-  labels,
-  shanghaiDateOf,
   type PartyLedger,
 } from '@huazhong/shared'
-import { canDo } from '../core/actions'
-import type { DetailEvent, KeyEvent } from '../core/events'
+import { canDo, type ButtonView } from '../core/actions'
+import type { CodeEvent, DetailEvent, KeyEvent } from '../core/events'
 import type { FailureView } from '../core/failure-view'
 import type { PagedList } from '../core/list'
-import { checkedOf } from '../core/form'
-import { centsOfText } from '../core/money'
-import { newIdempotencyKey, request } from '../core/request'
-import { failureOf, messageOf } from '../core/session'
-import { showSuccess } from '../core/toast'
+import { request } from '../core/request'
 import { listHandlers, listOf, showList } from './list'
+import { refundData, refundHandlers, refundRowsOf } from './party-ledger-refund'
 import { statementRowOf, sourceRowOf, sourceRoute, type FinanceRow } from './statement'
 const data = {
   supplier: false,
@@ -34,37 +29,17 @@ const data = {
   summary: {
     label: '',
     amountCents: 0,
-    edit: '',
-    lines: [] as { key: string; text: string; action?: string }[],
+    lines: [] as { key: string; text: string }[],
   },
-  canCreate: false,
-  canRegister: false,
+  buttons: [] as ButtonView[],
   canRefund: false,
-  canTerms: false,
   loaded: false,
   skeleton: false,
   done: false,
   failure: null as FailureView | null,
   emptyObject: f.statements as string,
   allLoaded: copy.state.allLoaded,
-  refundSheet: false,
-  refundChanged: false,
-  refundError: '',
-  refundBusy: false,
-  today: shanghaiDateOf(Date.now()),
-  refundForm: { refundDate: shanghaiDateOf(Date.now()), amountText: '', methodName: '', note: '' },
-  refundMethods: [] as { id: string; name: string }[],
-  refundRows: [] as {
-    id: string
-    no: string
-    date: string
-    amount: string
-    status: string
-    reason: string
-    canVoid: boolean
-  }[],
-  voidRefundId: '',
-  voidRefundReason: '',
+  ...refundData,
   texts: financeTexts,
 }
 interface Host {
@@ -74,8 +49,6 @@ interface Host {
   list: PagedList<FinanceRow> | null
   refundKey: string
   setData(patch: Record<string, unknown>): void
-  openRefund(): Promise<void>
-  onTerms(): void
 }
 function groupsOf(sources: PartyLedger['sources'], supplier: boolean) {
   const groups = new Map<string, { title: string; rows: FinanceRow[] }>()
@@ -87,16 +60,29 @@ function groupsOf(sources: PartyLedger['sources'], supplier: boolean) {
   }
   return [...groups.values()]
 }
-function refundRows(ledger: PartyLedger) {
-  return ledger.refunds.map((item) => ({
-    id: item.id,
-    no: item.no,
-    date: item.refundDate,
-    amount: formatMoney(item.amountCents),
-    status: labels.recordStatus[item.status],
-    reason: item.voidReason ?? '',
-    canVoid: canDo(item.actions, 'voidRefund'),
-  }))
+// 底栏最多 2 个（2026-10-06 第 4 批，同详情页）：登记收款（付款）是主按钮放最右；
+// 次按钮按新建对账单、往来设置、多收退回排，放不下的收进左边「更多」
+function ledgerButtonsOf(ledger: PartyLedger, supplier: boolean): ButtonView[] {
+  const view = (code: string, text: string, kind: ButtonView['kind']): ButtonView => ({
+    code,
+    text,
+    kind,
+    disabled: false,
+    reason: '',
+  })
+  const registerCode = supplier ? 'registerPayment' : 'registerReceipt'
+  const secondary = [
+    canDo(ledger.actions, 'createStatement') &&
+      view('createStatement', f.statementCreate, 'secondary'),
+    canDo(ledger.actions, 'editTerms') && view('editTerms', f.terms, 'secondary'),
+    canDo(ledger.actions, 'refundCredit') &&
+      view('refundCredit', supplier ? f.refundSupplierCredit : f.refundCredit, 'secondary'),
+  ].filter((item): item is ButtonView => item !== false)
+  const register = canDo(ledger.actions, registerCode)
+    ? [view(registerCode, supplier ? f.registerPayment : f.registerReceipt, 'primary')]
+    : []
+  const inBar = secondary.length + register.length > 2 ? 2 - register.length : secondary.length
+  return [...secondary.slice(0, inBar), ...register, ...secondary.slice(inBar)]
 }
 function applyLedger(host: Host, ledger: PartyLedger) {
   host.ledger = ledger
@@ -106,7 +92,6 @@ function applyLedger(host: Host, ledger: PartyLedger) {
     summary: {
       label: supplier ? f.payableOutstanding : f.outstanding,
       amountCents: ledger.outstandingCents,
-      edit: canDo(ledger.actions, 'editTerms') ? f.modify : '',
       lines: [
         {
           key: 'credit',
@@ -115,7 +100,6 @@ function applyLedger(host: Host, ledger: PartyLedger) {
             `${f.unstatemented} ${formatMoney(ledger.unstatementedCents)}`,
             `${supplier ? f.supplierCredited : f.credited} ${formatMoney(ledger.creditCents)}`,
           ].join(f.gap),
-          ...(canDo(ledger.actions, 'refundCredit') ? { action: f.refund } : {}),
         },
         {
           key: 'terms',
@@ -126,12 +110,10 @@ function applyLedger(host: Host, ledger: PartyLedger) {
         },
       ],
     },
-    canCreate: canDo(ledger.actions, 'createStatement'),
-    canRegister: canDo(ledger.actions, supplier ? 'registerPayment' : 'registerReceipt'),
+    buttons: ledgerButtonsOf(ledger, supplier),
     canRefund: canDo(ledger.actions, 'refundCredit'),
-    canTerms: canDo(ledger.actions, 'editTerms'),
     sourceGroups: groupsOf(ledger.sources, supplier),
-    refundRows: refundRows(ledger),
+    refundRows: refundRowsOf(ledger),
   })
 }
 async function fetchLedger(host: Host, cursor: string | undefined) {
@@ -158,29 +140,11 @@ async function fetchLedger(host: Host, cursor: string | undefined) {
     },
   }
 }
-function checkedRefund(host: Host) {
-  const form = host.data.refundForm,
-    amount = centsOfText(form.amountText)
-  return checkedOf(
-    contract.createRefund.body.safeParse({
-      kind: host.data.supplier ? 'payment' : 'receipt',
-      ...(host.data.supplier ? { supplierId: host.id } : { customerId: host.id }),
-      refundDate: form.refundDate,
-      amountCents: amount,
-      methodName: form.methodName,
-      note: form.note,
-    }),
-  )
-}
-function refundProblem(host: Host) {
-  if (host.data.refundForm.refundDate > host.data.today) return copy.rework.refundDateFuture
-  const amount = centsOfText(host.data.refundForm.amountText)
-  return amount === null || amount > (host.ledger?.creditCents ?? 0)
-    ? f.maxRefund(formatMoney(host.ledger?.creditCents ?? 0))
-    : ''
-}
+type LedgerPage = Host & Record<'onCreate' | 'onRegister' | 'onTerms' | 'onRefund', () => unknown>
+// 底栏见 ledgerButtonsOf（往来设置、多收退回 2026-10-06 第 4 批从汇总卡挪到底栏）
 export const partyLedgerPage = {
   ...listHandlers,
+  ...refundHandlers,
   data,
   id: '',
   ledger: null as PartyLedger | null,
@@ -205,10 +169,6 @@ export const partyLedgerPage = {
     })
     void this.list?.refresh()
   },
-  onTotalAction(this: Host, event: DetailEvent<string>) {
-    if (event.detail === 'credit') void this.openRefund()
-    else this.onTerms()
-  },
   onOpen(this: Host, event: KeyEvent) {
     void wx.navigateTo({
       url: `/packages/finance/pages/statement-detail/index?id=${event.currentTarget.dataset.key}`,
@@ -219,6 +179,16 @@ export const partyLedgerPage = {
       (item) => `${item.type}:${item.id}` === event.currentTarget.dataset.key,
     )
     if (source) void wx.navigateTo({ url: sourceRoute(source) })
+  },
+  onAction(this: LedgerPage, event: CodeEvent) {
+    const handlers: Record<string, (() => unknown) | undefined> = {
+      createStatement: this.onCreate,
+      registerPayment: this.onRegister,
+      registerReceipt: this.onRegister,
+      editTerms: this.onTerms,
+      refundCredit: this.onRefund,
+    }
+    void handlers[event.currentTarget.dataset.code]?.call(this)
   },
   onCreate(this: Host) {
     void wx.navigateTo({
@@ -234,93 +204,5 @@ export const partyLedgerPage = {
     void wx.navigateTo({
       url: `/packages/finance/pages/account-settings/index?kind=${this.data.supplier ? 'supplier' : 'customer'}&partyId=${this.id}&name=${encodeURIComponent(this.data.title)}`,
     })
-  },
-  async onRefund(this: Host) {
-    await this.openRefund()
-  },
-  async openRefund(this: Host) {
-    if (!this.data.canRefund) return
-    this.refundKey = newIdempotencyKey()
-    this.setData({
-      refundSheet: true,
-      refundChanged: false,
-      refundError: '',
-      refundForm: { refundDate: this.data.today, amountText: '', methodName: '', note: '' },
-    })
-    const result = await request(contract.listMethods)
-    if (result.ok)
-      this.setData({
-        refundMethods: result.data.items
-          .filter((item) => item.enabled)
-          .map((item) => ({ id: item.name, name: item.name })),
-      })
-    else this.setData({ refundError: failureOf(result.failure, 'refresh')?.message ?? '' })
-  },
-  onCloseRefund(this: Host) {
-    if (this.data.refundBusy) return
-    this.setData({ refundSheet: false, refundChanged: false, refundError: '' })
-  },
-  onRefundField(this: Host, event: DetailEvent<string, { key: string }>) {
-    const form = { ...this.data.refundForm, [event.currentTarget.dataset.key]: event.detail }
-    this.setData({
-      refundForm: form,
-      refundChanged:
-        form.refundDate !== this.data.today ||
-        Boolean(form.amountText || form.methodName || form.note),
-      refundError: '',
-    })
-  },
-  async onSubmitRefund(this: Host) {
-    if (this.data.refundBusy || !this.ledger) return
-    const problem = refundProblem(this)
-    if (problem) {
-      this.setData({ refundError: problem })
-      return
-    }
-    const checked = checkedRefund(this)
-    if (!checked.ok) {
-      this.setData({ refundError: Object.values(checked.fields)[0] ?? '' })
-      return
-    }
-    this.setData({ refundBusy: true })
-    const result = await request(
-      contract.createRefund,
-      { body: checked.body },
-      { idempotencyKey: this.refundKey },
-    )
-    this.setData({ refundBusy: false })
-    if (result.ok) {
-      this.setData({ refundSheet: false, refundChanged: false })
-      void this.list?.refresh()
-      showSuccess(copy.action.saved)
-    } else this.setData({ refundError: failureOf(result.failure, 'submit')?.message ?? '' })
-  },
-  onVoidRefund(this: Host, event: KeyEvent) {
-    this.setData({
-      voidRefundId: event.currentTarget.dataset.key,
-      voidRefundReason: '',
-      refundError: '',
-    })
-  },
-  onCloseVoidRefund(this: Host) {
-    this.setData({ voidRefundId: '' })
-  },
-  async onSubmitVoidRefund(this: Host, event: DetailEvent<string>) {
-    const refund = this.ledger?.refunds.find((item) => item.id === this.data.voidRefundId)
-    if (!refund || !canDo(refund.actions, 'voidRefund')) return
-    this.setData({ refundBusy: true })
-    const result = await request(contract.voidRefund, {
-      params: { id: refund.id },
-      body: { version: refund.version, reason: event.detail },
-    })
-    this.setData({ refundBusy: false })
-    if (result.ok) {
-      this.setData({ voidRefundId: '' })
-      void this.list?.refresh()
-    } else {
-      const view = failureOf(result.failure, 'submit')
-      this.setData({ refundError: view ? messageOf(view) : '' })
-      if (view?.kind === 'stale') void this.list?.refresh()
-    }
   },
 }

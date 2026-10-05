@@ -35,6 +35,9 @@ async function handleCancelRequest(ctx: WriteContext, change: Transition) {
       rejectReason: code === 'rejectCancel' ? reason : null,
     })
     .where(eq(orderCancelRequests.id, request.id))
+  // 同意或拒绝：门店该看结果（2026-10-06 第 3 批），门店打开订单详情后消掉
+  if (code !== 'withdrawCancel')
+    await ctx.tx.update(orders).set({ storeNoticeAt: now }).where(eq(orders.id, id))
   if (code === 'approveCancel')
     await ctx.tx
       .update(orders)

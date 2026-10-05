@@ -6,7 +6,7 @@
 .hz-login__logo {
   display: block;
   height: 46px;
-  margin: 160px auto 0;
+  margin: 160px auto 0; /* 160px：登录页品牌区离顶的版面位置，不是间距档 */
 }
 
 .hz-login__panel {
@@ -16,5 +16,5 @@
   left: var(--hz-gap-page);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--hz-space-4);
 }

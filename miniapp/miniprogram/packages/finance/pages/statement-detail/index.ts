@@ -7,7 +7,7 @@ import {
   type StatementSource,
   type Topic,
 } from '@huazhong/shared'
-import { canDo } from '../../../../core/actions'
+import { canDo, findAction } from '../../../../core/actions'
 import type { DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { request } from '../../../../core/request'
@@ -21,21 +21,25 @@ import {
   sourceRoute,
   type ListSection,
 } from '../../../../views/statement'
-function statementActions(detail: StatementDetail, internal: boolean) {
-  const supplier = detail.kind === 'supplier'
+// 作废对账单：已结清且能作废时不显示，但作废被挡住（已收过款等）时一定显示并写明原因
+function voidShown(detail: StatementDetail, internal: boolean) {
   const voidAction = detail.actions.find((action) => action.code === 'voidStatement')
+  if (internal || voidAction === undefined) return false
+  return detail.status === 'unsettled' || !voidAction.enabled
+}
+// 底栏最多 2 个按钮（2026-10-06 第 4 批）：分享、登记都在时作废收进「更多」，否则直接进底栏
+function statementActions(detail: StatementDetail, internal: boolean) {
+  const code = detail.kind === 'supplier' ? 'registerPayment' : 'registerReceipt'
+  const canShare = !internal && canDo(detail.actions, 'shareStatement'),
+    canRegister = !internal && canDo(detail.actions, code),
+    canVoid = voidShown(detail, internal)
   return {
-    canShare: !internal && canDo(detail.actions, 'shareStatement'),
-    canRegister:
-      !internal && canDo(detail.actions, supplier ? 'registerPayment' : 'registerReceipt'),
-    // 作废对账单是页面最下面的灰字；已结清且能作废时不显示，
-    // 但作废被挡住（已收过款等）时一定显示灰字并写明原因
-    canVoid:
-      !internal &&
-      voidAction !== undefined &&
-      (detail.status === 'unsettled' || !canDo(detail.actions, 'voidStatement')),
+    canShare,
+    canRegister,
+    canVoid,
+    voidInMore: canVoid && canShare && canRegister,
     voidDisabled: !canDo(detail.actions, 'voidStatement'),
-    voidReason: voidAction?.disabledReason ?? '',
+    voidReason: findAction(detail.actions, 'voidStatement')?.disabledReason ?? '',
   }
 }
 function detailInfo(detail: StatementDetail) {
@@ -77,6 +81,7 @@ function detailPatch(detail: StatementDetail, internal: boolean) {
     },
     ...statementActions(detail, internal),
     overdue: detail.overdueDays ? f.overdue(detail.overdueDays) : '',
+    notice: detail.lockedReason ?? '',
   }
 }
 function sourceTopic(source: StatementSource): Topic | null {
@@ -114,12 +119,14 @@ Page({
     canShare: false,
     canRegister: false,
     canVoid: false,
+    voidInMore: false,
     voidDisabled: false,
     voidReason: '',
     voidSheet: false,
     busy: false,
     error: '',
     overdue: '',
+    notice: '',
     supplier: false,
     texts: financeTexts,
   },

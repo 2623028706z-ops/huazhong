@@ -1,0 +1,18 @@
+/* 底栏最左的「更多」：墨色文字，和按钮同高，不算在 2 个按钮里 */
+.hz-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--hz-tap);
+  padding: 0 var(--hz-space-2);
+  font-size: var(--hz-font-md);
+  color: var(--hz-ink);
+}
+
+/* 半屏里一项一行：次按钮撑满，禁用的下面写原因 */
+.hz-more__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-space-3);
+  padding: var(--hz-space-2) var(--hz-gap-sheet) var(--hz-space-5);
+}

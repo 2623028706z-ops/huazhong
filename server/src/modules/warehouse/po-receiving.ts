@@ -35,6 +35,18 @@ function warehouseLog(row: { id: number; no: string }, action: string) {
     targetLabel: row.no,
   }
 }
+// 收货日志：实收了什么、改了哪些价
+function receiveLogAfter(
+  stocked: readonly { name: string; qty: number; unit: string }[],
+  changes: Parameters<typeof priceChangesText>[0],
+) {
+  return {
+    [copy.records.poChange]: stocked
+      .map((line) => `${line.name} ${line.qty} ${line.unit}`)
+      .join(copy.separator),
+    [copy.records.priceChange]: priceChangesText(changes),
+  }
+}
 @Injectable()
 export class PoReceiving {
   constructor(
@@ -79,6 +91,7 @@ export class PoReceiving {
           version: sql`${purchaseOrders.version}+1`,
         })
         .where(eq(purchaseOrders.id, id))
+      await this.purchase.markDiff(ctx, id)
       await ctx.log({
         ...warehouseLog(po, copy.log.action.voidPurchaseOrder),
         reason: input.reason,
@@ -107,6 +120,9 @@ export class PoReceiving {
       const stocked = await this.receivedLines(ctx, detail, input.lines)
       await receiveStock(ctx, { id, no: po.no, date: this.clock.today() }, stocked)
       const status = input.lines.some((line) => line.receivedQty > 0) ? 'received' : 'rejected'
+      // 少收、多收、拒收或改了价 → 到货有差异，告诉下单采购员（2026-10-06 第 3 批）
+      const differs = stocked.some((line) => line.qty !== line.orderQty)
+      if (differs || changes.length > 0) await this.purchase.markDiff(ctx, id)
       await ctx.tx
         .update(purchaseOrders)
         .set({
@@ -125,12 +141,7 @@ export class PoReceiving {
             : copy.log.action.rejectPurchaseOrder,
         ),
         reason: input.reason ?? '',
-        after: {
-          [copy.records.poChange]: stocked
-            .map((line) => `${line.name} ${line.qty} ${line.unit}`)
-            .join(copy.separator),
-          [copy.records.priceChange]: priceChangesText(changes),
-        },
+        after: receiveLogAfter(stocked, changes),
       })
       this.purchase.notify(ctx, { ...po, version: po.version + 1 })
       await notifySupplierFinance(ctx, po.supplierId)
@@ -151,7 +162,12 @@ export class PoReceiving {
     }
     return lines.map((line) => {
       const old = found(byId.get(line.poLineId))
-      return { ...old, materialId: Number(old.materialId), qty: line.receivedQty }
+      return {
+        ...old,
+        materialId: Number(old.materialId),
+        qty: line.receivedQty,
+        orderQty: old.qty,
+      }
     })
   }
   reprice(viewer: Viewer, id: number, input: In<'repricePurchaseOrder'>) {
@@ -168,6 +184,7 @@ export class PoReceiving {
       assertPoLines(detail, input.lines, false)
       const changes = await applyPoPrices(ctx, detail, input)
       if (changes.length === 0) throw appError.businessRule(copy.error.noChange)
+      await this.purchase.markDiff(ctx, id)
       await this.bump(ctx, id)
       await ctx.log({
         ...warehouseLog(po, copy.log.action.repricePurchaseOrder),
@@ -207,6 +224,7 @@ export class PoReceiving {
       })
       await returnStock(ctx, { id, no: po.no, date: this.clock.today() }, lines)
       await this.recordReturn(ctx, id, lines)
+      await this.purchase.markDiff(ctx, id)
       await this.bump(ctx, id)
       await ctx.log({
         ...warehouseLog(po, copy.log.action.returnPurchaseOrder),

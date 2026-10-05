@@ -163,7 +163,7 @@ test('G30/G30-F 员工调岗：filterModules是本人全部非公共历史，筛
   expect((await staff.get('/finance/records')).status).toBe(403)
 })
 
-test('X 目录复制预览、空分类复用、编码清空、复制后独立、过期预览挡写', async () => {
+test('X 从其他客户复制产品：同名分类复用、编码清空、过期预览挡写', async () => {
   const sales = await s.as('u2')
   const sourceId = await idBy(s.t, 'customers.name', '晨曦花艺')
   const owner = found(
@@ -179,9 +179,7 @@ test('X 目录复制预览、空分类复用、编码清空、复制后独立、
   )
   const first = found(
     source.categories.find((category) =>
-      source.items.some(
-        (item) => item.categoryId === category.id && item.enabled && item.productEnabled,
-      ),
+      source.items.some((item) => item.categoryId === category.id && item.enabled),
     ),
   )
   const existing = found(
@@ -192,17 +190,19 @@ test('X 目录复制预览、空分类复用、编码清空、复制后独立、
         .returning()
     )[0],
   )
-  const preview = dataOf<OutputOf<typeof contract.previewCatalogCopy>>(
-    await sales.get(`/catalog/${target.id}/copy-preview?fromCustomerId=${sourceId}`),
+  const preview = dataOf<OutputOf<typeof contract.catalogCopySources>>(
+    await sales.get(`/catalog/${target.id}/copy-sources?fromCustomerId=${sourceId}`),
   )
-  expect(preview.copyCount).toBeGreaterThan(0)
+  const picked = preview.items.filter((item) => item.skipReason === null)
+  expect(picked.length).toBeGreaterThan(0)
   const copied = dataOf<OutputOf<typeof contract.copyCatalog>>(
     await sales.post(`/catalog/${target.id}/copy`, {
       fromCustomerId: sourceId,
+      productIds: picked.map((item) => item.productId),
       previewToken: preview.previewToken,
     }),
   )
-  expect(copied.items).toHaveLength(preview.copyCount)
+  expect(copied.items).toHaveLength(picked.length)
   expect(copied.items.every((item) => item.customerCode === '')).toBe(true)
   expect(copied.categories.find((category) => category.name === first.name)?.id).toBe(
     String(existing.id),
@@ -211,6 +211,7 @@ test('X 目录复制预览、空分类复用、编码清空、复制后独立、
     (
       await sales.post(`/catalog/${target.id}/copy`, {
         fromCustomerId: sourceId,
+        productIds: picked.map((item) => item.productId),
         previewToken: preview.previewToken,
       })
     ).status,

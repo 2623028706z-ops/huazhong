@@ -1,1 +1,35 @@
-<import src="/views/pick.wxml" /><import src="/views/bom.wxml" /><hz-navbar title="{{title}}" back guard="{{changed}}" /><hz-state wx:if="{{failure.kind==='page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" /><view wx:else class="u-list"><hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" /><hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" /><hz-error wx:if="{{formError}}" message="{{formError}}" /><hz-skeleton wx:if="{{!loaded && !failure}}" type="form" /><block wx:if="{{loaded}}"><view class="u-info__head"><text class="u-info__title">{{form.name}}</text><text>{{customerName}}</text></view><view class="u-card u-form-card"><hz-field label="{{texts.code}}" value="{{form.customerCode}}" error="{{fields.customerCode}}" bind:change="onCode" /><hz-picker label="{{texts.category}}" options="{{categoryOptions}}" value="{{form.categoryId}}" error="{{fields.categoryId}}" bind:change="onCategory" /><hz-field label="{{texts.price}}" type="digit" value="{{form.priceText}}" suffix="{{texts.yuan}}" error="{{fields.priceCents}}" bind:change="onPrice" /><hz-switch label="{{texts.enabled}}" value="{{form.enabled}}" bind:change="onEnabled" /></view><template is="bom-rows" data="{{heading:texts.sharedBom,note:texts.sharedNote,error:bomError,bomRows,editKey,add:texts.addMaterial}}" /></block></view><hz-action-bar><hz-button text="{{texts.save}}" loading="{{saving}}" disabled="{{!loaded}}" bind:press="onSaveItem" /></hz-action-bar><template is="pick-sheet" data="{{show: layer==='material', title: texts.pickMaterial, picks: materialPicks, empty: texts.noMaterial, multi: true, count: pickCount, confirm: pickConfirm}}" /><hz-confirm id="hz-confirm" />
+<import src="/views/pick.wxml" />
+<import src="/views/bom.wxml" />
+<hz-navbar title="{{title}}" back guard="{{changed}}" />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
+<view wx:else class="u-list">
+  <hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" />
+  <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry bind:retry="onFailureAction" />
+  <hz-error wx:if="{{formError}}" message="{{formError}}" />
+  <hz-skeleton wx:if="{{!loaded && !failure}}" type="form" />
+  <block wx:if="{{loaded}}">
+    <text class="u-caption hz-catalog-item__owner">{{owner}}</text>
+    <!-- 顶卡：产品图（1:1 小图）+ 名称 + 单位 -->
+    <view class="u-card hz-catalog-item__hero">
+      <view class="hz-catalog-item__image"><hz-upload files="{{images}}" max="{{1}}" column="{{1}}" bind:add="onAddImage" bind:remove="onRemoveImage" /></view>
+      <view class="hz-catalog-item__fields">
+        <hz-field label="{{texts.name}}" value="{{form.name}}" placeholder="{{texts.fill}}" error="{{fields.name}}" bind:change="onName" />
+        <hz-field label="{{texts.unit}}" value="{{form.unit}}" placeholder="{{texts.fill}}" error="{{fields.unit}}" bind:change="onUnit" />
+      </view>
+    </view>
+    <view class="u-section">
+      <text class="u-section__title">{{texts.orderInfo}}</text>
+      <view class="u-card u-form-card hz-catalog-item__order">
+        <hz-field big label="{{texts.price}}" type="digit" value="{{form.priceText}}" placeholder="{{texts.fill}}" suffix="{{form.unit ? texts.yuan + '/' + form.unit : texts.yuan}}" error="{{fields.priceCents}}" bind:change="onPrice" />
+        <hz-picker label="{{texts.category}}" options="{{categoryOptions}}" value="{{form.categoryId}}" error="{{fields.categoryId}}" bind:change="onCategory" />
+        <hz-field label="{{texts.code}}" value="{{form.customerCode}}" placeholder="{{texts.optional}}" error="{{fields.customerCode}}" bind:change="onCode" />
+        <hz-switch label="{{texts.enabled}}" value="{{form.enabled}}" bind:change="onEnabled" />
+      </view>
+    </view>
+    <template is="bom-rows" data="{{heading: texts.bom, column: texts.material, hint: bomHint, error: bomError, bomRows, add: texts.addMaterial}}" />
+  </block>
+</view>
+<hz-action-bar>
+  <hz-button text="{{texts.save}}" loading="{{saving}}" disabled="{{!loaded || uploading}}" bind:press="onSave" />
+</hz-action-bar>
+<template is="pick-sheet" data="{{show: pickSheet, error: '', title: texts.pickMaterial, placeholder: texts.searchMaterial, keyword: pickKeyword, picks, empty: texts.noMaterial, count: pickCount, confirm: pickConfirm, summary: pickSummary}}" />

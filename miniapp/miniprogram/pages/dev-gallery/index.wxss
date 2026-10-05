@@ -2,8 +2,8 @@
 .hz-gallery {
   display: flex;
   flex-direction: column;
-  gap: 28px;
-  padding: var(--hz-row-pad) var(--hz-gap-page) 40px;
+  gap: var(--hz-space-5);
+  padding: var(--hz-row-pad) var(--hz-gap-page) 40px; /* 40px：开发样张页底部留白，不上线 */
 }
 
 .hz-gallery__section {
@@ -22,7 +22,7 @@
 .hz-gallery__row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--hz-space-2);
   align-items: center;
 }
 
@@ -33,7 +33,7 @@
 .hz-gallery__pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: var(--hz-space-2);
 }
 
 /* 固定定位的底栏、操作区放进框里：transform 让 fixed 相对这个框 */
@@ -46,7 +46,7 @@
 .hz-gallery__swatch {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--hz-space-1);
   align-items: center;
 }
 

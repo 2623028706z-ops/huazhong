@@ -1,0 +1,63 @@
+<hz-navbar title="{{title}}" back />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
+<block wx:else>
+  <view class="u-list">
+    <hz-realtime-bar text="{{realtime}}" bind:refresh="onRealtime" />
+    <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
+  </view>
+  <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="list" /></block>
+  <hz-state wx:elif="{{side.length === 0}}" object="{{texts.noCustomers}}" />
+  <view wx:else class="u-split">
+    <view class="u-split__side">
+      <hz-side-list items="{{side}}" value="{{customerId}}" bind:change="onCustomer" />
+    </view>
+    <scroll-view scroll-y enhanced show-scrollbar="{{false}}" class="u-split__main">
+      <view class="u-info__head">
+        <text class="u-info__title">{{customerName}}</text>
+        <text class="u-info__meta">{{count}}</text>
+      </view>
+      <text wx:if="{{groups.length === 0}}" class="u-info__meta">{{texts.empty}}</text>
+      <view wx:for="{{groups}}" wx:key="id" wx:for-item="group" class="u-section">
+        <text class="u-section__title">{{group.name}}</text>
+        <view class="u-card u-rows">
+          <view wx:for="{{group.rows}}" wx:key="productId" class="u-rows__item" data-key="{{item.productId}}" bindtap="onOpenItem">
+            <view class="u-rows__head">
+              <text class="u-rows__title u-clamp-2">{{item.name}}</text>
+              <text class="u-rows__price u-serif-amount">{{item.priceText}}</text>
+            </view>
+            <view class="u-rows__foot">
+              <hz-tag wx:if="{{item.disabled}}" text="{{texts.disabled}}" />
+              <text wx:if="{{item.code}}" class="u-ellipsis">{{item.code}}</text>
+            </view>
+            <text class="u-rows__foot">{{item.bom}}</text>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</block>
+<hz-action-bar wx:if="{{customerId}}"><hz-button kind="secondary" text="{{texts.manage}}" bind:press="onManage" /><hz-button text="{{texts.add}}" bind:press="onAdd" /></hz-action-bar>
+<hz-sheet show="{{addSheet}}" title="{{texts.add}}" bind:close="onCloseAdd">
+  <view class="u-sheet-section">
+    <view class="u-choice hz-catalog-add__row {{categories.length === 0 ? 'hz-catalog-add__row--off' : ''}}" bindtap="onCreate">
+      <text class="hz-icon hz-icon--plus hz-catalog-add__icon"></text>
+      <view class="u-choice__main"><text>{{texts.create}}</text><text class="u-choice__sub">{{categories.length === 0 ? texts.needCategory : texts.createHint}}</text></view>
+    </view>
+    <view class="u-choice hz-catalog-add__row" bindtap="onCopy">
+      <text class="hz-icon hz-icon--users-round hz-catalog-add__icon"></text>
+      <view class="u-choice__main"><text>{{texts.copy}}</text><text class="u-choice__sub">{{texts.copyHint}}</text></view>
+    </view>
+  </view>
+</hz-sheet>
+<hz-confirm id="hz-confirm" />
+<hz-category-sheet
+  show="{{categorySheet}}"
+  title="{{texts.categories}}"
+  categories="{{categories}}"
+  error="{{categoryError}}"
+  loading="{{saving}}"
+  bind:close="onCloseCategories"
+  bind:save="onSaveCategory"
+  bind:up="onUpCategory"
+  bind:remove="onRemoveCategory"
+/>

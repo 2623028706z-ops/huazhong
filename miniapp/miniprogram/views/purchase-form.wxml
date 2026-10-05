@@ -18,17 +18,16 @@
         <view wx:else class="u-sheet-row"><text>{{texts.supplier}}</text><text>{{supplierName}}</text></view>
       </view>
       <view class="u-section">
-        <hz-line-item material title="{{texts.lines}}" lines="{{lineViews}}" mode="price" edit-key="{{editKey}}" quantity-only="{{mode === 'invite'}}" removable bind:qty="onQty" bind:price="onPrice" bind:remove="onRemove" />
-        <hz-add-button text="{{texts.add}}" bind:press="onOpenPick" />
+        <hz-line-item material title="{{texts.lines}}" lines="{{lineViews}}" mode="price" quantity-only="{{mode === 'invite'}}" removable add-text="{{texts.add}}" bind:qty="onQty" bind:price="onPrice" bind:remove="onRemove" bind:add="onOpenPick" />
       </view>
       <view wx:if="{{mode === 'po'}}" class="u-card u-form-card">
-        <hz-field wx:if="{{!supplierEditing}}" label="{{texts.note}}" value="{{form.note}}" bind:change="onNote" />
+        <hz-field wx:if="{{!supplierEditing}}" label="{{texts.note}}" placeholder="{{texts.reasonOptional}}" value="{{form.note}}" bind:change="onNote" />
         <hz-field wx:if="{{editing}}" label="{{texts.editReason}}" placeholder="{{texts.reasonOptional}}" value="{{form.reason}}" error="{{fields.reason}}" bind:change="onReason" />
       </view>
     </block>
   </view>
   <hz-action-bar id="form-action" wx:if="{{editable && loaded}}"><hz-button text="{{submitText}}" loading="{{saving || reviewing}}" disabled="{{reviewSheet}}" bind:press="onSubmit" /></hz-action-bar>
-  <template is="pick-sheet" data="{{show:pickSheet,title:texts.pickTitle,picks,empty:texts.noPick,multi:true,count:pickCount,confirm:pickConfirm}}" />
+  <template is="pick-sheet" data="{{show:pickSheet,error:'',title:texts.pickTitle,placeholder:texts.searchMaterial,keyword:pickKeyword,picks,empty:texts.noPick,count:pickCount,confirm:pickConfirm,summary:pickSummary}}" />
   <hz-sheet id="purchase-review" show="{{reviewSheet}}" title="{{texts.reviewTitle}}" footer bind:close="onReviewCancel">
     <view class="u-sheet-form u-sheet-plain">
       <block wx:if="{{reviewInvites.length}}">

@@ -10,7 +10,7 @@
 .hz-info-rows__grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(140px, auto);
-  gap: 2px 8px;
+  gap: var(--hz-space-1) var(--hz-space-2);
   align-items: baseline;
 }
 

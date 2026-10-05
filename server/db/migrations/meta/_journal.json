@@ -106,6 +106,20 @@
       "when": 1791149533721,
       "tag": "0014_loss_reason_optional",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1791215882129,
+      "tag": "0015_catalog_per_customer",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791226689067,
+      "tag": "0016_batch3_notices",
+      "breakpoints": true
     }
   ]
 }

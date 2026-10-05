@@ -1,46 +1,69 @@
-// 订货目录（05 章第 4 节、06 章 X11）：每个客户一份价目和一套订货分类，销售维护。
-// 改了目录价，这个客户待确认订单的单价同时更新，只记日志（03 章第 8.1 节）。
-// 目录弹层里可以一起改产品本身的配方（所有客户共用，2026-10-03 确认）
+// 订货目录（05 章第 4 节、06 章 X11 / X13 / X14）：每个客户一份目录、一套订货分类，销售维护。
+// 产品归客户（2026-10-05 确认）：名称、单位、产品图、配方、订货价、订货分类、客户产品编码、可订都在
+// 这个客户的目录里维护，改了只影响这个客户。改了订货价，这个客户待确认订单的单价同时更新，只记日志（03 章第 8.1 节）
 import * as z from 'zod'
 import { copy } from '../copy.ts'
 import {
   centsInputSchema,
   centsSchema,
   idSchema,
+  positiveIntSchema,
   requiredIdSchema,
   requiredTextSchema,
   versionSchema,
 } from '../rules.ts'
 import type { Endpoint } from './endpoint.ts'
-import { bomInputSchema, bomLineSchema, checkBom } from './products.ts'
+import { checkDistinct } from './page.ts'
 import { actionSchema } from './actions.ts'
+
+export const bomLineSchema = z.object({
+  materialId: idSchema,
+  materialName: z.string(),
+  unit: z.string(),
+  qty: z.number().int().positive(),
+  materialEnabled: z.boolean(),
+})
+export type BomLine = z.infer<typeof bomLineSchema>
+
+// 配方明细的输入：至少一种花材
+export const bomInputSchema = z
+  .array(z.object({ materialId: idSchema, qty: positiveIntSchema(copy.catalog.bomQtyInvalid) }))
+  .min(1, { error: copy.catalog.bomRequired })
+
+// 同一种花材只能出现一次
+export function checkBom(value: { bom: { materialId: string }[] }, ctx: z.RefinementCtx) {
+  checkDistinct(ctx, {
+    items: value.bom,
+    keyOf: (line) => line.materialId,
+    message: copy.catalog.bomDuplicate,
+    path: ['bom', 'materialId'],
+  })
+}
 
 // 这个客户的订货分类：门店订货页按它分组
 export const catalogCategorySchema = z.object({
   id: idSchema,
   name: z.string(),
   sort: z.number().int(),
-  // 含停用的目录项；大于 0 时不能删除
+  // 含停用的产品；大于 0 时不能删除
   itemCount: z.number().int().nonnegative(),
 })
 export type CatalogCategory = z.infer<typeof catalogCategorySchema>
 
 export const catalogItemSchema = z.object({
   productId: idSchema,
+  version: versionSchema,
   name: z.string(),
   unit: z.string(),
+  imageFileId: idSchema.nullable(),
+  imageUrl: z.string().nullable(),
   categoryId: idSchema,
   categoryName: z.string(),
   // 客户产品编码，选填，同一客户内不重复；没填为 ''
   customerCode: z.string(),
-  // 产品本身停用
-  productEnabled: z.boolean(),
-  // 目录里停用为 false
+  // 可订；false 即停用
   enabled: z.boolean(),
   listPriceCents: centsSchema,
-  version: versionSchema,
-  // 产品本身的配方明细和版本号（弹层里改配方时带上）
-  productVersion: versionSchema,
   bom: z.array(bomLineSchema),
 })
 export type CatalogItem = z.infer<typeof catalogItemSchema>
@@ -60,20 +83,42 @@ const itemParamsSchema = z.object({ customerId: idSchema, productId: idSchema })
 const categoryParamsSchema = z.object({ customerId: idSchema, id: idSchema })
 const categoryBodySchema = z.object({ name: requiredTextSchema(copy.catalog.categoryNameRequired) })
 
-// 一个目录项：上块「这个客户」，下块配方（改了才传 product，和目录项一起提交）
-export const catalogItemSaveSchema = z.object({
-  // 新加进目录的没有版本号
-  version: versionSchema.optional(),
+const catalogItemFieldsShape = {
+  name: requiredTextSchema(copy.catalog.productNameRequired),
+  unit: requiredTextSchema(copy.catalog.unitRequired),
+  imageFileId: idSchema.nullable(),
   categoryId: requiredIdSchema(copy.catalog.catalogCategoryRequired),
   customerCode: z.string().trim(),
   priceCents: centsInputSchema(copy.catalog.listPriceRequired),
   enabled: z.boolean(),
-  product: z
-    .object({ version: versionSchema, bom: bomInputSchema })
-    .superRefine(checkBom)
-    .optional(),
+  bom: bomInputSchema,
+}
+export const catalogItemCreateSchema = z.object(catalogItemFieldsShape).superRefine(checkBom)
+export type CatalogItemCreate = z.infer<typeof catalogItemCreateSchema>
+export const catalogItemUpdateSchema = z
+  .object({ version: versionSchema, ...catalogItemFieldsShape })
+  .superRefine(checkBom)
+export type CatalogItemUpdate = z.infer<typeof catalogItemUpdateSchema>
+
+// 从其他客户复制：来源客户的产品，和当前客户重名或已停用的不能复制
+export const catalogCopySourceSchema = z.object({
+  // 有产品的其他客户（不含当前客户）；没有时 items 为空
+  sources: z.array(z.object({ customerId: idSchema, customerName: z.string() })),
+  fromCustomerId: idSchema.nullable(),
+  items: z.array(
+    z.object({
+      productId: idSchema,
+      name: z.string(),
+      unit: z.string(),
+      categoryName: z.string(),
+      listPriceCents: centsSchema,
+      bom: z.array(bomLineSchema),
+      skipReason: z.enum(['duplicate', 'disabled']).nullable(),
+    }),
+  ),
+  previewToken: z.string().min(1),
 })
-export type CatalogItemSave = z.infer<typeof catalogItemSaveSchema>
+export type CatalogCopySource = z.infer<typeof catalogCopySourceSchema>
 
 export const getCatalog = {
   method: 'GET',
@@ -83,37 +128,52 @@ export const getCatalog = {
   response: catalogSchema,
   errors: ['NOT_FOUND'],
 } as const satisfies Endpoint
-export const previewCatalogCopy = {
+// fromCustomerId 不传时用第一个来源客户
+export const catalogCopySources = {
   method: 'GET',
-  path: '/catalog/:customerId/copy-preview',
+  path: '/catalog/:customerId/copy-sources',
   grants: ['sales'],
   params: customerParamsSchema,
-  query: z.object({ fromCustomerId: idSchema }),
-  response: z.object({
-    copyCount: z.number().int().nonnegative(),
-    skipCount: z.number().int().nonnegative(),
-    previewToken: z.string().min(1),
-  }),
+  query: z.object({ fromCustomerId: idSchema.optional() }),
+  response: catalogCopySourceSchema,
   errors: ['NOT_FOUND', 'BUSINESS_RULE'],
 } as const satisfies Endpoint
+// 复制勾选的产品：带名称、单位、产品图、配方、订货价，不带客户产品编码；同名订货分类复用，
+// 没有同名的放当前客户第一个分类，当前客户没有分类时按来源分类名新建
 export const copyCatalog = {
   method: 'POST',
   path: '/catalog/:customerId/copy',
   grants: ['sales'],
   params: customerParamsSchema,
-  body: z.object({ fromCustomerId: idSchema, previewToken: z.string().min(1) }),
+  body: z.object({
+    fromCustomerId: idSchema,
+    productIds: z.array(idSchema).min(1),
+    previewToken: z.string().min(1),
+  }),
   response: catalogSchema,
   errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
   idempotent: true,
 } as const satisfies Endpoint
 
-// 新加或修改一个目录项；返回整份目录
-export const saveCatalogItem = {
-  method: 'PUT',
+// 新建一个产品；返回整份目录
+export const createCatalogItem = {
+  method: 'POST',
+  path: '/catalog/:customerId/items',
+  grants: ['sales'],
+  params: customerParamsSchema,
+  body: catalogItemCreateSchema,
+  response: catalogSchema,
+  errors: ['NOT_FOUND', 'BUSINESS_RULE'],
+  idempotent: true,
+} as const satisfies Endpoint
+
+// 修改一个产品；返回整份目录
+export const updateCatalogItem = {
+  method: 'PATCH',
   path: '/catalog/:customerId/items/:productId',
   grants: ['sales'],
   params: itemParamsSchema,
-  body: catalogItemSaveSchema,
+  body: catalogItemUpdateSchema,
   response: catalogSchema,
   errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
 } as const satisfies Endpoint

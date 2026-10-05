@@ -36,7 +36,7 @@
 .hz-receive-pick__body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--hz-space-1);
   font-size: var(--hz-font);
 }
 

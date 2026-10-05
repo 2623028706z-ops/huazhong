@@ -3,8 +3,8 @@
 <view class="u-list">
   <hz-filter-bar status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" search-placeholder="{{searchPlaceholder}}" date-label="{{dateLabel}}" dimensions="{{dimensions}}" value="{{filter}}" bind:change="onFilter" />
   <template is="list-state" data="{{failure, skeleton, loaded, rows, emptyObject}}" />
-  <template is="cards" data="{{rows, statusKind, done, allLoaded,selection:filter.status==='pending_confirm'}}" />
+  <template is="cards" data="{{rows, statusKind, done, allLoaded,selection}}" />
 </view>
-<hz-action-bar wx:if="{{filter.status === 'pending_confirm'}}"><hz-button kind="secondary" text="{{texts.allSelected}}" bind:press="onSelectAll" /><hz-button text="{{batchText}}" disabled="{{!selected.length}}" bind:press="onOpenBatch" /></hz-action-bar>
+<hz-action-bar wx:if="{{selected.length}}"><hz-button kind="secondary" text="{{texts.allSelected}}" bind:press="onSelectAll" /><hz-button text="{{batchText}}" bind:press="onOpenBatch" /></hz-action-bar>
 <hz-action-bar wx:elif="{{canCreate}}"><hz-button text="{{createText}}" bind:press="onCreate" /></hz-action-bar>
 <hz-order-confirm show="{{batchSheet}}" orders="{{batchOrders}}" overdue="{{batchOverdue}}" bind:close="onCloseBatch" bind:done="onBatchDone" />

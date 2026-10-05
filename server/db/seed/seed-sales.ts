@@ -1,6 +1,7 @@
 import { shanghaiDateOf } from '@huazhong/shared'
-// 写入阶段 3 的示例数据（sales-data.ts）：产品、订货目录、订单、售后、收款、收付款方式、发号起点
+// 写入阶段 3 的示例数据（sales-data.ts）：订货分类、各客户的产品、订单、售后、收款、收付款方式、发号起点
 import type { Tx } from '../client.ts'
+import { seedMaterials } from './data.ts'
 import {
   afterLines,
   afters,
@@ -9,13 +10,12 @@ import {
   settlementLinks,
   stores,
   catalogCategories,
-  catalogItems,
   docSequences,
+  orderLineBomLines,
   orderLines,
   orders,
   paymentMethods,
   productBomLines,
-  productCategories,
   products,
   receipts,
 } from '../schema/index.ts'
@@ -26,7 +26,6 @@ import {
   seedCatalogCategories,
   seedMethodNames,
   seedOrders,
-  seedProductCategories,
   seedProducts,
   seedReceipts,
   seedStatementRows,
@@ -63,41 +62,10 @@ interface OrderRef {
   lines: Map<string, LineRef>
 }
 
+// 每个客户的订货分类和自己的产品（含配方）；返回「客户:产品模板」→ 产品 id
 async function insertProducts(tx: Tx, ids: SeedIds): Promise<Map<string, number>> {
   const createdBy = ids.admin
   const categoryIds = new Map<string, number>()
-  for (const c of seedProductCategories) {
-    const [row] = await tx
-      .insert(productCategories)
-      .values({ name: c.name, sort: c.sort, createdBy })
-      .returning()
-    if (row) categoryIds.set(c.key, row.id)
-  }
-  const productIds = new Map<string, number>()
-  for (const p of seedProducts) {
-    const categoryId = idOf(categoryIds, p.category)
-    const [row] = await tx
-      .insert(products)
-      .values({ name: p.name, categoryId, unit: p.unit, createdBy })
-      .returning()
-    if (!row) continue
-    productIds.set(p.key, row.id)
-    const bom = p.bom.map((b) => ({
-      productId: row.id,
-      materialId: idOf(ids.materials, b.material),
-      qty: b.qty,
-      createdBy,
-    }))
-    await tx.insert(productBomLines).values(bom)
-  }
-  await insertCatalog(tx, ids, productIds)
-  return productIds
-}
-
-// 每个客户的订货分类和目录项
-async function insertCatalog(tx: Tx, ids: SeedIds, productIds: Map<string, number>) {
-  const createdBy = ids.admin
-  const catalogCategoryIds = new Map<string, number>()
   for (const c of seedCatalogCategories) {
     const [row] = await tx
       .insert(catalogCategories)
@@ -108,35 +76,87 @@ async function insertCatalog(tx: Tx, ids: SeedIds, productIds: Map<string, numbe
         createdBy,
       })
       .returning()
-    if (row) catalogCategoryIds.set(c.key, row.id)
+    if (row) categoryIds.set(c.key, row.id)
   }
-  const catalog = seedCatalog.map((c) => ({
-    customerId: idOf(ids.customers, c.customer),
-    productId: idOf(productIds, c.product),
-    categoryId: idOf(catalogCategoryIds, c.category),
-    customerCode: c.code,
-    priceCents: c.price,
-    enabled: c.enabled,
-    createdBy,
-  }))
-  await tx.insert(catalogItems).values(catalog)
+  const productIds = new Map<string, number>()
+  for (const c of seedCatalog) {
+    const template = templateOf(c.product)
+    const [row] = await tx
+      .insert(products)
+      .values({
+        customerId: idOf(ids.customers, c.customer),
+        name: template.name,
+        unit: template.unit,
+        categoryId: idOf(categoryIds, c.category),
+        customerCode: c.code,
+        priceCents: c.price,
+        enabled: c.enabled,
+        createdBy,
+      })
+      .returning()
+    if (!row) continue
+    productIds.set(productKey(c.customer, c.product), row.id)
+    await tx.insert(productBomLines).values(
+      bomOf(c.customer, c.product).map((b) => ({
+        productId: row.id,
+        materialId: idOf(ids.materials, b.material),
+        qty: b.qty,
+        createdBy,
+      })),
+    )
+  }
+  return productIds
+}
+
+const productKey = (customer: string, product: string) => `${customer}:${product}`
+
+function templateOf(key: string) {
+  const product = seedProducts.find((p) => p.key === key)
+  if (!product) throw new Error(`unknown seed product ${key}`)
+  return product
+}
+
+function bomOf(customer: string, product: string) {
+  const entry = seedCatalog.find((c) => c.customer === customer && c.product === product)
+  return entry?.bom ?? templateOf(product).bom
+}
+
+// 已发货的明细存一份发货时配方（和确认发货一样）
+async function insertShippedBom(
+  tx: Tx,
+  ids: SeedIds,
+  line: { id: number; createdBy: number; customer: string; product: string },
+) {
+  const rows = bomOf(line.customer, line.product).map((b) => {
+    const material = seedMaterials.find((m) => m.key === b.material)
+    if (!material) throw new Error(`unknown seed material ${b.material}`)
+    return {
+      orderLineId: line.id,
+      materialId: idOf(ids.materials, b.material),
+      materialName: material.name,
+      unit: material.unit,
+      qty: b.qty,
+      createdBy: line.createdBy,
+    }
+  })
+  await tx.insert(orderLineBomLines).values(rows)
 }
 
 async function insertOrderLines(
   tx: Tx,
   order: { id: number; createdBy: number; customer: string },
   seedLines: readonly SeedOrderLine[],
-  productIds: Map<string, number>,
+  refs: { ids: SeedIds; productIds: Map<string, number> },
 ): Promise<Map<string, LineRef>> {
+  const { ids, productIds } = refs
   const lines = new Map<string, LineRef>()
   for (const [sort, line] of seedLines.entries()) {
-    const product = seedProducts.find((p) => p.key === line.product)
-    if (!product) throw new Error(`unknown seed product ${line.product}`)
+    const product = templateOf(line.product)
     const [lineRow] = await tx
       .insert(orderLines)
       .values({
         orderId: order.id,
-        productId: idOf(productIds, line.product),
+        productId: idOf(productIds, productKey(order.customer, line.product)),
         name: product.name,
         unit: product.unit,
         // 下单时的客户产品编码快照
@@ -151,6 +171,8 @@ async function insertOrderLines(
         createdBy: order.createdBy,
       })
       .returning()
+    if (lineRow && (line.shipped ?? 0) > 0)
+      await insertShippedBom(tx, ids, { ...order, id: lineRow.id, product: line.product })
     if (lineRow) {
       lines.set(line.product, {
         id: lineRow.id,
@@ -193,7 +215,7 @@ async function insertOrders(tx: Tx, ids: SeedIds, productIds: Map<string, number
       .returning()
     if (!row) continue
     const order = { id: row.id, createdBy: row.createdBy, customer: o.customer }
-    const lines = await insertOrderLines(tx, order, o.lines, productIds)
+    const lines = await insertOrderLines(tx, order, o.lines, { ids, productIds })
     refs.set(o.no, { id: row.id, customerId, storeId, lines })
   }
   return refs

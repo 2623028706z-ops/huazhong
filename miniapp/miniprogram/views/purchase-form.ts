@@ -2,6 +2,7 @@ import {
   type contract,
   copy,
   redesignCopy,
+  entryCopy,
   type InviteDetail,
   type PoDetail,
   type OutputOf,
@@ -23,7 +24,7 @@ import {
 import { submitPurchase } from './purchase-submit'
 import { purchaseFormDetails } from './purchase-form-detail'
 import { purchaseFormPick } from './purchase-form-pick'
-import type { pickOpen } from './pick'
+import { pickData } from './pick'
 import type { Checked } from '../core/form'
 import type { inviteViewOf } from './invite-detail'
 import {
@@ -73,11 +74,7 @@ const data = {
   editable: true,
   lockedReason: '',
   pickSheet: false,
-  editKey: '',
-  picks: [] as ReturnType<typeof pickOpen>['picks'],
-  pickIds: [] as string[],
-  pickCount: 0,
-  pickConfirm: '',
+  ...pickData(),
   inviteView: null as ReturnType<typeof inviteViewOf> | null,
   poView: null as ReturnType<typeof poViewOf> | null,
   texts: {
@@ -88,6 +85,7 @@ const data = {
     add: copy.screen.action.addMaterial,
     pickTitle: copy.screen.title.pickMaterial,
     noPick: copy.state.empty(copy.screen.empty.addableMaterials),
+    searchMaterial: entryCopy.searchMaterial,
     note: copy.field.note,
     supplierPlaceholder: copy.screen.supplierPlaceholder,
     ...purchaseReviewTexts,

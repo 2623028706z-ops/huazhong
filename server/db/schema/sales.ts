@@ -25,6 +25,7 @@ import {
 } from './enums.ts'
 import { files } from './files.ts'
 import { customers, stores } from './org.ts'
+import { materials } from './warehouse.ts'
 
 function customerRef() {
   return bigint({ mode: 'number' })
@@ -63,6 +64,9 @@ export const orders = pgTable(
     voidReason: text(),
     voidedBy: accountRef(),
     voidedAt: timestamptz(),
+    // 门店该看的结果（2026-10-06 第 3 批）：取消申请被同意或拒绝时记时间；门店打开详情记看过时间
+    storeNoticeAt: timestamptz(),
+    storeSeenAt: timestamptz(),
   },
   (t) => [
     check('orders_shipped_at', sql`${t.status} <> 'shipped' OR ${t.shippedAt} IS NOT NULL`),
@@ -110,6 +114,28 @@ export const orderLines = pgTable(
     check('order_lines_qty_positive', sql`${t.qty} > 0`),
     check('order_lines_price_nonnegative', sql`${t.priceCents} >= 0 AND ${t.listPriceCents} >= 0`),
     check('order_lines_shipped_range', sql`${t.shippedQty} IS NULL OR ${t.shippedQty} >= 0`),
+  ],
+)
+
+// 发货时存下的配方（2026-10-05 确认）：实发大于 0 的行在确认发货的同一事务里按当时配方写入，
+// 花材名、单位是快照；之后改配方不变
+export const orderLineBomLines = pgTable(
+  'order_line_bom_lines',
+  {
+    ...commonColumns(),
+    orderLineId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => orderLines.id, { onDelete: 'cascade' }),
+    materialId: bigint({ mode: 'number' })
+      .notNull()
+      .references(() => materials.id, { onDelete: 'restrict' }),
+    materialName: text().notNull(),
+    unit: text().notNull(),
+    qty: integer().notNull(),
+  },
+  (t) => [
+    unique().on(t.orderLineId, t.materialId),
+    check('order_line_bom_lines_qty_positive', sql`${t.qty} > 0`),
   ],
 )
 
@@ -177,6 +203,9 @@ export const afters = pgTable(
     voidReason: text(),
     voidedBy: accountRef(),
     voidedAt: timestamptz(),
+    // 门店该看的结果（2026-10-06 第 3 批）：售后处理、关闭、作废、销售代建时记时间；门店打开详情记看过时间
+    storeNoticeAt: timestamptz(),
+    storeSeenAt: timestamptz(),
   },
   (t) => [
     check('afters_amount_nonnegative', sql`${t.amountCents} IS NULL OR ${t.amountCents} >= 0`),

@@ -77,7 +77,11 @@ Page({
     cancelRequired: false,
     cancelOptional: false,
     cancelError: '',
+    bomSheet: false,
+    bom: { title: '', hint: '', rows: [] as { key: string; name: string; qty: string }[] },
     texts: {
+      shippedBom: copy.screen.title.shippedBom,
+      shippedHint: copy.screen.catalog.shippedHint,
       cancelTitle: reasonTitles.cancel,
       cancelBody: INITIAL_BODY,
       cancelSubject: '',
@@ -121,6 +125,26 @@ Page({
       view: orderViewOf(order, false, this.financeScope),
       buttons: this.readonlyScope ? [] : buttonsWithEdit(buttonsOf(order.actions, buttonSpecs)),
     })
+  },
+  // 已发货的行：看发货时存下的配方（每单位用量，不乘数量）
+  onOpenBom(event: DetailEvent<number>) {
+    const line = this.order?.lines[event.detail]
+    if (!line?.bom?.length) return
+    this.setData({
+      bomSheet: true,
+      bom: {
+        title: line.name,
+        hint: copy.screen.catalog.bomHint(line.unit, line.bom.length),
+        rows: line.bom.map((row, index) => ({
+          key: String(index),
+          name: row.materialName,
+          qty: `${row.qty} ${row.unit}`,
+        })),
+      },
+    })
+  },
+  onCloseBom() {
+    this.setData({ bomSheet: false })
   },
   async onAction(event: CodeEvent) {
     const order = this.order

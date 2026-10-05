@@ -1,4 +1,4 @@
-import { contract, copy, poStatuses, type PoCard } from '@huazhong/shared'
+import { contract, copy, noticeCopy, poStatuses, type PoCard } from '@huazhong/shared'
 import { hasAction } from '../core/actions'
 import type { DetailEvent, KeyEvent } from '../core/events'
 import type { FailureView } from '../core/failure-view'
@@ -10,7 +10,14 @@ import { listHandlers, listOf, listQueryOf, showList } from './list'
 import { poRowOf } from './purchase'
 import { loadSupplierDimensions } from './purchase-load'
 
-// 采购、仓库两端共用；供应商端的订单列表在 external-business，点卡片进 supplier/po-detail
+// 采购、仓库两端共用；供应商端的订单列表在 external-business，点卡片进 supplier/po-detail。
+// 采购端筛选多一项「到货有差异」（diffUnseen，采购待办点进来已选好，2026-10-06 第 3 批）
+const DIFF = 'diff'
+const diffDimension: FilterDimension = {
+  key: DIFF,
+  label: copy.flow.purchase.diffFilter,
+  options: [{ id: 'true', name: noticeCopy.poDiffTodo }],
+}
 const data = {
   kind: 'purchase' as 'purchase' | 'warehouse',
   title: copy.screen.title.purchaseOrders as string,
@@ -58,12 +65,24 @@ const methods = {
     if (query.segment === 'invites' && this.data.kind === 'purchase')
       this.setData({ segment: 'invites' })
     if (query.status) this.setData({ filter: { ...this.data.filter, status: query.status } })
+    if (query.diffUnseen === 'true' && this.data.kind === 'purchase')
+      this.setData({
+        filter: { ...this.data.filter, picks: { ...this.data.filter.picks, [DIFF]: 'true' } },
+      })
     this.list = listOf(
       this,
       async (cursor) => {
         const { status, from, to, picks, q } = listQueryOf<PoCard['status']>(this.data.filter)
         const result = await request(contract.listPurchaseOrders, {
-          query: { status, from, to, q, supplierId: picks.supplier, cursor },
+          query: {
+            status,
+            from,
+            to,
+            q,
+            supplierId: picks.supplier,
+            diffUnseen: picks[DIFF] ? 'true' : undefined,
+            cursor,
+          },
         })
         if (result.ok)
           this.setData({
@@ -79,7 +98,11 @@ const methods = {
   onShow(this: Host) {
     showList(this, ['pos'])
   },
-  loadDimensions: loadSupplierDimensions,
+  async loadDimensions(this: Host) {
+    await loadSupplierDimensions.call(this)
+    if (this.data.kind === 'purchase')
+      this.setData({ dimensions: [...this.data.dimensions, diffDimension] })
+  },
   onSegment(this: Host, event: DetailEvent<string>) {
     this.setData({ segment: event.detail === 'invites' ? 'invites' : 'orders' })
   },

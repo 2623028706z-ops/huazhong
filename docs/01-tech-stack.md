@@ -120,7 +120,7 @@ huazhong/
 
 | 环境 | 云托管服务 | 数据库 | 小程序 |
 |---|---|---|---|
-| 开发 | ruirui（环境 ruiruidehua-d2gj196zj94c10f88，2026-10-03 确认） | huazhong_dev | 开发版、体验版 |
+| 开发 | ruirui（环境 ruiruidehua-d2gj196zj94c10f88，2026-10-01 确认） | huazhong_dev | 开发版、体验版 |
 | 生产 | huazhong-prod | huazhong_prod | 正式版 |
 
 - 后端：推到 `main` 后 GitHub Actions 跑检查和接口测试，通过后构建镜像部署到开发环境；生产环境手动确认发布。

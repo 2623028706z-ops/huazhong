@@ -1,6 +1,7 @@
 // 微信工具运行正式页面；仅把云托管传输转发至本地真实 NestJS 和 PostgreSQL。
-import { mkdir } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { mkdir, readdir, readFile, rm } from 'node:fs/promises'
+import { homedir } from 'node:os'
+import { join, resolve } from 'node:path'
 import automator from 'miniprogram-automator'
 import type {
   CustomElement,
@@ -46,11 +47,44 @@ export async function connectMini(): Promise<MiniProgram> {
   return mini
 }
 
+// 开发者工具的模拟器文件存储有上限：截图、生成单据图片都会在模拟器 tmp 目录留一个文件，
+// 攒满以后截图报 saveFile:fail exceeded the maximum size of the file storage limit。
+// tmp 在小程序里删不掉（permission denied），只能从本机目录删：
+// ~/Library/Application Support/微信开发者工具/<用户>/WeappSimulator/WeappFileSystem/[<微信号>/]<appid>/tmp
+const devtoolsRoot = join(homedir(), 'Library/Application Support/微信开发者工具')
+async function appIdOf(): Promise<string> {
+  const config = await readFile(
+    resolve(import.meta.dirname, '../../../miniapp/project.config.json'),
+    'utf8',
+  )
+  return (JSON.parse(config) as { appid: string }).appid
+}
+async function childrenOf(dir: string): Promise<string[]> {
+  return readdir(dir).then(
+    (names) => names.map((name) => join(dir, name)),
+    () => [],
+  )
+}
+export async function clearDevtoolsFiles(mini: MiniProgram) {
+  const appId = await appIdOf()
+  for (const user of await childrenOf(devtoolsRoot)) {
+    const base = join(user, 'WeappSimulator/WeappFileSystem')
+    const owners = [base, ...(await childrenOf(base))]
+    for (const owner of owners) {
+      for (const file of await childrenOf(join(owner, appId, 'tmp')))
+        await rm(file, { recursive: true, force: true })
+    }
+  }
+  // 本地缓存（wx.setStorage）也一起清，免得撞上 10MB 上限
+  await mini.callWxMethod('clearStorageSync')
+}
+
 export function setupMiniSuite() {
   let mini: MiniProgram
   let server: SalesApp
   beforeAll(async () => {
     mini = await connectMini()
+    await clearDevtoolsFiles(mini)
   })
   beforeEach(async () => {
     server = await startSales()
@@ -127,11 +161,19 @@ export async function asMini(mini: MiniProgram, s: SalesApp, key: SeedAccountKey
   return api
 }
 
+// 长跑时偶尔刚进页面就被别的跳转顶掉（之后读页面报 page is not on top of page stack），
+// 进页后稍等再看一眼，不在顶上就重进一次，并把被顶到哪一页写到日志里
 export async function enter(mini: MiniProgram, path: string): Promise<Page> {
-  await mini.reLaunch(path)
-  const page = await waitPage(mini, path.slice(1).split('?')[0] ?? '')
-  await mini.evaluate('function () { getApp().onShow() }')
-  return page
+  const route = path.slice(1).split('?')[0] ?? ''
+  for (let attempt = 1; ; attempt++) {
+    await mini.reLaunch(path)
+    const page = await waitPage(mini, route)
+    await mini.evaluate('function () { getApp().onShow() }')
+    await page.waitFor(300)
+    const top = (await mini.currentPage())?.path
+    if (top === route || attempt === 2) return page
+    process.stderr.write(`enter ${route}: replaced by ${top ?? 'nothing'}, retrying\n`)
+  }
 }
 
 export async function waitData(page: Page, key: string, value: unknown) {
@@ -157,7 +199,14 @@ export async function snap(mini: MiniProgram, name: string) {
   )
   const page = await mini.currentPage()
   await page?.waitFor(350)
-  await mini.screenshot({ path: resolve(screenshotDir, `${name}.png`) })
+  const path = resolve(screenshotDir, `${name}.png`)
+  try {
+    await mini.screenshot({ path })
+  } catch (error) {
+    if (!String(error).includes('exceeded the maximum size')) throw error
+    await clearDevtoolsFiles(mini)
+    await mini.screenshot({ path })
+  }
 }
 
 export async function tapControl(control: CustomElement) {
@@ -189,13 +238,21 @@ export async function inputField(page: Page | CustomElement, selector: string, v
   await (input as InputElement | TextareaElement).input(value)
 }
 
+// 日期仍是微信原生 picker；选一个是底部选择弹层（定稿 108）：点开框，再点弹层里那一行
 export async function pickOption(page: Page | CustomElement, selector: string, value: string) {
   const component = (await page.$(selector)) as CustomElement | null
-  const picker = await component?.$('picker')
-  if (!component || !picker) throw new Error(`no picker ${selector}`)
-  const mode = (await component.data('mode')) as string
-  const options = (await component.data('options')) as { id: string }[]
-  const index = options.findIndex((option) => option.id === value)
-  if (mode !== 'date' && index < 0) throw new Error(`no picker option ${value}`)
-  await picker.trigger('change', { value: mode === 'date' ? value : String(index) })
+  if (!component) throw new Error(`no picker ${selector}`)
+  if ((await component.data('mode')) === 'date') {
+    const picker = await component.$('picker')
+    if (!picker) throw new Error(`no date picker ${selector}`)
+    await picker.trigger('change', { value })
+    return
+  }
+  await component.callMethod('onOpen')
+  const rows = (await component.data('rows')) as { id: string }[]
+  const index = rows.findIndex((row) => row.id === value)
+  const choice = ((await component.$$('.u-choice')) as CustomElement[])[index]
+  if (index < 0 || !choice) throw new Error(`no picker option ${value}`)
+  await choice.tap()
+  await expect.poll(async () => component.data('open') as Promise<unknown>).toBe(false)
 }

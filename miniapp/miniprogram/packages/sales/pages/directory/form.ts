@@ -1,38 +1,31 @@
-// 订货目录（06 章 X11，2026-10-03 确认）：右侧按这个客户的订货分类分组列目录项；点一项进目录产品整页，
-// 上块「订货信息」（客户产品编码、订货分类、订货价、可订），下块配方（产品本身的，所有客户共用），一起保存
+// 订货目录（06 章 X11 / X13 / X14，2026-10-05 产品归客户）：右侧按这个客户的订货分类分组列产品；
+// 点一行进目录产品整页（产品图、名称、单位 → 订货信息 → 配方明细），新建和修改同一页
 import {
-  catalogItemSaveSchema,
+  catalogItemCreateSchema,
+  catalogItemUpdateSchema,
   copy,
   formatMoney,
   type Catalog,
+  type CatalogCopySource,
   type CatalogItem,
-  type CatalogItemSave,
-  type ProductItem,
 } from '@huazhong/shared'
-import { checkedOf, type Checked } from '../../../../core/form'
+import { checkedOf } from '../../../../core/form'
 import { centsOfText, textOfCents } from '../../../../core/money'
 import { bomBodyOf, bomLinesOf, type BomLine } from '../../../../views/bom'
 
-interface Tag {
-  text: string
-  warn: boolean
-}
-
+// 行：名称（+ 已停用）、订货价/单位靠右；小字客户产品编码、配方几种花材
 function rowOf(item: CatalogItem) {
-  // 目录停用、产品停用都标「已停用」，两者都有只标一个，警告样式（2026-10-05 确认）
-  const tags: Tag[] =
-    item.enabled && item.productEnabled ? [] : [{ text: copy.screen.tag.discontinued, warn: false }]
-  // 行上只放名称、订货价，第二行标记 + 编码（都没有就不出第二行）；配方在目录产品页查看
   return {
     productId: item.productId,
     name: item.name,
-    tags,
-    code: item.customerCode,
-    priceText: copy.screen.listPriceText(formatMoney(item.listPriceCents), item.unit),
+    disabled: !item.enabled,
+    code: item.customerCode ? `${copy.screen.label.customerCode} ${item.customerCode}` : '',
+    bom: copy.screen.bomCount(item.bom.length),
+    priceText: copy.screen.pricePer(formatMoney(item.listPriceCents), item.unit),
   }
 }
 
-// 只列有目录项的分类（空分类在「管理分类」里看得到）
+// 只列有产品的分类（空分类在「管理分类」里看得到）
 export function groupsOf(catalog: Catalog) {
   return catalog.categories
     .map((category) => ({
@@ -44,12 +37,10 @@ export function groupsOf(catalog: Catalog) {
 }
 
 export interface ItemForm {
-  productId: string
   name: string
   unit: string
-  // 新加进目录的为 null
-  version: number | null
-  productVersion: number
+  imageFileId: string | null
+  imageUrl: string
   categoryId: string
   customerCode: string
   priceText: string
@@ -59,11 +50,10 @@ export interface ItemForm {
 
 export function formOfItem(item: CatalogItem): ItemForm {
   return {
-    productId: item.productId,
     name: item.name,
     unit: item.unit,
-    version: item.version,
-    productVersion: item.productVersion,
+    imageFileId: item.imageFileId,
+    imageUrl: item.imageUrl ?? '',
     categoryId: item.categoryId,
     customerCode: item.customerCode,
     priceText: textOfCents(item.listPriceCents),
@@ -72,51 +62,63 @@ export function formOfItem(item: CatalogItem): ItemForm {
   }
 }
 
-// 新加进目录：只有一个分类时默认选它
-export function formOfProduct(product: ProductItem, catalog: Catalog): ItemForm {
+// 新建：只有一个订货分类时默认选它
+export function blankForm(catalog: Catalog): ItemForm {
   const [only, ...rest] = catalog.categories
   return {
-    productId: product.id,
-    name: product.name,
-    unit: product.unit,
-    version: null,
-    productVersion: product.version,
+    name: '',
+    unit: '',
+    imageFileId: null,
+    imageUrl: '',
     categoryId: only && rest.length === 0 ? only.id : '',
     customerCode: '',
     priceText: '',
     enabled: true,
-    bom: bomLinesOf(product.bom),
+    bom: [],
   }
 }
 
-export function bomChanged(form: ItemForm, initial: ItemForm): boolean {
-  return JSON.stringify(bomBodyOf(form.bom)) !== JSON.stringify(bomBodyOf(initial.bom))
+function bodyOf(form: ItemForm) {
+  const { name, unit, imageFileId, categoryId, customerCode, enabled } = form
+  const priceCents = centsOfText(form.priceText)
+  return {
+    name,
+    unit,
+    imageFileId,
+    categoryId,
+    customerCode,
+    priceCents,
+    enabled,
+    bom: bomBodyOf(form.bom),
+  }
 }
 
-// 配方改了才带 product；报错键：categoryId、customerCode、priceCents、product.bom…
-export function checkItem(form: ItemForm, initial: ItemForm): Checked<CatalogItemSave> {
-  return checkedOf(
-    catalogItemSaveSchema.safeParse({
-      version: form.version ?? undefined,
-      categoryId: form.categoryId,
-      customerCode: form.customerCode,
-      priceCents: centsOfText(form.priceText),
-      enabled: form.enabled,
-      product: bomChanged(form, initial)
-        ? { version: form.productVersion, bom: bomBodyOf(form.bom) }
-        : undefined,
-    }),
-  )
+export function checkCreate(form: ItemForm) {
+  return checkedOf(catalogItemCreateSchema.safeParse(bodyOf(form)))
 }
 
-// 「添加产品」：启用、还不在这个客户目录里的产品
-export function addableOf(products: readonly ProductItem[], catalog: Catalog) {
-  const added = new Set(catalog.items.map((item) => item.productId))
-  return products
-    .filter((product) => product.enabled && !added.has(product.id))
-    .map((product) => ({
-      id: product.id,
-      name: product.name,
-      sub: `${copy.field.category} ${product.categoryName}`,
-    }))
+export function checkUpdate(form: ItemForm, version: number) {
+  return checkedOf(catalogItemUpdateSchema.safeParse({ ...bodyOf(form), version }))
+}
+
+// 从其他客户复制：一行一个来源产品，单位 · 配方摘要；重名、停用的不能勾，写明原因
+export function copyRowsOf(source: CatalogCopySource, picked: readonly string[]) {
+  return source.items.map((item) => {
+    const bom = item.bom
+      .map((line) => `${line.materialName} ${line.qty}`)
+      .join(copy.order.nameSeparator)
+    const skip =
+      item.skipReason === 'duplicate'
+        ? copy.screen.catalog.skipDuplicate
+        : item.skipReason === 'disabled'
+          ? copy.screen.catalog.skipDisabled
+          : ''
+    return {
+      id: item.productId,
+      name: item.name,
+      sub: skip || [item.unit, bom].filter(Boolean).join(copy.separator),
+      disabled: skip !== '',
+      picked: picked.includes(item.productId),
+    }
+  })
 }

@@ -1,10 +1,10 @@
-// 配方明细的编辑（06 章 X10、X11）：产品表单和目录产品整页共用。只做数据换算，不发请求以外的事
+// 配方明细的编辑（06 章 X13 目录产品）。只做数据换算，不发请求以外的事
 import {
   contract,
   copy,
   PAGE_SIZE_MAX,
+  type CatalogItem,
   type InventoryItem,
-  type ProductItem,
 } from '@huazhong/shared'
 import { request, type Result } from '../core/request'
 
@@ -15,7 +15,7 @@ export interface BomLine {
   qty: number
 }
 
-export function bomLinesOf(bom: ProductItem['bom']): BomLine[] {
+export function bomLinesOf(bom: CatalogItem['bom']): BomLine[] {
   return bom.map((line) => ({
     materialId: line.materialId,
     name: line.materialName,
@@ -48,20 +48,21 @@ export function materialPicksOf(materials: readonly InventoryItem[], bom: readon
       sub: [`${copy.field.code} ${item.code}`, `${copy.field.unit} ${item.unit}`].join(
         copy.separator,
       ),
+      code: item.code,
     }))
 }
 
-// 「添加花材」多选确认：勾选的花材一次加进配方，用量默认 1（已在配方里的跳过）
+// 「添加花材」确认：选好的花材按选的用量一次加进配方（已在配方里的跳过）
 export function addMaterials(
   materials: readonly InventoryItem[],
   bom: BomLine[],
-  ids: readonly string[],
+  chosen: readonly { id: string; qty: number }[],
 ): BomLine[] {
   const added = new Set(bom.map((line) => line.materialId))
-  const lines = ids.flatMap((id) => {
+  const lines = chosen.flatMap(({ id, qty }) => {
     const item = materials.find((m) => m.id === id)
     if (!item || added.has(id)) return []
-    return [{ materialId: item.id, name: item.name, unit: item.unit, qty: 1 }]
+    return [{ materialId: item.id, name: item.name, unit: item.unit, qty }]
   })
   return [...bom, ...lines]
 }

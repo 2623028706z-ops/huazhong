@@ -22,7 +22,7 @@
 }
 
 .hz-search__icon {
-  margin-right: 8px;
+  margin-right: var(--hz-space-2);
   font-size: var(--hz-icon);
   color: var(--hz-muted);
 }

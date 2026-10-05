@@ -195,9 +195,16 @@ const batchOrdersSchema = z
       seen.add(order.id)
     })
   })
+// 逐单结果（2026-10-06 第 3 批）：带客户、门店给结果弹层「客户 · 门店 / 单号」；失败的带原因
+const batchItemShape = {
+  id: idSchema,
+  no: z.string(),
+  customerName: z.string(),
+  storeName: z.string(),
+}
 const batchResultSchema = z.object({
-  succeeded: z.array(z.object({ id: idSchema, no: z.string() })),
-  failed: z.array(z.object({ id: idSchema, no: z.string(), reason: z.string() })),
+  succeeded: z.array(z.object(batchItemShape)),
+  failed: z.array(z.object({ ...batchItemShape, reason: z.string() })),
 })
 export const batchConfirmOrders = {
   method: 'POST',

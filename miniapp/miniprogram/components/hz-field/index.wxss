@@ -3,59 +3,52 @@
   --td-input-bg-color: transparent;
   --td-input-vertical-padding: 0;
   --td-input-default-text-color: var(--hz-ink);
-  --td-input-placeholder-text-color: var(--hz-muted);
+  --td-input-placeholder-text-color: var(--hz-placeholder);
   --td-textarea-background-color: transparent;
   --td-textarea-padding: 0;
   --td-textarea-text-color: var(--hz-ink);
-  --td-textarea-placeholder-color: var(--hz-muted);
+  --td-textarea-placeholder-color: var(--hz-placeholder);
   --td-font-body-large: var(--hz-font) / 1.5 var(--td-font-family);
   --td-spacer-2: 0;
 }
 
-/* 备注这类多行：字段名和内容都顶上对齐，内容靠左（定稿 .cell.ta） */
+/* 备注这类多行：字段名和内容都顶上对齐；页面里内容同样靠右（表单对齐 A，2026-10-06），弹层里靠左 */
 .u-field--area {
   align-items: flex-start;
 }
 
 .u-field--area .u-field__label {
-  padding-top: var(--hz-field-area-pad, 14px);
+  padding-top: var(--hz-field-area-pad, var(--hz-space-3));
   line-height: 21px;
 }
 
 .hz-field__box--area {
   align-items: flex-start;
   min-height: var(--hz-field-area, 48px);
-  padding-top: var(--hz-field-area-pad, 14px);
-  padding-bottom: var(--hz-field-area-pad, 14px);
+  padding-top: var(--hz-field-area-pad, var(--hz-space-3));
+  padding-bottom: var(--hz-field-area-pad, var(--hz-space-3));
   box-sizing: border-box;
 }
 
-/* 金额、数量：卡片里是右边一个小框（定稿登记收款），弹层里整条 */
-.hz-field__box--num {
-  flex: var(--hz-field-num-flex, none);
-  width: var(--hz-field-num, 120px);
-  min-height: var(--hz-field-num-h, 34px);
-  margin-left: auto;
-  padding: 0 10px;
-  background: var(--hz-paper);
-  border-radius: var(--hz-radius-button);
-  box-shadow: inset 0 0 0 1px var(--hz-hair);
+.hz-field__area {
+  text-align: var(--hz-field-align, right);
 }
 
-.hz-field__box--num.u-field__box--focus {
-  box-shadow: inset 0 0 0 1.5px var(--hz-brand);
-}
-
-.hz-field__box--num.u-field__box--error {
-  box-shadow: inset 0 0 0 1px var(--hz-danger);
-}
-
+/* 金额、数量、电话：页面里和文字字段一样靠右、不带框（原 120px 小框 2026-10-06 去掉），整行都能点；
+   弹层里由 u-boxed 画整条框 */
 .hz-field__control {
   flex: 1;
   height: 100%;
 }
 
-/* 一行输入：卡片里靠右（定稿「优惠原因　填了优惠必填」），弹层里靠左 */
+/* 主信息（订货价）：宋体大字，行高一些 */
+.hz-field__box--big {
+  --td-font-body-large: var(--hz-font-hero) / 1.3 var(--hz-serif);
+
+  min-height: var(--hz-tap);
+}
+
+/* 一行输入（含数字）：卡片里靠右（定稿「优惠原因　填了优惠必填」），弹层里靠左 */
 .hz-field__input {
   text-align: var(--hz-field-align, right);
 }

@@ -1,6 +1,6 @@
 import { contract, type OutputOf, type Supplier } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
-import { and, asc, desc, eq, ilike, sql, type SQL } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm'
 import type { Db, Tx } from '../../../db/client.ts'
 import { accounts, suppliers } from '../../../db/schema/index.ts'
 import { DB } from '../../common/db.ts'
@@ -90,7 +90,9 @@ export class SupplierReads {
     const rows = await query
       .where(
         and(
-          pattern ? ilike(suppliers.name, `%${pattern}%`) : undefined,
+          pattern
+            ? or(ilike(suppliers.name, `%${pattern}%`), ilike(suppliers.contact, `%${pattern}%`))
+            : undefined,
           input.enabled ? eq(suppliers.enabled, input.enabled === 'true') : undefined,
           accountFilter,
           afterCursor(suppliers.name, suppliers.id, input.cursor),

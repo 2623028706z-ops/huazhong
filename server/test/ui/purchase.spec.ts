@@ -1,4 +1,4 @@
-import { copy, type PoDetail } from '@huazhong/shared'
+import { copy, redesignCopy, type PoDetail } from '@huazhong/shared'
 import type { CustomElement } from 'miniprogram-automator/out/Element.js'
 import { expect, test } from 'vitest'
 import { inviteOf, poInput, poOf } from '../support/purchase.ts'
@@ -23,8 +23,12 @@ test('B01-F 采购首页只列入口、待办，一级页无返回', async () =>
   const home = (await page.$('#module-home')) as CustomElement
   await expect.poll(async () => home.data('common') as Promise<unknown>).toHaveLength(2)
   expect(await home.data('back')).toBe(false)
-  expect(await home.data('masters')).toMatchObject([{ key: 'suppliers' }])
-  await expect.poll(async () => home.data('todos') as Promise<unknown>).toHaveLength(2)
+  // 单模块员工没有底栏，「我的」放进资料组最后一格
+  expect(await home.data('masters')).toMatchObject([{ key: 'suppliers' }, { key: 'my' }])
+  // 待办：缺货花材、到货有差异（06 章 C1，第 3 批）；不放待填报邀请、待收货采购单
+  await expect
+    .poll(async () => home.data('todos') as Promise<unknown>)
+    .toMatchObject([{ key: 'shortageMaterials' }, { key: 'poDiffs' }])
   expect(await home.data('tabs')).toEqual([])
   await snap(mini, 'purchase-home')
 })
@@ -49,34 +53,46 @@ test('B21 B24-F B25-F G11 需求来源、缺口预填和日期校验', async () 
   const { mini, server: s } = suite()
   await asMini(mini, s, 'u4')
   const page = await enter(mini, '/packages/purchase/pages/demand/index')
-  await page.callMethod('onFrom', { detail: TODAY })
-  await page.callMethod('onTo', { detail: TOMORROW })
-  await page.callMethod('load')
   await waitData(page, 'loaded', true)
+  // 出货日期收进筛选（06 章 C2）：自定义区间
+  const range = (from: string, to: string) => ({
+    detail: { status: '', keyword: '', date: 'custom', range: { from, to }, picks: {} },
+  })
+  await page.callMethod('onDemandFilter', range(TODAY, TOMORROW))
+  await waitData(page, 'from', TODAY)
   await expect.poll(async () => page.data('rows') as Promise<unknown>).not.toEqual([])
   const rows = (await page.data('rows')) as { id: string; name: string }[]
   const sunflower = rows.find((r) => r.name === '向日葵')?.id
   if (!sunflower) throw new Error('no demand')
   const event = { currentTarget: { dataset: { key: sunflower } } }
   await page.callMethod('onSource', event)
-  await expect.poll(async () => page.data('source.invites') as Promise<unknown>).toHaveLength(1)
-  expect(await page.data('sourceSummary')).toBe('需求 75　　库存 60　　在途 0')
-  expect(await page.data('sourceLeft')).toBe('缺 15')
-  expect(await page.data('source.invites')).toHaveLength(1)
+  await waitData(page, 'sourceSheet', true)
+  // 需求来源弹层：上面需求 / 库存 / 在途 / 缺口，下面「已邀请待填报」一段列邀请
+  await expect
+    .poll(async () => page.data('sourceSections.0.key') as Promise<unknown>)
+    .toBe('invites')
+  expect(await page.data('sourceSections.0.blocks')).toHaveLength(1)
+  expect(
+    ((await page.data('sourceTop')) as { value: string }[]).map((field) => field.value),
+  ).toEqual(['75 枝', '60 枝', '0 枝', '15 枝'])
   await snap(mini, 'demand-sources')
   const invite = await inviteOf(s)
-  await page.callMethod('onOpenSourceInvite', { currentTarget: { dataset: { key: invite.id } } })
+  await page.callMethod('onOpenBlock', {
+    currentTarget: { dataset: { key: invite.id, kind: 'invite' } },
+  })
   const inviteDetail = await waitPage(mini, 'packages/purchase/pages/invite-detail/index')
   await waitData(inviteDetail, 'loaded', true)
   expect(await inviteDetail.data('view.info.rows')).toContainEqual(
-    expect.objectContaining({ label: '单号', value: invite.no }),
+    expect.objectContaining({ label: copy.screen.inviteNo, value: invite.no }),
   )
   await mini.navigateBack()
   await waitPage(mini, 'packages/purchase/pages/demand/index')
   await page.callMethod('onCloseSource')
   await page.callMethod('onToggle', event)
   expect(await page.callMethod('draft')).toMatchObject({ lines: [{ qty: 15 }] })
-  // 邀请供应商直接进 C7，供应商在 C7 里选
+  // 邀请供应商直接进 C7，供应商在 C7 里选；「全选」再点一次全不选
+  await page.callMethod('onToggle', event)
+  expect(await page.data('selected')).toEqual([])
   await page.callMethod('onSelectAll')
   expect(await page.data('allSelected')).toBe(true)
   await page.callMethod('onSelectAll')
@@ -91,7 +107,7 @@ test('B21 B24-F B25-F G11 需求来源、缺口预填和日期校验', async () 
   const options = (await form.data('supplierOptions')) as { id: string }[]
   await pickOption(form, '#supplier-picker', options[0]?.id ?? '')
   await snap(mini, 'invite-create')
-  await tapText(form, copy.screen.title.createInvite)
+  await tapText(form, copy.screen.action.sendInvite)
   await waitData(form, 'reviewSheet', true)
   await form.callMethod('onReviewConfirm')
   // 新建发出后换到 C3 的填报邀请段（06 章 C7）；返回回到需求页
@@ -100,7 +116,7 @@ test('B21 B24-F B25-F G11 需求来源、缺口预填和日期校验', async () 
   await mini.navigateBack()
   await waitPage(mini, 'packages/purchase/pages/demand/index')
   await waitData(page, 'selected', [])
-  await page.callMethod('onTo', { detail: '2026-09-28' })
+  await page.callMethod('onDemandFilter', range(TODAY, '2026-09-28'))
   await waitData(page, 'dateError', '结束日期不能早于开始日期')
 })
 
@@ -164,7 +180,8 @@ test('B12-F B28-F G04-F I01 填报整页分享、修改返回与采购关联状�
     mini,
     `/packages/purchase/pages/invite-detail/index?id=${submitted.id}`,
   )
-  await waitData(detail, 'view.poLink', `采购单 ${po.no}${copy.separator}已取消`)
+  // 采购单放在信息卡「采购单」一行，值不再带前缀
+  await waitData(detail, 'view.poLink', `${po.no}${copy.separator}已取消`)
   expect(await detail.data('view.info.status')).toBe('submitted')
   expect(await detail.data('buttons')).toEqual([])
   await snap(mini, 'invite-submitted-cancelled')
@@ -258,5 +275,29 @@ test('H07 收货页断线期间改单，重新连接后刷新', async () => {
   await mini.evaluate('function () { getApp().onShow() }')
   await expect
     .poll(async () => page.data('view.info.rows') as Promise<unknown>)
-    .toContainEqual({ label: '备注', value: '补充备注' })
+    .toContainEqual(expect.objectContaining({ label: '备注', value: '补充备注' }))
+})
+
+test('C4 到货差异黄条：仓库改价后采购员看到差在哪，点「知道了」收起', async () => {
+  const { mini, server: s } = suite()
+  const po = await poOf(s, 'PO-260928-004')
+  dataOf(
+    await (
+      await s.as('u5')
+    ).post(`/purchase-orders/${po.id}/reprice`, {
+      version: po.version,
+      reason: '',
+      lines: po.lines.map((line) => ({ poLineId: line.id, priceCents: line.priceCents - 50 })),
+    }),
+  )
+  const api = await asMini(mini, s, 'u4')
+  const page = await enter(mini, `/packages/purchase/pages/order-detail/index?id=${po.id}`)
+  await waitData(page, 'loaded', true)
+  await waitData(page, 'view.diff.action', redesignCopy.gotIt)
+  expect(JSON.stringify(await page.data('view.diff.lines'))).toContain(po.lines[0]?.name ?? '-')
+  await snap(mini, 'purchase-diff-notice')
+  await page.callMethod('onAckDiff')
+  // 点过就整条收起（data 里读回来是空）
+  await expect.poll(async () => page.data('view.diff') as Promise<unknown>).toBeFalsy()
+  expect(dataOf<PoDetail>(await api.get(`/purchase-orders/${po.id}`)).diff?.unseen).toBe(false)
 })

@@ -14,7 +14,15 @@ import type { DetailEvent, KeyEvent } from '../../core/events'
 import type { FailureView } from '../../core/failure-view'
 import { confirmAsk } from '../../core/guard'
 import { unwatch, watch, pullToRefresh } from '../../core/live'
-import { failureOf, identityOf, isDevelop, loadMe, logout, tabsOf } from '../../core/session'
+import {
+  failureOf,
+  identityOf,
+  isDevelop,
+  loadMe,
+  logout,
+  tabBadgeOf,
+  tabsOf,
+} from '../../core/session'
 import { request } from '../../core/request'
 
 const menuPages = {
@@ -129,11 +137,6 @@ function sideOf(me: Me) {
   return me.type === 'store' || me.type === 'supplier' ? me.type : ''
 }
 // 供应商底栏「填报」的待填报红点
-async function pendingSupplyOf(me: Me) {
-  if (me.type !== 'supplier') return 0
-  const invites = await request(contract.supplierInvites, { query: { status: 'pending' } })
-  return invites.ok ? (invites.data.counts.pending ?? 0) : 0
-}
 // 门店的往来账主题按客户；还没有对账单时等下次进页面再取
 function topicsOf(me: Me, partyId: string | null): Topic[] {
   const topics: Topic[] = [`account:${me.id}`]
@@ -174,7 +177,7 @@ Page({
       return
     }
     const me = result.data
-    const [count, statements] = await Promise.all([pendingSupplyOf(me), statementsOf(me)])
+    const [count, statements] = await Promise.all([tabBadgeOf(me), statementsOf(me)])
     this.setData({
       back: me.landing.startsWith('module:') && me.landing !== 'module:warehouse',
       profile: profileOf(me),

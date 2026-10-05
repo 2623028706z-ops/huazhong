@@ -3,6 +3,7 @@ import { DemandController, PurchaseController } from './purchase.controller.ts'
 import { PurchaseService } from './purchase.service.ts'
 import { PoReads } from './po-reads.ts'
 import { PoWrites } from './po-writes.ts'
+import { PoDiffAck } from './po-diff-ack.ts'
 import { PurchaseDemand } from './demand.ts'
 import { InviteReads } from './invite-reads.ts'
 import { InviteWrites } from './invite-writes.ts'
@@ -21,6 +22,7 @@ import { SuppliersController } from './suppliers.controller.ts'
     PurchaseService,
     PoReads,
     PoWrites,
+    PoDiffAck,
     PurchaseDemand,
     InviteReads,
     InviteWrites,

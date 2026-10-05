@@ -11,12 +11,13 @@ import {
   type OutputOf,
 } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
-import { and, asc, desc, eq, inArray, sql, type SQL } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, inArray, or, sql, type SQL } from 'drizzle-orm'
 import type { Db } from '../../../db/client.ts'
 import {
   accounts,
   customers,
   orderChanges,
+  orderLines,
   orders,
   stores,
   orderCancelRequests,
@@ -61,6 +62,55 @@ interface OrderQuery {
 
 const orderSearch = (q: string | undefined) =>
   searchAny(q, [orders.no, customers.name, stores.name])
+
+// 门店搜单号、产品名（2026-10-06 第 4 批）
+function storeOrderSearch(q: string | undefined): SQL | undefined {
+  if (!q) return undefined
+  const pattern = `%${q.replace(/[\\%_]/g, (char) => `\\${char}`)}%`
+  return or(
+    ilike(orders.no, pattern),
+    sql`EXISTS (SELECT 1 FROM ${orderLines} WHERE ${orderLines.orderId} = ${orders.id} AND ${orderLines.name} ILIKE ${pattern})`,
+  )
+}
+
+// 门店订单排序（2026-10-06 第 4 批，用户定）：待确认（没出货日期）最前，按提交先后；其次待发货按出货日期近→远；
+// 再已发货按出货日期倒序；已取消、已作废最后按下单日期倒序。排序键写成一个字符串（段 + 日期 + id），
+// 游标就是这个键；SQL 和 JS 两边算法要一致
+const ID_CEILING = 1_000_000_000_000_000
+const LAST_DAY = '9999-12-31'
+const storeSortKey = sql<string>`(CASE ${orders.status}
+  WHEN 'pending_confirm' THEN '0' || lpad(${orders.id}::text, 16, '0')
+  WHEN 'to_ship' THEN '1' || to_char(${orders.shipDate}, 'YYYYMMDD') || lpad(${orders.id}::text, 16, '0')
+  WHEN 'shipped'
+    THEN '2' || lpad((${LAST_DAY}::date - ${orders.shipDate})::text, 8, '0') || lpad((${ID_CEILING}::bigint - ${orders.id})::text, 16, '0')
+  ELSE '3' || lpad((${LAST_DAY}::date - ${orders.orderDate})::text, 8, '0') || lpad((${ID_CEILING}::bigint - ${orders.id})::text, 16, '0')
+END) COLLATE "C"`
+const MS_PER_DAY = 86_400_000
+const DAYS_WIDTH = 8
+const ID_WIDTH = 16
+function daysToLast(day: string): string {
+  return String((Date.parse(LAST_DAY) - Date.parse(day)) / MS_PER_DAY).padStart(DAYS_WIDTH, '0')
+}
+function storeSortKeyOf(row: Pick<OrderRow, 'status' | 'shipDate' | 'orderDate' | 'id'>): string {
+  const asc = String(row.id).padStart(ID_WIDTH, '0')
+  const desc = String(ID_CEILING - row.id).padStart(ID_WIDTH, '0')
+  switch (row.status) {
+    case 'pending_confirm':
+      return `0${asc}`
+    case 'to_ship':
+      return `1${(row.shipDate ?? '').replaceAll('-', '')}${asc}`
+    case 'shipped':
+      return `2${daysToLast(row.shipDate ?? LAST_DAY)}${desc}`
+    case 'cancelled':
+    case 'voided':
+      return `3${daysToLast(row.orderDate)}${desc}`
+  }
+}
+function afterStoreCursor(raw: string | undefined): SQL | undefined {
+  if (raw === undefined) return undefined
+  const [key] = decodeCursor(raw)
+  return sql`${storeSortKey} > ${String(key)}`
+}
 
 // 发货单的两段：待发货在前、已发货在后
 type ShippingSegment = 'to_ship' | 'shipped'
@@ -237,6 +287,19 @@ export async function orderDetailOf(
   }
 }
 
+// 门店的「已取消」把已作废也算进去
+function statusWhere(store: boolean, status: OrderQuery['status']): SQL | undefined {
+  if (status === undefined) return undefined
+  return store && status === 'cancelled'
+    ? inArray(orders.status, ['cancelled', 'voided'])
+    : eq(orders.status, status)
+}
+function cancelRequestedWhere(requested: boolean | undefined): SQL | undefined {
+  return requested === undefined
+    ? undefined
+    : sql`EXISTS (SELECT 1 FROM order_cancel_requests cr WHERE cr.order_id = ${orders.id} AND cr.status = 'pending') = ${requested}`
+}
+
 @Injectable()
 export class OrderReads {
   constructor(
@@ -246,31 +309,30 @@ export class OrderReads {
 
   async list(viewer: Viewer, query: OrderQuery): Promise<OutputOf<typeof contract.listOrders>> {
     const today = this.clock.today()
+    const store = viewer.type === 'store'
     const base = and(
       orderVisibleTo(viewer, SHIPPING_LIST),
       query.customerId === undefined ? undefined : eq(orders.customerId, Number(query.customerId)),
-      orderSearch(query.q),
+      store ? storeOrderSearch(query.q) : orderSearch(query.q),
       dateBetween(orders.orderDate, query),
       query.afterable === true ? afterableWhere(this.db, viewer, today) : undefined,
-      query.cancelRequested === undefined
-        ? undefined
-        : sql`EXISTS (SELECT 1 FROM order_cancel_requests cr WHERE cr.order_id = ${orders.id} AND cr.status = 'pending') = ${query.cancelRequested}`,
+      cancelRequestedWhere(query.cancelRequested),
     )
     const rows = await orderRowsQuery(this.db)
       .where(
         and(
           base,
-          query.status === undefined
-            ? undefined
-            : viewer.type === 'store' && query.status === 'cancelled'
-              ? inArray(orders.status, ['cancelled', 'voided'])
-              : eq(orders.status, query.status),
-          beforeCursor(orders.orderDate, orders.id, query.cursor),
+          statusWhere(store, query.status),
+          store
+            ? afterStoreCursor(query.cursor)
+            : beforeCursor(orders.orderDate, orders.id, query.cursor),
         ),
       )
-      .orderBy(desc(orders.orderDate), desc(orders.id))
+      .orderBy(...(store ? [asc(storeSortKey)] : [desc(orders.orderDate), desc(orders.id)]))
       .limit(query.limit + 1)
-    const page = pageOf(rows, query.limit, (row) => [row.orderDate, row.id])
+    const page = pageOf(rows, query.limit, (row) =>
+      store ? [storeSortKeyOf(row), row.id] : [row.orderDate, row.id],
+    )
     return {
       items: await orderCardsOf(this.db, page.items, viewer, today),
       nextCursor: page.nextCursor,

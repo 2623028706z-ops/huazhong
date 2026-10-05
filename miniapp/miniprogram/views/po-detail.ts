@@ -1,4 +1,4 @@
-import { contract, copy, redesignCopy, labels, type PoDetail } from '@huazhong/shared'
+import { contract, copy, redesignCopy, labels, noticeCopy, type PoDetail } from '@huazhong/shared'
 import { buttonsOf, canDo, type ButtonView } from '../core/actions'
 import type { CodeEvent, DetailEvent } from '../core/events'
 import type { FailureView } from '../core/failure-view'
@@ -10,6 +10,8 @@ import { request, type Result } from '../core/request'
 import { failureOf, messageOf } from '../core/session'
 import { showSuccess } from '../core/toast'
 import { poViewOf } from './purchase'
+import { poDiffViewOf } from './po-diff'
+import { poSheetMethods } from './po-detail-sheets'
 import { receiveInputOf, receiveLinesOf, receiveViewsOf, type ReceiveLine } from './po-receive-form'
 
 function isOldResponse(next: PoDetail, current: PoDetail | null) {
@@ -28,7 +30,11 @@ const data = {
   loaded: false,
   failure: null as FailureView | null,
   realtime: '',
-  view: null as ReturnType<typeof poViewOf> | null,
+  view: null as
+    | (ReturnType<typeof poViewOf> & {
+        diff: (ReturnType<typeof poDiffViewOf> & { action: string; loading: boolean }) | null
+      })
+    | null,
   buttons: [] as ButtonView[],
   busy: '',
   cancelSheet: false,
@@ -59,7 +65,7 @@ const data = {
     optional: copy.placeholder.optional,
   },
 }
-interface Host {
+export interface PoHost {
   data: typeof data
   id: string
   financeScope: boolean
@@ -70,11 +76,14 @@ interface Host {
   selectComponent(selector: string): unknown
   load(pushed?: boolean, replace?: boolean): Promise<void>
   show(po: PoDetail, recvNote?: string): void
+  diffOf(
+    po: PoDetail,
+  ): (ReturnType<typeof poDiffViewOf> & { action: string; loading: boolean }) | null
   preserve(po: PoDetail): boolean
   render(lines: ReceiveLine[]): void
   settle(result: Result<PoDetail>, done: string, back?: boolean): void
 }
-function readPurchaseOrder(host: Host) {
+function readPurchaseOrder(host: PoHost) {
   return request(host.financeScope ? contract.getFinancePurchaseOrder : contract.getPurchaseOrder, {
     params: { id: host.id },
     query: { sourceType: host.sourceType },
@@ -82,12 +91,13 @@ function readPurchaseOrder(host: Host) {
 }
 const methods = {
   ...pullToRefresh,
+  ...poSheetMethods,
   id: '',
   financeScope: false,
   readonlyScope: false,
   sourceType: 'po' as 'po' | 'purchase_return' | 'price_change',
   order: null as PoDetail | null,
-  onLoad(this: Host, query: Record<string, string | undefined>) {
+  onLoad(this: PoHost, query: Record<string, string | undefined>) {
     this.id = query.id ?? ''
     this.financeScope = query.scope === 'finance'
     this.readonlyScope = query.scope === 'internal'
@@ -96,7 +106,7 @@ const methods = {
         ? query.sourceType
         : 'po'
   },
-  onShow(this: Host) {
+  onShow(this: PoHost) {
     void this.load()
     watchNewer(
       this,
@@ -114,7 +124,7 @@ const methods = {
     unwatch(this)
     syncUnloadAlert(false)
   },
-  async load(this: Host, pushed = false, replace = false) {
+  async load(this: PoHost, pushed = false, replace = false) {
     const result = await readPurchaseOrder(this)
     if (!result.ok) {
       this.setData({ failure: failureOf(result.failure, this.data.loaded ? 'refresh' : 'load') })
@@ -127,7 +137,7 @@ const methods = {
     this.show(po, replace ? this.data.recvNote : '')
     if (pushed) this.setData({ realtime: copy.screen.realtime.refreshed })
   },
-  preserve(this: Host, po: PoDetail) {
+  preserve(this: PoHost, po: PoDetail) {
     if (!this.data.changed && !this.data.sheet) return false
     if (this.order?.version === po.version) {
       this.setData({ realtime: copy.screen.realtime.editing })
@@ -140,7 +150,7 @@ const methods = {
     this.setData({ sheet: '' })
     return false
   },
-  show(this: Host, po: PoDetail, recvNote = '') {
+  show(this: PoHost, po: PoDetail, recvNote = '') {
     this.order = po
     const receiving =
       !this.readonlyScope && this.data.kind === 'warehouse' && canDo(po.actions, 'receive')
@@ -156,7 +166,7 @@ const methods = {
     this.setData({
       loaded: true,
       failure: null,
-      view: poViewOf(po, false, this.financeScope),
+      view: { ...poViewOf(po, false, this.financeScope), diff: this.diffOf(po) },
       // 不能点的原因已经写在页面上方的提示条里，按钮下面不再重复
       buttons: this.readonlyScope
         ? []
@@ -172,7 +182,40 @@ const methods = {
     })
     this.render(lines)
   },
-  render(this: Host, lines: ReceiveLine[]) {
+  // 到货差异后端只返回给这张单的采购员和管理员（别人 diff 为空），仓库收货页也不显示；「知道了」看 actions 有没有 ackDiff
+  diffOf(this: PoHost, po: PoDetail) {
+    const diff = this.data.kind === 'purchase' ? poDiffViewOf(po.diff) : null
+    if (!diff) return null
+    return {
+      ...diff,
+      action: !this.readonlyScope && canDo(po.actions, 'ackDiff') ? redesignCopy.gotIt : '',
+      loading: false,
+    }
+  },
+  async onAckDiff(this: PoHost) {
+    if (!this.order || this.data.busy) return
+    // 「知道了」转圈：提示条只在这次请求期间 loading，成功、STALE 都会整张换掉
+    this.setData({ busy: 'ackDiff', error: '', 'view.diff.loading': true })
+    const result = await request(contract.ackPurchaseOrderDiff, {
+      params: { id: this.id },
+      body: { version: this.order.version },
+    })
+    // 请求期间可能被实时刷新换掉，提示条还在才复位（不然会凭空造出一个空 diff）
+    this.setData(this.data.view?.diff ? { busy: '', 'view.diff.loading': false } : { busy: '' })
+    if (result.ok) {
+      this.show(result.data)
+      return
+    }
+    const view = failureOf(result.failure, 'submit')
+    if (!view) return
+    if (view.kind === 'page') this.setData({ failure: view })
+    else if (view.kind === 'stale') {
+      // 打开后仓库又改价、退货了：换成最新内容，看过再点
+      this.show(view.latest as PoDetail)
+      this.setData({ error: noticeCopy.poDiffStale })
+    } else this.setData({ error: messageOf(view) })
+  },
+  render(this: PoHost, lines: ReceiveLine[]) {
     const changed =
       isChanged(this.data.initial, lines) || !!this.data.reason || !!this.data.recvNote
     this.setData({
@@ -183,7 +226,7 @@ const methods = {
     })
     syncUnloadAlert(changed)
   },
-  onAction(this: Host, event: CodeEvent) {
+  onAction(this: PoHost, event: CodeEvent) {
     const code = event.currentTarget.dataset.code
     if (code === 'editPo') {
       void wx.navigateTo({ url: `/packages/purchase/pages/order-form/index?id=${this.id}` })
@@ -216,39 +259,10 @@ const methods = {
       this.render(lines)
     }
   },
-  onQty(this: Host, event: DetailEvent<{ index: number; qty: number }>) {
-    this.setData({ fields: {}, error: '' })
-    this.render(
-      this.data.lines.map((line, i) =>
-        i === event.detail.index ? { ...line, qty: event.detail.qty } : line,
-      ),
-    )
-  },
-  onPrice(this: Host, event: DetailEvent<{ index: number; text: string }>) {
-    this.setData({ fields: {}, error: '' })
-    this.render(
-      this.data.lines.map((line, i) =>
-        i === event.detail.index ? { ...line, priceText: event.detail.text } : line,
-      ),
-    )
-  },
-  onReason(this: Host, event: DetailEvent<string>) {
-    this.setData({ reason: event.detail, fields: {}, error: '' })
-    this.render(this.data.lines)
-  },
-  onRecvNote(this: Host, event: DetailEvent<string>) {
-    this.setData({ recvNote: event.detail, fields: {}, error: '' })
-    this.render(this.data.lines)
-  },
-  onCloseCancel(this: Host) {
+  onCloseCancel(this: PoHost) {
     this.setData({ cancelSheet: false, error: '' })
   },
-  onCloseSheet(this: Host) {
-    this.setData({ sheet: '', changed: false })
-    syncUnloadAlert(false)
-    if (this.order) this.show(this.order)
-  },
-  async onCancel(this: Host, event: DetailEvent<string>) {
+  async onCancel(this: PoHost, event: DetailEvent<string>) {
     if (!this.order || this.data.busy) return
     this.setData({ busy: 'cancelPo', error: '' })
     const result = await request(
@@ -260,7 +274,7 @@ const methods = {
     )
     this.settle(result, result.ok ? labels.poStatus[result.data.status] : '')
   },
-  async onReject(this: Host) {
+  async onReject(this: PoHost) {
     if (!this.order || this.data.busy) return
     const confirmed = await confirmAsk(this, {
       title: redesignCopy.rejectPurchaseTitle,
@@ -285,7 +299,7 @@ const methods = {
     })
     this.settle(result, result.ok ? labels.poStatus[result.data.status] : '', true)
   },
-  async onReceive(this: Host) {
+  async onReceive(this: PoHost) {
     if (!this.order) return
     const checked = checkedOf(
       contract.receivePurchaseOrder.body.safeParse({
@@ -314,48 +328,7 @@ const methods = {
     })
     this.settle(result, result.ok ? labels.poStatus[result.data.status] : '', true)
   },
-  async onSaveSheet(this: Host) {
-    if (!this.order) return
-    const common = { version: this.order.version, reason: this.data.reason }
-    const result =
-      this.data.sheet === 'return'
-        ? contract.returnPurchaseOrder.body.safeParse({
-            ...common,
-            lines: this.data.lines
-              .filter((l) => l.qty > 0)
-              .map((l) => ({ poLineId: l.key, qty: l.qty })),
-          })
-        : contract.repricePurchaseOrder.body.safeParse({
-            ...common,
-            lines: this.data.lines.map((l) => ({
-              poLineId: l.key,
-              priceCents: centsOfText(l.priceText),
-            })),
-          })
-    const checked = checkedOf<unknown>(result)
-    if (!checked.ok) {
-      this.setData({
-        error: unplacedErrorOf(checked.fields, ['reason', 'lines.*.qty', 'lines.*.priceCents']),
-        fields: checked.fields,
-      })
-      this.render(this.data.lines)
-      return
-    }
-    this.setData({ busy: this.data.sheet, error: '' })
-    const input = { params: { id: this.id }, body: checked.body }
-    const saved =
-      this.data.sheet === 'return'
-        ? await request(contract.returnPurchaseOrder, {
-            ...input,
-            body: contract.returnPurchaseOrder.body.parse(checked.body),
-          })
-        : await request(contract.repricePurchaseOrder, {
-            ...input,
-            body: contract.repricePurchaseOrder.body.parse(checked.body),
-          })
-    this.settle(saved, copy.action.saved)
-  },
-  settle(this: Host, result: Result<PoDetail>, done: string, back = false) {
+  settle(this: PoHost, result: Result<PoDetail>, done: string, back = false) {
     this.setData({ busy: '' })
     if (result.ok) {
       this.setData({ sheet: '', cancelSheet: false, error: '' })
@@ -389,10 +362,10 @@ const methods = {
       this.render(this.data.lines)
     }
   },
-  onRealtime(this: Host) {
+  onRealtime(this: PoHost) {
     void this.load(false, true)
   },
-  onFailureAction(this: Host) {
+  onFailureAction(this: PoHost) {
     void this.load()
   },
 }

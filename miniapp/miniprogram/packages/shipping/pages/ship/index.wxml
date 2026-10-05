@@ -10,18 +10,18 @@
     <hz-progress steps="{{view.progress}}" />
     <hz-notice wx:if="{{orderNote}}" text="{{orderNote}}" /><hz-notice wx:if="{{view.notice}}" text="{{view.notice}}" />
     <template is="info" data="{{...info}}" />
+    <template wx:for="{{view.requests}}" wx:key="id" is="info-card" data="{{rows: item.rows}}" />
     <view class="u-section">
       <hz-line-item wx:if="{{canShip}}" lines="{{lineViews}}" mode="qty" quantity-only picking bind:packed="onPacked" min="{{0}}" bind:qty="onQty" />
       <hz-line-item wx:else lines="{{lineViews}}" quantity-only picking bind:packed="onPacked" />
     </view>
     <view wx:if="{{canShip}}" class="u-card u-form-card"><hz-field label="{{texts.shipNote}}" type="textarea" placeholder="{{texts.optional}}" value="{{shipNote}}" bind:change="onNote" /></view>
     <hz-records wx:if="{{view.changes.length > 0}}" type="orderChange" items="{{view.changes}}" />
-    <template wx:for="{{view.requests}}" wx:key="id" is="info-card" data="{{rows: item.rows}}" />
   </block>
   <template wx:elif="{{view}}" is="order-body" data="{{...view}}" />
 </view>
 <hz-action-bar wx:if="{{isForm}}">
   <hz-button text="{{texts.ship}}" disabled="{{!canShip}}" reason="{{shipReason}}" loading="{{saving}}" bind:press="onShip" />
 </hz-action-bar>
-<hz-action-bar wx:elif="{{loaded && view.info.status==='shipped'}}"><hz-button text="{{texts.delivery}}" bind:press="onDelivery" /></hz-action-bar>
+<hz-action-bar wx:elif="{{loaded && view.info.status==='shipped'}}"><hz-button wx:if="{{justShipped}}" kind="secondary" text="{{texts.backToList}}" bind:press="onBackToList" /><hz-button text="{{texts.delivery}}" bind:press="onDelivery" /></hz-action-bar>
 <hz-confirm id="hz-confirm" />

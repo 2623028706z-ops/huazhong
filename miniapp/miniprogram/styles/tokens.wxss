@@ -4,6 +4,7 @@ page {
   --hz-brand: #b75d45; /* 陶土红：logo、图标、主按钮底、选中短线、待办数字 */
   --hz-ink: #3b2a24; /* 标题、正文、金额、选中的文字 */
   --hz-muted: #6f5141; /* 次要文字、字段名、箭头（2026-10-05 加深一档） */
+  --hz-placeholder: #3b2a2473; /* 空输入的占位字（墨色 45%）：比字段名浅，看得出还没填 */
   --hz-ink-soft: #4a342b; /* 次要字段的值：比字段名深、比正文浅 */
   --hz-paper: #fffbf6; /* 亮格：底栏、实底卡片、选中的格子 */
   --hz-bg: #f6ebdf; /* 浅杏墙：页面底色 */
@@ -26,6 +27,7 @@ page {
   --hz-danger: #a3313d; /* 报错（玫瑰红） */
   --hz-danger-bg: #f9e4e3;
   --hz-on-brand: #fff; /* 陶土红底上的字和图标 */
+  --hz-brand-off: #b75d4566; /* 不能点的主按钮底：主色 40%（2026-10-06 第 4 批） */
   --hz-bar-off: #8d7a70; /* 订货结算条（深底）上停用的按钮底 */
   --hz-bar-off-text: #e9dfd6;
   --hz-bar-shadow: 0 6px 18px #3b2a242e; /* 订货结算条浮起（全站唯一的阴影） */
@@ -38,6 +40,8 @@ page {
   --hz-font-sm: 12px;
   --hz-font-row: 13px; /* 卡片字段行、筛选、页底灰字 */
   --hz-label-w: 52px; /* 字段名固定宽（4 个 13px 字），字段名缩到 12px 后值仍对齐 */
+  --hz-label-w-form: 72px; /* 整页表单字段名宽（hz-field、hz-picker 等的 u-field__label） */
+  --hz-label-w-wide: 96px; /* 字段名最长 6 个字的表单（目录产品「客户产品编码」） */
   --hz-font-group: 15px; /* 分组标题（宋体） */
   --hz-font-total: 19px; /* 明细合计金额（宋体） */
   --hz-font-md: 16px; /* 按钮、卡片对象、明细名称、金额、步进器数字 */
@@ -70,15 +74,20 @@ page {
   --hz-input: 42px;
   --hz-textarea: 72px;
 
-  /* 间距 */
-  --hz-gap-page: 16px; /* 列表、详情、表单页左右 */
-  --hz-gap-sheet: 16px; /* 弹层内容 */
-  --hz-card-pad: 16px;
-  --hz-card-pad-y: 14px; /* 卡片、信息卡、提示条上下 */
-  --hz-card-gap: 10px;
-  --hz-gap-controls: 16px; /* 控件区（搜索、筛选）和下面的内容 */
-  --hz-row-pad: 12px;
-  --hz-line-gap: 6px; /* 卡片内三行之间 */
+  /* 间距：只用 5 档（2026-10-06 第 4 批第 5 条），下面的用途变量也从这 5 档取 */
+  --hz-space-1: 4px; /* 极小：字段名和值、图标和字 */
+  --hz-space-2: 8px; /* 小：卡片内行间、按钮之间 */
+  --hz-space-3: 12px; /* 中：列表卡之间、行内上下 */
+  --hz-space-4: 16px; /* 大：页面左右、卡片内边、控件区和内容 */
+  --hz-space-5: 24px; /* 特大：分组之间、空状态上下 */
+  --hz-gap-page: var(--hz-space-4); /* 列表、详情、表单页左右 */
+  --hz-gap-sheet: var(--hz-space-4); /* 弹层内容 */
+  --hz-card-pad: var(--hz-space-4);
+  --hz-card-pad-y: var(--hz-space-3); /* 卡片、信息卡、提示条上下 */
+  --hz-card-gap: var(--hz-space-2);
+  --hz-gap-controls: var(--hz-space-4); /* 控件区（搜索、筛选）和下面的内容 */
+  --hz-row-pad: var(--hz-space-3);
+  --hz-line-gap: var(--hz-space-2); /* 卡片内三行之间 */
 
   /* TDesign 主题：只改变量，不覆盖内部样式。变量名已按 1.17.0 核对 */
   --td-brand-color: var(--hz-brand);
@@ -87,5 +96,5 @@ page {
   /* 正文系统字体：TDesign 的 font 简写要用 */
   --td-font-family: -apple-system, 'PingFang SC', sans-serif;
   --td-text-color-primary: var(--hz-ink);
-  --td-text-color-placeholder: var(--hz-muted);
+  --td-text-color-placeholder: var(--hz-placeholder);
 }

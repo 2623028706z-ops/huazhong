@@ -14,6 +14,7 @@
     "hz-sheet": "/components/hz-sheet/index",
     "hz-reason-sheet": "/components/hz-reason-sheet/index",
     "hz-line-item": "/components/hz-line-item/index",
+    "hz-records": "/components/hz-records/index",
     "hz-field": "/components/hz-field/index",
     "hz-picker": "/components/hz-picker/index",
     "hz-confirm": "/components/hz-confirm/index",

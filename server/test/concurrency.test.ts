@@ -1,8 +1,16 @@
 // 必须互斥的操作（03 章第 6 节）：两个同版本请求同时发，只有一个成功；目录调价 ↔ 门店改单排队执行，只看结果
 import type { AfterDetail, Catalog, OrderDetail } from '@huazhong/shared'
+import { found } from '../src/common/scope.ts'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import type { ApiResponse } from './support/http.ts'
-import { dataOf, idBy, startSales, TOMORROW, type SalesApp } from './support/sales.ts'
+import {
+  catalogItemBody,
+  dataOf,
+  idBy,
+  startSales,
+  TOMORROW,
+  type SalesApp,
+} from './support/sales.ts'
 
 let s: SalesApp
 beforeEach(async () => {
@@ -77,13 +85,10 @@ describe('订单', () => {
     const rose = catalog.items.find((i) => i.name === '粉玫瑰日常花束')
     const opened = await detail('s1', id)
     const [reprice, edit] = await Promise.all([
-      sales.put(`/catalog/${c1}/items/${rose?.productId}`, {
-        version: rose?.version,
-        categoryId: rose?.categoryId,
-        customerCode: rose?.customerCode,
-        priceCents: 7000,
-        enabled: true,
-      }),
+      sales.patch(
+        `/catalog/${c1}/items/${rose?.productId}`,
+        catalogItemBody(found(rose), { priceCents: 7000 }),
+      ),
       (await s.as('s1')).put(`/store/orders/${id}`, storeEdit(opened, 22)),
     ])
     expect(reprice.status).toBe(200)

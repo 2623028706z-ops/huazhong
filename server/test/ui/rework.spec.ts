@@ -43,30 +43,47 @@ test('D17-F D18-F D25-F 多付退回在往来页登记，整张DZ与作废历史
   await cardTarget.tap()
   const money = await waitPage(mini, 'packages/finance/pages/money/index')
   await waitData(money, 'loaded', true)
-  expect(await money.data('view.title')).toBe(payment.no)
-  expect(await money.data('view.statements')).toHaveLength(1)
+  // 标题是供应商，单号放信息行
+  expect(await money.data('view.title')).toBe(document.supplierName)
+  expect(await money.data('view.rows')).toContainEqual(
+    expect.objectContaining({ label: f.no, value: payment.no }),
+  )
+  expect(await money.data('view.statements.0.rows')).toHaveLength(1)
   const ledger = await enter(
     mini,
     `/packages/finance/pages/supplier/index?id=${document.supplierId}`,
   )
   await waitData(ledger, 'canRefund', true)
-  await tapText(ledger, f.refund)
+  // 「退回」收在底栏「更多」里
+  await ledger.callMethod('onRefund')
   await waitData(ledger, 'refundSheet', true)
   await pickOption(ledger, '#refund-date', TODAY)
   await inputField(ledger, '#refund-amount', '10')
   await pickOption(ledger, '#refund-method', '微信')
   await tapText(ledger, f.confirmRefund)
   await waitData(ledger, 'refundRows.0.status', '有效')
-  expect(await ledger.data('creditText')).toBe('¥20.00')
+  await expect
+    .poll(async () => ledger.data('summary.lines.0.text') as Promise<unknown>)
+    .toContain(`${f.supplierCredited} ¥20.00`)
+  // 点退回记录行打开这一笔，作废在弹层底栏
+  const refundId = (await ledger.data('refundRows.0.id')) as string
+  const openRefund = () =>
+    ledger.callMethod('onRefundRow', { currentTarget: { dataset: { key: refundId } } })
+  await openRefund()
+  await waitData(ledger, 'refundDetail.id', refundId)
+  expect(await ledger.data('refundDetail.hasVoid')).toBe(true)
   await tapText(ledger, f.voidRefund)
   const reason = (await ledger.$('components\\/hz-reason-sheet\\/index')) as CustomElement
-  await waitData(ledger, 'voidRefundId', (await ledger.data('refundRows.0.id')) as string)
+  await waitData(ledger, 'voidRefundId', refundId)
   await inputField(reason, 'components\\/hz-field\\/index', '退款登记错误')
   await tapText(reason, f.confirmVoid)
   await waitData(ledger, 'refundRows.0.status', '已作废')
   expect(await ledger.data('refundRows.0.reason')).toBe('退款登记错误')
-  expect(await ledger.data('refundRows.0.canVoid')).toBe(false)
-  expect(await ledger.data('creditText')).toBe('¥30.00')
+  await expect
+    .poll(async () => ledger.data('summary.lines.0.text') as Promise<unknown>)
+    .toContain(`${f.supplierCredited} ¥30.00`)
+  await openRefund()
+  await waitData(ledger, 'refundDetail.hasVoid', false)
   const detail = await enter(
     mini,
     `/packages/finance/pages/money/index?kind=payment&id=${payment.id}`,
@@ -77,11 +94,10 @@ test('D17-F D18-F D25-F 多付退回在往来页登记，整张DZ与作废历史
   await inputField(voidReason, 'components\\/hz-field\\/index', '付款登记错误')
   await tapText(voidReason, f.confirmVoid)
   await waitData(detail, 'view.status', 'voided')
-  expect(await detail.data('view.statements')).toHaveLength(1)
-  expect(await detail.data('view.statements.0.tags')).toContainEqual({
-    text: f.voided,
-    warn: false,
-  })
+  // 作废后仍列出原来结清的那张，置灰；对账单回到未结清
+  expect(await detail.data('view.statements.0.rows')).toMatchObject([
+    { muted: true, tags: [{ text: f.unsettled, warn: true }] },
+  ])
   await snap(mini, 'rework-funds-full-history')
 })
 
@@ -161,9 +177,12 @@ test('底栏有按钮在提交时，同一排其余按钮锁住', async () => {
         async (button) => (await button.data('blocked')) as boolean,
       ),
     )
+  const total = (await blockedOf()).length
+  expect(total).toBeGreaterThan(1)
   expect(await blockedOf()).not.toContain(true)
-  await page.setData({ busy: codes.at(-1) })
-  await expect.poll(async () => (await blockedOf()).filter(Boolean).length).toBe(codes.length - 1)
+  // 底栏只放前两个按钮（其余收进「更多」），提交中的按钮在底栏上
+  await page.setData({ busy: codes[1] })
+  await expect.poll(async () => (await blockedOf()).filter(Boolean).length).toBe(total - 1)
   await page.setData({ busy: '' })
   await expect.poll(async () => (await blockedOf()).filter(Boolean).length).toBe(0)
 })

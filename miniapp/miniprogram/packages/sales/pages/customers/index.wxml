@@ -5,18 +5,16 @@
     <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   </view>
   <block wx:if="{{!loaded}}"><hz-skeleton wx:if="{{!failure}}" type="list" /></block>
-  <block wx:elif="{{side.length === 0}}"><hz-state object="{{texts.empty}}" /><view class="u-detail-third"><hz-button wx:if="{{canCreateCustomer}}" kind="text" text="{{texts.createCustomer}}" bind:press="onNewCustomer" /></view></block>
+  <block wx:elif="{{side.length === 0}}"><hz-state object="{{texts.empty}}" /></block>
   <view wx:else class="u-split">
     <view class="u-split__side">
-      <hz-side-list items="{{side}}" value="{{customerId}}" bind:change="onCustomer" /><hz-button wx:if="{{canCreateCustomer}}" kind="text" text="{{texts.createCustomer}}" bind:press="onNewCustomer" />
+      <hz-side-list items="{{side}}" value="{{customerId}}" bind:change="onCustomer" />
     </view>
     <scroll-view scroll-y enhanced show-scrollbar="{{false}}" class="u-split__main">
       <view class="u-info__head">
         <text class="u-info__title">{{customerName}}</text>
-        <hz-button kind="text" text="{{texts.editCustomer}}" bind:press="onEditCustomer" />
       </view>
-      <hz-tabs class="u-split__tabs" items="{{sections}}" value="{{section}}" bind:change="onSection" />
-      <block wx:if="{{section==='stores'}}">      <text wx:if="{{stores.length === 0}}" class="u-info__meta">{{texts.noStores}}</text>
+      <text wx:if="{{stores.length === 0}}" class="u-info__meta">{{texts.noStores}}</text>
       <view wx:if="{{stores.length}}" class="u-card u-rows">
         <view wx:for="{{stores}}" wx:key="id" class="u-rows__item"><view class="u-rows__line">
           <view class="u-store-row__pick u-tap" data-key="{{item.id}}" bindtap="onPickStore"><view class="u-check u-store-row__radio {{item.picked ? 'u-check--on' : ''}}"><text wx:if="{{item.picked}}" class="hz-icon hz-icon--check"></text></view></view>
@@ -27,27 +25,20 @@
           </view>
         </view></view>
       </view>
-</block><block wx:else>      <text wx:if="{{groups.length === 0}}" class="u-info__meta">{{catalogTexts.empty}}</text>
-      <view wx:for="{{groups}}" wx:key="id" wx:for-item="group" class="u-section">
-        <text class="u-section__title">{{group.name}}</text>
-        <view class="u-card u-rows">
-          <view wx:for="{{group.rows}}" wx:key="productId" class="u-rows__item" data-key="{{item.productId}}" bindtap="onOpenItem">
-            <view class="u-rows__head">
-              <text class="u-rows__title u-clamp-2">{{item.name}}</text>
-              <text class="u-rows__price u-serif-amount">{{item.priceText}}</text>
-            </view>
-            <view wx:if="{{item.tags.length > 0 || item.code}}" class="u-rows__foot">
-              <hz-tag wx:for="{{item.tags}}" wx:for-item="tag" wx:key="text" text="{{tag.text}}" warn="{{tag.warn}}" />
-              <text class="u-ellipsis">{{item.code}}</text>
-            </view>
-          </view>
-        </view>
-      </view>
-</block>
     </scroll-view>
   </view>
 </block>
-<hz-action-bar wx:if="{{section==='stores' && canCreate}}"><hz-button kind="secondary" text="{{texts.invite}}" bind:press="onInvite" /><hz-button text="{{texts.createStore}}" bind:press="onNewStore" /></hz-action-bar><block wx:elif="{{section==='catalog'}}"><view class="u-detail-third"><hz-button wx:if="{{canCopy}}" kind="text" text="{{catalogTexts.copy}}" bind:press="onOpenCopy" /></view><hz-action-bar><hz-button kind="secondary" text="{{catalogTexts.manage}}" bind:press="onManage" /><hz-button text="{{catalogTexts.add}}" disabled="{{categories.length===0}}" reason="{{catalogTexts.needCategory}}" bind:press="onOpenPick" /></hz-action-bar></block>
+<!-- 操作只放底栏（2026-10-06 第 4 批）：邀请订货 / 新建门店，新建客户、修改客户收进「更多」；
+     没有新建门店权限时两个客户操作直接放底栏；还没有客户时只有「新建客户」 -->
+<hz-action-bar wx:if="{{loaded && side.length === 0 && canCreateCustomer}}"><hz-button text="{{texts.createCustomer}}" bind:press="onNewCustomer" /></hz-action-bar>
+<hz-action-bar wx:elif="{{loaded && side.length > 0 && canCreate}}" more>
+  <hz-more>
+    <hz-button wx:if="{{canCreateCustomer}}" kind="secondary" text="{{texts.createCustomer}}" bind:press="onNewCustomer" />
+    <hz-button kind="secondary" text="{{texts.editCustomer}}" bind:press="onEditCustomer" />
+  </hz-more>
+  <hz-button kind="secondary" text="{{texts.invite}}" bind:press="onInvite" /><hz-button text="{{texts.createStore}}" bind:press="onNewStore" />
+</hz-action-bar>
+<hz-action-bar wx:elif="{{loaded && side.length > 0}}"><hz-button kind="secondary" text="{{texts.editCustomer}}" bind:press="onEditCustomer" /><hz-button wx:if="{{canCreateCustomer}}" text="{{texts.createCustomer}}" bind:press="onNewCustomer" /></hz-action-bar>
 <hz-sheet show="{{customerSheet}}" title="{{editingCustomer ? texts.customerTitle : texts.newCustomerTitle}}" guard="{{customerChanged}}" footer bind:close="onCloseSheet">
   <view class="u-sheet-form">
     <view wx:if="{{editingCustomer}}" class="u-sheet-head">
@@ -58,27 +49,5 @@
     <hz-switch label="{{texts.enabled}}" value="{{customerForm.enabled}}" bind:change="onCustomerEnabled" />
   </view>
   <hz-button slot="footer" text="{{texts.saveCustomer}}" loading="{{saving}}" bind:press="onSaveCustomer" />
-</hz-sheet>
-<hz-confirm id="hz-confirm" />
-<hz-category-sheet
-  show="{{categorySheet}}"
-  title="{{catalogTexts.categories}}"
-  categories="{{categories}}"
-  error="{{categoryError}}"
-  loading="{{saving}}"
-  bind:close="onCloseCategories"
-  bind:save="onSaveCategory"
-  bind:up="onUpCategory"
-  bind:remove="onRemoveCategory"
-/>
-
-<hz-sheet show="{{copySheet}}" title="复制其他客户目录" footer bind:close="onCloseCopy">
-  <view class="u-sheet-form">
-    <hz-picker inline label="来源客户" options="{{copyOptions}}" value="{{copySourceId}}" bind:change="onCopySource" />
-    <hz-error wx:if="{{copyError}}" message="{{copyError}}" />
-    <view wx:if="{{copyPreview}}" class="u-info__meta">可复制 {{copyPreview.copyCount}} 项，跳过 {{copyPreview.skipCount}} 项。目标空分类按名称复用；不会覆盖现有目录项。</view>
-    <hz-button kind="secondary" text="{{texts.rePreview}}" disabled="{{!copySourceId}}" loading="{{copyBusy}}" bind:press="onPreviewCopy" />
-  </view>
-  <hz-button slot="footer" text="{{texts.confirmCopy}}" disabled="{{!copyPreview.copyCount}}" loading="{{copyBusy}}" bind:press="onCopyCatalog" />
 </hz-sheet>
 <hz-store-invite show="{{inviteSheet}}" customers="{{inviteCustomers}}" store-id="{{inviteStoreId}}" bind:close="onCloseInvite" bind:invited="onInvited" bind:updated="onStoreUpdated" />

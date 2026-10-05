@@ -10,7 +10,7 @@
 <template name="cards">
   <!-- 可不传：selection、done、allLoaded、statusKind -->
   <view wx:for="{{rows}}" wx:key="id" data-key="{{item.id}}" bindtap="onOpen">
-    <hz-card row="{{item}}" status-kind="{{statusKind}}" selectable="{{selection && item.selectable}}" selected="{{item.selected}}" select-disabled="{{item.selectDisabled}}" data-key="{{item.id}}" bind:toggle="onToggle" />
+    <hz-card row="{{item}}" status-kind="{{statusKind}}" selectable="{{selection && item.selectable}}" selected="{{item.selected}}" data-key="{{item.id}}" bind:toggle="onToggle" />
   </view>
   <text wx:if="{{done && rows.length > 0}}" class="u-list__end">{{allLoaded}}</text>
 </template>

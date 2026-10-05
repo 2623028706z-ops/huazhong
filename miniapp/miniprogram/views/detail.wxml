@@ -26,11 +26,14 @@
     <hz-line-item lines="{{lines}}" mode="after" />
   </view>
 </template>
-<!-- 底部操作区：按 core/actions 的 buttonsOf 显示，点了发 onAction（data-code 是操作码） -->
+<!-- 底部操作区：按 core/actions 的 buttonsOf 显示，点了发 onAction（data-code 是操作码）。
+     最多 2 个按钮，第 3 个起收进最左的「更多」（02 章第 4 节，2026-10-06 第 4 批） -->
 <template name="buttons">
   <!-- 可不传：busy（按钮只打开弹层或跳页时） -->
-  <view wx:for="{{buttons}}" wx:key="code" wx:if="{{index >= 2}}" class="u-detail-third"><hz-button kind="quiet" text="{{item.text}}" disabled="{{item.disabled}}" reason="{{item.reason}}" data-code="{{item.code}}" bind:press="onAction" /></view>
-  <hz-action-bar wx:if="{{buttons.length > 0}}">
+  <hz-action-bar wx:if="{{buttons.length > 0}}" more="{{buttons.length > 2}}">
+    <hz-more wx:if="{{buttons.length > 2}}">
+      <hz-button wx:for="{{buttons}}" wx:key="code" wx:if="{{index >= 2}}" kind="secondary" text="{{item.text}}" disabled="{{item.disabled}}" reason="{{item.reason}}" data-code="{{item.code}}" bind:press="onAction" />
+    </hz-more>
     <hz-button
       wx:for="{{buttons}}"
       wx:key="code"
@@ -45,25 +48,24 @@
     />
   </hz-action-bar>
 </template>
-<!-- 订单只读内容（S6、X3、H3 只读）：数据是 views/order.ts 的 orderViewOf。
-     信息卡 → 产品明细（明细 + 金额）→ 发货信息 → 变更记录 → 取消信息 -->
+<!-- 订单只读内容（S6、X3、H3 只读）：数据是 views/order.ts 的 orderViewOf。详情区块顺序统一（02 章第 6 节第 21 条）：
+     进度条 → 提示条 → 信息卡（含取消、作废、取消申请信息）→ 产品明细（明细 + 金额）→ 变更记录 -->
 <template name="order-body">
   <hz-progress steps="{{progress}}" />
   <hz-notice wx:if="{{noteNotice}}" text="{{noteNotice}}" /><hz-notice wx:if="{{cancelNotice}}" text="{{cancelNotice}}" /><hz-notice wx:if="{{notice}}" text="{{notice}}" />
   <template is="info" data="{{...info}}" />
-  <view class="u-section">
-    <hz-line-item title="{{linesHeading}}" qty-label="{{qtyLabel}}" note="{{shipNote}}" note-label="{{shipNoteLabel}}" lines="{{lines}}" quantity-only="{{quantityOnly}}" />
-
-  </view>
-  <hz-records wx:if="{{changes.length > 0}}" type="orderChange" items="{{changes}}" />
   <template wx:if="{{reason.rows.length > 0}}" is="info" data="{{...reason}}" />
   <template wx:if="{{void.rows.length > 0}}" is="info" data="{{...void}}" />
   <template wx:for="{{requests}}" wx:key="id" is="info-card" data="{{rows: item.rows}}" />
+  <view class="u-section">
+    <hz-line-item title="{{linesHeading}}" qty-label="{{qtyLabel}}" note="{{shipNote}}" note-label="{{shipNoteLabel}}" lines="{{lines}}" quantity-only="{{quantityOnly}}" bind:open="onOpenBom" />
+  </view>
+  <hz-records wx:if="{{changes.length > 0}}" type="orderChange" items="{{changes}}" />
 </template>
-<!-- 售后只读内容（S7 弹层、X6、F3 弹层）：信息卡 → 售后明细 → 关闭或作废信息 -->
+<!-- 售后只读内容（S7 弹层、X6、F3 弹层）：进度条 → 提示条 → 信息卡（含关闭或作废信息）→ 售后明细 -->
 <template name="after-body">
   <hz-progress steps="{{progress}}" /><hz-notice wx:if="{{notice}}" text="{{notice}}" />
   <template is="info" data="{{...info}}" />
-  <template is="after-lines" data="{{lines, heading: ''}}" />
   <template wx:if="{{reason.rows.length > 0}}" is="info" data="{{...reason}}" />
+  <template is="after-lines" data="{{lines, heading: ''}}" />
 </template>

@@ -21,7 +21,7 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  margin: -6px 0 -6px -6px;
+  margin: -6px 0 -6px -6px; /* 负值：32px 勾选点击区外扩，不撑高行 */
 }
 
 .hz-demand-row__check--off {
@@ -43,7 +43,7 @@
 }
 
 .hz-demand-row__left {
-  padding: 2px var(--hz-line-gap);
+  padding: var(--hz-space-1) var(--hz-line-gap);
   font-size: var(--hz-font-sm);
   color: var(--hz-green);
   background: var(--hz-green-bg);
@@ -59,7 +59,7 @@
 .hz-demand-row__fields {
   display: grid;
   grid-template-columns: repeat(3, auto);
-  gap: 2px var(--hz-line-gap);
+  gap: var(--hz-space-1) var(--hz-line-gap);
   justify-content: space-between;
   margin-top: var(--hz-line-gap);
 }

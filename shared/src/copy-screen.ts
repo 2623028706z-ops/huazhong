@@ -1,4 +1,6 @@
+import { catalogScreen } from './copy-catalog.ts'
 import { purchaseScreen } from './copy-purchase.ts'
+import { redesignCopy } from './copy-redesign.ts'
 // 阶段 3 页面的文案（06 章 S1–S9、X1–X11、H1–H3、F1–F9、M2）：copy.screen，和 copy.ts 同一个出处规则
 export const screen = {
   // 页面、弹层标题和模块首页入口名：思源宋体子集从这里抽字（scripts/gen-font）
@@ -34,6 +36,8 @@ export const screen = {
     renameCategory: '修改分类',
     catalogItem: '目录产品',
     directory: '订货目录',
+    catalogCopy: '从其他客户复制',
+    shippedBom: '发货时配方',
     shipList: '发货单',
     ship: '发货',
     shipDetail: '发货单详情',
@@ -56,16 +60,15 @@ export const screen = {
     purchaseOrder: '采购单详情',
     createPo: '新建采购单',
     editPo: '修改采购单',
-    invites: '供应商填报',
+    invites: '填报邀请',
     supply: '填报',
     createInvite: '新建填报邀请',
     editInvite: '修改填报邀请',
-    invite: '填报详情',
+    invite: '填报邀请详情',
     suppliers: '供应商',
     createSupplier: '新建供应商',
     editSupplier: '供应商详情',
     receive: '收货',
-    pendingReceive: '待收',
     stock: '库存',
     materials: '花材',
     material: '花材详情',
@@ -122,7 +125,7 @@ export const screen = {
     delete: '删除',
     next: '下一步',
     viewSupply: '查看填报',
-    createPo: '生成采购单',
+    createPo: '新建采购单',
     confirmPo: '提交采购单',
     editPo: '修改采购单',
     cancelPo: '取消采购单',
@@ -158,7 +161,7 @@ export const screen = {
     shipAmount: '发货金额',
     shipNote: '发货备注',
     origin: '来源',
-    shippedBy: '发货人',
+    shippedBy: redesignCopy.shipper,
     shippedAt: '发货时间',
     receivedBy: '收货人',
     receivedAt: '收货时间',
@@ -208,7 +211,6 @@ export const screen = {
     accountStatus: '账号',
     accountOpened: '已开通',
     accountNotOpened: '没开通',
-    openPurchaseOrders: '待收货',
     supplierLoginPhone: '登录手机号',
     purchaseAmount: '采购金额',
     payable: '应付',
@@ -224,7 +226,6 @@ export const screen = {
   // 详情、表单里分组的小标题（第一张信息卡不写）
   section: {
     customerItem: '订货信息',
-    sharedBom: '配方明细',
     lines: '产品明细',
     afterLines: '售后明细',
     bom: '配方明细',
@@ -238,7 +239,7 @@ export const screen = {
     orderInfo: '订单信息',
     receipt: '收款信息',
     materials: '花材明细',
-    supply: '我的填报',
+    supply: '填报',
     batches: '库存批次',
   },
   tag: {
@@ -288,14 +289,7 @@ export const screen = {
   noAmount: '—',
   cartCount: (count: number) => `共 ${count} 件`,
   maxQty: (count: number) => `可申请数量 ${count}`,
-  bomCount: (count: number) => `配方 ${count} 种花材`,
-  needCategory: '请先新增订货分类',
-  sharedBomNote: '配方所有客户共用，改了所有客户都会变',
-  // 目录行的订货价「¥68.00/束」、弹层里订货价的标签「订货价（元/束）」
-  pricePer: (price: string, unit: string) => `${price}/${unit}`,
-  // 目录行、商品卡上的订货价带字段名：「订货价 ¥68.00/束」
-  listPriceText: (price: string, unit: string) => `订货价 ${price}/${unit}`,
-  priceLabel: (unit: string) => `订货价（元/${unit}）`,
+  ...catalogScreen,
   inviteExpires: (time: string) => `有效期至 ${time}`,
   orderCount: (count: number) => `${count} 张订单`,
   demandNumbers: (need: number, stock: number, transit: number) =>
@@ -320,7 +314,7 @@ export const screen = {
   cancelInviteBody: '取消后供应商不能再填报，已发出的填报链接也会失效。',
   inviteSentShare: (name: string) => `已邀请${name}填报，点开邀请「发给供应商」发给对方`,
   purchaseOrigin: '花众采购下单',
-  supplyOrigin: (no: string) => `供应商填报\u3000\u3000${no}`,
+  supplyOrigin: (no: string) => `填报邀请\u3000\u3000${no}`,
   allReturned: '已全部退货',
 } as const
 // 收付款及采购链路的字段提示；通过 copy.finance 对前后端提供同一份文案。

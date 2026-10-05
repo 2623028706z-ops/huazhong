@@ -238,7 +238,7 @@ describe('作废和列表', () => {
     expect(await roseMax()).toBe(15)
   })
 
-  test('J29 列表级操作码：销售新建、门店与财务没有', async () => {
+  test('J29 列表级操作码：销售新建、门店申请售后、财务没有', async () => {
     expect(
       codesOf(
         dataOf<{ actions: { code: string }[] }>(await (await s.as('u2')).get('/afters')).actions,
@@ -248,7 +248,7 @@ describe('作废和列表', () => {
       codesOf(
         dataOf<{ actions: { code: string }[] }>(await (await s.as('s1')).get('/afters')).actions,
       ),
-    ).toEqual([])
+    ).toEqual(['applyAfter'])
     expect(dataOf<{ actions: unknown[] }>(await (await s.as('u6')).get('/afters')).actions).toEqual(
       [],
     )

@@ -2,14 +2,13 @@
 import { appError, copy, formatMoney } from '@huazhong/shared'
 import { namesText } from './order-actions.ts'
 
-// 一个产品在这个客户下的可订情况：listPriceCents 为 null = 不在目录里
+// 一个产品在这个客户下的可订情况：listPriceCents 为 null = 不是这个客户的产品
 export interface CatalogEntry {
   productId: number
   name: string
   unit: string
   customerCode: string
-  productEnabled: boolean
-  catalogEnabled: boolean | null
+  enabled: boolean
   listPriceCents: number | null
 }
 
@@ -18,11 +17,11 @@ export interface OrderableEntry extends CatalogEntry {
 }
 
 function isOrderable(entry: CatalogEntry): entry is OrderableEntry {
-  return entry.listPriceCents !== null && entry.productEnabled && entry.catalogEnabled === true
+  return entry.listPriceCents !== null && entry.enabled
 }
 
-// 按传入顺序返回可订的目录项；不存在 → NOT_FOUND，不在目录里 → 「不在可订产品里」，
-// 在目录里但停用或产品停用 → discontinued(产品名)（销售「请先删掉再保存」，门店「再提交」）
+// 按传入顺序返回可订的产品；不存在 → NOT_FOUND，别的客户的 → 「不在可订产品里」，
+// 已停用 → discontinued(产品名)（销售「请先删掉再保存」，门店「再提交」）
 export function orderableEntries(
   ids: readonly number[],
   entries: readonly CatalogEntry[],

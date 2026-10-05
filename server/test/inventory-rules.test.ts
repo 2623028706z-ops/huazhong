@@ -1,5 +1,6 @@
 import {
   contract,
+  type Catalog,
   copy,
   type Material,
   type PoDetail,
@@ -119,15 +120,16 @@ test.each(['po', 'invite', 'bom', 'stocktake', 'history'] as const)(
       )
     if (kind === 'bom') {
       const seller = await sales.as('u2')
-      const categories = dataOf<OutputOf<typeof contract.listProductCategories>>(
-        await seller.get('/product-categories'),
-      )
+      const c1 = await idBy(sales.t, 'customers.name', '晨曦花艺')
+      const catalog = dataOf<Catalog>(await seller.get(`/catalog/${c1}`))
       dataOf(
-        await seller.post('/products', {
+        await seller.post(`/catalog/${c1}/items`, {
           name: '库存规则产品',
-          categoryId: found(categories.items[0]).id,
           unit: '束',
           imageFileId: null,
+          categoryId: found(catalog.categories[0]).id,
+          customerCode: '',
+          priceCents: 1000,
           enabled: true,
           bom: [{ materialId: row.id, qty: 1 }],
         }),

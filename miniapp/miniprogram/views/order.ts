@@ -1,13 +1,14 @@
 import { orderProgress, externalProgressOf, statementText } from './progress'
+import { cardAmountOf, shipOnOf, subOf, type CardRow } from './card'
 // 订单的显示（06 章第 1.1 节、S3、S6、X2、X3、H2、H3）：门店、销售、发货共用。
 // 这里只把后端返回的字段换成组件要的样子，不判断能不能操作（00 章第 1 节）
 import {
   copy,
   redesignCopy,
-  formatMoney,
   formatTime,
   formatUnitTotals,
   labels,
+  shanghaiDateOf,
   type OrderCard,
   type OrderChange,
   type OrderDetail,
@@ -47,31 +48,20 @@ function cardTagsOf(order: OrderCard): Tag[] {
   return tags
 }
 
-// 三行卡片：①下单日期 + 状态 ②对象 + 总数 ③标记 + 单号 / 出货日期 + 金额。
-// 门店看自己的单，第 2 行写产品；员工写客户门店
-export function orderRowOf(order: OrderCard, forStore: boolean) {
-  const title = forStore
-    ? lineTitleOf(order.lineName, order.lineCount)
-    : copy.org.store(order.customerName, order.storeName)
+// 列表卡（06 章 S3、X2）：门店大字出货日期，小字产品摘要 · 单号；员工大字客户 · 门店，小字出货日期 · 单号。
+// 右边状态 + 金额；门店没看过的取消申请结果标题前小红点
+export function orderRowOf(order: OrderCard, forStore: boolean): CardRow {
+  const shipOn = shipOnOf(order.shipDate)
   return {
     id: order.id,
-    version: order.version,
-    fields: [
-      { label: redesignCopy.no, value: order.no },
-      { label: redesignCopy.orderDate, value: order.orderDate },
-      { label: redesignCopy.shipDate, value: shipDateText(order.shipDate) },
-      {
-        label: order.status === 'shipped' ? redesignCopy.shippedAmount : redesignCopy.orderAmount,
-        value: formatMoney(order.amountCents),
-        amount: true,
-      },
-    ],
-    date: order.orderDate,
+    main: forStore ? shipOn : copy.org.store(order.customerName, order.storeName),
+    serif: forStore,
+    sub: forStore
+      ? subOf([lineTitleOf(order.lineName, order.lineCount), order.no])
+      : subOf([shipOn, order.no]),
+    dot: forStore && order.unseen,
     status: forStore && order.status === 'voided' ? 'cancelled' : order.status,
-    title,
-    total: formatUnitTotals(order.units),
-    meta: [order.no, shipDateText(order.shipDate)].join(copy.separator),
-    amount: order.amountCents,
+    amount: cardAmountOf(order.amountCents),
     tags: cardTagsOf(order),
   }
 }
@@ -91,9 +81,10 @@ function lineTagsOf(line: OrderLine, shipped: boolean): Tag[] {
   return tags
 }
 
-// 只读明细：已发货显示实发
-function orderLinesOf(order: OrderDetail) {
+// 只读明细：已发货显示实发。员工端（非财务）发货时存了配方的行带「配方 ›」，点开看发货时配方
+function orderLinesOf(order: OrderDetail, withBom: boolean) {
   const shipped = order.status === 'shipped'
+  const link = `${copy.screen.catalog.bomLink} ›`
   return order.lines.map((line) => ({
     key: line.id,
     name: line.name,
@@ -104,6 +95,7 @@ function orderLinesOf(order: OrderDetail) {
     unit: line.unit,
     priceCents: line.priceCents,
     priceText: '',
+    link: withBom && line.bom?.length ? link : '',
   }))
 }
 
@@ -167,7 +159,7 @@ export function orderViewOf(order: OrderDetail, forStore: boolean, finance = fal
     shipNoteLabel: copy.screen.label.shipNote,
     info: orderInfoOf(order, forStore, finance),
     linesHeading: copy.screen.section.lines,
-    lines: orderLinesOf(order),
+    lines: orderLinesOf(order, !forStore && !finance),
     ship: {
       heading: copy.screen.section.ship,
       rows: rowsOf([[copy.screen.label.shipNote, order.shipNote]]),
@@ -212,20 +204,20 @@ function cancelRequestRowsOf(requests: OrderDetail['cancelRequests']) {
   }))
 }
 
-export function shippingRowOf(order: ShippingCard) {
+// 发货卡（06 章 H2）：大字客户 · 门店，小字产品摘要 + 数量；右边出货日期（待发货过了标红「已过」），
+// 已发货的再加状态；配货 n/m 种由列表页补（存在本机）
+export function shippingRowOf(order: ShippingCard, today = shanghaiDateOf(Date.now())): CardRow {
+  const shipOn = shipOnOf(order.shipDate)
+  const late = order.status === 'to_ship' && order.shipDate !== null && order.shipDate < today
   return {
     id: order.id,
-    version: order.version,
-    fields: [
-      { label: redesignCopy.no, value: order.no },
-      { label: redesignCopy.shipDate, value: shipDateText(order.shipDate) },
-      { label: redesignCopy.product, value: formatUnitTotals(order.units) },
-    ],
-    date: order.orderDate,
-    status: order.status,
-    title: copy.org.store(order.customerName, order.storeName),
-    total: formatUnitTotals(order.units),
-    meta: [order.no, shipDateText(order.shipDate)].join(copy.separator),
+    main: copy.org.store(order.customerName, order.storeName),
+    sub: [lineTitleOf(order.lineName, order.lineCount), formatUnitTotals(order.units)]
+      .filter(Boolean)
+      .join(' '),
+    status: order.status === 'to_ship' ? '' : order.status,
+    side: late ? copy.flow.ship.shipPast(shipOn) : shipOn,
+    late,
     tags: [
       ...(order.changed ? [{ text: copy.screen.tag.changed, warn: false }] : []),
       ...(order.cancelRequested ? [{ text: copy.rework.cancelPending, warn: true }] : []),

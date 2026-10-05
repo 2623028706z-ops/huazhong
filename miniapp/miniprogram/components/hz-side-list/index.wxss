@@ -6,7 +6,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--hz-space-1);
   justify-content: center;
   min-height: var(--hz-tap);
   padding: var(--hz-line-gap) var(--hz-row-pad);

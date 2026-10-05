@@ -5,24 +5,21 @@ import type { FailureView } from '../../../../core/failure-view'
 import { emptyFilter } from '../../../../core/filter'
 import type { PagedList } from '../../../../core/list'
 import { request } from '../../../../core/request'
+import { subOf, type CardRow } from '../../../../views/card'
 import { listHandlers, listOf, showList } from '../../../../views/list'
 import { pullToRefresh } from '../../../../core/live'
 
-function rowOf(s: Supplier) {
+// 供应商卡：大字名称，小字联系人 · 电话（没开通账号的补一句）；右边待收货单数
+function rowOf(s: Supplier): CardRow {
   return {
     id: s.id,
-    fields: [
-      { label: copy.field.contact, value: s.contact },
-      {
-        label: copy.screen.label.accountStatus,
-        value: s.hasAccount ? copy.screen.label.accountOpened : copy.screen.label.accountNotOpened,
-        // 没开通退成次要灰字，和「已开通」一眼分开（2026-10-05）
-        minor: !s.hasAccount,
-      },
-      { label: copy.screen.label.contactPhone, value: s.phone, phone: s.phone, wide: true },
-    ],
-    headText: s.openPoCount ? copy.screen.pendingPos(s.openPoCount) : '',
-    title: s.name,
+    main: s.name,
+    sub: subOf([
+      s.contact,
+      s.phone,
+      s.hasAccount ? '' : copy.screen.label.accountStatus + copy.screen.label.accountNotOpened,
+    ]),
+    note: s.openPoCount ? copy.screen.pendingPos(s.openPoCount) : '',
     tags: s.enabled ? [] : [{ text: copy.tag.disabled, warn: false }],
   }
 }
@@ -52,7 +49,7 @@ Page({
     ],
     texts: {
       create: copy.screen.title.createSupplier,
-      search: copy.filter.search(copy.screen.title.suppliers),
+      search: copy.flow.purchase.supplierSearch,
     },
   },
   list: null as PagedList<Supplier> | null,

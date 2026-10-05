@@ -13,6 +13,7 @@ import {
 } from '../rules.ts'
 import { actionSchema } from './actions.ts'
 import { statementRefSchema } from './statement-ref.ts'
+import { poDiffSchema } from './notices.ts'
 import type { Endpoint } from './endpoint.ts'
 import {
   checkDateRange,
@@ -48,6 +49,8 @@ export const poCardSchema = z.object({
   changed: z.boolean(),
   repriced: z.boolean(),
   allReturned: z.boolean(),
+  // 到货有差异且下单采购员还没点「知道了」（员工端；供应商端恒为 false）
+  diffUnseen: z.boolean(),
   actions,
   lockedReason: z.string().nullable(),
   statement: statementRefSchema.nullable(),
@@ -94,6 +97,8 @@ export const poDetailSchema = poCardSchema.extend({
     }),
   ),
   notice: z.string().nullable(),
+  // 到货有差异（收货实收少于下单、改价、退货）；没有差异或供应商端为 null
+  diff: poDiffSchema.nullable(),
 })
 export type PoDetail = z.infer<typeof poDetailSchema>
 export type SupplierPoDetail = z.infer<typeof poDetailSchema>
@@ -102,6 +107,8 @@ export const poQuerySchema = pageQuerySchema
     status: z.enum(poStatuses).optional(),
     supplierId: idSchema.optional(),
     q: z.string().trim().optional(),
+    // 只要到货有差异、还没看过的，且是自己下的单（管理员看全部）；采购待办「到货有差异」点进来
+    diffUnseen: z.stringbool().optional(),
     ...dateRangeShape,
   })
   .superRefine(checkDateRange)
@@ -150,6 +157,17 @@ export const cancelPurchaseOrder = {
   }),
   response: poDetailSchema,
   errors: ['NOT_FOUND', 'STALE', 'BUSINESS_RULE'],
+} as const satisfies Endpoint
+// 下单采购员（或管理员）点「知道了」：记已看过到货差异，别人 FORBIDDEN。
+// version 要和打开时一致（之后又改价、退货、作废 → STALE），不改版本号
+export const ackPurchaseOrderDiff = {
+  method: 'POST',
+  path: '/purchase-orders/:id/ack-diff',
+  grants: ['purchase'],
+  params: idParamsSchema,
+  body: z.object({ version: versionSchema }),
+  response: poDetailSchema,
+  errors: ['NOT_FOUND', 'STALE'],
 } as const satisfies Endpoint
 export const inviteQuerySchema = pageQuerySchema.extend({
   ...dateRangeShape,

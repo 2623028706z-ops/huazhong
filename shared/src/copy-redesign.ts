@@ -1,3 +1,6 @@
+// 多处共用的短词只定义一次（第 4 批第 6 条：发货人、待定、未填合并）
+const NOT_FILLED = '未填'
+
 export const redesignCopy = {
   pendingOrderTodo: '待确认订单',
   pendingAfterTodo: '待处理售后',
@@ -48,7 +51,7 @@ export const redesignCopy = {
   picking: '配货',
   packed: (n: number, total: number) => `已配 ${n}/${total} 种`,
   waiting: '待定',
-  notFilled: '未填',
+  notFilled: NOT_FILLED,
   noChange: '没有修改',
   contact: '联系人',
   shipPrice: '发货单价',
@@ -78,6 +81,8 @@ export const redesignCopy = {
   receivedQtyFull: '实收',
   purchaseQty: '采购数量',
   toReceive: '待收货',
+  // 发货结果弹层、采购单到货差异提示条的确认按钮
+  gotIt: '知道了',
   rejected: '已拒收',
   invited: '已邀请',
   toSupply: '待填报',
@@ -97,7 +102,6 @@ export const redesignCopy = {
   // 多选添加弹层的确认按钮
   addPicked: (n: number) => `添加（${n}）`,
   shipOrders: '确认发货',
-  shipmentResult: (n: number, reason: string) => `${n} 单没发出：${reason}`,
   confirmationResult: (n: number, reason: string) => `${n} 单没确认：${reason}`,
   moreOrders: (n: number) => `等 ${n} 单`,
   shipConfirmation: '实发按订单数量确认',
@@ -120,7 +124,7 @@ export const redesignCopy = {
   shippedAt: '发货时间',
   stockAge: '库龄',
   cancelPendingNotice: (actor: string, at: string, reason: string) =>
-    `取消申请待处理\u3000\u3000申请人 ${actor}\u3000\u3000提交时间 ${at}\u3000\u3000原因 ${reason || '未填'}`,
+    `取消申请待处理\u3000\u3000申请人 ${actor}\u3000\u3000提交时间 ${at}\u3000\u3000原因 ${reason || NOT_FILLED}`,
   cancelRejectedNotice: (reason: string) =>
     reason.trim() ? `取消申请被拒绝：${reason.trim()}` : '取消申请被拒绝',
   cancelUnhandledNotice: '已发货，取消申请未处理',
@@ -161,7 +165,6 @@ export const redesignCopy = {
     voidOrder: { body: '作废后这张订单变为已作废，作废原因会记下来', done: '订单已作废' },
   },
   confirmedMany: (n: number) => `已确认 ${n} 单`,
-  shippedMany: (n: number) => `已发货 ${n} 单`,
   confirmSheetTitle: (n: number) => `确认订单 · ${n} 单`,
   confirmSheetNote: '产品、数量、单价都不改；要改的请点进单子单独确认',
   shipSummary: (n: number) => `共 ${n} 单，实发都按订单数量`,

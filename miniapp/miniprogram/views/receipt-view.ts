@@ -6,6 +6,7 @@ import {
   type PaymentDetail,
 } from '@huazhong/shared'
 import { canDo, findAction } from '../core/actions'
+import { cardAmountOf, cardDateOf, subOf } from './card'
 import { periodTextOf, type FinanceRow, type ListRow } from './statement'
 type Fund = PaymentDetail | ReceiptDetail
 function voidRows(fund: Fund) {
@@ -70,34 +71,16 @@ export function fundViewOf(fund: Fund) {
     ),
   }
 }
-// 收付款记录：单号、收款日期、方式、收款金额、对账单
+// 收付款记录卡（06 章 F5，2026-10-06 第 4 批）：大字客户 / 供应商，小字日期 · 方式，右金额；作废的标状态
 export function recordRowOf(record: ReceiptDetail | PaymentDetail): FinanceRow {
   const payment = 'payDate' in record
   return {
     kind: payment ? 'payment' : 'receipt',
     id: record.id,
-    title: payment ? record.supplierName : record.customerName,
+    main: payment ? record.supplierName : record.customerName,
+    sub: subOf([cardDateOf(payment ? record.payDate : record.receiptDate), record.methodName]),
     status: record.status,
-    fields: [
-      { label: f.no, value: record.no },
-      {
-        label: payment ? f.paymentDate : f.receiptDate,
-        value: payment ? record.payDate : record.receiptDate,
-      },
-      { label: payment ? f.paymentMethod : f.receiptMethod, value: record.methodName },
-      {
-        label: payment ? f.paymentAmount : f.receiptAmount,
-        value: formatMoney(record.amountCents),
-        amount: true,
-      },
-      {
-        label: f.statementNo,
-        value: record.statements[0]
-          ? f.statementSummary(record.statements[0].no, record.statements.length)
-          : f.noLinkedStatements,
-        wide: true,
-      },
-    ],
+    amount: cardAmountOf(record.amountCents),
     tags: [],
   }
 }

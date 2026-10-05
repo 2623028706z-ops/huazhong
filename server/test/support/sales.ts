@@ -1,7 +1,7 @@
 // 阶段 3 接口测试的公共准备：时钟拨到示例数据的「今天」（2026-09-29，上海上午 10 点），
 // 按账号取 openid、按单号 / 名称取 id（07 章第 12 节）
 import { randomUUID } from 'node:crypto'
-import type { CustomerItem } from '@huazhong/shared'
+import type { CatalogItem, CustomerItem } from '@huazhong/shared'
 import { eq, sql } from 'drizzle-orm'
 import type { SeedAccountKey } from '../../db/seed/data.ts'
 import { accounts } from '../../db/schema/index.ts'
@@ -105,7 +105,6 @@ type Lookup =
   | 'refunds.no'
   | 'customers.name'
   | 'stores.name'
-  | 'products.name'
   | 'purchase_orders.no'
   | 'invites.no'
   | 'suppliers.name'
@@ -161,4 +160,30 @@ export async function openStoreAccount(
 
 export function codesOf(actions: readonly { code: string }[]): string[] {
   return actions.map((action) => action.code)
+}
+
+// 一个客户的产品 id（产品归客户，不同客户可以同名）
+export async function productIdOf(t: TestApp, customer: string, name: string): Promise<string> {
+  const result = await t.db.execute<{ id: string }>(
+    sql`SELECT p.id FROM products p JOIN customers c ON c.id = p.customer_id WHERE c.name = ${customer} AND p.name = ${name}`,
+  )
+  const id = result.rows[0]?.id
+  if (id === undefined) throw new Error(`no product ${customer} ${name}`)
+  return id
+}
+
+// 修改目录产品的请求体：照原样提交，change 覆盖
+export function catalogItemBody(item: CatalogItem, change: Record<string, unknown> = {}) {
+  return {
+    version: item.version,
+    name: item.name,
+    unit: item.unit,
+    imageFileId: item.imageFileId,
+    categoryId: item.categoryId,
+    customerCode: item.customerCode,
+    priceCents: item.listPriceCents,
+    enabled: item.enabled,
+    bom: item.bom.map((line) => ({ materialId: line.materialId, qty: line.qty })),
+    ...change,
+  }
 }

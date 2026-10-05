@@ -1,0 +1,31 @@
+/* X13 目录产品（2026-10-05 定稿）：抬头小字贴着顶卡；顶卡左边 72px 产品图，右边名称、单位两行 */
+.hz-catalog-item__owner {
+  display: block;
+  padding: 0 var(--hz-space-1);
+}
+
+.hz-catalog-item__hero {
+  display: flex;
+  gap: var(--hz-row-pad);
+  align-items: center;
+  padding: var(--hz-line-gap) var(--hz-card-pad);
+}
+
+.hz-catalog-item__image {
+  flex: none;
+  width: 72px;
+}
+
+.hz-catalog-item__fields {
+  /* 顶卡挨着产品图、横向窄：字段名用卡片字段行的 13px，行高同点按高度（统一变量，不另写数） */
+  --hz-field-label: var(--hz-font-row);
+  --hz-field-row: var(--hz-tap);
+
+  flex: 1;
+  min-width: 0;
+}
+
+/* 订货信息：字段名最长「客户产品编码」六个字，标签列放宽到一行放得下 */
+.hz-catalog-item__order {
+  --hz-field-label-width: var(--hz-label-w-wide);
+}

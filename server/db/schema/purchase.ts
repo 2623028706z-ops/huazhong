@@ -42,6 +42,12 @@ export const purchaseOrders = pgTable(
     voidReason: text(),
     voidedBy: accountRef(),
     voidedAt: timestamptz(),
+    // 到货有差异（2026-10-06 第 3 批）：收货少收 / 多收 / 拒收 / 改价、收货后改价、退货、作废已收货的单
+    // 记最近一次差异的时间和人；下单采购员（或管理员）点「知道了」记看过。差异时间晚于看过时间 = 没看过，进采购待办
+    diffAt: timestamptz(),
+    diffBy: accountRef(),
+    buyerSeenAt: timestamptz(),
+    buyerSeenBy: accountRef(),
   },
   (t) => [
     index('purchase_orders_status_date').on(t.status, t.orderDate.desc()),

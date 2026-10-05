@@ -5,7 +5,7 @@
 .hz-records__row {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--hz-space-2);
   padding: var(--hz-row-pad) 0;
   font-size: var(--hz-font-sm);
 }
@@ -43,7 +43,7 @@
 }
 
 .hz-records__arrow {
-  margin-left: 2px;
+  margin-left: var(--hz-space-1);
   transition: transform 0.2s;
 }
 

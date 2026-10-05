@@ -1,6 +1,7 @@
 import { contract, type OutputOf } from '@huazhong/shared'
 import { Controller } from '@nestjs/common'
-import { Input, Route, type ParsedInput } from '../../common/endpoint.ts'
+import type { Viewer } from '../../common/domain/viewer.ts'
+import { CurrentViewer, Input, Route, type ParsedInput } from '../../common/endpoint.ts'
 import { WarehouseService } from './warehouse.service.ts'
 
 @Controller()
@@ -9,9 +10,10 @@ export class WarehouseController {
 
   @Route(contract.listInventory)
   listInventory(
+    @CurrentViewer() viewer: Viewer,
     @Input() input: ParsedInput<typeof contract.listInventory>,
   ): Promise<OutputOf<typeof contract.listInventory>> {
-    return this.warehouse.listInventory(input.query)
+    return this.warehouse.listInventory(input.query, viewer)
   }
 
   @Route(contract.listMaterialCategories)

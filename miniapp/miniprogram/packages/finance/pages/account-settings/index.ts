@@ -1,4 +1,4 @@
-import { contract, financeCopy as f, financeTexts } from '@huazhong/shared'
+import { contract, copy, financeCopy as f, financeTexts } from '@huazhong/shared'
 import type { DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { isChanged, markChanged, syncUnloadAlert } from '../../../../core/guard'
@@ -23,7 +23,7 @@ Page({
     saving: false,
     error: '',
     failure: null as FailureView | null,
-    texts: financeTexts,
+    texts: { ...financeTexts, optional: copy.placeholder.optional },
   },
   onLoad(query: Record<string, string | undefined>) {
     this.setData({

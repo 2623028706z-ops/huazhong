@@ -66,7 +66,7 @@ test('收货时改了单价，表单出现改价原因', async () => {
   await expect.poll(async () => (await page.$('#receive-reason')) !== null).toBe(true)
 })
 
-test('C01 C02 G01 G08 H10 退货和改价弹层，未修改直接关闭、原因标错清除、自己操作不提示', async () => {
+test('C01 C02 G01 G08 H10 退货和改价弹层，未修改直接关闭、改价原因选填、自己操作不提示', async () => {
   const { mini, server: s } = suite()
   await asMini(mini, s, 'u5')
   const po = await poOf(s, 'PO-260928-004')
@@ -85,15 +85,16 @@ test('C01 C02 G01 G08 H10 退货和改价弹层，未修改直接关闭、原因
   await page.callMethod('onSaveSheet')
   await waitData(page, 'sheet', '')
   await waitData(page, 'realtime', '')
+  // 改价原因选填（2026-10-05）：不写原因也能保存
+  await page.callMethod('onAction', { currentTarget: { dataset: { code: 'reprice' } } })
+  await editWarehouseLine(page, 0, { price: '7.80' })
+  await page.callMethod('onSaveSheet')
+  await waitData(page, 'sheet', '')
+  await waitData(page, 'view.lines.0.priceCents', 780)
+  expect(await page.data('error')).toBe('')
   await page.callMethod('onAction', { currentTarget: { dataset: { code: 'reprice' } } })
   await editWarehouseLine(page, 0, { price: '7.50' })
-  await page.callMethod('onSaveSheet')
-  await waitData(page, 'fields.reason', '请填写改价原因')
-  expect(await page.data('error')).toBe('')
-  expect(await page.$$('hz-error')).toHaveLength(0)
-  await snap(mini, 'warehouse-reprice-error')
   await page.callMethod('onReason', { detail: '供应商让价' })
-  expect(await page.data('error')).toBe('')
   await page.callMethod('onSaveSheet')
   await waitData(page, 'sheet', '')
   await waitData(page, 'realtime', '')
@@ -169,11 +170,8 @@ test('供应商对账只列DZ，开单归集未对账金额、付款后整张结
   const fresh = dataOf<PoDetail>(await (await s.as('u4')).get(`/purchase-orders/${po.id}`))
   dataOf(await (await s.as('u6')).post('/finance/payments', await paymentInput(s, fresh)))
   await waitData(page, 'rows.0.status', 'settled')
-  expect(await page.data('rows.0.fields')).toContainEqual({
-    label: f.receivable,
-    value: '¥960.00',
-    amount: true,
-  })
+  // 对账单卡：大字对账期间，小字单号，右边状态 + 金额
+  expect(await page.data('rows.0')).toMatchObject({ sub: statement.no, amount: '¥960.00' })
   expect(await page.data('cells')).toMatchObject([{ amountCents: 0 }, { amountCents: 0 }])
   await snap(mini, 'supplier-statement')
   await page.callMethod('onOpen', { currentTarget: { dataset: { key: statement.id } } })
@@ -181,7 +179,7 @@ test('供应商对账只列DZ，开单归集未对账金额、付款后整张结
   await waitData(page, 'loaded', true)
   expect(await page.data('view.info.rows')).toContainEqual({ label: f.no, value: statement.no })
   await snap(mini, 'supplier-statement-detail')
-  await page.callMethod('onSource', { currentTarget: { dataset: { key: `po:${po.id}` } } })
+  await page.callMethod('onSource', { detail: `po:${po.id}` })
   page = await waitPage(mini, 'packages/supplier/pages/po-detail/index')
   await waitData(page, 'loaded', true)
   expect(await page.data('view.info.title')).toBe(po.supplierName)

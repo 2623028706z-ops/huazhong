@@ -52,7 +52,7 @@ const tours: [SeedAccountKey, Stop[]][] = [
       ['x5-afters', `${sales}/afters/index`],
       ['x6-after', `${sales}/after-detail/index?id={a}`, { a: ['afters.no', 'AS-260929-003'] }],
       ['x8-customers', `${sales}/customers/index`],
-      ['x9-products', `${sales}/products/index`],
+      ['x9-catalog', `${sales}/catalog/index`],
       ['x15-order-pick', `${sales}/order-pick/index`],
       ['h1-ship-home', `${ship}/home/index`],
       ['h2-ship-list', `${ship}/list/index`],
@@ -149,6 +149,7 @@ const tours: [SeedAccountKey, Stop[]][] = [
         { o: ['orders.no', 'SO-260927-021'] },
       ],
       ['s7-afters', `${store}/afters/index`],
+      ['s12-order-pick', `${store}/order-pick/index`],
       ['s9-statement', `${store}/statement/index`],
       [
         's9-statement-detail',

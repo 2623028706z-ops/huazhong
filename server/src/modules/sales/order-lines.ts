@@ -1,12 +1,14 @@
 // 订单写接口共用的数据读写：目录项、明细整组替换、日志和推送的格式（05 章第 4、5 节）
 import { appError, copy, type OrderDetail } from '@huazhong/shared'
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, gt, inArray, sql } from 'drizzle-orm'
 import type { Tx } from '../../../db/client.ts'
 import {
-  catalogItems,
+  materials,
   orderChanges,
+  orderLineBomLines,
   orderLines,
   orders,
+  productBomLines,
   products,
 } from '../../../db/schema/index.ts'
 import { actorLabelOf } from '../../common/domain/viewer.ts'
@@ -15,7 +17,7 @@ import type { LineState, OrderState } from './domain/order-diff.ts'
 import type { CatalogEntry } from './domain/order-rules.ts'
 import { lockCustomer } from '../../common/org.ts'
 
-// 这些产品在这个客户下的可订情况（产品不存在的不返回）
+// 这些产品在这个客户下的可订情况（产品不存在的不返回；别的客户的产品 listPriceCents 为 null）
 export async function catalogEntriesOf(
   tx: Tx,
   customerId: number,
@@ -27,16 +29,13 @@ export async function catalogEntriesOf(
       productId: products.id,
       name: products.name,
       unit: products.unit,
-      customerCode: sql<string>`coalesce(${catalogItems.customerCode}, '')`,
-      productEnabled: products.enabled,
-      catalogEnabled: catalogItems.enabled,
-      listPriceCents: catalogItems.priceCents,
+      customerCode: products.customerCode,
+      enabled: products.enabled,
+      listPriceCents: sql<
+        number | null
+      >`CASE WHEN ${products.customerId} = ${customerId} THEN ${products.priceCents} END`,
     })
     .from(products)
-    .leftJoin(
-      catalogItems,
-      and(eq(catalogItems.productId, products.id), eq(catalogItems.customerId, customerId)),
-    )
     .where(inArray(products.id, [...productIds]))
 }
 
@@ -44,10 +43,10 @@ export async function catalogEntriesOf(
 export async function lockCatalogShare(tx: Tx, customerId: number): Promise<void> {
   await lockCustomer(tx, customerId)
   await tx
-    .select({ id: catalogItems.id })
-    .from(catalogItems)
-    .where(eq(catalogItems.customerId, customerId))
-    .orderBy(catalogItems.id)
+    .select({ id: products.id })
+    .from(products)
+    .where(eq(products.customerId, customerId))
+    .orderBy(products.id)
     .for('share')
 }
 
@@ -78,6 +77,25 @@ export async function replaceLines(
       createdBy: order.createdBy,
     })),
   )
+}
+
+// 确认发货：实发大于 0 的行按当前配方存一份（花材名、单位快照），之后改配方不变
+export async function snapshotShippedBom(tx: Tx, orderId: number, createdBy: number) {
+  const rows = await tx
+    .select({
+      orderLineId: orderLines.id,
+      materialId: productBomLines.materialId,
+      materialName: materials.name,
+      unit: materials.unit,
+      qty: productBomLines.qty,
+    })
+    .from(orderLines)
+    .innerJoin(productBomLines, eq(productBomLines.productId, orderLines.productId))
+    .innerJoin(materials, eq(materials.id, productBomLines.materialId))
+    .where(and(eq(orderLines.orderId, orderId), gt(orderLines.shippedQty, 0)))
+    .orderBy(orderLines.sort, productBomLines.id)
+  if (rows.length === 0) return
+  await tx.insert(orderLineBomLines).values(rows.map((row) => ({ ...row, createdBy })))
 }
 
 // 变更记录：改了什么、原因（门店改单没有）、谁；内容没变的调用前已经拦住

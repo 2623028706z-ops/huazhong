@@ -14,6 +14,8 @@
     "hz-sheet": "/components/hz-sheet/index",
     "hz-confirm": "/components/hz-confirm/index",
     "hz-notice": "/components/hz-notice/index",
-    "hz-records": "/components/hz-records/index"
+    "hz-records": "/components/hz-records/index",
+    "hz-search": "/components/hz-search/index",
+    "hz-stepper": "/components/hz-stepper/index"
   }
 }

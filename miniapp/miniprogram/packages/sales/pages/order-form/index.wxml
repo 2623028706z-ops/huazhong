@@ -12,13 +12,12 @@
     <view class="u-card u-form-card">
       <text class="u-info__title">{{mode === 'create' ? texts.orderInfo : customerTitle}}</text>
       <block wx:if="{{mode === 'create'}}">
-        <hz-picker label="{{texts.customer}}" options="{{customerOptions}}" value="{{form.customerId}}" error="{{fields.customerId}}" bind:change="onCustomer" />
-        <hz-picker label="{{texts.store}}" options="{{storeOptions}}" value="{{form.storeId}}" error="{{fields.storeId}}" bind:change="onStore" />
+        <hz-picker id="order-store" label="{{texts.customerStore}}" title="{{texts.pickStore}}" search="{{texts.searchStore}}" options="{{storeOptions}}" value="{{form.storeId}}" error="{{fields.customerId || fields.storeId}}" bind:change="onStore" />
       </block>
       <hz-picker label="{{texts.shipDate}}" mode="date" value="{{form.shipDate}}" error="{{fields.shipDate}}" bind:change="onShipDate" />
     </view>
     <view class="u-section">
-      <hz-line-item lines="{{lineViews}}" mode="price" edit-key="{{editKey}}" removable min="{{1}}" add-text="{{texts.add}}" bind:qty="onQty" bind:price="onPrice" bind:remove="onRemove" bind:add="onOpenPick" />
+      <hz-line-item lines="{{lineViews}}" mode="price" removable min="{{1}}" add-text="{{texts.add}}" bind:qty="onQty" bind:price="onPrice" bind:remove="onRemove" bind:add="onOpenPick" />
     </view>
     <view class="u-card u-form-card">
       <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{form.note}}" bind:change="onNote" />
@@ -29,5 +28,5 @@
 <hz-action-bar>
   <hz-button text="{{submitText}}" loading="{{saving}}" bind:press="onSubmit" />
 </hz-action-bar>
-<template is="pick-sheet" data="{{show: pickSheet, title: texts.pickTitle, picks, empty: texts.noPick, multi: true, count: pickCount, confirm: pickConfirm}}" />
+<template is="pick-sheet" data="{{show: pickSheet, error: '', title: texts.pickTitle, placeholder: texts.searchProduct, keyword: pickKeyword, picks, empty: texts.noPick, count: pickCount, confirm: pickConfirm, summary: pickSummary}}" />
 <hz-confirm id="hz-confirm" />

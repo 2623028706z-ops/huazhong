@@ -1,15 +1,17 @@
 // S8 申请售后（06 章 S8）：原订单、出货日期 → 明细（数量上限 maxQty；问题原因、问题说明选填、图片）→「添加产品」（可多选）。
 // 订单只有一个能申请的产品时进来直接打开它的编辑弹层；原因是「数量不符」（少发、漏发）时图片选填，其余原因至少 1 张。
-// 提交后进 S7，并打开这张售后的详情弹层
+// 套公共整页表单（02 章第 11 节，2026-10-06 第 4 批）：信息卡 → 售后明细（hz-line-item，点行改、底部添加）→ 底栏提交。
+// 提交后进 S10 售后详情
 import {
   contract,
   copy,
+  entryCopy,
   financeCopy,
   labels,
   redesignCopy,
   type OrderDetail,
 } from '@huazhong/shared'
-import type { DetailEvent, KeyEvent } from '../../../../core/events'
+import type { DetailEvent } from '../../../../core/events'
 import { unplacedErrorOf } from '../../../../core/form'
 import type { FailureView } from '../../../../core/failure-view'
 import { syncUnloadAlert, isChanged } from '../../../../core/guard'
@@ -17,11 +19,26 @@ import { newIdempotencyKey, request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
 import { uploadImage, type LocalImage } from '../../../../core/upload'
 import { rowsOf, shipDateText } from '../../../../views/order'
-import { pickOpen, pickPatch, toggled } from '../../../../views/pick'
+import { pickChosen, pickData, pickHandlers, pickOpen } from '../../../../views/pick'
 import { reasonOptions } from '../../../../views/after'
 import { checkForm, formLineOf, lineErrorsOf, type FormLine, type LineErrors } from './form'
 
 type IndexDetail<T> = DetailEvent<T, { index: number }>
+
+// 明细表一行：名称、数量、单位；小字客户产品编码、可申请数量、图片张数，问题原因做成标签
+function lineViewsOf(lines: readonly FormLine[]) {
+  return lines.map((line) => ({
+    key: line.orderLineId,
+    name: line.name,
+    code: line.code ?? '',
+    qty: line.qty,
+    unit: line.unit,
+    meta: [line.maxText, redesignCopy.imageCountText(line.images.length)].join(copy.separator),
+    tags: line.reason
+      ? [{ text: labels.afterReason[line.reason as keyof typeof labels.afterReason], warn: true }]
+      : [],
+  }))
+}
 
 Page({
   data: {
@@ -34,10 +51,7 @@ Page({
     lineErrors: [] as LineErrors[],
     reasonOptions,
     pickSheet: false,
-    picks: [] as ReturnType<typeof pickOpen>['picks'],
-    pickIds: [] as string[],
-    pickCount: 0,
-    pickConfirm: '',
+    ...pickData(),
     saving: false,
     uploading: false,
     editIndex: -1,
@@ -46,10 +60,9 @@ Page({
     editInitial: null as FormLine | null,
     editLine: null as FormLine | null,
     editError: { qty: '', reason: '', description: '', images: '' },
-    tableRows: [] as (FormLine & { reasonText: string; imageText: string })[],
+    lineViews: [] as ReturnType<typeof lineViewsOf>,
     texts: {
       lines: copy.screen.section.afterLines,
-      code: copy.screen.label.customerCode,
       reason: copy.screen.label.afterReason,
       description: copy.screen.label.afterDescription,
       images: financeCopy.imagesRequired,
@@ -58,11 +71,11 @@ Page({
       add: copy.screen.action.addProduct,
       submit: copy.screen.action.submitAfter,
       qty: financeCopy.afterQty,
-      unit: redesignCopy.unit,
       remove: copy.screen.action.delete,
       confirm: financeCopy.confirm,
       pickTitle: copy.screen.title.pickProduct,
       noPick: copy.state.empty(copy.screen.empty.addableProducts),
+      searchProduct: entryCopy.searchProduct,
     },
   },
   orderId: '',
@@ -108,13 +121,7 @@ Page({
   setLines(lines: FormLine[]) {
     this.setData({
       lines,
-      tableRows: lines.map((line) => ({
-        ...line,
-        reasonText: line.reason
-          ? labels.afterReason[line.reason as keyof typeof labels.afterReason]
-          : '',
-        imageText: redesignCopy.imageCountText(line.images.length),
-      })),
+      lineViews: lineViewsOf(lines),
       lineErrors: lineErrorsOf({}, lines.length),
       formError: '',
     })
@@ -145,10 +152,6 @@ Page({
   onDescription(event: IndexDetail<string>) {
     this.update(event.currentTarget.dataset.index, { description: event.detail })
   },
-  onRemoveLine(event: DetailEvent<unknown, { index: number }>) {
-    const { index } = event.currentTarget.dataset
-    this.setLines(this.data.lines.filter((_, i) => i !== index))
-  },
   async onAddImages(event: IndexDetail<LocalImage[]>): Promise<void> {
     const { index } = event.currentTarget.dataset
     this.setData({ uploading: true, formError: '' })
@@ -177,34 +180,32 @@ Page({
       id: line.id,
       name: line.name,
       sub: copy.screen.maxQty(line.maxQty ?? 0),
+      code: line.customerCode,
+      max: line.maxQty ?? 0,
     }))
     this.setData({ pickSheet: true, ...pickOpen(picks) })
   },
   onClosePick() {
     this.setData({ pickSheet: false })
   },
-  onPick(event: KeyEvent) {
-    this.setData(
-      pickPatch(this.data.picks, toggled(this.data.pickIds, event.currentTarget.dataset.key)),
-    )
-  },
-  // 勾选的产品一次加入（数量默认 1）；只勾一个时直接打开它的编辑弹层，勾了多个的点行再逐个填原因
+  ...pickHandlers,
+  // 选好的产品按选的数量一次加入；售后还要选问题原因，打开加的第一行，其余点行再逐个填。
+  // 只加了一个时关掉弹层不填就撤回这一行
   onPickConfirm() {
-    const added = this.data.pickIds.flatMap((id) => {
+    const added = pickChosen(this.data).flatMap(({ id, qty }) => {
       const line = this.order?.lines.find((l) => l.id === id)
-      return line ? [formLineOf(line)] : []
+      return line ? [formLineOf(line, qty)] : []
     })
     this.setData({ pickSheet: false })
     if (!added.length) return
-    const lines = [...this.data.lines, ...added]
-    this.setLines(lines)
-    if (added.length === 1) {
-      this.openEditor(lines.length - 1)
-      this.setData({ editorNew: true })
-    }
+    const first = this.data.lines.length
+    this.setLines([...this.data.lines, ...added])
+    this.openEditor(first)
+    this.setData({ editorNew: added.length === 1 })
   },
-  onEditLine(event: DetailEvent<unknown, { index: number }>) {
-    this.openEditor(event.currentTarget.dataset.index)
+  // hz-line-item custom 模式点行发 edit，detail 是行号
+  onEditLine(event: DetailEvent<number>) {
+    this.openEditor(event.detail)
   },
   openEditor(index: number) {
     const line = this.data.lines[index]

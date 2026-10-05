@@ -7,8 +7,8 @@
   <hz-skeleton wx:if="{{!loaded}}" type="detail" />
   <block wx:else>
     <template is="invite-body" data="{{...view}}" />
-    <view wx:for="{{buttons}}" wx:key="code" wx:if="{{index >= 2}}" class="u-detail-third"><hz-button kind="quiet" text="{{item.text}}" disabled="{{item.disabled}}" reason="{{item.reason}}" data-code="{{item.code}}" bind:press="onAction" /></view>
   </block>
 </view>
-<hz-action-bar wx:if="{{buttons.length}}" busy="{{busy !== ''}}"><hz-button wx:for="{{buttons}}" wx:key="code" wx:if="{{index < 2}}" text="{{item.text}}" kind="{{item.kind}}" loading="{{busy === item.code}}" open-type="{{item.code === 'shareInvite' ? 'share' : ''}}" disabled="{{item.disabled || (item.code === 'shareInvite' && !share)}}" reason="{{item.reason}}" data-code="{{item.code}}" bind:press="onAction" /></hz-action-bar>
+<!-- 操作只放底栏：最多 2 个，第 3 个起进最左的「更多」（2026-10-06 第 4 批） -->
+<hz-action-bar wx:if="{{buttons.length}}" more="{{buttons.length > 2}}"><hz-more wx:if="{{buttons.length > 2}}"><hz-button wx:for="{{buttons}}" wx:key="code" wx:if="{{index >= 2}}" kind="secondary" text="{{item.text}}" disabled="{{item.disabled}}" reason="{{item.reason}}" data-code="{{item.code}}" bind:press="onAction" /></hz-more><hz-button wx:for="{{buttons}}" wx:key="code" wx:if="{{index < 2}}" text="{{item.text}}" kind="{{item.kind}}" loading="{{busy === item.code}}" open-type="{{item.code === 'shareInvite' ? 'share' : ''}}" disabled="{{item.disabled || (item.code === 'shareInvite' && !share)}}" reason="{{item.reason}}" data-code="{{item.code}}" bind:press="onAction" /></hz-action-bar>
 <hz-confirm id="hz-confirm" />

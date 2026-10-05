@@ -57,7 +57,9 @@ describe('统一确认与批量操作', () => {
         shipDate: TOMORROW,
       }),
     )
-    expect(result.succeeded).toEqual([{ id: ready.id, no: ready.no }])
+    expect(result.succeeded).toEqual([
+      { id: ready.id, no: ready.no, customerName: ready.customerName, storeName: ready.storeName },
+    ])
     expect(result.failed).toMatchObject([{ id: invalid.id, no: invalid.no }])
     expect(result.failed[0]?.reason).toBeTruthy()
     expect((await order(ready.id)).status).toBe('to_ship')
@@ -108,10 +110,14 @@ describe('统一确认与批量操作', () => {
         ],
       }),
     )
-    expect(result.succeeded).toEqual([{ id: due.id, no: due.no }])
+    expect(result.succeeded).toEqual([
+      { id: due.id, no: due.no, customerName: due.customerName, storeName: due.storeName },
+    ])
     expect(result.failed[0]).toMatchObject({
       id: future.id,
       no: future.no,
+      customerName: future.customerName,
+      storeName: future.storeName,
       reason: '出货日期还没到，不能发货',
     })
     const detail = dataOf<ShippingDetail>(await shipping.get(`/shipping/orders/${dueId}`))

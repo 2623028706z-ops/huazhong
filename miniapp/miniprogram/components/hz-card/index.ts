@@ -22,7 +22,6 @@ Component({
   properties: {
     selectable: { type: Boolean, value: false },
     selected: { type: Boolean, value: false },
-    selectDisabled: { type: Boolean, value: false },
     row: { type: Object, value: emptyCard },
     statusKind: { type: String, value: '' },
   },
@@ -42,7 +41,7 @@ Component({
       this.triggerEvent('press')
     },
     onToggle() {
-      if (!this.data.selectDisabled) this.triggerEvent('toggle')
+      this.triggerEvent('toggle')
     },
   },
 })

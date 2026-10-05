@@ -7,12 +7,28 @@ import {
   type OutputOf,
 } from '@huazhong/shared'
 import { moveDocUrl, moveRowOf } from '../../../../views/stock'
-import type { KeyEvent } from '../../../../core/events'
+import type { CodeEvent, KeyEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
 import { unwatchOnLeave, watch, pullToRefresh } from '../../../../core/live'
 import { request } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
-import { canDo } from '../../../../core/actions'
+import { buttonsOf, canDo, type ButtonView } from '../../../../core/actions'
+
+// 底栏（2026-10-06 第 4 批：操作只放底栏）：报损、出库在前两个，入库、修改花材收进「更多」；
+// 只剩 1～2 个时直接进底栏，两个时左次右主
+function materialButtonsOf(actions: Parameters<typeof buttonsOf>[0]): ButtonView[] {
+  const views = buttonsOf(actions, [
+    { code: 'reportLoss' },
+    { code: 'stockOut' },
+    { code: 'stockIn' },
+    { code: 'edit' },
+  ]).map((view) => (view.code === 'edit' ? { ...view, text: redesignCopy.editMaterial } : view))
+  const bar = Math.min(views.length, 2)
+  return views.map((view, index) => ({
+    ...view,
+    kind: index >= bar ? 'text' : index === bar - 1 ? 'primary' : 'secondary',
+  }))
+}
 const RECENT_MOVES = 3
 Page({
   ...pullToRefresh,
@@ -22,18 +38,11 @@ Page({
     loaded: false,
     failure: null as FailureView | null,
     material: null as OutputOf<typeof contract.getMaterial> | null,
-    head: { name: '', qty: '', unit: '', sub: '', disabled: false, disabledText: '', edit: '' },
+    head: { name: '', qty: '', unit: '', sub: '', disabled: false, disabledText: '' },
+    buttons: [] as ButtonView[],
     recent: [] as ReturnType<typeof moveRowOf>[],
     batches: [] as { id: string; date: string; qty: string; age: string; aged: boolean }[],
-    canEdit: false,
-    canStockIn: false,
-    canStockOut: false,
-    canLoss: false,
     texts: {
-      loss: copy.stock.screen.titles.loss,
-      stockOut: copy.stock.screen.stockOut,
-      edit: redesignCopy.editMaterial,
-      stockIn: copy.stock.screen.stockIn,
       moves: copy.stock.screen.titles.moves,
       stock: copy.screen.title.stock,
       fifo: copy.screen.fifo,
@@ -83,10 +92,7 @@ Page({
       loaded: true,
       failure: null,
       material: m,
-      canEdit: canDo(m.actions, 'edit'),
-      canStockIn: canDo(m.actions, 'stockIn'),
-      canStockOut: canDo(m.actions, 'stockOut'),
-      canLoss: canDo(m.actions, 'reportLoss'),
+      buttons: materialButtonsOf(m.actions),
       head: {
         name: m.name,
         qty: String(m.stockQty),
@@ -98,7 +104,6 @@ Page({
         ].join(copy.separator),
         disabled: !m.enabled,
         disabledText: copy.statusValue.disabled,
-        edit: canDo(m.actions, 'edit') ? redesignCopy.editMaterial : '',
       },
       batches: m.batches.map((b) => ({
         id: b.id,
@@ -109,28 +114,21 @@ Page({
       })),
     })
   },
-  onEdit() {
-    void wx.navigateTo({ url: `/packages/warehouse/pages/materials/index?editId=${this.id}` })
-  },
   onMoves() {
     void wx.navigateTo({ url: `/packages/warehouse/pages/moves/index?materialId=${this.id}` })
   },
-  onStockOut() {
-    if (this.data.canStockOut)
+  onAction(event: CodeEvent) {
+    const code = event.currentTarget.dataset.code
+    const material = this.data.material
+    if (!material || !canDo(material.actions, code as Parameters<typeof canDo>[1])) return
+    if (code === 'edit') {
+      void wx.navigateTo({ url: `/packages/warehouse/pages/materials/index?editId=${this.id}` })
+      return
+    }
+    const kind = { stockOut: 'out', reportLoss: 'loss', stockIn: 'in' }[code]
+    if (kind)
       void wx.navigateTo({
-        url: `/packages/warehouse/pages/doc-form/index?kind=out&materialId=${this.id}`,
-      })
-  },
-  onLoss() {
-    if (this.data.canLoss)
-      void wx.navigateTo({
-        url: `/packages/warehouse/pages/doc-form/index?kind=loss&materialId=${this.id}`,
-      })
-  },
-  onStockIn() {
-    if (this.data.canStockIn)
-      void wx.navigateTo({
-        url: `/packages/warehouse/pages/doc-form/index?kind=in&materialId=${this.id}`,
+        url: `/packages/warehouse/pages/doc-form/index?kind=${kind}&materialId=${this.id}`,
       })
   },
   onFailureAction() {

@@ -1,21 +1,14 @@
-// 示例数据：07 章第 12.2–12.7 节的产品、订货目录、订单、售后、收款、收付款方式。
+// 示例数据：07 章第 12.2–12.7 节的产品（按客户）、订货目录、订单、售后、收款、收付款方式。
 // 单号按 DOC_NO_FORMAT（带年份）；日期是原型里的日期（原型：2026-09-29 是今天），接口测试把时钟拨到这一天
 import type { AfterReason, OrderOrigin, OrderStatus } from '@huazhong/shared'
 import type { SeedAccountKey } from './data.ts'
 
-// 产品内部分类（2026-10-03 确认：单品、花束起步）
-export const seedProductCategories = [
-  { key: 'single', name: '单品', sort: 1 },
-  { key: 'bouquet', name: '花束', sort: 2 },
-] as const
-
-type ProductCategoryKey = (typeof seedProductCategories)[number]['key']
 type MaterialKey = 'w1' | 'w2' | 'w3' | 'w4' | 'w5'
 
+// 产品模板：每个客户目录里的产品按它建（产品归客户，2026-10-05 确认），目录项可以换配方
 interface SeedProduct {
   key: string
   name: string
-  category: ProductCategoryKey
   unit: string
   bom: readonly { material: MaterialKey; qty: number }[]
 }
@@ -24,7 +17,6 @@ export const seedProducts = [
   {
     key: 'p1',
     name: '粉玫瑰日常花束',
-    category: 'bouquet',
     unit: '束',
     bom: [
       { material: 'w1', qty: 10 },
@@ -34,21 +26,18 @@ export const seedProducts = [
   {
     key: 'p2',
     name: '白绿清新花束',
-    category: 'bouquet',
     unit: '束',
     bom: [{ material: 'w2', qty: 8 }],
   },
   {
     key: 'p3',
     name: '向日葵混合花束',
-    category: 'bouquet',
     unit: '束',
     bom: [{ material: 'w3', qty: 5 }],
   },
   {
     key: 'p4',
     name: '白绿桌花',
-    category: 'single',
     unit: '盆',
     bom: [{ material: 'w4', qty: 6 }],
   },
@@ -73,7 +62,7 @@ export const seedCatalogCategories: readonly {
   { key: 'c3-table', customer: 'c3', name: '桌面花艺', sort: 2 },
 ]
 
-// 价格按分；code 是客户产品编码（选填）
+// 每个客户自己的产品：价格按分；code 是客户产品编码（选填）；bom 不写就照产品模板
 export const seedCatalog: readonly {
   customer: CustomerKey
   product: ProductKey
@@ -81,6 +70,7 @@ export const seedCatalog: readonly {
   code: string
   price: number
   enabled: boolean
+  bom?: readonly { material: MaterialKey; qty: number }[]
 }[] = [
   {
     customer: 'c1',
@@ -108,7 +98,19 @@ export const seedCatalog: readonly {
     enabled: true,
   },
   { customer: 'c2', product: 'p2', category: 'c2-daily', code: '', price: 7800, enabled: true },
-  { customer: 'c2', product: 'p1', category: 'c2-daily', code: '', price: 7000, enabled: true },
+  // 拾光花店的粉玫瑰日常花束配方和晨曦花艺不同（各管各的）
+  {
+    customer: 'c2',
+    product: 'p1',
+    category: 'c2-daily',
+    code: '',
+    price: 7000,
+    enabled: true,
+    bom: [
+      { material: 'w1', qty: 12 },
+      { material: 'w5', qty: 2 },
+    ],
+  },
   { customer: 'c3', product: 'p3', category: 'c3-gift', code: 'Y-01', price: 8800, enabled: true },
   {
     customer: 'c3',

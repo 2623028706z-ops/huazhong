@@ -5,25 +5,9 @@
   padding: var(--hz-card-pad-y) var(--hz-card-pad);
 }
 
-.hz-party-summary__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
 .hz-party-summary__label {
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);
-}
-
-/* 「修改」是文字入口：墨色小字 + 浅灰下划线，红字只留给「未收」大数（2026-10-05） */
-.hz-party-summary__edit {
-  margin-left: var(--hz-line-gap);
-  font-size: var(--hz-font-sm);
-  color: var(--hz-ink);
-  text-decoration: underline;
-  text-decoration-color: var(--hz-rule-frame);
-  text-underline-offset: 3px;
 }
 
 .hz-party-summary__amount {

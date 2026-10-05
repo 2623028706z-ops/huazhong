@@ -1,0 +1,48 @@
+/* 发货结果弹层（06 章 H2）：头行一句，下面一单一行，右侧入口 */
+.hz-ship-result__head {
+  display: block;
+  padding-bottom: var(--hz-space-3);
+  font-size: var(--hz-font-row);
+  color: var(--hz-muted);
+  border-bottom: 1px solid var(--hz-line);
+}
+
+.hz-ship-result__row {
+  display: flex;
+  gap: var(--hz-space-3);
+  align-items: center;
+  padding: var(--hz-space-3) 0;
+  border-bottom: 1px solid var(--hz-line);
+}
+
+.hz-ship-result__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--hz-space-1);
+  min-width: 0;
+}
+
+.hz-ship-result__title {
+  font-size: var(--hz-font-md);
+  font-weight: 600;
+}
+
+.hz-ship-result__sub {
+  font-size: var(--hz-font-row);
+  color: var(--hz-muted);
+}
+
+.hz-ship-result__sub--failed {
+  color: var(--hz-alert);
+}
+
+.hz-ship-result__link {
+  flex: none;
+  font-size: var(--hz-font-row);
+  color: var(--hz-ink);
+}
+
+.hz-ship-result__link--brand {
+  color: var(--hz-brand);
+}

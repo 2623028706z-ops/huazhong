@@ -9,11 +9,20 @@ import {
   accounts,
   catalogCategories,
   customers,
+  products,
   purchaseOrders,
 } from '../db/schema/index.ts'
 import { call, type ApiResponse } from './support/http.ts'
 import { createPo, poInput, receiveInput } from './support/purchase.ts'
-import { dataOf, idBy, snapshotInput, startSales, TODAY, type SalesApp } from './support/sales.ts'
+import {
+  catalogItemBody,
+  dataOf,
+  idBy,
+  snapshotInput,
+  startSales,
+  TODAY,
+  type SalesApp,
+} from './support/sales.ts'
 
 let s: SalesApp
 beforeEach(async () => {
@@ -186,52 +195,54 @@ test('B32 B33 采购取消与仓库作废按登记/收货人归属，供应商�
   ).toBe('received')
 })
 
-test('X 复制目录与来源改价共享客户锁，旧预览不复制新价；空来源不写分类或日志', async () => {
+test('X 复制产品与来源改价共享客户锁，旧预览不复制新价；勾了停用产品不写分类', async () => {
   const sales = await s.as('u2'),
     sourceId = await idBy(s.t, 'customers.name', '晨曦花艺')
   const target = found(
     (await s.t.db.insert(customers).values({ name: '并发复制目标', createdBy: 1 }).returning())[0],
   )
   const source = dataOf<Catalog>(await sales.get(`/catalog/${sourceId}`))
-  const item = found(source.items.find((row) => row.enabled && row.productEnabled))
-  const preview = dataOf<OutputOf<typeof contract.previewCatalogCopy>>(
-    await sales.get(`/catalog/${target.id}/copy-preview?fromCustomerId=${sourceId}`),
+  const item = found(source.items.find((row) => row.enabled))
+  const preview = dataOf<OutputOf<typeof contract.catalogCopySources>>(
+    await sales.get(`/catalog/${target.id}/copy-sources?fromCustomerId=${sourceId}`),
   )
   const results = await Promise.all([
     sales.post(`/catalog/${target.id}/copy`, {
       fromCustomerId: sourceId,
+      productIds: [item.productId],
       previewToken: preview.previewToken,
     }),
-    sales.put(`/catalog/${sourceId}/items/${item.productId}`, {
-      version: item.version,
-      categoryId: item.categoryId,
-      customerCode: item.customerCode,
-      priceCents: item.listPriceCents + 100,
-      enabled: true,
-    }),
+    sales.patch(
+      `/catalog/${sourceId}/items/${item.productId}`,
+      catalogItemBody(item, { priceCents: item.listPriceCents + 100 }),
+    ),
   ])
   expect(results[1].status).toBe(200)
   if (results[0].status === 200) {
     expect(
-      dataOf<Catalog>(results[0]).items.find((row) => row.productId === item.productId)
-        ?.listPriceCents,
+      dataOf<Catalog>(results[0]).items.find((row) => row.name === item.name)?.listPriceCents,
     ).toBe(item.listPriceCents)
   } else expect(results[0].body.error?.code).toBe('STALE')
-  const emptySource = found(
-    (await s.t.db.insert(customers).values({ name: '空来源', createdBy: 1 }).returning())[0],
-  )
   const emptyTarget = found(
     (await s.t.db.insert(customers).values({ name: '空目标', createdBy: 1 }).returning())[0],
   )
-  const emptyPreview = dataOf<OutputOf<typeof contract.previewCatalogCopy>>(
-    await sales.get(`/catalog/${emptyTarget.id}/copy-preview?fromCustomerId=${emptySource.id}`),
+  const off = found(source.items.find((row) => row.enabled && row.productId !== item.productId))
+  await s.t.db
+    .update(products)
+    .set({ enabled: false })
+    .where(eq(products.id, Number(off.productId)))
+  const offPreview = dataOf<OutputOf<typeof contract.catalogCopySources>>(
+    await sales.get(`/catalog/${emptyTarget.id}/copy-sources?fromCustomerId=${sourceId}`),
   )
-  expect(emptyPreview.copyCount).toBe(0)
+  expect(offPreview.items.find((row) => row.productId === off.productId)?.skipReason).toBe(
+    'disabled',
+  )
   expect(
     (
       await sales.post(`/catalog/${emptyTarget.id}/copy`, {
-        fromCustomerId: String(emptySource.id),
-        previewToken: emptyPreview.previewToken,
+        fromCustomerId: sourceId,
+        productIds: [off.productId],
+        previewToken: offPreview.previewToken,
       })
     ).body.error?.code,
   ).toBe('BUSINESS_RULE')

@@ -24,4 +24,11 @@
   bind:submit="onCancel"
 />
 <hz-order-confirm show="{{confirmSheet}}" orders="{{confirmTargets}}" overdue="{{confirmOverdue}}" bind:close="onCloseConfirm" bind:done="onConfirmDone" />
+<hz-sheet show="{{bomSheet}}" title="{{bom.title}}" bind:close="onCloseBom">
+  <view class="u-sheet-section">
+    <view class="u-section__title u-section__title--split">{{texts.shippedBom}}<text class="u-caption">{{bom.hint}}</text></view>
+    <view wx:for="{{bom.rows}}" wx:key="key" class="u-sheet-row"><text>{{item.name}}</text><text>{{item.qty}}</text></view>
+    <text class="u-caption">{{texts.shippedHint}}</text>
+  </view>
+</hz-sheet>
 <hz-confirm id="hz-confirm" />

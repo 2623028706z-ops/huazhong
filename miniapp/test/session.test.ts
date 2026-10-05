@@ -1,6 +1,12 @@
 import type { Me } from '@huazhong/shared'
 import { describe, expect, it, vi } from 'vitest'
-import { identityOf, isLandingModule, landingUrl, tabsOf } from '../miniprogram/core/session'
+import {
+  identityOf,
+  isLandingModule,
+  landingUrl,
+  tabBadgeOf,
+  tabsOf,
+} from '../miniprogram/core/session'
 
 vi.mock('../miniprogram/core/config', () => ({
   cloudTarget: () => ({ env: 'test-env', service: 'test-service' }),
@@ -58,6 +64,13 @@ describe('业务底栏', () => {
   it('门店只显示订货、订单、我的', () => {
     const store: Me = { ...base, type: 'store', modules: [], landing: 'store_shop', menus: [] }
     expect(tabsOf(store).map((tab) => tab.key)).toEqual(['shop', 'orders', 'my'])
+  })
+  it('门店「订单」角标是没看过的结果数，订货、我的不带', () => {
+    const store: Me = { ...base, type: 'store', modules: [], landing: 'store_shop', menus: [] }
+    expect(tabsOf(store, 2).map((tab) => tab.badge)).toEqual([0, 2, 0])
+  })
+  it('员工底栏没有角标，不请求', async () => {
+    expect(await tabBadgeOf({ ...base, modules: ['sales'], landing: 'module:sales' })).toBe(0)
   })
   it('供应商填报带待填报数', () => {
     const supplier: Me = {

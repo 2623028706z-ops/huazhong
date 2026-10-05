@@ -1,0 +1,28 @@
+/* 右栏 scroll-view 要有确定高度才会自己滚：整页撑满一屏竖排，分栏占剩下的高度（底栏占位在分栏下面） */
+page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 客户多了左栏自己滚 */
+.u-split__side {
+  overflow-y: auto;
+}
+
+/* 「添加产品」两种方式：图标 + 名称 + 一行说明 */
+.hz-catalog-add__icon {
+  flex: none;
+  font-size: var(--hz-icon-entry);
+  color: var(--hz-brand);
+}
+
+.hz-catalog-add__row {
+  justify-content: flex-start;
+}
+
+/* 还没有订货分类：新建产品灰掉，说明换成「请先新增订货分类」 */
+.hz-catalog-add__row--off {
+  opacity: 0.5;
+}

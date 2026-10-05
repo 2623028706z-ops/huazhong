@@ -5,9 +5,9 @@ import type { Db, Tx } from '../../../db/client.ts'
 import {
   afterLines,
   afters,
-  catalogItems,
   customers,
   orderChanges,
+  orderLineBomLines,
   orderLines,
   orders,
   products,
@@ -17,7 +17,7 @@ import { BUSINESS_TIME_ZONE } from '../../common/clock.ts'
 import { waitCounts } from '../../common/domain/counts.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import { found, ownStoreId } from '../../common/scope.ts'
-import type { LineRow } from './domain/order-view.ts'
+import type { BomSnapshot, LineRow } from './domain/order-view.ts'
 import { lockCustomer } from '../../common/org.ts'
 
 export type Executor = Db | Tx
@@ -132,6 +132,8 @@ export function orderRowsQuery(executor: Executor) {
       shippedAt: orders.shippedAt,
       shippedDay: shippedDayOf,
       changed: sql<boolean>`${exists(changed)}`,
+      storeNoticeAt: orders.storeNoticeAt,
+      storeSeenAt: orders.storeSeenAt,
     })
     .from(orders)
     .innerJoin(customers, eq(customers.id, orders.customerId))
@@ -157,18 +159,13 @@ export async function loadLineRows(
       listPriceCents: orderLines.listPriceCents,
       shippedQty: orderLines.shippedQty,
       claimedQty: claimedQtyOf(executor),
-      discontinued: sql<boolean>`NOT (${products.enabled} AND coalesce(${catalogItems.enabled}, false))`,
+      discontinued: sql<boolean>`NOT ${products.enabled}`,
+      bom: sql<
+        BomSnapshot[] | null
+      >`(SELECT json_agg(json_build_object('materialName', b.material_name, 'unit', b.unit, 'qty', b.qty) ORDER BY b.id) FROM ${orderLineBomLines} b WHERE b.order_line_id = ${orderLines.id})`,
     })
     .from(orderLines)
-    .innerJoin(orders, eq(orders.id, orderLines.orderId))
     .innerJoin(products, eq(products.id, orderLines.productId))
-    .leftJoin(
-      catalogItems,
-      and(
-        eq(catalogItems.customerId, orders.customerId),
-        eq(catalogItems.productId, orderLines.productId),
-      ),
-    )
     .where(inArray(orderLines.orderId, [...orderIds]))
     .orderBy(orderLines.orderId, orderLines.sort)
 }

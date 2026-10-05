@@ -3,7 +3,7 @@
   --td-skeleton-bg-color: var(--hz-line);
   --td-skeleton-text-height: 12px;
   --td-skeleton-text-border-radius: var(--hz-radius-pill);
-  --td-skeleton-row-spacing: 8px;
+  --td-skeleton-row-spacing: var(--hz-space-2);
 
   display: flex;
   flex-direction: column;

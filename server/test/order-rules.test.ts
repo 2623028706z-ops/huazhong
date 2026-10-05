@@ -1,9 +1,18 @@
 // 订单的前置条件：停用 / 停用产品、目录调价同步、门店或客户停用、定出货日期（07 章 A17、A24、A29–A34、J22）
 import type { Catalog, OrderDetail } from '@huazhong/shared'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { customers, operationLogs, products, stores } from '../db/schema/index.ts'
-import { dataOf, idBy, startSales, TODAY, TOMORROW, type SalesApp } from './support/sales.ts'
+import {
+  catalogItemBody,
+  dataOf,
+  idBy,
+  productIdOf,
+  startSales,
+  TODAY,
+  TOMORROW,
+  type SalesApp,
+} from './support/sales.ts'
 
 let s: SalesApp
 let o018: string
@@ -30,14 +39,11 @@ async function setCatalog(productName: string, change: { priceCents?: number; en
   const catalog = dataOf<Catalog>(await sales.get(`/catalog/${c1}`))
   const item = catalog.items.find((i) => i.name === productName)
   if (!item) throw new Error(`no catalog item ${productName}`)
-  const body = {
-    version: item.version,
-    categoryId: item.categoryId,
-    customerCode: item.customerCode,
+  const body = catalogItemBody(item, {
     priceCents: change.priceCents ?? item.listPriceCents,
     enabled: change.enabled ?? item.enabled,
-  }
-  return sales.put(`/catalog/${c1}/items/${item.productId}`, body)
+  })
+  return sales.patch(`/catalog/${c1}/items/${item.productId}`, body)
 }
 
 const salesLines = (o: OrderDetail, keep: (name: string) => boolean = () => true) =>
@@ -112,25 +118,15 @@ describe('停用产品', () => {
     expect(saved.changes[0]?.items).toContain('删除 白绿清新花束')
   })
 
-  test('A29 A33 停用产品：目录、新订单加不进；待发货单改单要先删，不改照常发货', async () => {
-    const p2 = await idBy(s.t, 'products.name', '白绿清新花束')
+  test('A29 A33 停用产品：新订单加不进；待发货单改单要先删，不改照常发货', async () => {
+    // 晨曦花艺、拾光花店各有自己的白绿清新花束，都停用
+    const p2 = await productIdOf(s.t, '晨曦花艺', '白绿清新花束')
+    const c2p2 = await productIdOf(s.t, '拾光花店', '白绿清新花束')
     await s.t.db
       .update(products)
       .set({ enabled: false })
-      .where(eq(products.id, Number(p2)))
+      .where(inArray(products.id, [Number(p2), Number(c2p2)]))
     const sales = await s.as('u2')
-    const c3 = await idBy(s.t, 'customers.name', '一间花房')
-    const c3Catalog = dataOf<Catalog>(await sales.get(`/catalog/${c3}`))
-    const addToC3 = await sales.put(`/catalog/${c3}/items/${p2}`, {
-      categoryId: c3Catalog.categories[0]?.id,
-      customerCode: '',
-      priceCents: 7800,
-      enabled: true,
-    })
-    expect(addToC3.body.error).toMatchObject({
-      code: 'BUSINESS_RULE',
-      message: '白绿清新花束已停用，不能加进订货目录',
-    })
     const s2 = await idBy(s.t, 'stores.name', '城西店')
     const create = await sales.post('/orders', {
       customerId: c1,
@@ -145,7 +141,7 @@ describe('停用产品', () => {
     const edit = { version: opened.version, shipDate: TODAY, note: '', reason: '门店减量' }
     const blocked = await sales.put(`/orders/${o016}`, {
       ...edit,
-      lines: [{ productId: p2, qty: 18, priceCents: 7800 }],
+      lines: [{ productId: c2p2, qty: 18, priceCents: 7800 }],
     })
     expect(blocked.body.error?.message).toBe('白绿清新花束已停用，请先删掉再保存')
     const ship = await detail('u7', o016)
@@ -176,7 +172,12 @@ describe('目录调价同步待确认订单', () => {
     const [log] = await s.t.db
       .select()
       .from(operationLogs)
-      .where(and(eq(operationLogs.action, '修改订货目录'), eq(operationLogs.targetId, Number(c1))))
+      .where(
+        and(
+          eq(operationLogs.action, '修改产品'),
+          eq(operationLogs.targetId, Number(await productIdOf(s.t, '晨曦花艺', '粉玫瑰日常花束'))),
+        ),
+      )
     expect(log?.reason).toBe('同步待确认订单 SO-260929-018')
     const lines = storeOpened.lines.map((l) => ({ productId: l.productId, qty: l.qty }))
     const stale = await (

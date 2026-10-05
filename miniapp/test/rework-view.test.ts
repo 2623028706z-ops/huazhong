@@ -63,6 +63,7 @@ const shipping: ShippingDetail = {
       customerCode: '',
       qty: 10,
       shippedQty: 12,
+      bom: null,
       short: false,
       over: true,
       discontinued: false,
@@ -304,18 +305,13 @@ describe('对账单金额和受限视图', () => {
       creditGeneratedCents: 200,
     })
   })
-  it('对账单卡片只留对账期间、金额、截止三项；门店只取storeAmountCents，供应商金额叫应收', () => {
+  it('对账单卡片大字对账期间、右边金额；门店只取storeAmountCents，供应商取amountCents', () => {
     const card = { ...statement('1', 9999), storeAmountCents: 1234 }
     const row = statementRowOf(card, 'store')
-    expect(row.fields).toContainEqual({ label: f.storeAmount, value: '¥12.34', amount: true })
+    expect(row).toMatchObject({ main: f.statementPeriodRange(card.periodFrom, card.periodTo) })
+    expect(row.amount).toBe('¥12.34')
     expect(JSON.stringify(row)).not.toContain('¥99.99')
-    expect(row.fields.map((x) => x.label)).toEqual([f.period, f.storeAmount, f.dueDate])
-    expect(row.fields).toHaveLength(3)
-    expect(statementRowOf(card, 'supplier').fields).toContainEqual({
-      label: f.receivable,
-      value: '¥99.99',
-      amount: true,
-    })
+    expect(statementRowOf(card, 'supplier').amount).toBe('¥99.99')
   })
   it('财务来源路由携带只读scope，并分别走销售和仓库页面', () => {
     expect(sourceRoute(source('order', '1', 100))).toBe(

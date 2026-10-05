@@ -1,5 +1,6 @@
 import {
   contract,
+  copy,
   financeCopy as f,
   financeTexts,
   formatMoney,
@@ -83,7 +84,9 @@ Page({
     partyLocked: false,
     changes: [] as string[],
     saving: false,
-    texts: financeTexts,
+    texts: { ...financeTexts, optional: copy.placeholder.optional },
+    // 必填项空着的浅色占位字（02 章 hz-field，2026-10-06 第 4 批）
+    fill: copy.placeholder.fill,
   },
   idempotencyKey: '',
   loadVersion: 0,

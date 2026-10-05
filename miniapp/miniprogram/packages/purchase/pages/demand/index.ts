@@ -1,6 +1,7 @@
 import {
   contract,
   copy,
+  entryCopy,
   redesignCopy,
   formatQty,
   DEMAND_DEFAULT_DAYS,
@@ -140,9 +141,14 @@ Page({
       selected,
       allSelected: pickable.length > 0 && pickable.every((m) => selected.includes(m.materialId)),
       rows: rowsOf(mats, selected),
-      count: demand.orderCount
-        ? [orders, copy.screen.shortageKinds(shortage)].join(copy.separator)
-        : orders,
+      // 勾了花材时最前面写「已选 n 种」
+      count: [
+        selected.length ? entryCopy.picked(selected.length) : '',
+        orders,
+        demand.orderCount ? copy.screen.shortageKinds(shortage) : '',
+      ]
+        .filter(Boolean)
+        .join(copy.separator),
       emptyText: !keyword && demand.orderCount ? copy.screen.noShortageHere : '',
       emptyObject: copy.screen.empty.demand,
       inviteText: countedOf(this.data.texts.invite, selected.length),

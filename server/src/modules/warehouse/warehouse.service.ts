@@ -1,8 +1,10 @@
 // 库存查询、花材分类（05 章第 3、9 节）。阶段 2 只读；库存 = 批次剩余合计（04 章第 8 节）
 import {
   contract,
+  MATERIAL_MANAGERS,
+  type Action,
   type InventoryItem,
-  type MaterialCategory,
+  type MaterialCategoryRow,
   type OutputOf,
 } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
@@ -15,8 +17,17 @@ import { Clock } from '../../common/clock.ts'
 import { agedStockWhere } from './stock-age.ts'
 import { DB } from '../../common/db.ts'
 import { pageOf } from '../../common/domain/cursor.ts'
+import { enabledAction } from '../../common/domain/actions.ts'
 import { exactNumber } from '../../common/domain/units.ts'
 import { afterCursor } from '../../common/page.ts'
+
+// 新建 / 修改花材、管理花材分类：仓库 + 采购岗位和管理员（2026-10-06 第 4 批第 7 条）
+export function canManageMaterials(viewer: Viewer): boolean {
+  return MATERIAL_MANAGERS.some((key) => viewer.modules.includes(key))
+}
+export function materialManageActions(): Action[] {
+  return [enabledAction('create', null), enabledAction('manageCategories', null)]
+}
 
 interface InventoryQuery {
   q?: string | undefined
@@ -62,7 +73,10 @@ export class WarehouseService {
   }
 
   // 全部花材（含库存 0、含停用），按编码升序
-  async listInventory(query: InventoryQuery): Promise<OutputOf<typeof contract.listInventory>> {
+  async listInventory(
+    query: InventoryQuery,
+    viewer?: Viewer,
+  ): Promise<OutputOf<typeof contract.listInventory>> {
     const rows = await this.db
       .select({
         id: materials.id,
@@ -98,7 +112,11 @@ export class WarehouseService {
       id: String(row.id),
       categoryId: String(row.categoryId),
     }))
-    return { items, nextCursor: page.nextCursor, actions: [] }
+    return {
+      items,
+      nextCursor: page.nextCursor,
+      actions: viewer && canManageMaterials(viewer) ? materialManageActions() : [],
+    }
   }
 
   // 分类很少，不分页
@@ -108,10 +126,14 @@ export class WarehouseService {
         id: materialCategories.id,
         name: materialCategories.name,
         sort: materialCategories.sort,
+        materialCount: sql<number>`(
+          SELECT count(*)::int FROM ${materials}
+          WHERE ${materials.categoryId} = ${materialCategories.id} AND ${materials.enabled}
+        )`,
       })
       .from(materialCategories)
       .orderBy(asc(materialCategories.sort), asc(materialCategories.id))
-    const items: MaterialCategory[] = rows.map((row) => ({ ...row, id: String(row.id) }))
+    const items: MaterialCategoryRow[] = rows.map((row) => ({ ...row, id: String(row.id) }))
     return { items, nextCursor: null, actions: [] }
   }
 }

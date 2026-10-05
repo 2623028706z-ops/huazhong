@@ -1,4 +1,5 @@
 <import src="/views/stock.wxml" />
+<import src="/views/detail.wxml" />
 <hz-navbar title="{{title}}" back />
 <view class="u-list">
   <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
@@ -8,7 +9,6 @@
     <template is="material-head" data="{{...head}}" />
     <view class="u-card u-rows"><view class="hz-stock-card__head"><text class="hz-stock-card__title">{{texts.batches}}</text><text class="hz-stock-card__note">{{texts.fifo}}</text></view><view wx:for="{{batches}}" wx:key="id" class="u-rows__item hz-stock-batch"><view class="hz-stock-batch__main"><text>{{texts.inDate}} {{item.date}}</text><text class="{{item.aged ? 'u-aged' : 'u-info__meta'}}">{{item.age}}</text></view><text class="hz-stock-batch__qty">{{texts.remaining}} {{item.qty}}</text></view></view>
     <view class="u-card u-rows"><view class="hz-stock-card__head"><text class="hz-stock-card__title">{{texts.recent}}</text><text class="hz-stock-card__note" bindtap="onMoves">{{texts.allMoves}}</text></view><template wx:for="{{recent}}" wx:key="id" is="hz-stock-row" data="{{...item, openable: true}}" /><text wx:if="{{!recent.length}}" class="hz-stock-card__note hz-stock-batch">{{texts.noMoves}}</text></view>
-    <hz-button wx:if="{{canStockIn}}" kind="quiet" text="{{texts.stockIn}}" bind:press="onStockIn" />
   </block>
 </view>
-<hz-action-bar wx:if="{{canLoss || canStockOut}}"><hz-button wx:if="{{canLoss}}" kind="secondary" text="{{texts.loss}}" bind:press="onLoss" /><hz-button wx:if="{{canStockOut}}" text="{{texts.stockOut}}" bind:press="onStockOut" /></hz-action-bar>
+<template wx:if="{{loaded}}" is="buttons" data="{{buttons}}" />

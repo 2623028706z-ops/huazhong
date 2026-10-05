@@ -49,6 +49,8 @@ Page({
       share: copy.screen.action.shareInvite,
       unbind: copy.screen.action.unbindStoreWechat,
       saveStore: copy.action.saveStore,
+      fill: copy.placeholder.fill,
+      optional: copy.placeholder.optional,
     },
   },
   id: '',

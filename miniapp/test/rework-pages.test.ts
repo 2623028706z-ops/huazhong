@@ -205,18 +205,47 @@ describe('阶段5草稿与复合单据引用', () => {
   })
 })
 
-describe('X8 客户页目录复制凭据', () => {
-  it('零可复制不写，STALE只重预览，不自动重试复制', async () => {
-    const page = await loadPage(() => import('../miniprogram/packages/sales/pages/customers/index'))
-    page.setData({
-      customerId: '1',
-      copySourceId: '2',
-      canCopy: true,
-      copyPreview: { previewToken: 'zero', copyCount: 0, skipCount: 3 },
-    })
-    await invoke(page, 'onCopyCatalog')
-    expect(mocks.request).not.toHaveBeenCalled()
-    page.setData({ copyPreview: { previewToken: 'old', copyCount: 2, skipCount: 1 } })
+describe('X14 从其他客户复制', () => {
+  const sourceOf = (token: string) => ({
+    ok: true,
+    data: {
+      sources: [{ customerId: '2', customerName: '乙客户' }],
+      fromCustomerId: '2',
+      items: [
+        {
+          productId: 'a',
+          name: '粉玫瑰花束',
+          unit: '束',
+          categoryName: '花束',
+          listPriceCents: 6800,
+          bom: [
+            { materialId: 'm', materialName: '粉玫瑰', unit: '枝', qty: 10, materialEnabled: true },
+          ],
+          skipReason: null,
+        },
+        {
+          productId: 'b',
+          name: '白百合',
+          unit: '束',
+          categoryName: '花束',
+          listPriceCents: 5000,
+          bom: [],
+          skipReason: 'duplicate',
+        },
+      ],
+      previewToken: token,
+    },
+  })
+  it('重名的不能勾；STALE 重新拉来源并保留还能勾的，不自动重试复制', async () => {
+    const page = await loadPage(
+      () => import('../miniprogram/packages/sales/pages/catalog-copy/index'),
+    )
+    mocks.request.mockResolvedValueOnce(sourceOf('old'))
+    await invoke(page, 'onLoad', { customerId: '1' })
+    await Promise.resolve()
+    await invoke(page, 'onPick', { currentTarget: { dataset: { key: 'b' } } })
+    await invoke(page, 'onPick', { currentTarget: { dataset: { key: 'a' } } })
+    expect(page.data.picked).toEqual(['a'])
     mocks.request
       .mockResolvedValueOnce({
         ok: false,
@@ -228,17 +257,18 @@ describe('X8 客户页目录复制凭据', () => {
           latest: {},
         },
       })
-      .mockResolvedValueOnce({
-        ok: true,
-        data: { previewToken: 'fresh', copyCount: 3, skipCount: 2 },
-      })
-    await invoke(page, 'onCopyCatalog')
+      .mockResolvedValueOnce(sourceOf('fresh'))
+    await invoke(page, 'onCopy')
     expect(mocks.request.mock.calls.map(([endpoint]) => endpoint.path)).toEqual([
+      contract.catalogCopySources.path,
       contract.copyCatalog.path,
-      contract.previewCatalogCopy.path,
+      contract.catalogCopySources.path,
     ])
-    expect(page.data.copyPreview).toEqual({ previewToken: 'fresh', copyCount: 3, skipCount: 2 })
-    expect(page.data.copyError).toBe(copy.rework.catalogChanged)
+    expect(mocks.request.mock.calls[1]?.[1]).toMatchObject({
+      body: { fromCustomerId: '2', productIds: ['a'], previewToken: 'old' },
+    })
+    expect(page.data.picked).toEqual(['a'])
+    expect(page.data.error).toBe(copy.screen.catalog.copyChanged)
   })
 })
 

@@ -17,7 +17,7 @@
           bindtap="onSection"
         >
           <text>{{item.text}}</text>
-          <text wx:if="{{item.count}}" class="hz-filter-bar__count">{{format.formatCount(item.count)}}</text>
+          <text wx:if="{{item.count}}" class="u-count">{{format.formatCount(item.count)}}</text>
         </view>
       </view>
       <view wx:else class="hz-filter-bar__track">
@@ -29,7 +29,7 @@
           bindtap="onTab"
         >
           <text>{{item.text}}</text>
-          <text wx:if="{{item.showCount}}" class="hz-filter-bar__count">{{format.formatCount(item.count)}}</text>
+          <text wx:if="{{item.showCount}}" class="u-count">{{format.formatCount(item.count)}}</text>
         </view>
       </view>
     </scroll-view>

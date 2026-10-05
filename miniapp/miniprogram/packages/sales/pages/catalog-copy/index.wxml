@@ -1,0 +1,28 @@
+<hz-navbar title="{{title}}" back />
+<hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" request-id="{{failure.requestId}}" bind:action="onFailureAction" />
+<view wx:else class="u-list">
+  <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
+  <hz-error wx:if="{{error}}" message="{{error}}" />
+  <hz-skeleton wx:if="{{!loaded && !failure}}" type="list" />
+  <block wx:if="{{loaded}}">
+    <hz-state wx:if="{{tabs.length === 0}}" object="{{texts.empty}}" />
+    <block wx:else>
+      <hz-tabs items="{{tabs}}" value="{{fromCustomerId}}" bind:change="onSource" />
+      <hz-state wx:if="{{rows.length === 0}}" object="{{texts.emptyItems}}" />
+      <view wx:else class="u-card u-rows">
+        <view wx:for="{{rows}}" wx:key="id" class="u-rows__item {{item.disabled ? 'hz-copy-row--off' : 'u-tap'}}" data-key="{{item.id}}" bindtap="onPick">
+          <view class="u-rows__line">
+            <view class="u-check hz-copy-row__check {{item.picked ? 'u-check--on' : ''}}"><text wx:if="{{item.picked}}" class="hz-icon hz-icon--check"></text></view>
+            <view class="hz-copy-row__main">
+              <text class="u-rows__name u-ellipsis">{{item.name}}</text>
+              <text class="u-caption">{{item.sub}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+  </block>
+</view>
+<hz-action-bar wx:if="{{rows.length}}">
+  <hz-button text="{{confirm}}" disabled="{{picked.length === 0}}" loading="{{busy}}" bind:press="onCopy" />
+</hz-action-bar>

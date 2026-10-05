@@ -76,7 +76,9 @@ Component({
       const entry = [...this.data.common, ...this.data.masters].find(
         (row) => row.key === event.detail,
       )
-      if (entry) void wx.navigateTo({ url: entry.url })
+      if (!entry) return
+      if (entry.url) void wx.navigateTo({ url: entry.url })
+      else this.triggerEvent('entry', entry.key)
     },
     onTodo(event: KeyEvent) {
       const url = todoUrls[event.currentTarget.dataset.key]

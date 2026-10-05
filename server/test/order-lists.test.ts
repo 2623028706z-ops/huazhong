@@ -10,6 +10,7 @@ import {
   startSales,
   TODAY,
   type SalesApp,
+  productIdOf,
 } from './support/sales.ts'
 
 let s: SalesApp
@@ -44,7 +45,11 @@ async function salesOrder(): Promise<OrderDetail> {
       shipDate: TODAY,
       note: '',
       lines: [
-        { productId: await idBy(s.t, 'products.name', '粉玫瑰日常花束'), qty: 1, priceCents: 7000 },
+        {
+          productId: await productIdOf(s.t, '拾光花店', '粉玫瑰日常花束'),
+          qty: 1,
+          priceCents: 7000,
+        },
       ],
     }),
   )
@@ -71,7 +76,7 @@ const setOrderDate = (id: string, orderDate: string) =>
 describe('状态计数和日期筛选', () => {
   test('G19 counts 只含等待类、按客户算、不随 status 变；按下单日期筛；日期填反 422', async () => {
     // 种子：待确认 1、待发货 2、已发货 3 → 补成 2 / 3 / 5
-    const rose = await idBy(s.t, 'products.name', '粉玫瑰日常花束')
+    const rose = await productIdOf(s.t, '拾光花店', '粉玫瑰日常花束')
     const wenxin = await openStoreAccount(s, '文新店', '13800138014')
     dataOf(await wenxin.post('/store/orders', { note: '', lines: [{ productId: rose, qty: 2 }] }))
     await salesOrder()

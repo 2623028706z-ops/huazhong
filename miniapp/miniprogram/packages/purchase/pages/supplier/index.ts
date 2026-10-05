@@ -49,6 +49,9 @@ Page({
       save: copy.screen.action.saveSupplier,
       orders: copy.screen.title.purchaseOrders,
       invites: copy.screen.label.inviteDocs,
+      // 整页表单空着的浅色占位字：必填「请填写」、选填「选填」（02 章 hz-field）
+      fill: copy.placeholder.fill,
+      optional: copy.placeholder.optional,
     },
   },
   supplier: null as Supplier | null,

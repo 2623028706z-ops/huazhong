@@ -14,12 +14,13 @@ const data = {
   searchPlaceholder: copy.filter.search(f.customer),
   filter: emptyFilter,
   partyFilter: 'all',
+  // 页签数字（2026-10-06 第 4 批）：接口 counts 回来后写进 count，0 不显示
   filterTabs: [
     { key: 'all', text: f.all },
     { key: 'outstanding', text: f.hasOutstanding },
     { key: 'overdue', text: f.hasOverdue },
     { key: 'unstatemented', text: f.hasUnstatemented },
-  ],
+  ] as { key: string; text: string; count?: number }[],
   rows: [] as ReturnType<typeof partyRowOf>[],
   loaded: false,
   skeleton: false,
@@ -41,17 +42,31 @@ export const financePartiesPage = {
     if (query.filter) this.setData({ partyFilter: query.filter })
     this.list = listOf(
       this,
-      (cursor) =>
-        request(this.data.supplier ? contract.listFinanceSuppliers : contract.listArCustomers, {
-          query: {
-            q: this.data.filter.keyword || undefined,
-            filter:
-              this.data.partyFilter === 'all'
-                ? undefined
-                : (this.data.partyFilter as 'outstanding' | 'overdue' | 'unstatemented'),
-            cursor,
+      async (cursor) => {
+        const result = await request(
+          this.data.supplier ? contract.listFinanceSuppliers : contract.listArCustomers,
+          {
+            query: {
+              q: this.data.filter.keyword || undefined,
+              filter:
+                this.data.partyFilter === 'all'
+                  ? undefined
+                  : (this.data.partyFilter as 'outstanding' | 'overdue' | 'unstatemented'),
+              cursor,
+            },
           },
-        }),
+        )
+        if (result.ok) {
+          const counts: Record<string, number> = result.data.counts
+          this.setData({
+            filterTabs: this.data.filterTabs.map((tab) => ({
+              ...tab,
+              count: counts[tab.key] ?? 0,
+            })),
+          })
+        }
+        return result
+      },
       partyRowOf,
     )
   },

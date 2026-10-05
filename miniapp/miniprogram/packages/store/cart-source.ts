@@ -1,8 +1,14 @@
 // 订货、结算用哪一份购物车（06 章 S1、S5）：平时是本机购物车；从订单详情「修改订单」进来是改单模式，
 // 用单独一份（只在内存里，改完或返回就丢），原购物车不变
-import { copy, type OrderDetail, type StoreCatalogItem } from '@huazhong/shared'
+import {
+  copy,
+  entryCopy,
+  formatMoney,
+  type OrderDetail,
+  type StoreCatalogItem,
+} from '@huazhong/shared'
 import { loadCart, pruneCart, saveCart, type CartLine } from '../../core/cart'
-import { lineCents } from '../../core/money'
+import { lineCents, sumCents } from '../../core/money'
 
 interface EditDraft {
   orderId: string
@@ -10,6 +16,8 @@ interface EditDraft {
   orderDate: string
   note: string
   lines: CartLine[]
+  // 原订单的行：核对修改时比数量和金额
+  original: CartLine[]
   // 原订单里已停用的产品：不去掉，到结算页标「已停用」
   discontinued: string[]
 }
@@ -17,18 +25,20 @@ interface EditDraft {
 let draft: EditDraft | null = null
 
 export function startEdit(order: OrderDetail): void {
+  const lines = order.lines.map((line) => ({
+    productId: line.productId,
+    qty: line.qty,
+    name: line.name,
+    unit: line.unit,
+    priceCents: line.priceCents,
+  }))
   draft = {
     orderId: order.id,
     version: order.version,
     orderDate: order.orderDate,
     note: order.note ?? '',
-    lines: order.lines.map((line) => ({
-      productId: line.productId,
-      qty: line.qty,
-      name: line.name,
-      unit: line.unit,
-      priceCents: line.priceCents,
-    })),
+    lines,
+    original: lines,
     discontinued: order.lines.filter((line) => line.discontinued).map((line) => line.productId),
   }
 }
@@ -119,4 +129,28 @@ export function cartLinesOf(lines: readonly CartLine[], isEdit: boolean) {
     priceCents: line.priceCents,
     priceText: '',
   }))
+}
+
+// 改单核对（06 章 S1、07 章 E03）：和原单比，结算条小字写比原单多 / 少多少（没变不写），
+// 弹层列出改了数量的行「原数量 → 新数量」（删掉的写 → 0，新加的写 0 →）
+export function editReviewOf(lines: readonly CartLine[]) {
+  const original = draft?.original ?? []
+  const totalOf = (rows: readonly CartLine[]) =>
+    sumCents(rows, (line) => lineCents(line.qty, line.priceCents))
+  const diff = totalOf(lines) - totalOf(original)
+  const ids = [...new Set([...original, ...lines].map((line) => line.productId))]
+  const changes = ids.flatMap((id) => {
+    const before = original.find((line) => line.productId === id)
+    const after = lines.find((line) => line.productId === id)
+    const from = before?.qty ?? 0
+    const to = after?.qty ?? 0
+    const line = after ?? before
+    if (!line || from === to) return []
+    return [{ key: id, name: line.name, text: entryCopy.qtyChange(from, to) }]
+  })
+  const amount = formatMoney(Math.abs(diff))
+  return {
+    diffText: diff > 0 ? entryCopy.diffMore(amount) : diff < 0 ? entryCopy.diffLess(amount) : '',
+    changes,
+  }
 }

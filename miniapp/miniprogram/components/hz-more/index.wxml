@@ -1,0 +1,2 @@
+<view class="hz-more u-tap" bindtap="onOpen"><text>{{text}}</text></view>
+<hz-sheet show="{{show}}" title="{{title}}" bind:close="close"><view class="hz-more__list"><slot /></view></hz-sheet>

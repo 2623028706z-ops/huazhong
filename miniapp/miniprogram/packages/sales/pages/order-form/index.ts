@@ -1,24 +1,26 @@
 // X4 订单表单（06 章 X4）：新建（从 X2）、修改（edit）、确认（confirm）。
-// 状态区 → 客户、门店（只在新建时可选，只列启用的）→ 出货日期 → 备注 → 明细 →「添加产品」→ 订单金额 → 修改原因
+// 状态区 → 客户门店（只在新建时可选，一次选：按客户分组列启用客户的启用门店，可搜）→ 出货日期 → 备注 → 明细 →「添加产品」→ 订单金额 → 修改原因
 import {
   contract,
   copy,
   redesignCopy,
+  entryCopy,
   formatMoney,
+  type CatalogCategory,
   type CatalogItem,
   type CustomerItem,
   type OrderDetail,
 } from '@huazhong/shared'
-import type { DetailEvent, KeyEvent } from '../../../../core/events'
+import type { DetailEvent } from '../../../../core/events'
 import { unplacedErrorOf } from '../../../../core/form'
 import type { FailureView } from '../../../../core/failure-view'
 import { isChanged, markChanged, syncUnloadAlert } from '../../../../core/guard'
 import { unwatch, watchNewer } from '../../../../core/live'
 import { newIdempotencyKey, request, type Result } from '../../../../core/request'
 import { failureOf } from '../../../../core/session'
-import { showSuccess } from '../../../../core/toast'
+import { showNotice, showSuccess } from '../../../../core/toast'
 import { loadCustomers } from '../../../../views/customers'
-import { pickOpen, pickPatch, toggled } from '../../../../views/pick'
+import { pickChosen, pickData, pickHandlers, pickOpen } from '../../../../views/pick'
 import {
   addableOf,
   blankForm,
@@ -48,11 +50,21 @@ function modeOf(value: string | undefined): FormMode {
   return value === 'edit' || value === 'confirm' ? value : 'create'
 }
 
-function storeOptionsOf(customers: readonly CustomerItem[], customerId: string) {
-  const customer = customers.find((item) => item.id === customerId)
-  return (customer?.stores ?? [])
-    .filter((store) => store.enabled)
-    .map(({ id, name }) => ({ id, name }))
+// 选门店：启用客户的启用门店，按客户分组；框里显示「客户 · 门店」
+function storeOptionsOf(customers: readonly CustomerItem[]) {
+  return customers
+    .filter((customer) => customer.enabled)
+    .flatMap((customer) =>
+      customer.stores
+        .filter((store) => store.enabled)
+        .map((store) => ({
+          id: store.id,
+          name: store.name,
+          group: customer.name,
+          shown: copy.org.store(customer.name, store.name),
+          customerId: customer.id,
+        })),
+    )
 }
 
 Page({
@@ -71,21 +83,17 @@ Page({
     form: blankForm(),
     initial: blankForm(),
     customerTitle: '',
-    customerOptions: [] as { id: string; name: string }[],
-    storeOptions: [] as { id: string; name: string }[],
+    storeOptions: [] as ReturnType<typeof storeOptionsOf>,
     lineViews: [] as ReturnType<typeof lineViewsOf>,
     pickSheet: false,
-    editKey: '',
-    picks: [] as ReturnType<typeof pickOpen>['picks'],
-    pickIds: [] as string[],
-    pickCount: 0,
-    pickConfirm: '',
+    ...pickData(),
     saving: false,
     texts: {
       lines: copy.screen.section.lines,
       orderInfo: copy.screen.section.orderInfo,
-      customer: copy.screen.label.customer,
-      store: copy.screen.label.store,
+      customerStore: entryCopy.customerStore,
+      pickStore: entryCopy.pickStore,
+      searchStore: entryCopy.searchStore,
       shipDate: copy.field.shipDate,
       note: copy.field.note,
       reason: copy.screen.label.editReason,
@@ -93,12 +101,14 @@ Page({
       add: copy.screen.action.addProduct,
       pickTitle: copy.screen.title.pickProduct,
       noPick: copy.state.empty(copy.screen.empty.addableProducts),
+      searchProduct: entryCopy.searchProduct,
     },
   },
   id: '',
   order: null as OrderDetail | null,
   customers: [] as CustomerItem[],
   catalog: [] as CatalogItem[],
+  categories: [] as CatalogCategory[],
   idempotencyKey: '',
   onLoad(query: Record<string, string | undefined>) {
     const mode = modeOf(query.mode)
@@ -132,10 +142,7 @@ Page({
       return
     }
     this.customers = result.data
-    const customerOptions = result.data
-      .filter((customer) => customer.enabled)
-      .map(({ id, name }) => ({ id, name }))
-    this.setData({ loaded: true, customerOptions })
+    this.setData({ loaded: true, storeOptions: storeOptionsOf(result.data) })
     this.render(blankForm(), true)
   },
   async loadOrder(): Promise<void> {
@@ -171,6 +178,7 @@ Page({
       return false
     }
     this.catalog = result.data.items
+    this.categories = result.data.categories
     return true
   },
   render(form: OrderForm, isInitial = false) {
@@ -190,15 +198,17 @@ Page({
     this.setData({ fields, formError: '' })
     this.render({ ...this.data.form, ...patch })
   },
-  async onCustomer(event: DetailEvent<string>): Promise<void> {
-    const customerId = event.detail
-    const stores = storeOptionsOf(this.customers, customerId)
-    this.setData({ storeOptions: stores })
-    // 换了客户：门店和明细都跟着这个客户的目录重来；只有一个启用门店的自动选上
-    this.update(
-      { customerId, storeId: stores.length === 1 ? (stores[0]?.id ?? '') : '', lines: [] },
-      'customerId',
-    )
+  // 选门店：同一客户只换门店；换了客户，明细跟着这个客户的目录重来（有明细时提示已清空）
+  async onStore(event: DetailEvent<string>): Promise<void> {
+    const storeId = event.detail
+    const customerId = this.data.storeOptions.find((row) => row.id === storeId)?.customerId ?? ''
+    if (customerId === this.data.form.customerId) {
+      this.update({ storeId }, 'storeId')
+      return
+    }
+    if (this.data.form.lines.length) showNotice(entryCopy.linesCleared)
+    this.update({ customerId, storeId, lines: [] }, 'customerId')
+    this.update({}, 'storeId')
     const customer = this.customers.find((row) => row.id === customerId)
     this.setData({
       overdue: customer?.overdue
@@ -210,9 +220,6 @@ Page({
         : '',
     })
     await this.loadCatalog(customerId)
-  },
-  onStore(event: DetailEvent<string>) {
-    this.update({ storeId: event.detail }, 'storeId')
   },
   onShipDate(event: DetailEvent<string>) {
     this.update({ shipDate: event.detail }, 'shipDate')
@@ -240,29 +247,22 @@ Page({
   },
   onOpenPick() {
     this.setData({
-      editKey: '',
       pickSheet: true,
-      ...pickOpen(addableOf(this.catalog, this.data.form.lines)),
+      ...pickOpen(addableOf(this.catalog, this.categories, this.data.form.lines)),
     })
   },
   onClosePick() {
     this.setData({ pickSheet: false })
   },
-  onPick(event: KeyEvent) {
-    this.setData(
-      pickPatch(this.data.picks, toggled(this.data.pickIds, event.currentTarget.dataset.key)),
-    )
-  },
-  // 勾选的产品一次加入，数量默认 1、单价默认目录价；滚到最后加的一行
+  ...pickHandlers,
+  // 选好的产品按选的数量一次加入，单价默认订货价；不再打开小窗口
   onPickConfirm() {
-    const added = this.data.pickIds.flatMap((id) => {
+    const added = pickChosen(this.data).flatMap(({ id, qty }) => {
       const item = this.catalog.find((entry) => entry.productId === id)
-      return item ? [lineOfCatalog(item)] : []
+      return item ? [lineOfCatalog(item, qty)] : []
     })
     this.setData({ pickSheet: false })
-    if (!added.length) return
-    this.update({ lines: [...this.data.form.lines, ...added] }, 'lines')
-    this.setData({ editKey: added[added.length - 1]?.productId ?? '' })
+    if (added.length) this.update({ lines: [...this.data.form.lines, ...added] }, 'lines')
   },
   showFields(fields: Record<string, string>) {
     this.setData({

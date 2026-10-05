@@ -9,11 +9,11 @@
    标题贴近自己下面的卡片、和上一块拉开（组间距大于组内距，2026-10-05） */
 .hz-module-home .u-section__title {
   padding: 0;
-  margin-bottom: -4px;
+  margin-bottom: -4px; /* 负值：分组标题贴近下面的卡片 */
 }
 
 .hz-module-home .u-section__title:not(:first-child) {
-  margin-top: 10px;
+  margin-top: var(--hz-space-2);
 }
 
 /* 待办小卡：三列，大数字在上、名称在下，右上小箭头 */
@@ -27,9 +27,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--hz-space-1);
   min-width: 0;
-  padding: 14px var(--hz-row-pad) 12px var(--hz-card-pad);
+  padding: var(--hz-space-3) var(--hz-row-pad) var(--hz-space-3) var(--hz-card-pad);
 }
 
 .hz-module-home__arrow {

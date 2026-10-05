@@ -13,7 +13,7 @@
   justify-content: center;
   width: var(--hz-tap);
   height: var(--hz-tap);
-  padding: 7px;
+  padding: 7px; /* 7px：(44 点击区 - 30 圆) / 2，图标几何，不是间距 */
   font-size: var(--hz-icon-sm);
   border-radius: 50%;
 }

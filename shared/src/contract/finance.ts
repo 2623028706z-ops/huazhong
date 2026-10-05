@@ -185,6 +185,8 @@ export const partySummarySchema = z.object({
   lastFundDate: businessDateSchema.nullable(),
   overdueCents: centsSchema,
   overdueDays: z.number().int().nonnegative(),
+  // 有逾期的未结清对账单（列表卡标「逾期」；未对账金额见 unstatementedCents）
+  overdue: z.boolean(),
 })
 export const termsSchema = z.object({
   version: versionSchema,
@@ -199,9 +201,19 @@ export const partyLedgerSchema = statementListSchema.extend({
   refunds: z.array(refundSchema),
 })
 export type PartyLedger = z.infer<typeof partyLedgerSchema>
+// filter：outstanding 有未收（付）、overdue 有逾期、unstatemented 可开对账单；客户、供应商往来一样
 const partyQuery = pageQuerySchema.extend({
   q: z.string().trim().optional(),
   filter: z.enum(['outstanding', 'overdue', 'unstatemented']).optional(),
+})
+// 往来列表（2026-10-06 第 4 批）：有逾期在前 → 未收（付）金额大到小 → 没欠款；「可开对账单」页签仍按
+// 未对账金额大到小（第 1 批）。counts 是各页签数字（和搜索词同口径，不受 filter 影响）
+const partyListSchema = pageSchema(partySummarySchema).extend({
+  counts: z.object({
+    outstanding: z.number().int().nonnegative(),
+    overdue: z.number().int().nonnegative(),
+    unstatemented: z.number().int().nonnegative(),
+  }),
 })
 const ledgerQuery = pageQuerySchema
   .extend({
@@ -215,7 +227,7 @@ export const listArCustomers = {
   path: '/finance/customers',
   grants: ['finance'],
   query: partyQuery,
-  response: pageSchema(partySummarySchema),
+  response: partyListSchema,
   errors: [],
 } as const satisfies Endpoint
 export const getArCustomer = {

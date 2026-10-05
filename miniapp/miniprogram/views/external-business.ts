@@ -2,18 +2,20 @@ import {
   contract,
   copy,
   financeCopy as f,
-  financeTexts,
   type Topic,
   type OrderStatus,
   type AfterStatus,
+  type Action,
+  type Me,
 } from '@huazhong/shared'
+import { findAction } from '../core/actions'
 import type { DetailEvent, KeyEvent } from '../core/events'
 import type { FailureView } from '../core/failure-view'
 import { emptyFilter, type FilterValue } from '../core/filter'
 import type { PagedList } from '../core/list'
 import { watch, unwatchOnLeave, pullToRefresh } from '../core/live'
 import { request } from '../core/request'
-import { loadMe, tabsOf } from '../core/session'
+import { loadMe, storeUnseenOf, tabBadgeOf, tabsOf } from '../core/session'
 import { listOf, listQueryOf } from './list'
 import { orderRowOf } from './order'
 import { afterRowOf } from './after'
@@ -29,6 +31,8 @@ interface SegmentState {
   failure: FailureView | null
   scrollTop: number
   cells: { label: string; amountCents: number; due: boolean }[]
+  // 门店售后段底栏「申请售后」（列表级动作 applyAfter）；没有这个动作为 null
+  apply: { text: string; disabled: boolean; reason: string } | null
 }
 function blank(): SegmentState {
   return {
@@ -40,6 +44,7 @@ function blank(): SegmentState {
     failure: null,
     scrollTop: 0,
     cells: [],
+    apply: null,
   }
 }
 const data = {
@@ -48,6 +53,8 @@ const data = {
   supplier: false,
   segment: 'orders' as Segment,
   segmentTabs: [] as { key: string; text: string }[],
+  // 门店「订单」「售后」段名后的没看过数（GET /store/unseen）
+  segmentCounts: {} as Record<string, number>,
   statusKind: '',
   statuses: [] as string[],
   dateLabel: '',
@@ -55,7 +62,6 @@ const data = {
   emptyObject: '',
   tabs: [] as ReturnType<typeof tabsOf>,
   allLoaded: copy.state.allLoaded,
-  texts: financeTexts,
 }
 interface Host {
   data: typeof data
@@ -94,7 +100,7 @@ function metaOf(segment: Segment, supplier: boolean) {
         statusKind: 'orderStatus',
         statuses: ['pending_confirm', 'to_ship', 'shipped', 'cancelled'],
         dateLabel: copy.screen.label.orderDate,
-        searchPlaceholder: '',
+        searchPlaceholder: copy.flow.store.orderSearch,
         emptyObject: copy.screen.empty.orders,
       }
 }
@@ -179,32 +185,53 @@ function listFor(host: Host, segment: Segment, state: SegmentState) {
       const result = await fetchSegment(segment, host.data.supplier, state.filter, cursor)
       // 门店、供应商端的状态标签不带数：待确认、待发货、待处理、待收货都在等花众（03 章第 8.5 节）
       if (result.ok && 'cells' in result.data) viewHost.setData({ cells: result.data.cells })
+      if (result.ok && segment === 'afters' && !cursor)
+        viewHost.setData({ apply: applyOf(result.data.actions) })
       return result
     },
     (row) => row,
   )
+}
+// 售后段底栏「申请售后」→ S12 选订单（06 章 S7，2026-10-06 第 3 批）
+function applyOf(actions: readonly Action[]): SegmentState['apply'] {
+  const action = findAction(actions, 'applyAfter')
+  if (!action) return null
+  return {
+    text: copy.screen.action.applyAfter,
+    disabled: !action.enabled,
+    reason: action.disabledReason ?? '',
+  }
+}
+// 门店：底栏「订单」角标和「订单」「售后」段名数字（没看过的结果）
+async function showUnseen(host: Host, me: Me) {
+  const unseen = await storeUnseenOf()
+  if (!unseen) return
+  host.setData({
+    tabs: tabsOf(me, unseen.total),
+    segmentCounts: { orders: unseen.orders, afters: unseen.afters },
+  })
 }
 async function topicsOf(host: Host) {
   const me = await loadMe()
   if (!me.ok) return
   const supplierId = me.data.supplierId ?? ''
   if (host.data.supplier) {
-    const invites = await request(contract.supplierInvites, { query: { status: 'pending' } })
-    host.setData({ tabs: tabsOf(me.data, invites.ok ? (invites.data.counts.pending ?? 0) : 0) })
+    host.setData({ tabs: tabsOf(me.data, await tabBadgeOf(me.data)) })
     subscribeLists(host, [`supplier:${supplierId}`, 'pos', `ap:${supplierId}`])
     return
   }
-  const catalog = await request(contract.storeCatalog)
-  host.setData({ tabs: tabsOf(me.data) })
-  subscribeLists(host, [
-    'orders',
-    'afters',
-    ...(catalog.ok ? [`ar:${catalog.data.customerId}` as const] : []),
-  ])
+  const [catalog] = await Promise.all([request(contract.storeCatalog), showUnseen(host, me.data)])
+  subscribeLists(
+    host,
+    ['orders', 'afters', ...(catalog.ok ? [`ar:${catalog.data.customerId}` as const] : [])],
+    () => void showUnseen(host, me.data),
+  )
 }
-function subscribeLists(host: Host, topics: Topic[]) {
+// 推送来了：各段列表静默刷新；门店顺带刷新没看过的数
+function subscribeLists(host: Host, topics: Topic[], also?: () => void) {
   watch(host, topics, () => {
     for (const list of Object.values(host.lists)) void list.refresh()
+    also?.()
   })
 }
 const methods = {
@@ -250,6 +277,9 @@ const methods = {
   },
   onFailureAction(this: Host) {
     void this.list?.refresh()
+  },
+  onApplyAfter() {
+    void wx.navigateTo({ url: '/packages/store/pages/order-pick/index' })
   },
   onOpen(this: Host, event: KeyEvent) {
     const segment = this.data.segment,

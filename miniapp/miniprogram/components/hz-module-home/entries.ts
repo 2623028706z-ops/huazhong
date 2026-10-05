@@ -3,6 +3,7 @@ interface Entry {
   key: string
   icon: string
   text: string
+  // 空：不跳页，组件发 entry 事件交给页面（仓库「盘点」直接弹分类层，2026-10-06 第 3 批）
   url: string
   wide?: boolean
 }
@@ -28,14 +29,14 @@ export const entriesOf: Partial<Record<ModuleKey, { common: Entry[]; masters: En
       {
         key: 'customers',
         icon: 'store',
-        text: copy.screen.label.customer,
+        text: copy.screen.title.customers,
         url: pages('sales', 'customers'),
       },
       {
-        key: 'products',
-        icon: 'flower-2',
-        text: copy.screen.title.products,
-        url: pages('sales', 'products'),
+        key: 'catalog',
+        icon: 'book-open',
+        text: copy.screen.title.directory,
+        url: pages('sales', 'catalog'),
       },
     ],
   },
@@ -93,7 +94,7 @@ export const entriesOf: Partial<Record<ModuleKey, { common: Entry[]; masters: En
         key: 'stocktake',
         icon: 'clipboard-list',
         text: copy.stock.screen.titles.stocktakes,
-        url: pages('warehouse', 'stocktakes'),
+        url: '',
       },
       {
         key: 'in',
@@ -157,6 +158,7 @@ export const todoUrls: Record<string, string> = {
   pendingAfters: pages('sales', 'afters', '?status=pending'),
   dueShipments: pages('shipping', 'list', '?status=to_ship&dueOnly=true'),
   shortageMaterials: pages('purchase', 'demand'),
+  poDiffs: pages('purchase', 'orders', '?diffUnseen=true'),
   pendingReceives: pages('warehouse', 'pending'),
   agedStock: pages('warehouse', 'stock', '?aged=true'),
   overdueReceivable: pages('finance', 'customers', '?filter=overdue'),

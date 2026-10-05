@@ -1,4 +1,5 @@
 import type { contract } from '@huazhong/shared'
+import { cardAmountOf, cardDateOf, subOf, type CardRow } from './card'
 import {
   financeCopy as f,
   formatMoney,
@@ -11,13 +12,14 @@ import {
   type PartyLedger,
   type OutputOf,
 } from '@huazhong/shared'
-export interface FinanceRow {
+// 财务列表的卡：往来、对账单、收付款记录用新卡（CardRow 的 main / sub）；未对账单据仍是字段式（title / fields）
+export interface FinanceRow extends Partial<Omit<CardRow, 'id' | 'tags'>> {
   id: string
-  title: string
-  status: string
+  title?: string
+  status?: string
   headText?: string
-  fields: { label: string; value: string; amount?: boolean; wide?: boolean }[]
-  tags: { text: string; warn: boolean; danger?: boolean }[]
+  fields?: { label: string; value: string; amount?: boolean; wide?: boolean }[]
+  tags?: { text: string; warn: boolean; danger?: boolean }[]
   kind?: 'receipt' | 'payment'
   source?: StatementSource
 }
@@ -27,35 +29,28 @@ const mainTypes: SourceType[] = ['order', 'po', 'wh']
 function isMainSource(source: StatementSource) {
   return mainTypes.includes(source.type)
 }
-function cardAmountOf(card: StatementCard | ExternalCard, external: 'store' | 'supplier' | null) {
-  if (external === 'store' && 'storeAmountCents' in card)
-    return { label: f.storeAmount, value: formatMoney(card.storeAmountCents ?? 0), amount: true }
-  return {
-    label: external === 'supplier' || card.kind === 'customer' ? f.receivable : f.payable,
-    value: formatMoney(card.amountCents),
-    amount: true,
-  }
+function statementAmountOf(
+  card: StatementCard | ExternalCard,
+  external: 'store' | 'supplier' | null,
+) {
+  if (external === 'store' && 'storeAmountCents' in card) return card.storeAmountCents ?? 0
+  return card.amountCents
 }
 export function periodTextOf(from: string, to: string) {
   return f.statementPeriodRange(from, to)
 }
+// 对账单卡（06 章 F14 列表、S9、P7）：大字对账期间，右边状态 + 金额；逾期标出来
 export function statementRowOf(
   card: StatementCard | ExternalCard,
   external: 'store' | 'supplier' | null = null,
 ): FinanceRow {
-  // 卡片只留三项主字段：对账期间、金额、付款截止（没有账期就写开单日期）；单号、发货 / 采购张数等进详情
-  const fields: FinanceRow['fields'] = [
-    { label: f.period, value: periodTextOf(card.periodFrom, card.periodTo), wide: true },
-    cardAmountOf(card, external),
-    card.dueDate
-      ? { label: f.dueDate, value: card.dueDate }
-      : { label: f.statementDate, value: card.statementDate },
-  ]
   return {
     id: card.id,
-    title: f.statement,
+    main: periodTextOf(card.periodFrom, card.periodTo),
+    serif: true,
+    sub: card.no,
     status: card.status,
-    fields,
+    amount: cardAmountOf(statementAmountOf(card, external)),
     tags: card.overdueDays
       ? [{ text: f.overdue(card.overdueDays), warn: false, danger: true }]
       : [],
@@ -250,56 +245,41 @@ type Party = Pick<
   | 'creditCents'
   | 'lastStatementTo'
   | 'lastFundDate'
-  | 'overdueDays'
-  | 'overdueCents'
+  | 'overdue'
 >
-function partyFieldsOf(party: Party): FinanceRow['fields'] {
+// 往来卡右边金额下面那句：未收（未付）或多收（多付），都没有不写
+function partyNoteOf(party: Party, owing: boolean): string {
   const supplier = party.kind === 'supplier'
-  return [
-    {
-      label: supplier ? f.payableOutstanding : f.outstanding,
-      value: formatMoney(party.outstandingCents),
-      amount: party.outstandingCents > 0,
-    },
-    {
-      label: f.unstatemented,
-      value: formatMoney(party.unstatementedCents),
-      amount: party.unstatementedCents > 0,
-    },
-    { label: f.lastStatementTo, value: party.lastStatementTo ?? f.neverStatemented },
-    {
-      label: supplier ? f.lastPaymentDate : f.lastReceiptDate,
-      value: party.lastFundDate ?? f.none,
-    },
-    ...(party.creditCents
-      ? [
-          {
-            label: supplier ? f.supplierCredited : f.credited,
-            value: formatMoney(party.creditCents),
-            amount: true,
-          },
-        ]
-      : []),
-  ]
+  if (owing) return supplier ? f.payableOutstanding : f.outstanding
+  if (!party.creditCents) return ''
+  return supplier ? f.supplierCredited : f.credited
 }
+// 往来卡（06 章 F1、F8，2026-10-06 第 4 批）：大字往来方；小字未结清 n 张 · 对账截止 · 最近收款 · 未对账 ¥x
+// （有才写），一样都没有写「还没有往来」；右边只放一个数：有未收放未收，否则有多收放多收
 export function partyRowOf(party: Party): FinanceRow {
+  const supplier = party.kind === 'supplier'
+  const { labelled } = copy.flow.finance
+  const sub = subOf([
+    party.unsettledCount ? f.unsettledCount(party.unsettledCount) : '',
+    party.lastStatementTo ? labelled(f.lastStatementTo, cardDateOf(party.lastStatementTo)) : '',
+    party.lastFundDate
+      ? labelled(supplier ? f.lastPaymentDate : f.lastReceiptDate, cardDateOf(party.lastFundDate))
+      : '',
+    party.unstatementedCents > 0
+      ? labelled(f.unstatemented, formatMoney(party.unstatementedCents))
+      : '',
+  ])
+  const owing = party.outstandingCents > 0
   return {
     id: party.partyId,
-    title: party.partyName,
-    status: '',
-    ...(party.unsettledCount ? { headText: f.unsettledCount(party.unsettledCount) } : {}),
-    fields: partyFieldsOf(party),
+    main: party.partyName,
+    sub: sub || copy.flow.finance.noActivity,
+    amount: cardAmountOf(owing ? party.outstandingCents : party.creditCents),
+    note: partyNoteOf(party, owing),
+    // 逾期和对账单卡一样用红标签（06 章 F2 / F5）
     tags: [
-      ...(!party.enabled ? [{ text: copy.tag.disabled, warn: false }] : []),
-      ...(party.overdueDays
-        ? [
-            {
-              text: f.overdueAmount(formatMoney(party.overdueCents)),
-              warn: false,
-              danger: true,
-            },
-          ]
-        : []),
+      ...(party.overdue ? [{ text: copy.flow.finance.overdueTag, warn: false, danger: true }] : []),
+      ...(party.enabled ? [] : [{ text: copy.tag.disabled, warn: false }]),
     ],
   }
 }

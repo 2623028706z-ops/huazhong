@@ -1,0 +1,27 @@
+/* 新建盘点选分类弹层（views/stocktake-pick.wxml）：一行一个分类，左边勾选框；
+   「盘点记录 ›」在弹层标题行右上（hz-sheet slot="extra"） */
+.u-stocktake-pick__records {
+  font-size: var(--hz-font-row);
+  color: var(--hz-ink);
+}
+
+.u-stocktake-pick__row {
+  display: flex;
+  align-items: center;
+  min-height: var(--hz-tap);
+  padding: 0 var(--hz-gap-sheet);
+  justify-content: space-between;
+  border-bottom: 1px solid var(--hz-line);
+}
+
+.u-stocktake-pick__count {
+  font-size: var(--hz-font-sm);
+  color: var(--hz-muted);
+}
+
+.u-stocktake-pick__name {
+  display: flex;
+  gap: var(--hz-space-3);
+  align-items: center;
+  font-size: var(--hz-font-md);
+}

@@ -3,7 +3,7 @@ import type { AfterDetail, CustomerItem, OrderCard, OrderDetail, StoreItem } fro
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { accounts, operationLogs } from '../db/schema/index.ts'
-import { dataOf, idBy, startSales, type SalesApp } from './support/sales.ts'
+import { dataOf, idBy, startSales, type SalesApp, productIdOf } from './support/sales.ts'
 import { uploadAfterImage } from './support/images.ts'
 
 let s: SalesApp
@@ -18,7 +18,7 @@ const storeDetail = async (id: string) =>
   dataOf<OrderDetail>(await (await s.as('s1')).get(`/orders/${id}`))
 
 async function storeOrder(): Promise<OrderDetail> {
-  const rose = await idBy(s.t, 'products.name', '粉玫瑰日常花束')
+  const rose = await productIdOf(s.t, '晨曦花艺', '粉玫瑰日常花束')
   return dataOf<OrderDetail>(
     await (
       await s.as('s1')

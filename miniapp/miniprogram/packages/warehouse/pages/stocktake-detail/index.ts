@@ -72,7 +72,6 @@ Page({
       reason: doc.reason ?? '',
     })
   },
-  onEdit() {},
   onFailureAction() {
     void this.load()
   },

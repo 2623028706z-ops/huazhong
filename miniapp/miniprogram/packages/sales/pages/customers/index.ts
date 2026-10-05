@@ -1,5 +1,5 @@
-// X8 客户：左侧客户，右侧门店 / 订货目录；门店资料和目录产品分别进入 X12 / X13 整页。
-// 门店段底栏「邀请订货 / 新建门店」（2026-10-05 体验改版第 1 批，邀请订货从 X2 挪来）
+// X8 客户门店：左侧客户，右侧门店，点一行进 X12 门店资料。订货目录是单独的入口（2026-10-05）。
+// 底栏「邀请订货 / 新建门店」（2026-10-05 体验改版第 1 批，邀请订货从 X2 挪来）
 import {
   contract,
   copy,
@@ -17,9 +17,6 @@ import { firstFailure, newIdempotencyKey, request, type Result } from '../../../
 import { failureOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
 import { unwatch, pullToRefresh } from '../../../../core/live'
-import { catalogPanelData } from './catalog-state'
-import { catalogPanelMethods } from './catalog-panel'
-import { catalogCopyMethods } from '../directory/catalog-copy'
 import { loadCustomers } from '../../../../views/customers'
 import {
   checkCustomerCreate,
@@ -32,18 +29,8 @@ import {
 
 Page({
   ...pullToRefresh,
-  ...catalogCopyMethods,
-  ...catalogPanelMethods,
   data: {
-    section: 'stores',
-    sections: [
-      { key: 'stores', text: redesignCopy.stores },
-      { key: 'catalog', text: copy.screen.title.directory },
-    ],
-    catalogTitle: copy.screen.title.directory,
-
-    ...catalogPanelData,
-    title: copy.screen.label.customer,
+    title: copy.screen.title.customers,
     loaded: false,
     failure: null as FailureView | null,
     side: [] as ReturnType<typeof customerSideOf>,
@@ -77,8 +64,6 @@ Page({
       saveCustomer: copy.action.saveCustomer,
       empty: copy.screen.empty.customers,
       noStores: copy.state.empty(copy.screen.label.store),
-      rePreview: copy.rework.copyRePreview,
-      confirmCopy: copy.rework.copyConfirm,
     },
   },
   customers: [] as CustomerItem[],
@@ -108,13 +93,9 @@ Page({
         this.setData({ failure: failureOf(failure, this.data.loaded ? 'refresh' : 'load') })
       return
     }
-    await this.show(customers.data, page.data.actions, selectId)
+    this.show(customers.data, page.data.actions, selectId)
   },
-  async show(
-    customers: CustomerItem[],
-    actions: readonly Action[],
-    selectId: string,
-  ): Promise<void> {
+  show(customers: CustomerItem[], actions: readonly Action[], selectId: string) {
     this.customers = customers
     const keep = selectId || this.data.customerId
     const selected = customers.find((c) => c.id === keep) ?? customers[0]
@@ -126,7 +107,6 @@ Page({
       canCreateCustomer: hasAction(actions, 'createCustomer'),
     })
     this.select(selected?.id ?? '')
-    await this.loadCatalogPanel()
   },
   select(customerId: string) {
     const customer = this.customers.find((c: CustomerItem) => c.id === customerId)
@@ -137,15 +117,10 @@ Page({
       customerName: customer?.name ?? '',
       pickedStoreId: picked,
       stores: storeRowsOf(customer, picked),
-      groups: [],
     })
   },
   onCustomer(event: DetailEvent<string>) {
     this.select(event.detail)
-    void this.selectCatalog(event.detail)
-  },
-  onSection(event: DetailEvent<string>) {
-    this.setData({ section: event.detail })
   },
   currentCustomer(): CustomerItem | undefined {
     return this.customers.find((c: CustomerItem) => c.id === this.data.customerId)

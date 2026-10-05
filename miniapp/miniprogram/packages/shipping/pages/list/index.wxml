@@ -3,8 +3,18 @@
 <view class="u-list">
   <hz-filter-bar status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" search-placeholder="{{searchPlaceholder}}" dimensions="{{dimensions}}" value="{{filter}}" bind:change="onFilter" />
   <template is="list-state" data="{{failure, skeleton, loaded, rows, emptyObject}}" />
-  <template is="cards" data="{{rows, statusKind, done, allLoaded,selection:true}}" />
+  <template is="cards" data="{{rows, statusKind, done, allLoaded, selection}}" />
 </view>
-
-<hz-action-bar wx:if="{{filter.status !== 'shipped'}}"><hz-button kind="secondary" text="{{texts.allSelected}}" bind:press="onSelectAll" /><hz-button text="{{batchText}}" disabled="{{!selected.length}}" loading="{{batchBusy}}" bind:press="onOpenBatch" /></hz-action-bar>
+<!-- 能勾选的页签底栏「全选 / 确认发货（n）」，没勾时「确认发货（0）」禁用（06 章 H2） -->
+<hz-action-bar wx:if="{{selection}}"><hz-button kind="secondary" text="{{texts.allSelected}}" bind:press="onSelectAll" /><hz-button text="{{batchText}}" loading="{{batchBusy}}" disabled="{{!selected.length}}" bind:press="onOpenBatch" /></hz-action-bar>
+<hz-sheet show="{{result}}" title="{{texts.resultTitle}}" footer bind:close="onCloseResult">
+  <view class="u-sheet-section">
+    <text class="hz-ship-result__head">{{resultHead}}</text>
+    <view wx:for="{{resultRows}}" wx:key="id" class="hz-ship-result__row u-tap" data-key="{{item.id}}" bindtap="onResultRow">
+      <view class="hz-ship-result__main"><text class="hz-ship-result__title">{{item.title}}</text><text class="hz-ship-result__sub {{item.failed ? 'hz-ship-result__sub--failed' : ''}}">{{item.sub}}</text></view>
+      <text class="hz-ship-result__link {{item.failed ? '' : 'hz-ship-result__link--brand'}}">{{item.link}}</text>
+    </view>
+  </view>
+  <hz-button slot="footer" text="{{texts.gotIt}}" bind:press="onCloseResult" />
+</hz-sheet>
 <hz-confirm id="hz-confirm" />

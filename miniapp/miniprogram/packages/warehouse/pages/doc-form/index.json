@@ -10,9 +10,10 @@
     "hz-field": "/components/hz-field/index",
     "hz-picker": "/components/hz-picker/index",
     "hz-line-item": "/components/hz-line-item/index",
-    "hz-add-button": "/components/hz-add-button/index",
     "hz-upload": "/components/hz-upload/index",
     "hz-confirm": "/components/hz-confirm/index",
-    "hz-realtime-bar": "/components/hz-realtime-bar/index"
+    "hz-realtime-bar": "/components/hz-realtime-bar/index",
+    "hz-search": "/components/hz-search/index",
+    "hz-stepper": "/components/hz-stepper/index"
   }
 }

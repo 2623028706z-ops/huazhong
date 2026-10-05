@@ -17,10 +17,11 @@ import { bindPhone, unbind } from './auth.ts'
 import {
   createCatalogCategory,
   deleteCatalogCategory,
+  createCatalogItem,
   getCatalog,
   orderCatalogCategories,
-  saveCatalogItem,
   updateCatalogCategory,
+  updateCatalogItem,
 } from './catalog.ts'
 import {
   createCustomer,
@@ -66,16 +67,6 @@ import { me } from './me.ts'
 import { createMethod, listMethods, updateMethod } from './methods.ts'
 import { cancelOrder, confirmOrder, createOrder, shipOrder, updateOrder } from './order-writes.ts'
 import { getOrder, listOrders, listShippingOrders } from './orders.ts'
-import {
-  createProduct,
-  createProductCategory,
-  deleteProductCategory,
-  listProductCategories,
-  listProducts,
-  orderProductCategories,
-  updateProduct,
-  updateProductCategory,
-} from './products.ts'
 import { createReceipt, getReceipt, listFinanceRecords, voidReceipt } from './receipts.ts'
 import { createStaff, listStaff, unbindStaffWechat, updateStaff } from './staff.ts'
 import { getStoreInvite, useStoreInvite } from './store-invites.ts'
@@ -122,6 +113,8 @@ import {
 } from './purchase-warehouse.ts'
 
 import { voidPurchaseOrder } from './purchase-warehouse.ts'
+import { ackPurchaseOrderDiff } from './purchase.ts'
+import { markStoreAfterSeen, markStoreOrderSeen, storeUnseen } from './notices.ts'
 import { getShippingOrder } from './orders.ts'
 import {
   requestOrderCancel,
@@ -130,7 +123,7 @@ import {
   rejectOrderCancel,
   voidOrder,
 } from './order-writes.ts'
-import { previewCatalogCopy, copyCatalog } from './catalog.ts'
+import { catalogCopySources, copyCatalog } from './catalog.ts'
 import { createRefund, voidRefund } from './refunds.ts'
 import { reviewPurchase } from './purchase-review.ts'
 import { getFinanceAfter } from './afters.ts'
@@ -186,12 +179,13 @@ export const contract = {
   approveOrderCancel,
   rejectOrderCancel,
   voidOrder,
-  previewCatalogCopy,
+  catalogCopySources,
   copyCatalog,
   createRefund,
   voidRefund,
   reviewPurchase,
   voidPurchaseOrder,
+  ackPurchaseOrderDiff,
   me,
   bindPhone,
   unbind,
@@ -216,16 +210,9 @@ export const contract = {
   unbindStoreWechat,
   createStoreInvite,
   listStoreInvites,
-  listProductCategories,
-  createProductCategory,
-  updateProductCategory,
-  orderProductCategories,
-  deleteProductCategory,
-  listProducts,
-  createProduct,
-  updateProduct,
   getCatalog,
-  saveCatalogItem,
+  createCatalogItem,
+  updateCatalogItem,
   createCatalogCategory,
   updateCatalogCategory,
   orderCatalogCategories,
@@ -251,6 +238,9 @@ export const contract = {
   storeCatalog,
   createStoreOrder,
   updateStoreOrder,
+  storeUnseen,
+  markStoreOrderSeen,
+  markStoreAfterSeen,
   cancelStoreOrder,
   // 财务收款
   listArCustomers,

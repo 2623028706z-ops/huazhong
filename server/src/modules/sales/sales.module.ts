@@ -7,20 +7,21 @@ import { AfterWrites } from './after-writes.ts'
 import { AftersController } from './afters.controller.ts'
 import { CatalogCategoryService } from './catalog-categories.ts'
 import { CatalogService } from './catalog.ts'
-import { CategoryService } from './categories.ts'
+import { CatalogCopyService } from './catalog-copy.ts'
+import { CatalogReader } from './catalog-read.ts'
 import { CustomerService } from './customers.ts'
-import { CatalogController, CustomersController, ProductsController } from './masters.controller.ts'
+import { CatalogController, CustomersController } from './masters.controller.ts'
 import { OrderReads } from './order-query.ts'
 import { OrdersController } from './orders.controller.ts'
-import { ProductService } from './products.ts'
 import { SalesOrderWrites } from './sales-orders.ts'
 import { SalesService } from './sales.service.ts'
 import { StoreCatalogService } from './store-catalog.ts'
 import { StoreInviteService } from './store-invites.ts'
 import { StoreOrderWrites } from './store-orders.ts'
 import { StoreWrites } from './stores.ts'
+import { StoreNotices, StoreNoticesController } from './store-notices.ts'
 
-// 销售、发货、门店端：订单、售后、客户门店、产品、订货目录、门店邀请
+// 销售、发货、门店端：订单、售后、客户门店、订货目录（含产品）、门店邀请
 @Module({
   imports: [AccountsModule, FilesModule],
   controllers: [
@@ -28,8 +29,8 @@ import { StoreWrites } from './stores.ts'
     OrdersController,
     AftersController,
     CustomersController,
-    ProductsController,
     CatalogController,
+    StoreNoticesController,
   ],
   providers: [
     OrderLifecycle,
@@ -41,12 +42,13 @@ import { StoreWrites } from './stores.ts'
     CustomerService,
     StoreWrites,
     StoreInviteService,
-    ProductService,
-    CategoryService,
+    CatalogReader,
     CatalogService,
+    CatalogCopyService,
     CatalogCategoryService,
     StoreCatalogService,
     SalesService,
+    StoreNotices,
   ],
   exports: [SalesService],
 })

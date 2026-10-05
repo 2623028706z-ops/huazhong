@@ -1,24 +1,23 @@
+<import src="/views/detail.wxml" />
+<!-- 对账单详情（06 章 F14）套公共详情模板（2026-10-06 第 4 批）：提示条（逾期、锁定原因）→ 信息卡 → 金额 →
+     明细（发货 / 售后）→ 收款记录；操作只放底栏，作废在分享、登记都有时进「更多」 -->
 <hz-navbar title="{{title}}" back />
 <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
 <view wx:else class="u-list">
   <hz-error wx:if="{{failure}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <hz-skeleton wx:if="{{!loaded}}" type="detail" />
   <block wx:else>
-    <view class="u-card u-info">
-      <view class="u-info__head">
-        <text class="u-info__title">{{info.title}}</text>
-        <view class="hz-statement-head__tags"><hz-tag wx:if="{{overdue}}" text="{{overdue}}" danger /><hz-status kind="{{info.statusKind}}" code="{{info.status}}" /></view>
-      </view>
-      <hz-info-rows rows="{{info.rows}}" cols />
-    </view>
+    <hz-notice wx:if="{{overdue}}" text="{{overdue}}" /><hz-notice wx:if="{{notice}}" text="{{notice}}" />
+    <template is="info" data="{{...info}}" />
     <hz-statement cells="{{amountCells}}" />
     <hz-statement-list title="{{main.title}}" meta="{{main.meta}}" groups="{{main.groups}}" empty-text="{{main.emptyText}}" bind:press="onSource" />
     <hz-statement-list title="{{afterSection.title}}" groups="{{afterSection.groups}}" empty-text="{{afterSection.emptyText}}" bind:press="onSource" />
     <hz-statement-list title="{{receiptSection.title}}" groups="{{receiptSection.groups}}" empty-text="{{receiptSection.emptyText}}" bind:press="onFund" />
-    <hz-button wx:if="{{canVoid}}" kind="quiet" text="{{texts.statementVoid}}" disabled="{{voidDisabled}}" reason="{{voidReason}}" bind:press="onVoid" />
   </block>
 </view>
-<hz-action-bar wx:if="{{canShare || canRegister}}">
+<hz-action-bar wx:if="{{canShare || canRegister || canVoid}}" more="{{voidInMore}}">
+  <hz-more wx:if="{{voidInMore}}"><hz-button kind="secondary" text="{{texts.statementVoid}}" disabled="{{voidDisabled}}" reason="{{voidReason}}" bind:press="onVoid" /></hz-more>
+  <hz-button wx:if="{{canVoid && !voidInMore}}" kind="secondary" text="{{texts.statementVoid}}" disabled="{{voidDisabled}}" reason="{{voidReason}}" bind:press="onVoid" />
   <hz-button wx:if="{{canShare}}" kind="secondary" text="{{texts.share}}" bind:press="onShare" />
   <hz-button wx:if="{{canRegister}}" text="{{supplier ? texts.registerPayment : texts.registerReceipt}}" bind:press="onRegister" />
 </hz-action-bar>

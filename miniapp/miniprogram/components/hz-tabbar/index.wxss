@@ -19,7 +19,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--hz-space-1);
   align-items: center;
   justify-content: center;
   height: var(--hz-tabbar);
@@ -47,8 +47,8 @@
   left: 50%;
   min-width: 16px;
   height: 16px;
-  padding: 0 4px;
-  margin-left: 6px;
+  padding: 0 var(--hz-space-1);
+  margin-left: var(--hz-space-2);
   font-size: var(--hz-font-xs);
   font-weight: 400;
   line-height: 16px;

@@ -25,8 +25,7 @@ const entry = (productId: number, change: Partial<CatalogEntry> = {}): CatalogEn
   name: `产品${productId}`,
   unit: '束',
   customerCode: '',
-  productEnabled: true,
-  catalogEnabled: true,
+  enabled: true,
   listPriceCents: 6800,
   ...change,
 })
@@ -43,16 +42,16 @@ describe('orderableEntries', () => {
     expect(errorOf(() => orderableEntries([9], [entry(1)], stopped)).code).toBe('NOT_FOUND')
   })
 
-  test('不在目录里 → 「不在可订产品里」', () => {
+  test('别的客户的产品 → 「不在可订产品里」', () => {
     const error = errorOf(() =>
-      orderableEntries([1], [entry(1, { listPriceCents: null, catalogEnabled: null })], stopped),
+      orderableEntries([1], [entry(1, { listPriceCents: null })], stopped),
     )
     expect(error).toMatchObject({ code: 'BUSINESS_RULE' })
     expect(error.message).toContain('产品1')
   })
 
-  test('目录停用和产品停用都算停用，名字一起报', () => {
-    const entries = [entry(1, { catalogEnabled: false }), entry(2, { productEnabled: false })]
+  test('停用的产品名字一起报', () => {
+    const entries = [entry(1, { enabled: false }), entry(2, { enabled: false })]
     const error = errorOf(() => orderableEntries([1, 2], entries, stopped))
     expect(error.code).toBe('BUSINESS_RULE')
     expect(error.message).toContain('产品1')

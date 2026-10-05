@@ -1,5 +1,8 @@
-// M5 库存查询（06 章 M5）：没有仓库权限的员工只读查。搜索（名称、编码）+ 分类；停用的标「已停用」
+// M5 库存查询（06 章 M5）：员工查库存。搜索（名称、编码）+ 分类；停用的标「已停用」。
+// 能管理花材的（仓库、采购岗位和管理员，接口给 create、manageCategories）底栏「管理分类 / 新建花材」，
+// 进仓库花材页直接打开对应弹层（和仓库库存页同一套，2026-10-06 第 4 批第 7 条）
 import { contract, copy, type InventoryItem } from '@huazhong/shared'
+import { canDo } from '../../core/actions'
 import type { DetailEvent } from '../../core/events'
 import type { FailureView } from '../../core/failure-view'
 import { emptyFilter, type FilterDimension, type FilterValue } from '../../core/filter'
@@ -44,14 +47,26 @@ Page({
     done: false,
     failure: null as FailureView | null,
     allLoaded: copy.state.allLoaded,
+    canManage: false,
+    canCreate: false,
+    texts: {
+      manage: copy.screen.action.manageCategories,
+      create: copy.screen.action.createMaterial,
+    },
   },
   list: null as PagedList<InventoryItem> | null,
   onLoad() {
     this.list = new PagedList(
-      (cursor) => {
+      async (cursor) => {
         const { keyword, picks } = this.data.filter
         const query = { q: keyword.trim() || undefined, categoryId: picks[CATEGORY], cursor }
-        return request(contract.listInventory, { query })
+        const result = await request(contract.listInventory, { query })
+        if (result.ok)
+          this.setData({
+            canManage: canDo(result.data.actions, 'manageCategories'),
+            canCreate: canDo(result.data.actions, 'create'),
+          })
+        return result
       },
       (view: PagerView<InventoryItem>) => {
         const { items, ...rest } = view
@@ -99,6 +114,12 @@ Page({
   },
   async onReachBottom(): Promise<void> {
     await this.list?.more()
+  },
+  onManage() {
+    void wx.navigateTo({ url: '/packages/warehouse/pages/materials/index?open=categories' })
+  },
+  onCreate() {
+    void wx.navigateTo({ url: '/packages/warehouse/pages/materials/index?open=create' })
   },
   onFailureAction() {
     void this.refresh()

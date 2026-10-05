@@ -27,7 +27,13 @@ export const materialCategorySchema = z.object({
   sort: z.number().int(),
 })
 export type MaterialCategory = z.infer<typeof materialCategorySchema>
+// 分类列表多带启用花材数：新建盘点选分类时每行写「n 种花材」（06 章 W1）
+export const materialCategoryRowSchema = materialCategorySchema.extend({
+  materialCount: z.number().int().nonnegative(),
+})
+export type MaterialCategoryRow = z.infer<typeof materialCategoryRowSchema>
 
+// 列表级 actions：能管理花材的（仓库、采购、管理员）给 create（新建花材）、manageCategories（管理分类）
 export const listInventory = {
   method: 'GET',
   path: '/inventory',
@@ -42,6 +48,6 @@ export const listMaterialCategories = {
   method: 'GET',
   path: '/material-categories',
   grants: ['staff'],
-  response: pageSchema(materialCategorySchema),
+  response: pageSchema(materialCategoryRowSchema),
   errors: [],
 } as const satisfies Endpoint

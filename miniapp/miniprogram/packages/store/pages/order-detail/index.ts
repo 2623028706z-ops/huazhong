@@ -1,5 +1,6 @@
 // S6 订单详情（06 章 S6）：状态区 → 单号、状态、下单日期、出货日期、备注 → 明细 → 金额 → 发货备注 → 变更记录 → 原因行。
-// 底部「取消订单」（storeCancel）、「修改订单」（storeEdit）、「申请售后」（applyAfter），禁用时写 disabledReason
+// 底部「取消订单」（storeCancel）、「修改订单」（storeEdit）、「申请售后」（applyAfter），禁用时写 disabledReason。
+// 打开时取消申请结果还没看过的，记门店已看过
 import { contract, copy, type OrderDetail } from '@huazhong/shared'
 import { buttonsOf, isReasonRequired, type ButtonView } from '../../../../core/actions'
 import type { CodeEvent, DetailEvent } from '../../../../core/events'
@@ -77,6 +78,8 @@ Page({
     }
     this.show(result.data)
     if (pushed) this.setData({ realtime: copy.screen.realtime.refreshed })
+    // 有没看过的取消申请结果：点开就记看过（03 章第 8.1 节），回到订单页角标、小红点跟着消
+    if (result.data.unseen) void request(contract.markStoreOrderSeen, { params: { id: this.id } })
   },
   show(order: OrderDetail) {
     this.order = order

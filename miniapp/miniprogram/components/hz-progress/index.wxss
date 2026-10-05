@@ -1,7 +1,7 @@
 .hz-progress {
   display: flex;
   align-items: flex-start;
-  padding: 10px 6px 4px;
+  padding: var(--hz-space-2) var(--hz-space-2) var(--hz-space-1);
 }
 
 .hz-progress__step {
@@ -32,7 +32,7 @@
   box-sizing: border-box;
   width: 13px;
   height: 13px;
-  margin: 0 auto 7px;
+  margin: 0 auto var(--hz-space-2);
   background: var(--hz-bg);
   border: 1.5px solid var(--hz-hair);
   border-radius: 50%;
@@ -82,7 +82,7 @@
 .hz-progress__date {
   display: block;
   white-space: nowrap;
-  margin-top: 2px;
+  margin-top: var(--hz-space-1);
   font-size: var(--hz-font-xs);
   font-weight: 400;
   color: var(--hz-muted);

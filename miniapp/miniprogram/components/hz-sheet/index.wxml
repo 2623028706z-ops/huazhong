@@ -6,6 +6,7 @@
           <text class="hz-icon hz-icon--{{back ? 'chevron-left' : 'x'}}"></text>
         </view>
         <text class="hz-sheet__title u-serif">{{title}}</text>
+        <view class="hz-sheet__extra"><slot name="extra" /></view>
       </view>
       <scroll-view class="hz-sheet__body {{footer ? 'hz-sheet__body--footer' : ''}}" scroll-y>
         <slot />

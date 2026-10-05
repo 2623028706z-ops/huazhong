@@ -68,6 +68,7 @@ type Summary = Pick<
   | 'lastFundDate'
   | 'overdueCents'
   | 'overdueDays'
+  | 'overdue'
 >
 function summaryOf(p: Party, c: Context): Summary & { ready: boolean } {
   const own = c.rows.filter((r) => (r.customerId ?? r.supplierId) === p.id),
@@ -101,6 +102,7 @@ function summaryOf(p: Party, c: Context): Summary & { ready: boolean } {
     lastFundDate: lastFundDate(c.dates, p.id),
     overdueCents: sumOf(overdue, (r) => r.dueCents),
     overdueDays: Math.max(0, ...overdue.map((r) => overdueDays(r.dueDate, c.today))),
+    overdue: overdue.length > 0,
     ready: isReady(c.sources.get(p.id)),
   }
 }

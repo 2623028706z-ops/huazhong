@@ -11,7 +11,7 @@
 .hz-line-item__tr {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 30px 28px 54px 68px;
-  column-gap: 6px;
+  column-gap: var(--hz-space-2);
   align-items: baseline;
   font-size: var(--hz-font-row);
   text-align: right;
@@ -19,7 +19,7 @@
 }
 
 .hz-line-item__row {
-  padding: 12px 0;
+  padding: var(--hz-space-3) 0;
 }
 
 .hz-line-item__tr--price > text:nth-child(3) {
@@ -35,8 +35,17 @@
   grid-template-columns: minmax(130px, 1fr) repeat(2, 48px);
 }
 
+.hz-line-item__tr--compact {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: var(--hz-space-1);
+}
+
+.hz-line-item__tr--compact > text:nth-child(2) {
+  font-family: var(--hz-serif);
+}
+
 .hz-line-item__tr--head {
-  padding: 14px 0 8px;
+  padding: var(--hz-space-3) 0 var(--hz-space-2);
   font-size: var(--hz-font-xs);
   color: var(--hz-muted);
   border-bottom: 1px solid var(--hz-line);
@@ -44,7 +53,7 @@
 
 .hz-line-item__tr--received {
   grid-template-columns: minmax(0, 1fr) 44px 44px 24px 46px 58px;
-  column-gap: 4px;
+  column-gap: var(--hz-space-1);
 }
 
 .hz-line-item__tr--received > text:nth-child(4) {
@@ -77,7 +86,7 @@
 .hz-line-item__tr--head .hz-line-item__name {
   font-family: var(--hz-serif);
   font-size: var(--hz-font);
-  letter-spacing: 1px;
+  letter-spacing: 0; /* 02 章：字距一律 0 */
   color: var(--hz-ink);
 }
 
@@ -87,8 +96,8 @@
 
 .hz-line-item__sub {
   display: flex;
-  gap: 4px 14px;
-  margin-top: 5px;
+  gap: var(--hz-space-1) var(--hz-space-3);
+  margin-top: var(--hz-space-1);
   color: var(--hz-muted);
   font-size: var(--hz-font-sm);
   flex-wrap: wrap;
@@ -97,7 +106,7 @@
 .hz-line-item__totals {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  column-gap: 14px;
+  column-gap: var(--hz-space-3);
   align-items: baseline;
   padding: var(--hz-card-pad-y) 0;
   margin: 0 var(--hz-card-pad);
@@ -108,7 +117,7 @@
 /* 合计（定稿 .tot）：左「合计数量 30 束」15 号；右「合计金额」贴右，金额宋体 19 粗 */
 .hz-line-item__total {
   display: flex;
-  gap: 8px;
+  gap: var(--hz-space-2);
   align-items: baseline;
 }
 
@@ -130,7 +139,7 @@
 
 .hz-line-item__quantity {
   display: flex;
-  gap: 8px;
+  gap: var(--hz-space-2);
   align-items: center;
 }
 
@@ -139,7 +148,7 @@
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
-  gap: 10px;
+  gap: var(--hz-space-2);
   font-family: var(--hz-serif);
   font-size: var(--hz-font-md);
 }
@@ -147,7 +156,7 @@
 .hz-line-item__after {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--hz-space-2);
   padding: var(--hz-card-pad);
   margin-bottom: var(--hz-card-gap);
 }
@@ -159,7 +168,7 @@
 
 .hz-line-item__check {
   display: flex;
-  margin-right: 8px;
+  margin-right: var(--hz-space-2);
 }
 
 .hz-line-item__tr--actual {
@@ -168,8 +177,8 @@
 
 .hz-line-item__note {
   display: flex;
-  gap: 12px;
-  padding: 10px 0;
+  gap: var(--hz-space-3);
+  padding: var(--hz-space-2) 0;
   margin: 0 var(--hz-card-pad);
   font-size: var(--hz-font-sm);
   border-top: 1px solid var(--hz-line);
@@ -178,13 +187,13 @@
 .hz-line-item__qtys {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 12px;
+  gap: var(--hz-space-1) var(--hz-space-3);
   justify-content: flex-end;
 }
 
 .hz-line-item__add {
   display: flex;
-  gap: 6px;
+  gap: var(--hz-space-2);
   align-items: center;
   justify-content: center;
   height: var(--hz-tap);
@@ -202,7 +211,7 @@
 .hz-line-item__table--edit .hz-line-item__row,
 .hz-line-item__table--edit .hz-line-item__tr--head {
   position: relative;
-  padding-right: 14px;
+  padding-right: var(--hz-space-3);
 }
 
 .hz-line-item__go {
@@ -217,8 +226,14 @@
 
 /* 可编辑明细还没有行：表头下面放一句提示，免得只剩表头和 0 合计（2026-10-05） */
 .hz-line-item__empty {
-  padding: 22px var(--hz-card-pad);
+  padding: var(--hz-space-5) var(--hz-card-pad);
   font-size: var(--hz-font-sm);
   color: var(--hz-muted);
   text-align: center;
+}
+
+/* 只读行的「配方 ›」：靠右，品牌色 */
+.hz-line-item__link {
+  margin-left: auto;
+  color: var(--hz-brand);
 }

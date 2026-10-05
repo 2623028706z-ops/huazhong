@@ -1,3 +1,5 @@
+// S10 售后详情（06 章 S10）：进度条 → 提示条 → 信息卡 → 售后明细 → 关闭或作废信息；门店只看不操作。
+// 打开时有结果还没看过的，记门店已看过
 import { contract, copy, type AfterDetail } from '@huazhong/shared'
 import type { FailureView } from '../../../../core/failure-view'
 import { request } from '../../../../core/request'
@@ -38,8 +40,13 @@ Page({
   },
   async load() {
     const result = await request(contract.getAfter, { params: { id: this.id } })
-    if (result.ok) this.setData({ loaded: true, failure: null, view: viewOf(result.data) })
-    else this.setData({ failure: failureOf(result.failure, this.data.loaded ? 'refresh' : 'load') })
+    if (!result.ok) {
+      this.setData({ failure: failureOf(result.failure, this.data.loaded ? 'refresh' : 'load') })
+      return
+    }
+    this.setData({ loaded: true, failure: null, view: viewOf(result.data) })
+    // 有结果还没看过：点开就记看过（03 章第 8.1 节），回到售后段角标、小红点跟着消
+    if (result.data.unseen) void request(contract.markStoreAfterSeen, { params: { id: this.id } })
   },
   onFailureAction() {
     void this.load()

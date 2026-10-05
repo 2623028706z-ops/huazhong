@@ -1,4 +1,6 @@
 // 对账单和往来账的界面文案；页面、日志和校验共用。
+import { redesignCopy } from './copy-redesign.ts'
+
 export const financeCopy = {
   statement: '对账单',
   statements: '对账单',
@@ -95,7 +97,6 @@ export const financeCopy = {
   saveTerms: '保存设置',
   openingLocked: '已经开过对账单，期初欠款不能修改',
   modify: '修改',
-  optional: '选填',
   noAfter: '没有售后',
   noReceipt: '还没有收款',
   noPayment: '还没有付款',
@@ -113,7 +114,7 @@ export const financeCopy = {
   hasOutstanding: '有未收',
   hasPayable: '有未付',
   hasOverdue: '有逾期',
-  hasUnstatemented: '有未对账',
+  hasUnstatemented: '可开对账单',
   cancel: '返回',
   saveChanges: '保存修改',
   confirm: '确定',
@@ -123,7 +124,7 @@ export const financeCopy = {
   noSources: '请至少选择一张未对账单据',
   sourceChanged: '来源单据有变化，请核对后再生成',
   notSet: '未设置',
-  notFilled: '未填',
+  notFilled: redesignCopy.notFilled,
   currency: '元',
   days: '天',
   qty: '数量',
@@ -131,7 +132,6 @@ export const financeCopy = {
   code: '编码',
   afterQty: '售后数量',
   imagesRequired: '图片（必填）',
-  storeAfterHint: '要申请售后，打开已发货的订单，点底部「申请售后」',
   clearSelected: '清空已选产品吗？',
   company: '花众鲜花工场',
   gap: '\u3000',

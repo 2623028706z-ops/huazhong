@@ -37,6 +37,9 @@ export const materialBatchSchema = z.object({
   leftQty: z.number().int().nonnegative(),
   ageDays: z.number().int().nonnegative(),
 })
+// 新建 / 修改花材、管理花材分类：仓库 + 采购岗位和管理员（2026-10-06 第 4 批第 7 条）。
+// 出库分类不在内，仍只给仓库
+export const MATERIAL_MANAGERS = ['warehouse', 'purchase'] as const
 export const getMaterial = {
   method: 'GET',
   path: '/materials/:id',
@@ -63,7 +66,7 @@ export const listMaterials = {
 export const createMaterial = {
   method: 'POST',
   path: '/materials',
-  grants: ['warehouse'],
+  grants: MATERIAL_MANAGERS,
   body: z.object(fields),
   response: materialSchema,
   errors: ['NOT_FOUND'],
@@ -72,7 +75,7 @@ export const createMaterial = {
 export const updateMaterial = {
   method: 'PATCH',
   path: '/materials/:id',
-  grants: ['warehouse'],
+  grants: MATERIAL_MANAGERS,
   params: idParamsSchema,
   body: z.object({
     ...fields,
@@ -89,7 +92,7 @@ const categoryBody = z.object({
 export const createMaterialCategory = {
   method: 'POST',
   path: '/material-categories',
-  grants: ['warehouse'],
+  grants: MATERIAL_MANAGERS,
   body: categoryBody,
   response: materialCategorySchema,
   errors: [],
@@ -98,7 +101,7 @@ export const createMaterialCategory = {
 export const updateMaterialCategory = {
   method: 'PATCH',
   path: '/material-categories/:id',
-  grants: ['warehouse'],
+  grants: MATERIAL_MANAGERS,
   params: idParamsSchema,
   body: categoryBody,
   response: materialCategorySchema,

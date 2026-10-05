@@ -13,7 +13,7 @@
   flex-direction: column;
   justify-content: space-between;
   min-height: 118px;
-  padding: 18px var(--hz-card-pad) var(--hz-card-pad);
+  padding: var(--hz-space-4) var(--hz-card-pad) var(--hz-card-pad);
   border-top: 1px solid var(--hz-rule-soft);
 }
 
@@ -70,7 +70,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: flex-start;
-  gap: 10px;
+  gap: var(--hz-space-2);
 }
 
 .hz-entry-grid--compact .hz-entry-grid__cell--wide {

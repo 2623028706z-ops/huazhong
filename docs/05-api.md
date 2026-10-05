@@ -70,8 +70,8 @@
 | `create` | 新建订单 | `GET /orders` | 销售 |
 | `create` | 新建门店 | `GET /customers` | 销售 |
 | `createCustomer` | 新建客户 | `GET /customers` | 销售 |
-| `create` | 新建产品 | `GET /products` | 销售 |
-| `manageCategories` | 管理分类 | `GET /products` | 销售 |
+| `create` | 添加产品 | `GET /catalog/:customerId` | 销售 |
+| `manageCategories` | 管理订货分类 | `GET /catalog/:customerId` | 销售 |
 | `create` | 新建采购单 | `GET /purchase-orders` | 采购 |
 | `create` | 新建供应商 | `GET /suppliers` | 采购 |
 | `create` | 新建盘点 | `GET /stocktakes` | 仓库 |
@@ -81,7 +81,7 @@
 | `stockIn`、`edit`、`stockOut`、`reportLoss` | 手工入库、修改花材（抬头卡，手工入库为灰字）、手工出库、报损（底栏） | `GET /materials/:id`（花材详情） | 仓库 |
 | `createStatement`、`registerReceipt`、`refundCredit`、`editTerms` | 新建对账单、登记收款、多收退回、往来设置 | `GET /finance/customers/:id`；余额为 0 时不返回 refundCredit | 财务 |
 | `createStatement`、`registerPayment`、`refundCredit`、`editTerms` | 新建对账单、登记付款、多付退回、往来设置 | `GET /finance/suppliers/:id`；余额为 0 时不返回 refundCredit | 财务 |
-| `copyCatalog` | 从其他客户复制 | `GET /catalog/:customerId`，只在这个客户目录为空时有 | 销售 |
+| `copyCatalog` | 从其他客户复制 | `GET /catalog/:customerId`，有其他客户有产品时有（2026-10-05 起不限目录为空） | 销售 |
 | `createAfter` | 新建售后 | `GET /afters`（客户售后） | 销售 |
 
 单据级操作码总表（出现条件对应 03 章第 5 节；「—」表示不适用）：
@@ -210,9 +210,9 @@
 
 | 接口 | 谁 | 入参 → 出参 | 校验和错误 | 锁 / 日志 / 推送 |
 |---|---|---|---|---|
-| `GET /modules/:key/todos` | 有该模块权限 | → `{count,rows:[{key,label,count}]}`，行 count 为 0 也返回。销售 pendingOrders / cancelRequests / pendingAfters；发货 dueShipments（出货日期不晚于今天）；采购 shortageMaterials（`GET /purchase/demand` 默认区间、`shortageOnly=true` 的花材种数，含停用花材）；仓库 pendingReceives / agedStock（最老剩余批次满 STOCK_AGE_WARNING_DAYS 的花材种数）；财务 overdueReceivable（逾期客户 DZ 张数）/ customerStatementReady（有 `order` 来源还没进有效 DZ 的客户家数）/ supplierStatementReady（有 `po`、`wh` 来源还没进有效 DZ 的供应商家数）。只放「该我动手」的事，等对方的（待填报邀请、待收货采购单、待收款、待付款）不返回（2026-10-05 体验改版第 1 批）。行上不带金额；没有今日数字，顶层 count 是各行数量之和 | — | 订阅 todo:<key>、仓库另订阅 stock |
+| `GET /modules/:key/todos` | 有该模块权限 | → `{count,rows:[{key,label,count}]}`，行 count 为 0 也返回。销售 pendingOrders / cancelRequests / pendingAfters；发货 dueShipments（出货日期不晚于今天）；采购 shortageMaterials（`GET /purchase/demand` 默认区间、`shortageOnly=true` 的花材种数，含停用花材）/ poDiffs「到货有差异」（自己下单、到货差异还没点「知道了」的采购单张数，管理员算全部；点进 `GET /purchase-orders?diffUnseen=true`（2026-10-06 第 3、4 批））；仓库 pendingReceives / agedStock（最老剩余批次满 STOCK_AGE_WARNING_DAYS 的花材种数）；财务 overdueReceivable（逾期客户 DZ 张数）/ customerStatementReady（有 `order` 来源还没进有效 DZ 的客户家数）/ supplierStatementReady（有 `po`、`wh` 来源还没进有效 DZ 的供应商家数）。只放「该我动手」的事，等对方的（待填报邀请、待收货采购单、待收款、待付款）不返回（2026-10-05 体验改版第 1 批）。行上不带金额；没有今日数字，顶层 count 是各行数量之和 | — | 订阅 todo:<key>、仓库另订阅 stock |
 | `GET /modules/todos` | 员工、管理员 | → `{counts:[{key,count}]}`，只含当前账号 `modules` 里有权限的模块（销售 / 发货 / 采购 / 仓库 / 财务，按模块顺序），无权限的模块不出现；`count` 与 `GET /modules/:key/todos` 顶层 `count` 同一口径（各行数量之和），0 也返回 | 门店、供应商 403；不新增权限规则 | 订阅 todo:*（花众首页角标） |
-| `GET /inventory` | 所有员工 | `?q=&categoryId=&cursor=&limit=` → 列表，项 `{ id, code, name, categoryId, categoryName, unit, enabled, stockQty }`；全部花材（含库存 0、含停用），按编码升序分页；`q` 匹配名称或编码；`stockQty` = 批次 `left_qty` 合计；列表级 `actions` 为 `[]` | — | 订阅 `stock` |
+| `GET /inventory` | 所有员工 | `?q=&categoryId=&cursor=&limit=` → 列表，项 `{ id, code, name, categoryId, categoryName, unit, enabled, stockQty }`；全部花材（含库存 0、含停用），按编码升序分页；`q` 匹配名称或编码；`stockQty` = 批次 `left_qty` 合计；列表级 `actions`：仓库、采购岗位和管理员为 `create`（新建花材）、`manageCategories`（管理分类），其他为 `[]`（2026-10-06 第 3、4 批） | — | 订阅 `stock` |
 | `GET /logs` | 员工、管理员 | `?module=&from=&to=&cursor=&limit=` → 列表 + `filterModules[]`（本人全部非公共历史操作涉及的模块，管理员为全部模块），项 `{ id, createdAt, module, kind, action, targetLabel, actorLabel }`（`module` 为 `null` 是公共）；按时间倒序；`from`、`to` 按上海日期筛 `created_at` | 员工始终加 `created_by=本人 AND module IS NOT NULL`，包括调岗前操作；传 `module` 只加筛选，不撤掉本人条件，不按当前岗位拒绝历史模块（2026-10-02 交叉审查确认）；管理员看全部含公共 | — |
 | `GET /logs/:id` | 同上 | → 列表项字段 + `{ reason, before, after }` | 员工读不是自己做的操作（含公共）→ `NOT_FOUND` | — |
 | `GET /staff` | 管理员 | `?q=&cursor=&limit=` → 列表，项 `{ id, version, name, phone, admin, modules, enabled, actions }`（不含门店、供应商账号），按新增先后；`q` 是搜索词，后台在全部员工里按姓名、手机号模糊匹配（不是只在已加载的几页里过滤），搜索词里的 `% _` 当普通字符，和翻页一起用；这个接口只有管理员能调，手机号返回完整号码（2026-10-05 确认）；项 `actions` 只可能有 `unbindStaffWechat`；列表级 `actions` 含 `create` | — | — |
@@ -228,9 +228,9 @@
 
 | 接口 | 谁 | 入参 → 出参 | 校验和错误（前提见 03 章第 5 节） | 锁 / 日志 / 推送 |
 |---|---|---|---|---|
-| `GET /orders` | 销售、财务、门店（本店） | `?status=&customerId=&from=&to=&q=&cursor=`（下单日期）→ 卡片金额、总数、shipDate、变更 / 取消 / 少多发标记、actions；cancelRequested=true 只查有待处理取消申请的订单。销售列表级 actions 仅 create；每项 actions.confirm 决定是否可勾选，客户 / 门店停用不可勾 | 纯发货使用无金额专用接口；批量不修改数量、价格 | 订阅 orders |
-| `GET /orders/:id` | 同上 | → 明细、实发、maxQty、变更记录（动作、操作人、修改时间、旧 → 新、原因）、取消申请（requestedBy 为「门店 名称」显示文本、requestedAt、reason；按申请时间和 id 升序）记录、发货信息、取消 / 作废原因、version、所属有效 `statement:{id,no,status}` 或 null、客户 overdue:{amountCents,days} 或 null；门店待确认出货日期为 null（待定），已发货展示所属 DZ，不再带付款进度或资金记录。销售 actions confirm/edit/cancel/approveCancel/rejectCancel/voidOrder/createAfter；门店 storeEdit/storeCancel/requestCancel/withdrawCancel/applyAfter；纯财务 [] | 归属过滤；确认唯一入口可编辑，门店 / 客户停用禁入口，有停用产品可进但提交须删；销售有待处理取消申请只提供同意 / 拒绝，禁改单、直接取消 | 订阅 order:<id>，所属单另订阅 statement:<id> |
-| `POST /orders` | 销售 | `{ customerId, storeId, shipDate, note, lines[{productId, qty, priceCents}] }` + 幂等键 → 新订单（`to_ship`） | 客户启用，否则 `BUSINESS_RULE`「这个客户已停用，不能再下新单」；门店属于客户且启用；产品本身启用、在该客户目录里且启用；出货日期必填、可早于今天；下单日期由服务端写今天，不接受传入；`qty>0`、`priceCents>=0` | 发号 SO；日志「新建订单」；推送 `orders`、`todo:shipping`、`demand` |
+| `GET /orders` | 销售、财务、门店（本店） | `?status=&customerId=&from=&to=&q=&cursor=`（下单日期）→ 卡片金额、总数、shipDate、变更 / 取消 / 少多发标记、actions；cancelRequested=true 只查有待处理取消申请的订单。销售列表级 actions 仅 create；每项 actions.confirm 决定是否可勾选，客户 / 门店停用不可勾。卡片带 `unseen`（门店有结果没看过，员工端恒 false）。门店账号：`q` 搜单号或产品名；排序为待确认最前 → 待发货按出货日期近→远 → 已发货按出货日期倒序 → 已取消 / 作废按下单日期倒序；`afterable=true` 列出的每单都带可用的 `applyAfter`（2026-10-06 第 3、4 批） | 纯发货使用无金额专用接口；批量不修改数量、价格 | 订阅 orders |
+| `GET /orders/:id` | 同上 | → 明细、实发、maxQty、已发货行的发货时配方 `bom[{materialName, unit, qty}]`（每单位用量；未发货为 null，实发 0 为空数组）、变更记录（动作、操作人、修改时间、旧 → 新、原因）、取消申请（requestedBy 为「门店 名称」显示文本、requestedAt、reason；按申请时间和 id 升序）记录、发货信息、取消 / 作废原因、version、所属有效 `statement:{id,no,status}` 或 null、客户 overdue:{amountCents,days} 或 null；门店待确认出货日期为 null（待定），已发货展示所属 DZ，不再带付款进度或资金记录。销售 actions confirm/edit/cancel/approveCancel/rejectCancel/voidOrder/createAfter；门店 storeEdit/storeCancel/requestCancel/withdrawCancel/applyAfter；纯财务 [] | 归属过滤；确认唯一入口可编辑，门店 / 客户停用禁入口，有停用产品可进但提交须删；销售有待处理取消申请只提供同意 / 拒绝，禁改单、直接取消 | 订阅 order:<id>，所属单另订阅 statement:<id> |
+| `POST /orders` | 销售 | `{ customerId, storeId, shipDate, note, lines[{productId, qty, priceCents}] }` + 幂等键 → 新订单（`to_ship`） | 客户启用，否则 `BUSINESS_RULE`「这个客户已停用，不能再下新单」；门店属于客户且启用；产品属于该客户且可订；出货日期必填、可早于今天；下单日期由服务端写今天，不接受传入；`qty>0`、`priceCents>=0` | 发号 SO；日志「新建订单」；推送 `orders`、`todo:shipping`、`demand` |
 | `POST /orders/:id/confirm` | 销售 | `{ version,shipDate,note?,reason?,lines?[{productId,qty,priceCents}] }` → 待发货详情 | 待确认、客户 / 门店启用；shipDate 必填且可补录；停用产品必须删除。lines 不传即保持原明细；`reason` 选填；首次定日期不记差异。客户有逾期 DZ 仅黄条提醒，不阻断 | 条件更新；有编辑写 order_changes，日志确认订单；推送 order:<id>、orders、todo:sales、todo:shipping、demand |
 | `POST /orders/batch-confirm` | 销售 | `{shipDate,orders:[{id,version}]}` → `{succeeded:[{id,no}],failed:[{id,no,reason}]}` | orders 非空且不重复；客户 / 门店停用、状态 / 版本失效、停用产品逐单失败；原明细数量价格保持不变。日期默认明天、可补录；逐客户逾期提醒不阻断 | 每张独立事务、锁和日志；按请求顺序处理，成功推同单笔；单张失败不回滚其余，响应例「1 单没确认：门店已取消」 |
 | `PUT /orders/:id` | 销售 | `{version,shipDate,note,reason,lines[]}` → 详情 | 仅 to_ship；原因选填；有待处理取消申请不可改；shipDate 必填可补录；无变化报错；停用产品删除，新行目录可订；原行编码等快照保持 | 条件更新；整组替换明细、写 order_changes；日志修改订单；推送同确认 |
@@ -238,7 +238,7 @@
 | `POST /orders/:id/cancel-request/approve` | 销售（归属人） | `{ version }` | 订单 `to_ship`、申请 `pending`；已发货 → `STALE`「已发货，取消申请已失效」；门店已撤回 → `STALE` | 行锁订单 + 条件更新；申请 `approved`，订单 `cancelled`、`version` +1，`cancel_reason`「门店申请取消」+ 门店原因；日志「同意取消申请」；推送 `order:<id>`、`orders`、`todo:shipping`、`demand` |
 | `POST /orders/:id/cancel-request/reject` | 销售（归属人） | `{ version, reason? }` | 申请 `pending`；原因选填，可省略，默认空串（2026-10-05 用户确认，只有作废、取消的原因必填）；门店端空原因只显示「取消申请被拒绝」 | 行锁订单；申请 `rejected`、写 `reject_reason`；订单 `version` +1；日志「拒绝取消申请」；推送 `order:<id>`、`orders` |
 | `POST /orders/:id/void` | 销售（归属人） | `{version,reason}` | shipped；有效 DZ 来源占用时 BUSINESS_RULE「已进对账单 DZ-…，请先由财务作废对账单」；pending / processed 售后先关闭 / 作废；原因必填 | 锁客户 → 订单并再次查来源占用；写 void_*，日志作废订单；推送 order:<id>、orders、ar:<customerId> |
-| `GET /afters` | 销售、门店（本店）、财务 | `?status=&customerId=&from=&to=&q=&cursor=` → 卡片；待处理金额为 null（待处理），关闭 / 作废不显示金额；列表级 actions 仅销售 createAfter，门店无按钮，申请从订单进 | | 订阅 afters |
+| `GET /afters` | 销售、门店（本店）、财务 | `?status=&customerId=&from=&to=&q=&cursor=` → 卡片；待处理金额为 null（待处理），关闭 / 作废不显示金额；列表级 actions：销售 createAfter，门店 `applyAfter`（底栏「申请售后」进选订单页）；卡片带 `unseen`（门店有结果没看过，员工端恒 false）（2026-10-06 第 3、4 批） | | 订阅 afters |
 | `GET /afters/:id` | 同上 | → 详情：明细（每行同时返回门店原始申请数量 `requestedQty` 和售后数量 `qty`；销售新建的 `requestedQty` 为 `null`；每行另带 `maxQty`（排除本张后的可申请数量）、`shipPriceCents`（发货单价，售后单价只能改低））、问题说明、图片签名地址、处理说明、关闭 / 作废原因、closedAt（该售后关闭日志真实时间；未关闭或缺日志为 null）；`actions` ⊆ 销售 `processAfter`、`closeAfter`、`voidAfter`，财务、门店 `[]`；`notice`：提示条文案（已处理未对账时「售后金额将计入下一张对账单」），没有为 `null` | | 订阅 `after:<id>` |
 | `POST /afters` | 销售 | `{ orderId, note, lines[{orderLineId, qty, priceCents, reason, description}] }` + 幂等键 → `processed` | 订单 `shipped`，不看售后申请期限；`qty>0` 且 ≤ 可申请数量；`priceCents` ≤ 发货单价；每行 `reason` 必选，`description` 选填，不收图片 | 行锁客户 → 订单（统一账本锁序）；发号 AS；写 `amount_cents`，`requested_qty` 为空；日志「新建售后」；推送 `afters`、`order:<orderId>`、`ar:<customerId>` |
 | `POST /afters/:id/process` | 销售 | `{ version, note, lines[{id, qty, priceCents}] }` | 状态 `pending`；门店提交的只能改 `qty`、`priceCents`，`requestedQty` 不覆盖，传了新增或删除行 → `BUSINESS_RULE`「门店提交的售后只能改数量和单价」，传了原因、说明、图片忽略；`qty>=0`，全 0 → `BUSINESS_RULE`「数量都是 0，整张不处理请关闭售后」；`qty` ≤ 可申请数量（排除本张）；单价只能改低 | 行锁客户 → 订单 → 售后 + 条件更新；日志「处理售后」（前后）；推送 `after:<id>`、`afters`、`todo:sales`、`ar:<customerId>` |
@@ -249,23 +249,19 @@
 
 | 接口 | 谁 | 入参 → 出参 | 校验和错误 | 锁 / 日志 / 推送 |
 |---|---|---|---|---|
-| `GET /customers` | 销售、财务 | → 客户和门店；右侧客户门店 / 订货目录分段共用此主数据，目录仍 GET /catalog/:customerId；门店项带 contact、phone、address（空串展示未填；`phone`、`loginPhone` 管理员和销售看完整，只读的财务由服务端返回中间四位打码的号码，2026-10-05 确认）和 inviteStore/unbindStoreWechat；客户项带逾期 `{amountCents,days}`（无则 null），用于新建 / 确认黄条 | 销售主数据写接口不能改账期 / 期初欠款 | — |
+| `GET /customers` | 销售、财务 | → 客户和门店；「客户门店」「订货目录」两页左侧客户列表共用此主数据，目录用 GET /catalog/:customerId；门店项带 contact、phone、address（空串展示未填；`phone`、`loginPhone` 管理员和销售看完整，只读的财务由服务端返回中间四位打码的号码，2026-10-05 确认）和 inviteStore/unbindStoreWechat；客户项带逾期 `{amountCents,days}`（无则 null），用于新建 / 确认黄条 | 销售主数据写接口不能改账期 / 期初欠款 | — |
 | `POST /customers`、`PATCH /customers/:id` | 销售 | `{ version?, name, enabled }` | 名称必填「请填写客户名称」；不重复，否则 `VALIDATION_FAILED` `fields.name`「已有同名客户」；内容没变 → `BUSINESS_RULE`「没有修改内容」；停用规则见 03 章第 5 节 | 日志「新建 / 修改客户」；启用状态变了推送 `catalog:<customerId>`（门店首页刷新） |
 | `POST /stores`、`PATCH /stores/:id` | 销售 | `{ version?, customerId, name, contact, phone, address, enabled, loginPhone? }` | 名称必填「请填写门店名称」，同一客户下不重复「这个客户下已有同名门店」；`contact`、`phone`、`address` 选填（没填存 `""`）；`loginPhone` 11 位，启用账号里不重复；填了 `loginPhone` 时 `contact` 必填「开通门店账号请填写联系人」；填了就开通或更新门店账号（账号名字 = `contact`），清空就停用门店账号（见第 14 节第 1 条） | 同一事务写 `accounts`（改联系人时同步账号名字）；日志「新建 / 修改门店」；停用时推送 `account:<storeAccountId>` |
 | `POST /stores/:id/invites` | 销售 | `{}` + 幂等键 → `{ id, path, title, imageUrl, expiresAt }` 小程序卡片参数，`path` 带随机 token | 门店启用，且已有启用的门店账号（登录手机号已录入），否则 `BUSINESS_RULE`「请先在门店资料里填写登录手机号」 | 同一门店旧的待使用邀请改成 `voided`，再写 `store_invites`（有效期 `STORE_INVITE_TTL_DAYS`，库里只存 token 的哈希）；日志「生成门店邀请」；推送 `store_invites:<storeId>` |
 | `GET /stores/:id/invites` | 销售 | → 这家门店的邀请列表（状态含已作废、过期时间、绑定时间；已过期的按 `expires_at` 现算） | | 订阅 `store_invites:<storeId>` |
 | `POST /stores/:id/unbind-wechat` | 销售、管理员 | `{ version }`（门店账号的版本号） | 门店账号已绑定微信，否则 `BUSINESS_RULE`「这家门店账号还没绑定微信」 | 行锁账号 + 条件更新；清空 `openid`、`bound_at`；日志「解绑门店微信」；推送 `account:<storeAccountId>`（对方连接断开） |
-| `GET /products`、`POST /products`、`PATCH /products/:id` | 销售 | `{ version?, name, categoryId, unit, imageFileId?, enabled, bom[{materialId, qty}] }` | 名称必填「请填写产品名称」、不重复「已有同名产品」；配方至少一种花材「请至少添加一种花材」；配方花材必须存在且启用；不存在的 `materialId` 拒绝保存，不部分写入；`qty>0`；停用规则见 03 章第 5 节 | 整组替换配方；日志「新建 / 修改产品」 |
-| `GET /product-categories`、`POST /product-categories`、`PATCH /product-categories/:id` | 销售 | 新建、改名 `{ name }`；列表按 `sort, id` 升序，每项带 `productCount`（含停用产品） | 名称必填「请填写分类名称」、不重复「已有同名分类」 | 新增排在最后；日志「新建分类」「修改分类」 |
-| `PUT /product-categories/order` | 销售 | `{ ids[] }`（全部分类的新顺序）→ 列表 | `ids` 必须正好是现有全部分类，否则 `STALE`「分类刚被修改，已刷新」 | 按顺序重写 `sort`；日志「调整分类顺序」（前后） |
-| `DELETE /product-categories/:id` | 销售 | → `{}` | 分类下还有产品（含停用的）→ `BUSINESS_RULE`「分类中仍有产品，请先移动产品」 | 行锁分类；日志「删除分类」 |
-| `GET /catalog/:customerId` | 销售 | → `{ customerId, customerName, categories[{id, name, sort, itemCount}], items[] }`；目录项带 `categoryId`、`categoryName`、`customerCode`、`listPriceCents`、`enabled`（停用为 false）、`productEnabled`、`version`、`productVersion`、配方明细 `bom`（和产品列表同一结构），按订货分类、产品排（2026-10-03 确认）；销售新建订单时产品和默认单价从这里取 | | — |
-| `PUT /catalog/:customerId/items/:productId` | 销售 | `{ version?, categoryId, customerCode, priceCents, enabled, product?{version, bom[{materialId, qty}]} }` → 整份目录；新加进目录的不带 `version`；配方改了才带 `product`（2026-10-03 确认） | 分类必选且须是这个客户的 →「请选择订货分类」；`customerCode` 同客户重复 → `fields.customerCode`「这个客户下已有相同的产品编码」；停用的产品不能新加进目录；目录项或产品版本过期 → `STALE`（带最新目录，整体不改）；什么都没变 → `BUSINESS_RULE` | 行锁这个客户的目录项（和门店下单、改单的共享锁互斥）；带 `product` 时同一事务行锁产品、换配方、产品 `version` +1、日志「修改产品」；改了价的同一事务按 `id` 升序行锁这个客户含这种产品的待确认订单，把 `price_cents`、`list_price_cents` 改成新目录价、订单 `version` +1，不写 `order_changes`；日志「修改订货目录」（订货分类、客户产品编码、订货价、状态的前后，另写「同步待确认订单 SO-…」）；推送 `catalog:<customerId>`（产品资料、配方改了再推目录里有这个产品的每个客户），同步了订单时加 `order:<id>`、`orders` |
+| `GET /catalog/:customerId` | 销售 | → `{ actions, customerId, customerName, categories[{id, name, sort, itemCount}], items[] }`；产品带 `productId`、`version`、`name`、`unit`、`imageFileId`、`imageUrl`、`categoryId`、`categoryName`、`customerCode`、`listPriceCents`、`enabled`（可订）、配方明细 `bom[{materialId, materialName, unit, qty, materialEnabled}]`，按订货分类、产品排；销售新建订单时产品和默认单价从这里取（2026-10-05 确认：产品归客户，不再有 `/products`、`/product-categories`） | | — |
+| `POST /catalog/:customerId/items`、`PATCH /catalog/:customerId/items/:productId` | 销售 | 新建（+ 幂等键）`{ name, unit, imageFileId, categoryId, customerCode, priceCents, enabled, bom[{materialId, qty}] }`；修改另带 `version` → 整份目录 | 名称必填「请填写产品名称」，同客户不重复 → `fields.name`「这个客户已有同名产品」；单位必填「请填写单位」；分类必选且须是这个客户的 →「请选择订货分类」；订货价必填；`customerCode` 同客户重复 → `fields.customerCode`「这个客户下已有相同的产品编码」；配方至少一种花材「请至少添加一种花材」、同一花材只一次、`qty>0`；配方花材必须存在，不在原配方里的还须启用，不存在的 `materialId` 拒绝保存、不部分写入；产品图须已上传；产品不属于这个客户 → `NOT_FOUND`；版本过期 → `STALE`（带最新目录，整体不改）；什么都没变 → `BUSINESS_RULE`「没有修改内容」 | 行锁客户和这个客户的产品（和门店下单、改单的共享锁互斥）；整组替换配方；改了价的同一事务按 `id` 升序行锁这个客户含这种产品的待确认订单，把 `price_cents`、`list_price_cents` 改成新订货价、订单 `version` +1，不写 `order_changes`；日志「新建产品」「修改订货目录」（名称、单位、订货分类、客户产品编码、订货价、配方、状态的前后，另写「同步待确认订单 SO-…」）；推送 `catalog:<customerId>`，配方或可订变了加 `demand`，同步了订单时加 `order:<id>`、`orders` |
 | `POST /catalog/:customerId/categories`、`PATCH /catalog/:customerId/categories/:id` | 销售 | 新建（+ 幂等键）、改名 `{ name }` → 整份目录 | 同客户重名 → `fields.name`「已有同名分类」；分类不是这个客户的 → `NOT_FOUND` | 行锁客户；新增排最后；日志「新建分类」「修改分类」（订货目录）；推送 `catalog:<customerId>` |
 | `PUT /catalog/:customerId/category-order` | 销售 | `{ ids[] }`（这个客户全部订货分类的新顺序）→ 整份目录 | `ids` 必须正好是这个客户现有全部分类，否则 `STALE` | 按顺序重写 `sort`；日志「调整分类顺序」 |
-| `DELETE /catalog/:customerId/categories/:id` | 销售 | → 整份目录 | 分类下还有目录项（含停用的）→ `BUSINESS_RULE`「分类中仍有目录产品，请先换分类」 | 日志「删除分类」 |
-| `GET /catalog/:customerId/copy-preview` | 销售 | `?fromCustomerId=` → `{ copyCount, skipCount, previewToken }` | 目标含任何目录项（含停用）→ `BUSINESS_RULE`「这个客户已有目录，不能复制」；来源和目标相同 → `VALIDATION_FAILED`；没有可复制产品 → `BUSINESS_RULE`「没有可复制的产品」 | 一致性快照读取来源产品、目录项、分类和目标空分类；凭据绑定来源、目标及预览状态 |
-| `POST /catalog/:customerId/copy` | 销售 | `{ fromCustomerId, previewToken }` + 幂等键 → 整份目录 | 同上；预览状态变了 → `STALE`「目录有变化，请重新预览后复制」且整体不写；仅复制目录项启用且产品启用的可订项，带价格、可订、有效分类，编码置空 | 来源、目标客户按 id 升序锁，普通目录项和分类写操作也遵守客户锁；同名目标空分类复用，只新增有复制项的来源分类，新增按来源顺序排在已有分类后；日志「复制订货目录」；推送 `catalog:<customerId>` |
+| `DELETE /catalog/:customerId/categories/:id` | 销售 | → 整份目录 | 分类下还有产品（含停用的）→ `BUSINESS_RULE`「分类中仍有目录产品，请先换分类」 | 日志「删除分类」 |
+| `GET /catalog/:customerId/copy-sources` | 销售 | `?fromCustomerId=`（不传用第一个来源客户）→ `{ sources[{customerId, customerName}], fromCustomerId, items[{productId, name, unit, categoryName, listPriceCents, bom[], skipReason}], previewToken }`；`sources` 是有产品的其他客户；`skipReason` 为 `duplicate`（当前客户已有同名产品）、`disabled`（来源已停用）或 null | 来源和目标相同 → `BUSINESS_RULE`「不能复制到同一客户」 | 一致性快照读取来源产品、目标产品名和分类；凭据绑定来源、目标及预览状态 |
+| `POST /catalog/:customerId/copy` | 销售 | `{ fromCustomerId, productIds[], previewToken }` + 幂等键 → 整份目录 | 预览状态变了 → `STALE`「来源或目标目录已变化，请重新预览」且整体不写；勾了 `skipReason` 不为空的产品 → `BUSINESS_RULE`；`productIds` 须属于来源客户 | 来源、目标客户按 id 升序锁；每个勾选产品新建一份归当前客户：带名称、单位、产品图、配方、订货价，可订，客户产品编码置空；订货分类同名复用，没有同名放当前客户第一个分类，当前客户没有分类时按来源分类名新建（按来源顺序）；日志「复制订货目录」（来源、产品数）；推送 `catalog:<customerId>`、`demand` |
 
 ## 5. 门店端
 
@@ -283,6 +279,11 @@
 | `GET /store/statements` | 门店 | `?status=unsettled|settled&from=&to=&cursor=`（开单日期）→ `{unsettledCents,unstatementedCents,items,nextCursor,counts:{},actions:[]}`；items 为 DZ 单号、开单日期、付款截止、期间、发货单数、status、storeAmountCents，以及整张 DZ 的应收 `wholeAmountCents` 和有来源的门店数 `storeCount`（门店「我的」对账卡小字用，2026-10-05 体验改版第 1 批；详情同样带这两项，供应商为 null） | 只本店有关非作废 DZ；未结清金额取本店在未结清 DZ 的来源金额，未对账取本店未入单发货 / 售后净额；不含客户其他门店的来源明细和资金 | 订阅 ar:<customerId> |
 | `GET /store/statements/:id` | 门店 | → 单号、客户 / 本店、期间、日期、截止、结清日期、status、本店发货金额 / 售后金额 / storeAmountCents、本店发货单和售后；actions=[] | 不属于本店或作废 NOT_FOUND；不返回收款记录、抵扣多收、优惠、期初欠款、其他门店来源或操作权限 | 订阅 statement:<id> |
 
+| `GET /store/unseen` | 门店 | → `{orders,afters,total}`：有结果门店还没看过的订单数（取消申请被同意 / 拒绝）、售后数（已处理、已关闭、已作废，含销售代建；看过后又被作废重新算）；底栏「订单」角标取 total | — | 订阅 orders、afters 后重取 |
+| `POST /store/orders/:id/seen`、`POST /store/afters/:id/seen` | 门店 | 无入参 → 同上最新计数；打开订单 / 售后详情时调用 | 不是本店 NOT_FOUND；没有要看的也返回 200，不改版本、不写日志 | — |
+
+门店已看过（2026-10-06 第 3、4 批）：订单、售后各记 `store_notice_at`（出结果时间）和 `store_seen_at`（门店看过时间），前者晚于后者 = 没看过。
+
 门店的订单列表、详情、售后列表、详情复用第 4 节的 `GET /orders*`、`GET /afters*`，按本店过滤；售后金额只在门店的售后里返回，已关闭、已作废的不带金额。外部端（门店、供应商）的订单、采购单、售后，状态值照常返回 `voided`，前端显示成「已取消」、原因行写「取消原因」；门店、供应商列表传 `status=cancelled` 时同时列出 `cancelled` 和 `voided`（售后没有 `cancelled`，门店售后传 `status=cancelled` 即列 `voided`）（2026-10-03 改版，见 03 章第 3 节）。
 
 ## 6. 发货
@@ -291,8 +292,8 @@
 |---|---|---|---|---|
 | `GET /shipping/orders` | 发货 | `?status=to_ship|shipped&dueOnly=&q=&cursor=` → 无单价金额卡片；带 cancelRequested 和单据 actions；批量发货由各单 ship action 决定可勾，列表级 actions=[]，出货日期未到的不可勾。配货已配 n/m 由本机存储叠加，不是服务端状态 | 默认待发货按出货日期升序在前、已发货按发货时间倒序在后，同键按 id；游标跨段不重不漏；dueOnly=true 限今天及以前；状态不符游标 VALIDATION_FAILED | 订阅 orders |
 | `GET /shipping/orders/:id` | 发货（管理员 / 多模块同样） | → 无金额明细、数量 / 实发、发货 / 取消 / 作废信息、无金额变更和取消申请、version，storeName、contactName、contactPhone、address 平面字段；空联系人电话地址返回空串、界面未填。actions 仅 ship，送货图由前端已发货视图生成；已发货不带 ship | 仅 to_ship/shipped/cancelled/voided；不返回单价金额、资金、售后金额；配货勾只存本机，发货成功清除 | 订阅 order:<id> |
-| `POST /orders/:id/ship` | 发货 | `{ version, shipNote, lines[{orderLineId, shippedQty}] }` | 出货日期晚于今天 → `BUSINESS_RULE`「出货日期还没到，不能发货」；状态 `to_ship`：已取消 → `STALE`「销售已取消这张订单，不能发货」；打开后销售改过单（版本变了）→ `STALE`「销售修改了这张订单，已刷新成最新内容，请核对后再确认发货」；`shippedQty ≥ 0`，不设上限；`shipNote` 选填，有差异也可不写 | 条件更新（和确认、修改、取消、同意取消申请互斥）；写 `shipped_qty`、`shipped_by/at`；待处理的取消申请改 `lapsed`（和发货合并一次订单版本更新）；成功响应及 `STALE.latest` 均为无金额发货视图；日志「确认发货」；推送 `order:<id>`、`orders`、`todo:shipping`、`ar:<customerId>`、`demand` |
-| `POST /orders/batch-ship` | 发货 | `{orders:[{id,version}]}` → `{succeeded:[{id,no}],failed:[{id,no,reason}]}`，所有数据无金额 | orders 非空且不重复；每单 to_ship、出货日期已到、版本一致，实发取锁内原订单数量；不可发的逐单报原因，其余成功 | 每张独立事务和日志，按请求顺序处理，复用单笔发货；待处理取消申请自动失效；成功通知同单笔，本机配货清除 |
+| `POST /orders/:id/ship` | 发货 | `{ version, shipNote, lines[{orderLineId, shippedQty}] }` | 出货日期晚于今天 → `BUSINESS_RULE`「出货日期还没到，不能发货」；状态 `to_ship`：已取消 → `STALE`「销售已取消这张订单，不能发货」；打开后销售改过单（版本变了）→ `STALE`「销售修改了这张订单，已刷新成最新内容，请核对后再确认发货」；`shippedQty ≥ 0`，不设上限；`shipNote` 选填，有差异也可不写 | 条件更新（和确认、修改、取消、同意取消申请互斥）；写 `shipped_qty`、`shipped_by/at`；同一事务把实发大于 0 的行当时的配方写进 `order_line_bom_lines`（批量发货同样）；待处理的取消申请改 `lapsed`（和发货合并一次订单版本更新）；成功响应及 `STALE.latest` 均为无金额发货视图；日志「确认发货」；推送 `order:<id>`、`orders`、`todo:shipping`、`ar:<customerId>`、`demand` |
+| `POST /orders/batch-ship` | 发货 | `{orders:[{id,version}]}` → `{succeeded:[{id,no,customerName,storeName}],failed:[{id,no,customerName,storeName,reason}]}`（结果弹层每行「客户 · 门店 / 单号」（2026-10-06 第 3、4 批）），所有数据无金额 | orders 非空且不重复；每单 to_ship、出货日期已到、版本一致，实发取锁内原订单数量；不可发的逐单报原因，其余成功 | 每张独立事务和日志，按请求顺序处理，复用单笔发货；待处理取消申请自动失效；成功通知同单笔，本机配货清除 |
 
 ## 7. 采购
 
@@ -300,8 +301,9 @@
 
 | 接口 | 谁 | 入参 → 出参 | 校验和错误 | 锁 / 日志 / 推送 |
 |---|---|---|---|---|
-| `GET /purchase-orders` | 采购、仓库、财务 | `?status=&supplierId=&from=&to=&cursor=` → 卡片（采购员、采购金额、`changed`、`repriced`、`allReturned`）；列表级 `actions` ⊆ `create`（采购） | 仓库默认不列 `cancelled`，传 `status=cancelled` 才列 | 订阅 `pos` |
-| `GET /purchase-orders/:id` | 采购、仓库、财务 | → 明细、变更 / 改价 / 退货（每项带单位）记录、原因、采购金额 amountCents、allReturned、maxReturnQty、采购员、收货人 / 时间、所属有效 statement:{id,no,status} 或 null；actions 采购 editPo/changeSupplier/cancelPo，仓库 receive/return/reprice/voidPo，纯财务 [] | 不返回 paidCents/unpaidCents/apStatus 或付款记录；有效 DZ 时仓库退货 / 改价 / 作废禁用，文案同 1.5 | 订阅 po:<id>，所属 statement:<id> |
+| `GET /purchase-orders` | 采购、仓库、财务 | `?status=&supplierId=&from=&to=&diffUnseen=&cursor=` → 卡片（采购员、采购金额、`changed`、`repriced`、`allReturned`、`diffUnseen`）；`diffUnseen=true` 只列自己下单（管理员全部）到货差异没看过的单（2026-10-06 第 3、4 批）；列表级 `actions` ⊆ `create`（采购） | 仓库默认不列 `cancelled`，传 `status=cancelled` 才列 | 订阅 `pos` |
+| `GET /purchase-orders/:id` | 采购、仓库、财务 | → 明细、变更 / 改价 / 退货（每项带单位）记录、原因、采购金额 amountCents、allReturned、maxReturnQty、采购员、收货人 / 时间、所属有效 statement:{id,no,status} 或 null；`diff`：到货差异 `{notice,lines[{poLineId,name,unit,qty,receivedQty,short,over,orderPriceCents,priceCents,repriced,returnedQty}],rejectedAll,rejectReason,voided,receivedBy,receivedAt,at,byName,unseen,seenAt}`，没差异为 null；整单拒收时 `rejectedAll=true`、`rejectReason` 取收货备注（没填为 null）、`lines` 恒为空数组，提示条头一行写「整单拒收」+ 原因（2026-10-06 第 3、4 批）；actions 采购 editPo/changeSupplier/cancelPo，仓库 receive/return/reprice/voidPo，下单采购员或管理员在差异没看过时有 ackDiff，纯财务 [] | 不返回 paidCents/unpaidCents/apStatus 或付款记录；有效 DZ 时仓库退货 / 改价 / 作废禁用，文案同 1.5 | 订阅 po:<id>，所属 statement:<id> |
+| `POST /purchase-orders/:id/ack-diff` | 采购（这张单的下单采购员）、管理员 | `{version}` → 采购单详情 | 别人的单 FORBIDDEN；仓库又改价 / 退货 / 作废导致版本变了 → `STALE`「到货差异有更新，请看最新内容后再点知道了」；已看过照常返回 | 行锁采购单；只记 `buyer_seen_at/by`，不改版本；日志「确认到货差异」；推送 po:<id>、pos、todo:purchase（2026-10-06 第 3 批） |
 | `POST /purchase-orders` | 采购 | `{ supplierId, note, lines[{materialId,qty,priceCents}], reviewToken, demandContext?{from,to} }` + 幂等键 → `to_receive` | 启用供应商、花材；qty>0、priceCents>=0；创建前按下文采购复核协议验证 reviewToken，已有邀请 / 超缺口仅提醒，不禁止 | 复核通过后发号 PO、写单据与日志「新建采购单」；推送 `pos`、`todo:warehouse`、`demand` |
 | `PUT /purchase-orders/:id` | 采购 | `{ version, supplierId, note, reason?, lines[] }` | 状态 `to_receive`；原因选填，可省略，`po_changes.reason` 存空串（2026-10-05 用户确认）；换了供应商但这张单没有 `changeSupplier`（填报生成的单）→ `BUSINESS_RULE`「填报生成的采购单不能换供应商，要换请取消后重下」；新加的花材须启用 | 条件更新（和收货互斥）；整组替换明细；写 `po_changes`（含换供应商）；日志「修改采购单」（前后）；推送 `po:<id>`、`pos`、`demand`、`supplier:<旧、新 supplierId>` |
 | `POST /purchase-orders/:id/cancel` | 采购（归属人） | `{ version, reason }` | 状态 `to_receive`；原因必填；供应商刚改过或取消 → `STALE` | 条件更新（和供应商改单、取消互斥）；日志「取消采购单」；推送 `po:<id>`、`pos`、`todo:warehouse`、`demand`、`supplier:<supplierId>` |
@@ -313,7 +315,7 @@
 | `PUT /invites/:id` | 采购 | `{ version, lines[] }` | 状态 `pending`；没有修改内容 → `BUSINESS_RULE`「没有修改内容」 | 条件更新（和提交填报互斥）；日志「修改邀请」（不用原因）；推送 `invite:<id>`、`supplier:<supplierId>`、`demand` |
 | `POST /invites/:id/cancel` | 采购（发邀请的人、管理员） | `{ version }` | 状态 pending；非归属人 → FORBIDDEN；版本变化 → STALE | 条件更新；日志「取消邀请」；推送同上 |
 | `POST /invites/:id/share` | 采购 | → `{ path, title, imageUrl }` 小程序卡片参数；`path` 带邀请号和 HMAC 签名（只签邀请 ID），不设有效期 | 状态 `pending` | 同一邀请只在第一次生成时记日志「生成填报链接」，之后重复取参数不再记 |
-| `GET /suppliers`、`GET /suppliers/:id` | 采购、财务、仓库（手工入库选供应商） | → 列表（名称、联系人、启用、是否已开通供应商端、`openPoCount` 待收货采购单数）、资料；列表级 `actions` ⊆ `create`（采购） | | — |
+| `GET /suppliers`、`GET /suppliers/:id` | 采购、财务、仓库（手工入库选供应商） | `?q=`（搜名称、联系人（2026-10-06 第 3、4 批））→ 列表（名称、联系人、启用、是否已开通供应商端、`openPoCount` 待收货采购单数）、资料；列表级 `actions` ⊆ `create`（采购） | | — |
 | `POST /suppliers`、`PATCH /suppliers/:id` | 采购 | `{ version?, name, contact, phone, address, enabled, account: { enabled, loginPhone } }` | 名称不重复；开通时 `loginPhone` 11 位且启用账号里不重复 | 行锁供应商；同一事务写 `accounts`；改登录手机号同时解绑微信、提升账号版本，推送 `account:<id>` 关闭连接，日志原因「同时解绑微信」（阶段 4 确认）；停用供应商或关闭账号时保留 `openid`、`bound_at`，提升版本，实时连接以 4403 关闭，原微信请求返回 `ACCOUNT_DISABLED`，重新启用后恢复使用（阶段 4 确认）；把这家 `pending` 邀请全部改 `cancelled`（`cancel_note` 写原因，日志操作人「系统」）；推送 `account:<id>`、`invites`、`supplier:<id>` |
 
 ### 7.1 采购复核与提醒（2026-10-02 采购优化确认）
@@ -360,13 +362,15 @@
 | `POST /warehouse/docs/:id/void` | 仓库（登记人或管理员） | `{version,reason}` | 原因必填；入库 stocked_in、未进有效 DZ、库存够；出库 / 报损 stocked_out/lost；后续盘点限制不变 | 入库先锁供应商 → 单据，其他先锁单据，再花材 / 批次。入库先扣本单批次，出库报损原批次加回；写反向流水，日志作废，推送 wh_doc/wh_docs/stock/demand，入库另推 ap |
 | `GET /warehouse/moves` | 仓库 | `?materialId=&direction=in|out&from=&to=&cursor=` → 单种花材出入库记录；materialId 必填，只从花材详情进；日期分组包含完整日期和周几，项含来源单据 id / no / docType、批次入库完整日期，点进单据 | 来源包含采购入库、退货 / 作废、手工入出库、报损、盘点；无跨花材独立流水列表 | 订阅 stock、wh_docs、pos |
 | `GET /warehouse/stock` | 仓库 | `?q=&categoryId=&enabled=&aged=` → 库存和花材资料，同页两组 aged / other，行 stockQty、oldestAgeDays、aged；含剩余批次 ageDays。aged=true 是首页放久了入口过滤；列表级 create/manageCategories | 库龄按上海今天−in_date，最老剩余批次满 STOCK_AGE_WARNING_DAYS；库存 0 的 oldestAgeDays=null，不计放久了种数 | 订阅 stock |
-| `GET/POST/PATCH /materials` | 仓库（采购、销售只读） | `{ version?, code, name, categoryId, unit, enabled }` | 编码不重复；`GET /materials` 响应带 `nextCode`（`MATERIAL_CODE_PREFIX` + 现有最大序号 + 1，表单预填，可改）；新建 `code` 留空时服务端在事务内加锁取下一个序号，保证唯一；已有库存、业务记录或配方引用时改单位 → `BUSINESS_RULE`「这项花材已有库存、业务记录或配方引用，不能改单位，请新建花材」 | 修改持有独占业务写锁，再锁花材，保证首次引用不能穿过校验；日志「新建 / 修改花材」 |
+| `GET/POST/PATCH /materials` | 仓库、采购（2026-10-06 起采购也能新建 / 修改；销售只读） | `{ version?, code, name, categoryId, unit, enabled }` | 编码不重复；`GET /materials` 响应带 `nextCode`（`MATERIAL_CODE_PREFIX` + 现有最大序号 + 1，表单预填，可改）；新建 `code` 留空时服务端在事务内加锁取下一个序号，保证唯一；已有库存、业务记录或配方引用时改单位 → `BUSINESS_RULE`「这项花材已有库存、业务记录或配方引用，不能改单位，请新建花材」 | 修改持有独占业务写锁，再锁花材，保证首次引用不能穿过校验；日志「新建 / 修改花材」 |
 | `GET /materials/:id` | 仓库、采购、销售 | → 花材资料、stockQty、剩余批次 `{inDate,leftQty,ageDays}`、oldestAgeDays、aged；仓库动作 edit/stockIn/stockOut/reportLoss，edit 放抬头卡、stockIn 放灰字、stockOut/reportLoss 放底栏；其他模块 actions=[] | 不存在 NOT_FOUND；员工只读库存仍 GET /inventory，不含库龄 | 订阅 stock |
-| `GET/POST/PATCH /material-categories` | 仓库（`GET` 所有员工，库存查询的分类筛选用） | `GET` → 列表，项 `{ id, name, sort }`，按 `sort`、`id` 升序，不分页（`nextCursor` 恒为 `null`）；写入 `{ name, sort }` | 名称不重复 | 日志 |
+| `GET/POST/PATCH /material-categories` | 仓库、采购（2026-10-06 起；`GET` 所有员工，库存查询的分类筛选用） | `GET` → 列表，项 `{ id, name, sort, materialCount }`（materialCount = 该类启用花材数，新建盘点选分类每行写「n 种花材」，2026-10-06），按 `sort`、`id` 升序，不分页（`nextCursor` 恒为 `null`）；写入 `{ name, sort }` | 名称不重复 | 日志 |
 | `GET/POST/PATCH /out-categories` | 仓库 | `{ name, enabled }` | 至少一个启用 | 日志 |
 | `GET /stocktakes`、`/:id` | 仓库 | → 盘点单；`actions` 恒为 `[]` | | — |
 | `GET /stocktakes/draft` | 仓库 | `?categoryIds=` → 所选分类全部花材（含停用），每行 `{ materialId, name, unit, bookQty }`，`bookQty` 是当前账面数 | | — |
 | `POST /stocktakes` | 仓库 | `{ categoryIds[], reason, lines[{materialId, bookQty, actualQty}] }` + 幂等键 | `actualQty>=0`；差异原因选填；`bookQty` 是打开盘点时的账面快照，确认时锁住相关批次按当前库存复查，任一行变了 → `STALE`「库存已变化，已刷新账面数，请核对后再确认」，`latest` 带最新账面数 | 发号 PD；盘盈生成批次 + `check_gain`，盘亏批次扣减 + `check_loss`；日志「确认调整」；推送 `stock`、`demand` |
+
+到货差异（2026-10-06 第 3 批）：收货时实收和下单不同（少收、多收、拒收）或改了价，以及收货后改价、退货、作废已收货的单，都在同一事务里记 `purchase_orders.diff_at/diff_by`（出现差异时间、经办人），并推送 todo:purchase；晚于 `buyer_seen_at` 即进下单采购员待办。
 
 仓库作废的补充校验（2026-10-03）：`POST /purchase-orders/:id/void` 与 `POST /warehouse/docs/:id/void` 在原库存流水被后续同花材盘点覆盖时返回 `BUSINESS_RULE`「这张单的库存已被后续盘点确认，不能作废，请按实际情况登记新的出入库」。列表、详情的 `voidPo` / `void` 同步禁用并返回该 `disabledReason`；不禁用退货和改价。写入在花材锁内再次复查，失败不改库存、版本、状态或日志。新建盘点对每行保存调整前的流水边界，无差异也保存；除 `stock`、`demand` 外，通知员工端 `pos`、`wh_docs` 及相关 `po:<id>`、`wh_doc:<id>`，让已打开的作废动作刷新（不改变供应商财务数据）。
 
@@ -377,7 +381,7 @@
 | 接口 | 谁 | 入参 → 出参 | 校验和错误 | 锁 / 日志 / 推送 |
 |---|---|---|---|---|
 | `GET /finance/receivables`、`GET /finance/payables` | 财务 | `?overdue=&cursor=` → 未结清客户 / 供应商 DZ 卡片，计数和金额按已开有效单 | overdue=true 只筛有截止且已逾期；未开来源不混进待办 | 订阅 todo:finance、ar:* / ap:* |
-| `GET /finance/customers`、`GET /finance/suppliers` | 财务 | `?q=&filter=outstanding|overdue|unstatemented&cursor=` → 每家 `{kind,partyId,partyName,enabled,outstandingCents,unsettledCents,unstatementedCents,creditCents,lastStatementTo,lastFundDate,overdueCents,overdueDays}`；客户未收 / 供应商未付 | 按 04 第 8 节全账组成计算；filter 未收 / 未付>0 或逾期>0；`unstatemented` 只留有 `order` / `po` / `wh` 来源还没进有效 DZ 的往来单位，按 `unstatementedCents` 从大到小、id 倒序排（2026-10-05 体验改版第 1 批），其余按 id 倒序；无日期筛资金账本 | 订阅 ar:* / ap:* |
+| `GET /finance/customers`、`GET /finance/suppliers` | 财务 | `?q=&filter=outstanding|overdue|unstatemented&cursor=` → `{items,nextCursor,counts:{outstanding,overdue,unstatemented}}`（页签数字，不受当前 filter 影响），每家 `{kind,partyId,partyName,enabled,outstandingCents,unsettledCents,unsettledCount,unstatementedCents,creditCents,lastStatementTo,lastFundDate,overdueCents,overdueDays,overdue}`；客户未收 / 供应商未付 | 按 04 第 8 节全账组成计算；filter 未收 / 未付>0 或逾期>0；`unstatemented` 只留有 `order` / `po` / `wh` 来源还没进有效 DZ 的往来单位，按 `unstatementedCents` 从大到小、id 倒序排（2026-10-05 体验改版第 1 批），其余按有逾期在前 → 未收 / 未付大到小 → 没欠款、同额 id 倒序（2026-10-06 第 3、4 批）；无日期筛资金账本 | 订阅 ar:* / ap:* |
 | `GET /finance/customers/:id`、`GET /finance/suppliers/:id` | 财务 | `?tab=statements|unstatemented&status=&from=&to=&cursor=` → 总账组成、账期 / 期初欠款 / openingDebtEditable、退款历史、对账单卡片（含作废）或未对账来源（客户按门店分组）、actions createStatement/registerReceipt 或 registerPayment/refundCredit/editTerms | from/to 只筛开单日期或来源日期，汇总仍当前全账；无余额不显示退回；期初从未开过 DZ 才可编辑 | 订阅 ar:<id> / ap:<id> |
 | `GET /finance/statements/draft` | 财务 | `?kind=customer|supplier&partyId=&from=&to=` → `{kind,partyId,partyVersion,periodFrom,periodTo,creditCents,openingDebtCents,sources[{type,id,version,sourceNo,sourceDate,storeId?,parentType?,parentId?,amountCents,carriesAmount,previousPeriod,selected}],totals}` | 不传 `from` 时默认起点：这家上一张有效（未作废）对账单截止日的次日（不晚于 `to`），第一次对账取最早一笔未对账来源的日期，没有来源取 `to`；不传 `to` 默认今天；实际使用的 `periodFrom` / `periodTo` 在响应里返回，前端据此回显、可改；期间内及以前未对账来源，previousPeriod 默认勾；来源日期取实际发货 / 处理 / 收货 / 入库；采购主行净额和退货 / 改价凭据不重复合计 | 同一一致性快照读取；不生成全账凭据 |
 | `POST /finance/statements` | 财务 | `{kind,partyId,partyVersion,periodFrom,periodTo,note,creditCents,sources[{type,id,version?,amountCents}]}` + 幂等键 → DZ 详情 | 至少一个经济来源或首单期初欠款；所选不重复、有效未对账、同一往来方、日期不晚于期末；客户来源允许上期未对账；来源 / 设置版本或余额变化 STALE，latest 为最新 draft，整张不写；自动抵扣最多正金额，0 / 负额直接 settled，负额形成来源余额 | 锁往来方 → 所选来源（固定类型/id序）→ 余额来源，保存 statements/lines/credit_uses；发 DZ，日志新建对账单；通知 statement、来源详情、ar/ap、todo:finance |

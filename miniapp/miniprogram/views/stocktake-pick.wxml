@@ -1,0 +1,11 @@
+<!-- 新建盘点选分类（views/stocktake-pick.ts）：一行一个分类，最上面「全部分类」；records 为 true 时右上多「盘点记录 ›」 -->
+<template name="stocktake-sheet">
+  <!-- 可不传：records -->
+  <hz-sheet show="{{stocktakeSheet}}" title="{{stocktakeTexts.title}}" footer bind:close="onStocktakeClose">
+    <view wx:if="{{records}}" slot="extra" class="u-stocktake-pick__records u-tap" bindtap="onStocktakeRecords">{{stocktakeTexts.records}}</view>
+    <hz-error wx:if="{{stocktakeError}}" message="{{stocktakeError}}" />
+    <view class="u-stocktake-pick__row u-tap" data-key="" bindtap="onStocktakeCategory"><view class="u-stocktake-pick__name"><view class="u-check {{stocktakeAll ? 'u-check--on' : ''}}"><text wx:if="{{stocktakeAll}}" class="hz-icon hz-icon--check"></text></view><text>{{stocktakeTexts.all}}</text></view></view>
+    <view wx:for="{{stocktakeCategories}}" wx:key="id" class="u-stocktake-pick__row u-tap" data-key="{{item.id}}" bindtap="onStocktakeCategory"><view class="u-stocktake-pick__name"><view class="u-check {{item.selected ? 'u-check--on' : ''}}"><text wx:if="{{item.selected}}" class="hz-icon hz-icon--check"></text></view><text>{{item.name}}</text></view><text class="u-stocktake-pick__count">{{item.count}}</text></view>
+    <hz-button slot="footer" text="{{stocktakeStart}}" bind:press="onStocktakeStart" />
+  </hz-sheet>
+</template>

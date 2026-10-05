@@ -1,16 +1,10 @@
-// 门店订货目录（05 章第 5 节）：可订 = 目录启用且产品本身启用；按这个客户的订货分类分组；
+// 门店订货目录（05 章第 5 节）：这个客户启用的产品；按这个客户的订货分类分组；
 // 客户停用时门店照常登录，不能下新单
 import { appError, copy, type StoreCatalog } from '@huazhong/shared'
 import { Inject, Injectable } from '@nestjs/common'
 import { and, asc, eq } from 'drizzle-orm'
 import type { Db } from '../../../db/client.ts'
-import {
-  catalogCategories,
-  catalogItems,
-  customers,
-  products,
-  stores,
-} from '../../../db/schema/index.ts'
+import { catalogCategories, customers, products, stores } from '../../../db/schema/index.ts'
 import { DB } from '../../common/db.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import { FilesService } from '../files/files.service.ts'
@@ -22,11 +16,7 @@ function customerIdOf(viewer: Viewer): number {
 }
 
 const orderable = (customerId: number) =>
-  and(
-    eq(catalogItems.customerId, customerId),
-    eq(catalogItems.enabled, true),
-    eq(products.enabled, true),
-  )
+  and(eq(products.customerId, customerId), eq(products.enabled, true))
 
 @Injectable()
 export class StoreCatalogService {
@@ -61,13 +51,12 @@ export class StoreCatalogService {
         unit: products.unit,
         categoryId: catalogCategories.id,
         categoryName: catalogCategories.name,
-        customerCode: catalogItems.customerCode,
-        listPriceCents: catalogItems.priceCents,
+        customerCode: products.customerCode,
+        listPriceCents: products.priceCents,
         imageFileId: products.imageFileId,
       })
-      .from(catalogItems)
-      .innerJoin(products, eq(products.id, catalogItems.productId))
-      .innerJoin(catalogCategories, eq(catalogCategories.id, catalogItems.categoryId))
+      .from(products)
+      .innerJoin(catalogCategories, eq(catalogCategories.id, products.categoryId))
       .where(orderable(customerId))
       .orderBy(asc(catalogCategories.sort), asc(catalogCategories.id), asc(products.id))
     const urls = await this.files.urlsOf(

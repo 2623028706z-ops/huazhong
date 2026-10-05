@@ -1,19 +1,22 @@
+// X13 目录产品（2026-10-05 产品归客户，原 X10 产品表单并进来）：抬头「某客户的产品」→ 顶卡产品图 + 名称 + 单位 →
+// 订货信息（订货价大字、订货分类、客户产品编码、可订）→ 配方明细（每单位用量）→ 底栏保存。
+// 带 productId 是修改，不带是新建；改的只是这个客户的产品
 import {
   contract,
   copy,
+  entryCopy,
   type Catalog,
+  type CatalogItem,
   type InventoryItem,
-  type ProductItem,
-  type CustomerItem,
 } from '@huazhong/shared'
-import type { DetailEvent, KeyEvent } from '../../../../core/events'
+import type { DetailEvent } from '../../../../core/events'
 import type { FailureView } from '../../../../core/failure-view'
-import { confirmAsk, isChanged, markChanged, syncUnloadAlert } from '../../../../core/guard'
-import { firstFailure, request, type Result } from '../../../../core/request'
+import { isChanged, markChanged, syncUnloadAlert } from '../../../../core/guard'
+import { firstFailure, newIdempotencyKey, request, type Result } from '../../../../core/request'
 import { failureOf, messageOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
 import { unwatch, watch } from '../../../../core/live'
-import { loadCustomers } from '../../../../views/customers'
+import { uploadImage, type LocalImage } from '../../../../core/upload'
 import {
   addMaterials,
   bomTableRowsOf,
@@ -22,59 +25,68 @@ import {
   removeBomLine,
   setBomQty,
 } from '../../../../views/bom'
-import { pickOpen, pickPatch, toggled } from '../../../../views/pick'
-import { bomChanged, checkItem, formOfItem, formOfProduct, type ItemForm } from '../directory/form'
+import { pickChosen, pickData, pickHandlers, pickOpen } from '../../../../views/pick'
+import { blankForm, checkCreate, checkUpdate, formOfItem, type ItemForm } from '../directory/form'
+
+const OWN_FIELDS = ['name', 'unit', 'imageFileId', 'categoryId', 'customerCode', 'priceCents']
+
 Page({
   data: {
-    title: copy.screen.title.catalogItem,
+    title: '',
     loaded: false,
     failure: null as FailureView | null,
     customerId: '',
-    customerName: '',
+    owner: '',
     realtime: '',
     changed: false,
     form: null as ItemForm | null,
     initial: null as ItemForm | null,
+    images: [] as { url: string }[],
+    bomHint: '',
     categoryOptions: [] as { id: string; name: string }[],
-    layer: '',
+    pickSheet: false,
     fields: {},
     formError: '',
     bomError: '',
     saving: false,
+    uploading: false,
     bomRows: [] as ReturnType<typeof bomTableRowsOf>,
-    editKey: '',
-    materialPicks: [] as ReturnType<typeof pickOpen>['picks'],
-    pickIds: [] as string[],
-    pickCount: 0,
-    pickConfirm: '',
+    ...pickData(),
     texts: {
-      customerItem: copy.screen.section.customerItem,
-      sharedBom: copy.screen.section.sharedBom,
-      sharedNote: copy.screen.sharedBomNote,
+      orderInfo: copy.screen.section.customerItem,
+      bom: copy.screen.section.bom,
+      material: copy.screen.label.material,
+      name: copy.screen.catalog.productName,
+      unit: copy.field.unit,
       code: copy.screen.label.customerCode,
       category: copy.screen.label.catalogCategory,
-      price: copy.screen.label.price,
+      price: copy.field.listPrice,
       yuan: copy.unit.yuan,
       enabled: copy.statusValue.orderable,
       optional: copy.placeholder.optional,
+      fill: copy.placeholder.fill,
       addMaterial: copy.screen.action.addMaterial,
+      searchMaterial: entryCopy.searchMaterial,
       pickMaterial: copy.screen.title.pickMaterial,
       noMaterial: copy.state.empty(copy.screen.empty.addableMaterials),
-      save: copy.action.saveCatalogItem,
+      save: copy.action.saveProduct,
     },
   },
   productId: '',
+  item: null as CatalogItem | null,
   materials: [] as InventoryItem[],
+  idempotencyKey: '',
   onLoad(query: Record<string, string | undefined>) {
     this.productId = query.productId ?? ''
-    this.setData({ customerId: query.customerId ?? '' })
+    this.idempotencyKey = newIdempotencyKey()
+    this.setData({
+      title: this.productId ? copy.screen.title.catalogItem : copy.screen.title.createProduct,
+      customerId: query.customerId ?? '',
+    })
     void this.load()
   },
   onShow() {
-    if (this.data.loaded)
-      watch(this, [`catalog:${this.data.customerId}`], () => {
-        this.setData({ realtime: copy.screen.realtime.editing })
-      })
+    if (this.data.loaded) this.watchCatalog()
   },
   onHide() {
     unwatch(this)
@@ -83,82 +95,82 @@ Page({
     unwatch(this)
     syncUnloadAlert(false)
   },
+  // 开着时别人改了这个客户的目录：只提示，不覆盖正在填的内容
+  watchCatalog() {
+    watch(this, [`catalog:${this.data.customerId}`], () => {
+      if (!this.data.saving) this.setData({ realtime: copy.screen.realtime.editing })
+    })
+  },
   async load(): Promise<void> {
-    const [catalog, products, materials, customers] = await Promise.all([
+    const [catalog, materials] = await Promise.all([
       request(contract.getCatalog, { params: { customerId: this.data.customerId } }),
-      request(contract.listProducts, { query: {} }),
       loadMaterials(),
-      loadCustomers(),
     ])
-    if (!catalog.ok || !products.ok || !materials.ok || !customers.ok) {
-      const failure = firstFailure([catalog, products, materials, customers])
+    if (!catalog.ok || !materials.ok) {
+      const failure = firstFailure([catalog, materials])
       if (failure) this.setData({ failure: failureOf(failure, 'load') })
       return
     }
     this.materials = materials.data
-    this.showCatalog(catalog.data)
-    this.openCatalogProduct(catalog.data, products.data.items, customers.data)
-    watch(this, [`catalog:${this.data.customerId}`], () => {
-      this.setData({ realtime: copy.screen.realtime.editing })
-    })
+    this.open(catalog.data)
+    this.watchCatalog()
   },
-  openCatalogProduct(catalog: Catalog, products: ProductItem[], customers: CustomerItem[]) {
-    const item = catalog.items.find((row) => row.productId === this.productId)
-    const product = products.find((row) => row.id === this.productId)
-    if (!item && !product) {
+  open(catalog: Catalog) {
+    this.showCatalog(catalog)
+    const item = catalog.items.find((row) => row.productId === this.productId) ?? null
+    if (this.productId && !item) {
       this.setData({
         failure: { kind: 'page', state: 'notFound', message: copy.error.notFound, requestId: null },
       })
       return
     }
-    this.setData({
-      loaded: true,
-      failure: null,
-      customerName: customers.find((row) => row.id === this.data.customerId)?.name ?? '',
-    })
-    if (item) this.openItem(formOfItem(item))
-    else if (product) this.openItem(formOfProduct(product, catalog))
+    this.item = item
+    const form = item ? formOfItem(item) : blankForm(catalog)
+    this.setData({ loaded: true, failure: null, realtime: '', initial: form, fields: {} })
+    this.setData({ bomError: '', formError: '' })
+    this.render(form)
   },
   showCatalog(catalog: Catalog) {
-    this.setData({ categoryOptions: catalog.categories.map(({ id, name }) => ({ id, name })) })
+    this.setData({
+      owner: copy.screen.catalog.owner(catalog.customerName),
+      categoryOptions: catalog.categories.map(({ id, name }) => ({ id, name })),
+    })
+  },
+  render(form: ItemForm) {
+    this.setData({
+      form,
+      bomRows: bomTableRowsOf(form.bom, this.materials),
+      images: form.imageUrl ? [{ url: form.imageUrl }] : [],
+      bomHint: form.bom.length
+        ? copy.screen.catalog.bomHint(form.unit || copy.field.unit, form.bom.length)
+        : '',
+    })
+    markChanged(this, isChanged(this.data.initial, form))
   },
   onFailureAction() {
     void this.load()
   },
-  onRealtime() {
-    void this.load()
-  },
-  openItem(form: ItemForm) {
-    this.setData({
-      layer: '',
-      form,
-      bomRows: bomTableRowsOf(form.bom, this.materials),
-      initial: form,
-      fields: {},
-      bomError: '',
-      formError: '',
+  async onRealtime(): Promise<void> {
+    const result = await request(contract.getCatalog, {
+      params: { customerId: this.data.customerId },
     })
-    markChanged(this, false)
-  },
-  closeItem() {
-    this.setData({ layer: '' })
+    if (result.ok) this.open(result.data)
   },
   patch(change: Partial<ItemForm>, field: string) {
-    const { form, initial } = this.data
+    const form = this.data.form
     if (!form) return
-    const next = { ...form, ...change }
     const fields = Object.fromEntries(
       Object.entries(this.data.fields).filter(([key]) => !key.startsWith(field)),
     )
-    const bomError = field === 'product' ? '' : this.data.bomError
-    this.setData({
-      form: next,
-      bomRows: bomTableRowsOf(next.bom, this.materials),
-      fields,
-      bomError,
-      formError: '',
-    })
-    markChanged(this, isChanged(initial, next))
+    const bomError = field === 'bom' ? '' : this.data.bomError
+    this.setData({ fields, bomError, formError: '' })
+    this.render({ ...form, ...change })
+  },
+  onName(event: DetailEvent<string>) {
+    this.patch({ name: event.detail }, 'name')
+  },
+  onUnit(event: DetailEvent<string>) {
+    this.patch({ unit: event.detail }, 'unit')
   },
   onCode(event: DetailEvent<string>) {
     this.patch({ customerCode: event.detail }, 'customerCode')
@@ -172,67 +184,76 @@ Page({
   onEnabled(event: DetailEvent<boolean>) {
     this.patch({ enabled: event.detail }, 'enabled')
   },
+  async onAddImage(event: DetailEvent<LocalImage[]>): Promise<void> {
+    const file = event.detail[0]
+    if (!file) return
+    this.setData({ uploading: true, formError: '' })
+    const result = await uploadImage('product_image', file)
+    this.setData({ uploading: false })
+    if (!result.ok) {
+      this.setData({
+        formError: result.failure
+          ? (failureOf(result.failure, 'submit')?.message ?? '')
+          : result.message,
+      })
+      return
+    }
+    this.patch({ imageFileId: result.image.fileId, imageUrl: result.image.url }, 'imageFileId')
+  },
+  onRemoveImage() {
+    this.patch({ imageFileId: null, imageUrl: '' }, 'imageFileId')
+  },
   onBomQty(event: DetailEvent<{ index: number; qty: number }>) {
     const bom = this.data.form?.bom ?? []
-    this.patch({ bom: setBomQty(bom, event.detail.index, event.detail.qty) }, 'product')
+    this.patch({ bom: setBomQty(bom, event.detail.index, event.detail.qty) }, 'bom')
   },
   onRemoveBom(event: DetailEvent<number>) {
     const bom = this.data.form?.bom ?? []
-    this.patch({ bom: removeBomLine(bom, event.detail) }, 'product')
+    this.patch({ bom: removeBomLine(bom, event.detail) }, 'bom')
   },
   onAddBom() {
     const bom = this.data.form?.bom ?? []
-    const { pickIds, pickCount, pickConfirm, picks } = pickOpen(
-      materialPicksOf(this.materials, bom),
-    )
-    this.setData({ layer: 'material', pickIds, pickCount, pickConfirm, materialPicks: picks })
+    this.setData({ pickSheet: true, ...pickOpen(materialPicksOf(this.materials, bom)) })
   },
-  onPick(event: KeyEvent) {
-    const { pickIds, pickCount, pickConfirm, picks } = pickPatch(
-      this.data.materialPicks,
-      toggled(this.data.pickIds, event.currentTarget.dataset.key),
-    )
-    this.setData({ pickIds, pickCount, pickConfirm, materialPicks: picks })
-  },
-  // 勾选的花材一次加入，用量默认 1
+  ...pickHandlers,
+  // 选好的花材按选的用量一次加入，不再打开小窗口
   onPickConfirm() {
-    const { pickIds } = this.data
-    this.setData({ layer: '', editKey: pickIds[pickIds.length - 1] ?? '' })
-    if (pickIds.length)
-      this.patch(
-        { bom: addMaterials(this.materials, this.data.form?.bom ?? [], pickIds) },
-        'product',
-      )
+    const chosen = pickChosen(this.data)
+    this.setData({ pickSheet: false })
+    if (chosen.length)
+      this.patch({ bom: addMaterials(this.materials, this.data.form?.bom ?? [], chosen) }, 'bom')
   },
   onClosePick() {
-    this.closeItem()
+    this.setData({ pickSheet: false })
   },
-  showCatalogFields(fields: Record<string, string>, message: string) {
-    const bomKey = Object.keys(fields).find((key) => key.startsWith('product'))
+  // 配方的报错写在配方组上；能对上字段的写字段下，其余写顶上
+  showFields(fields: Record<string, string>, message = '') {
+    const bomKey = Object.keys(fields).find((key) => key.startsWith('bom'))
     const bomError = bomKey ? (fields[bomKey] ?? '') : ''
-    const own = Object.keys(fields).some((key) => !key.startsWith('product'))
-    this.setData({ fields, bomError, formError: own || bomError ? '' : message })
+    const placed = Object.keys(fields).some((key) => OWN_FIELDS.includes(key))
+    const first = Object.values(fields)[0] ?? message
+    this.setData({ fields, bomError, saving: false, formError: placed || bomError ? '' : first })
   },
-  async onSaveItem(): Promise<void> {
-    const { form, initial, customerId } = this.data
-    if (!form || !initial) return
-    const checked = checkItem(form, initial)
+  async onSave(): Promise<void> {
+    const { form, customerId } = this.data
+    if (!form) return
+    const item = this.item
+    const checked = item ? checkUpdate(form, item.version) : checkCreate(form)
     if (!checked.ok) {
-      this.showCatalogFields(checked.fields, Object.values(checked.fields)[0] ?? '')
+      this.showFields(checked.fields)
       return
     }
-    if (bomChanged(form, initial)) {
-      const confirmed = await confirmAsk(this, {
-        title: copy.catalog.sharedBomTitle,
-        body: copy.catalog.sharedBomBody,
-        cancel: copy.confirm.cancel,
-        confirm: copy.action.confirmSave,
-      })
-      if (!confirmed) return
-    }
     this.setData({ saving: true, formError: '' })
-    const params = { customerId, productId: form.productId }
-    const result = await request(contract.saveCatalogItem, { params, body: checked.body })
+    const result = item
+      ? await request(contract.updateCatalogItem, {
+          params: { customerId, productId: item.productId },
+          body: { ...checked.body, version: item.version },
+        })
+      : await request(
+          contract.createCatalogItem,
+          { params: { customerId }, body: checked.body },
+          { idempotencyKey: this.idempotencyKey },
+        )
     this.setData({ saving: false })
     if (result.ok) {
       markChanged(this, false)
@@ -240,21 +261,16 @@ Page({
       showSuccess(copy.action.saved)
       return
     }
-    this.itemFailed(result)
+    this.failed(result)
   },
-  // 过期：换成最新的目录项（新加的还按原样留着），报错写在表单里
-  itemFailed(result: Extract<Result<Catalog>, { ok: false }>) {
+  // 过期：换成最新内容（修改的那个产品），报错写在表单顶上
+  failed(result: Extract<Result<Catalog>, { ok: false }>) {
     const view = failureOf(result.failure, 'submit')
-    if (view?.kind === 'fields') this.showCatalogFields(view.fields, view.message)
+    if (view?.kind === 'fields') this.showFields(view.fields, view.message)
     else if (view?.kind === 'stale') {
-      const latest = view.latest as Catalog
-      this.showCatalog(latest)
-      const productId = this.data.form?.productId
-      const item = latest.items.find((i) => i.productId === productId)
-      if (item) this.openItem(formOfItem(item))
+      this.open(view.latest as Catalog)
       this.setData({ formError: view.message })
-    } else if (view?.kind === 'page') {
-      this.setData({ failure: view })
-    } else if (view) this.setData({ formError: messageOf(view) })
+    } else if (view?.kind === 'page') this.setData({ failure: view })
+    else if (view) this.setData({ formError: messageOf(view) })
   },
 })

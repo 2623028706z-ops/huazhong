@@ -75,7 +75,7 @@
 | 采购需求 | `invited` 已邀请（缺货 / 够用由 `leftQty` 正负得出，不另返回）；`shipFrom`、`shipTo` 这种花材涉及订单的最早、最晚出货日期 | 第 8 节 |
 | 采购单标记 | `changed` 改单、`repriced` 改价、`all_returned` 已全部退货 | 有记录即为真 |
 | 订单标记 | `changed` 改单、`repriced`（明细单价 ≠ 目录价）、`cancelRequested`（有待处理的取消申请）、`shortShipped` 少发、`overShipped` 多发（有一行实发少于、多于订单数量） | 同上 |
-| 订货目录 | `off` 停用（`catalog_items.enabled=false`） | — |
+| 订货目录 | `off` 停用（`products.enabled=false`，即不可订） | — |
 
 状态标签颜色见 02 章，和中文名一起放在 `shared` 的状态表里。
 
@@ -150,11 +150,9 @@
 |---|---|---|---|
 | `customers` | `name TEXT NOT NULL UNIQUE`、`enabled`、`term_days INTEGER NULL CHECK (term_days >= 0)`、`opening_debt_cents INTEGER NOT NULL DEFAULT 0 CHECK (opening_debt_cents >= 0)`、有版本 | 客户（往来单位），对账按客户、明细按门店。销售维护名称、启用状态；财务维护账期和期初欠款。期初欠款只在开第一张对账单前可改，首张有效对账单保存该金额；首张作废后释放期初欠款占用，下一张重新带入，不重复计算 | `customers[]` |
 | `stores` | `customer_id → customers.id NOT NULL`、`name TEXT NOT NULL`、`contact`、`phone`、`address` 都是 `TEXT NOT NULL DEFAULT ''`、`enabled`、有版本 | 唯一 `(customer_id, name)`。填了登录手机号（有启用的门店账号）时 `contact` 不能为空，门店账号的 `accounts.name` 跟着 `contact` 改（服务层，同一事务）。停用规则见 03 章第 2、5 节 | `stores[]` |
-| `product_categories` | `name TEXT NOT NULL UNIQUE`、`sort INTEGER NOT NULL DEFAULT 0` | 产品内部分类（单品、花束…），只在产品管理里用（2026-10-03 确认）。按 `sort, id` 排；没有产品（含停用的产品）时可以删除（03 章第 5 节） | `cats[]` |
-| `products` | `name TEXT NOT NULL UNIQUE`、`category_id → product_categories.id`、`unit TEXT NOT NULL`、`image_file_id → files.id NULL`、`enabled`、有版本 | 成品。停用规则见 03 章第 5 节；原型没有产品级启用，新加 | `products[]` |
-| `product_bom_lines` | `product_id → products.id`、`material_id → materials.id`、`qty INTEGER NOT NULL CHECK (qty > 0)` | 配方，唯一 `(product_id, material_id)`；每个产品至少一行（服务层）。直接关联花材，原型的「配方对不上花材资料」在新版不会出现 | `bom[]` |
-| `catalog_categories` | `customer_id → customers.id`、`name TEXT NOT NULL`、`sort INTEGER NOT NULL DEFAULT 0` | 订货分类：每个客户一套，门店订货页按它分组（2026-10-03 确认）。唯一 `(customer_id, name)`；按 `sort, id` 排；有目录产品（含停用的）时不能删 | — |
-| `catalog_items` | `customer_id → customers.id`、`product_id → products.id`、`category_id → catalog_categories.id NOT NULL`、`customer_code TEXT NOT NULL DEFAULT ''`、`price_cents INTEGER NOT NULL CHECK (price_cents >= 0)`、`enabled`、有版本 | 订货目录：每个客户一份价目。唯一 `(customer_id, product_id)`；`customer_code` 是客户产品编码（`''` 为没填），部分唯一索引 `(customer_id, customer_code) WHERE customer_code <> ''`；`category_id` 须是同一客户的分类（服务层校验），索引 `(category_id)`。`enabled=false` 即停用。改 `price_cents` 时同一事务更新这个客户待确认订单里这种产品的 `order_lines.price_cents`、`list_price_cents`（03 章第 8.1 节） | `directory[客户][]` |
+| `products` | `customer_id → customers.id NOT NULL`、`name TEXT NOT NULL`、`unit TEXT NOT NULL`、`image_file_id → files.id NULL`、`category_id → catalog_categories.id NOT NULL`、`customer_code TEXT NOT NULL DEFAULT ''`、`price_cents INTEGER NOT NULL CHECK (price_cents >= 0)`、`enabled`、有版本 | 订货目录里的产品，归一个客户（2026-10-05 确认，原 `products` + `catalog_items` 合成这一张，去掉 `product_categories`）。唯一 `(customer_id, name)`；`customer_code` 是客户产品编码（`''` 为没填），部分唯一索引 `(customer_id, customer_code) WHERE customer_code <> ''`；`category_id` 须是同一客户的订货分类（服务层校验），索引 `(category_id)`。`price_cents` 是订货价；`enabled=false` 即停用（不可订）。改 `price_cents` 时同一事务更新这个客户待确认订单里这种产品的 `order_lines.price_cents`、`list_price_cents`（03 章第 8.1 节） | `products[]`、`directory[客户][]` |
+| `product_bom_lines` | `product_id → products.id`、`material_id → materials.id`、`qty INTEGER NOT NULL CHECK (qty > 0)` | 配方，唯一 `(product_id, material_id)`；每个产品至少一行（服务层）。产品归客户，所以配方也是每个客户各一份；`qty` 是每单位产品的用量。直接关联花材，原型的「配方对不上花材资料」在新版不会出现 | `bom[]` |
+| `catalog_categories` | `customer_id → customers.id`、`name TEXT NOT NULL`、`sort INTEGER NOT NULL DEFAULT 0` | 订货分类：每个客户一套，门店订货页按它分组（2026-10-01 确认）。唯一 `(customer_id, name)`；按 `sort, id` 排；有产品（含停用的）时不能删 | — |
 
 ### 4.2 `orders` 订单（有版本）
 
@@ -170,10 +168,11 @@
 | note | `TEXT NOT NULL DEFAULT ''` | 门店或销售写的备注 | `note` |
 | confirmed_by / confirmed_at | `NULL` | 销售确认（含修改并确认） | 无 |
 | shipped_by / shipped_at | `NULL` | 确认发货 | `shipper`、`shippedAt` |
-| ship_note | `TEXT NOT NULL DEFAULT ''` | 有一行实发和订单数量不一致（少发、多发）时必填（服务层校验） | `shipNote` |
+| ship_note | `TEXT NOT NULL DEFAULT ''` | 发货备注，选填；实发和订单数量不一致（少发、多发）时也可以不写（03 章第 5 节，2026-10-05 用户确认；2026-10-06 第 4 批改正此处原「必填」） | `shipNote` |
 | cancelled_by / cancelled_at | `NULL` | 同意门店取消申请时是同意的销售 | 无 |
 | cancel_reason | `TEXT NULL` | 取消原因；待确认取消时为空；同意取消申请时写「门店申请取消」，门店写了原因接在后面 | `closeReason` |
 | void_reason / voided_by / voided_at | `NULL` | 作废已发货订单（必填原因） | 无 |
+| store_notice_at / store_seen_at | `TIMESTAMPTZ NULL` | 门店提醒（2026-10-06 第 3 批）：门店取消申请被同意或拒绝时写 `store_notice_at`；门店账号打开这张订单详情时写 `store_seen_at`。`store_notice_at` 晚于 `store_seen_at`（或从没看过）算门店没看过（03 章第 8.1 节「已看过」）。迁移 0016 把已有结果一律算已看过 | 无 |
 
 约束：`CHECK (status <> 'shipped' OR shipped_at IS NOT NULL)`、`CHECK (status <> 'pending_confirm' OR ship_date IS NULL)`、`CHECK (status NOT IN ('to_ship','shipped','voided') OR ship_date IS NOT NULL)`、`CHECK (status <> 'voided' OR (shipped_at IS NOT NULL AND void_reason IS NOT NULL))`。索引：`(status, ship_date)`、`(store_id, order_date DESC)`、`(customer_id, status)`。
 
@@ -186,14 +185,27 @@
 | 字段 | 类型与约束 | 说明 | 原型字段 |
 |---|---|---|---|
 | order_id | `→ orders.id NOT NULL ON DELETE CASCADE` | 改单时整组替换 | |
-| product_id | `→ products.id NOT NULL` | 唯一 `(order_id, product_id)` | `product` |
+| product_id | `→ products.id NOT NULL` | 唯一 `(order_id, product_id)`；产品须属于订单的客户（服务层） | `product` |
 | name / unit | `TEXT NOT NULL` | 快照 | `name`、`unit` |
-| customer_code | `TEXT NOT NULL DEFAULT ''` | 下单时的客户产品编码快照（2026-10-03 确认）；没填为 `''`，之后改目录编码不变 | — |
+| customer_code | `TEXT NOT NULL DEFAULT ''` | 下单时的客户产品编码快照（2026-10-01 确认）；没填为 `''`，之后改产品编码不变 | — |
 | qty | `INTEGER NOT NULL CHECK (qty > 0)` | 订货数量 | `qty` |
 | price_cents | `INTEGER NOT NULL CHECK (price_cents >= 0)` | 下单单价，销售可改（改过的标「改价」）；待确认订单始终等于目录价，随目录调价同步 | `price` |
 | list_price_cents | `INTEGER NOT NULL CHECK (list_price_cents >= 0)` | 下单时的目录价快照；待确认订单随目录调价同步 | `listPrice` |
 | shipped_qty | `INTEGER NULL CHECK (shipped_qty >= 0)` | 实发；可少于或多于订单数量，不设上限（2026-10-02 梳理确认）；确认发货时写，之后不能改 | `shipped` |
 | sort | `INTEGER NOT NULL` | 显示顺序 | 数组下标 |
+
+### 4.3a `order_line_bom_lines` 发货时配方
+
+2026-10-05 确认：确认发货时，同一事务把实发大于 0 的每行产品当时的配方存下来；之后改配方，已发货订单不变。待确认、待发货订单没有这张表的行，跟着当前配方走。
+
+| 字段 | 类型与约束 | 说明 |
+|---|---|---|
+| order_line_id | `→ order_lines.id NOT NULL ON DELETE CASCADE` | 只有已发货订单的行有；已发货订单的明细不再替换 |
+| material_id | `→ materials.id NOT NULL` | 花材 |
+| material_name / unit | `TEXT NOT NULL` | 花材名称、单位快照 |
+| qty | `INTEGER NOT NULL CHECK (qty > 0)` | 每单位产品的用量（照抄当时 `product_bom_lines.qty`），不乘实发数 |
+
+唯一 `(order_line_id, material_id)`；按 `id` 排即配方录入顺序。
 
 ### 4.4 `order_changes` 订单变更记录
 
@@ -236,6 +248,7 @@
 | processed_by / processed_at | `NULL` | | 无 |
 | close_reason | `TEXT NULL` | 关闭原因，选填，可空（2026-10-05 用户确认） | `closeReason` |
 | void_reason / voided_by / voided_at | `NULL` | 作废（必填原因） | `voidReason`、`voidAt` |
+| store_notice_at / store_seen_at | `TIMESTAMPTZ NULL` | 门店提醒（2026-10-06 第 3 批）：每次出结果（处理、关闭、作废）写 `store_notice_at`；门店账号打开这张售后详情时写 `store_seen_at`。`store_notice_at` 晚于 `store_seen_at`（或从没看过）算门店没看过，所以看过后又被作废会重新算没看过；销售代建（`origin='sales'`）的也算（03 章第 8.1 节，2026-10-06 补充决定） | 无 |
 
 约束：`CHECK (status <> 'processed' OR amount_cents IS NOT NULL)`、`CHECK (status <> 'voided' OR void_reason IS NOT NULL)`。索引：`(order_id, status)`、`(store_id, after_date DESC)`、`(status, after_date DESC)`。
 
@@ -319,6 +332,8 @@
 | recv_note | `TEXT NOT NULL DEFAULT ''` | | `recvNote` |
 | cancel_reason / cancelled_by / cancelled_at | `NULL` | 取消原因必填；`cancelled_by` 可以是采购员或供应商账号 | `closeReason`、`cancelAt` |
 | void_reason / voided_by / voided_at | `NULL` | 仓库作废已收货采购单（必填原因） | 无 |
+| diff_at / diff_by | `NULL` | 最近一次到货差异的时间和经手人（2026-10-06 第 3 批），差异口径见下一行 | 无 |
+| buyer_seen_by / buyer_seen_at | `NULL` | 「采购已看过」到货差异（2026-10-06 第 3 批）：采购在采购单详情点「知道了」时写入是谁、什么时候。最近一次差异时间 `diff_at`（收货时有少收、多收、拒收此行、改价或整单拒收则为收货时间；之后每次改价、退货、作废的时间取最晚，2026-10-06 补充决定）晚于 `buyer_seen_at`（或从没看过）就算「到货有差异、未看过」，进采购待办；每次收货、改价、退货、作废有差异时更新 `diff_at`（第 8 节）。待办只算 `buyer_id` 是本人的单，管理员算全部 | 无 |
 
 原型的 `payable`、`repriced` 不存：采购金额按第 8 节算，改价看 `price_changes` 有没有记录；所属有效对账单通过 `statement_lines` 查询，业务单据没有已付 / 未付或付款状态。约束 `CHECK (status <> 'voided' OR (received_at IS NOT NULL AND void_reason IS NOT NULL))`。索引：`(status, order_date DESC)`、`(supplier_id, status)`。
 
@@ -598,7 +613,9 @@
 | 全部退货 `allReturned` / 可退 `maxReturnQty` | received_qty、returned_qty、库存 | 可退取净实收与库存较小值；全部退货禁用退货和改价 |
 | 库存 `stockQty/bookQty` | SUM(stock_batches.left_qty) | 与流水合计核对；已有库存批次的 in_date 不随加回变更 |
 | 库龄 `ageDays/oldestAgeDays/aged` | 剩余批次 in_date | 上海日历天数；最老剩余批次≥STOCK_AGE_WARNING_DAYS 为 aged，库存为 0 则 oldestAgeDays=null；仓库分 aged / 其他，员工库存查询不返回库龄 |
-| 在途 / 需求 / 余量 / 邀请 `inTransitQty/needQty/leftQty/invited/shipFrom/shipTo` | to_receive 采购 qty；区间内 to_ship 订单 qty × 当前配方；pending invite_lines | 未提交邀请不算在途；实际涉及订单 min/max ship_date；来源在途可点采购单 |
+| 在途 / 需求 / 余量 / 邀请 `inTransitQty/needQty/leftQty/invited/shipFrom/shipTo` | to_receive 采购 qty；区间内 to_ship 订单 qty × 产品当前配方（不读 `order_line_bom_lines`）；pending invite_lines | 未提交邀请不算在途；实际涉及订单 min/max ship_date；来源在途可点采购单 |
+| 到货差异（待办 key `poDiffs`、详情 `diff`、卡片 `diffUnseen`，2026-10-06 第 3 批） | 收货行 received_qty ≠ qty（少收、多收、拒收此行）、收货时改价、整单拒收、收货后 price_changes / purchase_returns、作废已收货；时间存 `purchase_orders.diff_at` | 逐项列「花材 实收 x（下单 y）」「单价 a → b」「退货 n」「整单拒收」「已作废」和收货人、收货时间；最近差异时间晚于 `buyer_seen_at` 或从没看过即未看过，计入这张单采购员（管理员看全部）的待办「到货有差异」；接口字段名以 05 章为准 |
+| 门店没看过 `unseen`（2026-10-06 第 3 批） | afters、orders 的 store_notice_at 与 store_seen_at | 门店底栏「订单」角标 = 没看过的售后张数 + 没看过的订单张数；订单页段名分别带数；接口字段名以 05 章为准 |
 | 需求列表顺序 / 逾期提示 | 上述数据 | 缺货优先、shipFrom、编码、id；shortageOnly 不改计算。overdue 只查今天以前 to_ship 订单，不并入当前区间 |
 
 财务多表读取采用同一一致性快照；写操作先锁客户 / 供应商，再复查所选来源或对账单版本、状态、金额和当前余额。只检查提交相关对象，不生成 ledgerToken、不传全账 expected、不对历史单据重新分配收付款。目录 previewToken、采购 reviewToken 仍保留各自用途，不作为持久化业务字段。批量确认订单 / 发货不新增批量单据表；每张单独版本校验、事务和日志，返回成功及失败结果。配货勾选仅在当前手机保存、发货后清除，不入数据库。
@@ -619,11 +636,9 @@
 ```mermaid
 erDiagram
   customers ||--o{ stores : has
-  customers ||--o{ catalog_items : prices
+  customers ||--o{ products : owns
   customers ||--o{ catalog_categories : owns
-  catalog_categories ||--o{ catalog_items : groups
-  products ||--o{ catalog_items : listed
-  product_categories ||--o{ products : groups
+  catalog_categories ||--o{ products : groups
   products ||--o{ product_bom_lines : bom
   materials ||--o{ product_bom_lines : used
   stores ||--o| accounts : store_account
@@ -633,6 +648,8 @@ erDiagram
   customers ||--o{ orders : places
   stores ||--o{ orders : for
   orders ||--o{ order_lines : lines
+  order_lines ||--o{ order_line_bom_lines : shipped_bom
+  materials ||--o{ order_line_bom_lines : used
   orders ||--o{ order_changes : changes
   orders ||--o{ afters : after_sales
   afters ||--o{ after_lines : lines

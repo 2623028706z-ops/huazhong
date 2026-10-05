@@ -18,6 +18,8 @@ interface Line {
   readonly?: boolean
   max?: number
   packed?: boolean
+  // 只读时有值：小字行末显示，点这一行发 open（订单详情看发货时配方）
+  link?: string
 }
 
 Component({
@@ -36,6 +38,8 @@ Component({
     // 明细是花材（采购、入库、配方）：编码写「花材编码」；默认是产品，写「客户产品编码」
     material: { type: Boolean, value: false },
     picking: { type: Boolean, value: false },
+    // 精简（目录产品的配方）：不要表头和合计，一行名称在左、用量和单位在右
+    compact: { type: Boolean, value: false },
     // 有值就在合计上面放一行「+ 添加产品」，点了发 add
     addText: { type: String, value: '' },
     // 有值就在行编辑窗口放「拒收此行」：实收置 0 并关窗
@@ -117,7 +121,10 @@ Component({
       })
     },
     onEdit(event: IndexEvent) {
-      this.edit(event.currentTarget.dataset.index)
+      const index = event.currentTarget.dataset.index
+      if (this.data.mode === 'view' && this.data.lines[index]?.link)
+        this.triggerEvent('open', index)
+      else this.edit(index)
     },
     onAdd() {
       this.triggerEvent('add')

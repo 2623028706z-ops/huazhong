@@ -1,10 +1,18 @@
-// 客户、门店、产品、分类、门店邀请（07 章 A25–A28、A38、E12）
-import type { CustomerItem, Me, ProductItem, StoreInviteView, StoreItem } from '@huazhong/shared'
+// 客户、门店、门店邀请（07 章 A25–A28、A38、E12）
+import type { CustomerItem, Me, StoreInviteView, StoreItem } from '@huazhong/shared'
 import { and, eq, isNull } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
-import { accounts, customers, materials, operationLogs } from '../db/schema/index.ts'
+import { accounts, customers, operationLogs } from '../db/schema/index.ts'
 import { phoneCode } from './support/phone.ts'
-import { apiOf, dataOf, idBy, startSales, TODAY, type SalesApp } from './support/sales.ts'
+import {
+  apiOf,
+  dataOf,
+  idBy,
+  startSales,
+  TODAY,
+  type SalesApp,
+  productIdOf,
+} from './support/sales.ts'
 
 let s: SalesApp
 beforeEach(async () => {
@@ -82,62 +90,11 @@ describe('客户、门店、产品资料', () => {
     dataOf(await sales.patch(`/stores/${binjiang.id}`, storeEdit(binjiang, { contact: '陈店长' })))
     expect(dataOf<Me>(await (await s.as('s1')).get('/me')).name).toBe('陈店长')
 
-    const [rose] = await s.t.db.select().from(materials).where(eq(materials.name, '粉雪山玫瑰'))
-    const categoryId = await idOfCategory('花束')
-    const product = {
-      name: '粉玫瑰日常花束',
-      categoryId,
-      unit: '束',
-      imageFileId: null,
-      enabled: true,
-    }
-    const bom = [{ materialId: `${rose?.id ?? ''}`, qty: 10 }]
-    expect((await sales.post('/products', { ...product, bom })).body.error?.fields).toEqual({
-      name: '已有同名产品',
-    })
-    const noBom = await sales.post('/products', { ...product, name: '新花束', bom: [] })
-    expect(noBom.body.error?.fields).toEqual({ bom: '请至少添加一种花材' })
-    const created = dataOf<ProductItem>(
-      await sales.post('/products', { ...product, name: '新花束', bom }),
-    )
-    expect(created.bom[0]).toMatchObject({
-      materialName: '粉雪山玫瑰',
-      qty: 10,
-      materialEnabled: true,
-    })
-
-    const inUse = await sales.del(`/product-categories/${categoryId}`)
-    expect(inUse.body.error).toMatchObject({
-      code: 'BUSINESS_RULE',
-      message: '分类中仍有产品，请先移动产品',
-    })
-    const festival = dataOf<{ id: string; sort: number }>(
-      await sales.post('/product-categories', { name: '节日花束' }),
-    )
-    expect(festival.sort).toBe(3)
-    dataOf(await sales.del(`/product-categories/${festival.id}`))
     const logs = await s.t.db
       .select({ action: operationLogs.action })
       .from(operationLogs)
       .where(eq(operationLogs.module, 'sales'))
-    expect(logs.map((l) => l.action)).toEqual(
-      expect.arrayContaining(['新增分类', '删除分类', '新增产品', '修改门店']),
-    )
-  })
-
-  test('分类排序：ids 不是全部分类 → STALE；调换后按新顺序', async () => {
-    const sales = await s.as('u2')
-    const list = dataOf<{ items: { id: string; name: string }[] }>(
-      await sales.get('/product-categories'),
-    )
-    const ids = list.items.map((c) => c.id)
-    expect(
-      (await sales.put('/product-categories/order', { ids: ids.slice(1) })).body.error?.code,
-    ).toBe('STALE')
-    const moved = dataOf<{ items: { name: string }[] }>(
-      await sales.put('/product-categories/order', { ids: [ids[1], ids[0]] }),
-    )
-    expect(moved.items.map((c) => c.name)).toEqual(['花束', '单品'])
+    expect(logs.map((l) => l.action)).toEqual(expect.arrayContaining(['修改门店']))
   })
 
   test('A28 停用的客户不能下新单，门店订货页被拦', async () => {
@@ -150,7 +107,11 @@ describe('客户、门店、产品资料', () => {
       shipDate: TODAY,
       note: '',
       lines: [
-        { productId: await idBy(s.t, 'products.name', '粉玫瑰日常花束'), qty: 1, priceCents: 7000 },
+        {
+          productId: await productIdOf(s.t, '拾光花店', '粉玫瑰日常花束'),
+          qty: 1,
+          priceCents: 7000,
+        },
       ],
     })
     expect(res.body.error).toMatchObject({
@@ -164,13 +125,6 @@ describe('客户、门店、产品资料', () => {
     )
   })
 })
-
-async function idOfCategory(name: string): Promise<string> {
-  const list = dataOf<{ items: { id: string; name: string }[] }>(
-    await (await s.as('u2')).get('/product-categories'),
-  )
-  return list.items.find((c) => c.name === name)?.id ?? ''
-}
 
 describe('门店邀请', () => {
   test('A25 重新生成：旧的作废，只有新的有效，7 天有效', async () => {

@@ -14,6 +14,11 @@
     </view>
     <hz-notice wx:if="{{notice}}" text="{{notice}}" />
     <hz-search value="{{keyword}}" placeholder="{{searchPlaceholder}}" bind:search="onSearch" />
+    <view wx:if="{{lastOrder && !isEdit && !keyword}}" class="u-card hz-shop__last">
+      <text class="hz-icon hz-icon--rotate-ccw hz-shop__last-icon"></text>
+      <view class="hz-shop__last-main"><text class="hz-shop__last-title">{{lastOrder.title}}</text><text class="u-info__meta u-ellipsis">{{lastOrder.meta}}</text></view>
+      <view class="hz-shop__reorder u-tap {{notice ? 'hz-shop__reorder--off' : ''}}" aria-role="button" aria-disabled="{{!!notice}}" bindtap="onReorder">{{texts.reorder}}</view>
+    </view>
   </view>
   <view class="hz-shop__body">
     <view wx:if="{{!keyword}}" class="hz-shop__side">
@@ -33,7 +38,7 @@
           <view class="hz-shop__buy">
             <text class="u-serif-amount u-ellipsis hz-shop__price">{{item.priceText}}</text>
             <view wx:if="{{item.qty===0}}" class="hz-shop__plus" aria-role="button" aria-label="{{texts.add}}" data-key="{{item.id}}" bindtap="onAdd">＋</view>
-            <block wx:else><hz-stepper value="{{item.qty}}" min="{{0}}" data-key="{{item.id}}" bind:change="onQty" /><text>{{item.unit}}</text></block>
+            <view wx:else class="hz-shop__qty"><hz-stepper value="{{item.qty}}" min="{{0}}" data-key="{{item.id}}" bind:change="onQty" /><text>{{item.unit}}</text></view>
           </view>
         </view>
       </view>
@@ -47,7 +52,7 @@
         <text wx:if="{{cartText}}" class="u-bar-total__meta">{{cartText}}</text>
       </view>
     </view>
-    <hz-button kind="round" text="{{isEdit ? texts.confirmEdit : texts.checkout}}" disabled="{{cartCount === 0 || notice}}" reason="{{notice}}" bind:press="onCheckout" />
+    <hz-button kind="round" text="{{isEdit ? texts.reviewEdit : texts.checkout}}" disabled="{{cartCount === 0 || notice}}" reason="{{notice}}" bind:press="onCheckout" />
   </hz-action-bar>
 </block>
 <hz-sheet show="{{cartSheet}}" title="{{pickedTitle}}" footer bind:close="onCloseCart">
@@ -55,12 +60,17 @@
     <hz-error wx:if="{{formError}}" message="{{formError}}" />
     <hz-notice wx:if="{{notice}}" text="{{notice}}" />
     <hz-notice wx:if="{{reviewNotice}}" text="{{reviewNotice}}" />
+    <view wx:if="{{isEdit}}" class="hz-shop__changes">
+      <text class="u-sheet-section__title">{{texts.changedLines}}</text>
+      <view wx:for="{{editChanges}}" wx:key="key" class="u-sheet-row"><text>{{item.name}}</text><text class="hz-shop__change-qty">{{item.text}}</text></view>
+      <text wx:if="{{!editChanges.length}}" class="u-caption">{{texts.noChange}}</text>
+    </view>
     <view class="hz-shop__clear"><hz-button kind="quiet" text="{{texts.clear}}" bind:press="onClear" /></view>
     <hz-line-item lines="{{cartRows}}" mode="qty" removable bind:qty="onCartQty" bind:remove="onCartRemove" />
     <hz-field label="{{texts.note}}" type="textarea" placeholder="{{texts.optional}}" value="{{note}}" bind:change="onNote" />
-    <view class="u-sheet-row"><text>{{texts.orderAmount}}</text><view class="u-bar-total"><text class="u-bar-total__amount">{{format.formatMoney(cartTotal)}}</text><text wx:if="{{cartText}}" class="u-bar-total__meta">{{cartText}}</text></view></view>
+    <view class="u-sheet-row"><text>{{texts.orderAmount}}</text><view class="u-bar-total hz-shop__sheet-total"><text class="u-bar-total__amount">{{format.formatMoney(cartTotal)}}</text><text wx:if="{{cartText}}" class="u-bar-total__meta">{{cartText}}</text></view></view>
   </view>
-  <hz-button slot="footer" text="{{needsReview ? texts.recheck : isEdit ? texts.confirmEdit : texts.submit}}" loading="{{saving}}" disabled="{{(cartRows.length === 0 && !isEdit) || notice}}" reason="{{notice}}" bind:press="onSubmit" />
+  <hz-button slot="footer" text="{{needsReview ? texts.recheck : isEdit ? texts.saveEdit : texts.submit}}" loading="{{saving}}" disabled="{{(cartRows.length === 0 && !isEdit) || notice}}" reason="{{notice}}" bind:press="onSubmit" />
 </hz-sheet>
 
 <hz-tabbar wx:if="{{!isEdit}}" tabs="{{tabs}}" current="shop" />

@@ -1,5 +1,6 @@
 import {
   contract,
+  copy,
   financeCopy as f,
   financeTexts,
   shanghaiDateOf,
@@ -57,7 +58,7 @@ Page({
     error: '',
     changes: [] as string[],
     failure: null as FailureView | null,
-    texts: financeTexts,
+    texts: { ...financeTexts, optional: copy.placeholder.optional },
   },
   draft: null as StatementDraft | null,
   key: '',

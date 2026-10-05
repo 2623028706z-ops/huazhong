@@ -46,6 +46,9 @@ export const afterCardSchema = z.object({
   units: z.array(unitTotalSchema),
   // 只有已处理的有金额；待处理、已关闭、已作废为 null
   amountCents: centsSchema.nullable(),
+  // 门店端：售后有结果（已处理、已关闭、已作废，含销售代建）且门店还没点开看过；看过后又被作废重新算没看过。
+  // 员工端恒为 false
+  unseen: z.boolean(),
   actions: z.array(actionSchema),
   lockedReason: z.string().nullable(),
   statement: statementRefSchema.nullable(),
@@ -105,7 +108,8 @@ export const listAfters = {
   path: '/afters',
   grants: ['sales', 'finance', 'store'],
   query: afterQuerySchema,
-  // 列表级 actions ⊆ createAfter（销售）；门店申请只从订单详情进入。
+  // 列表级 actions：销售 createAfter；门店 applyAfter（售后段底栏「申请售后」→ 选订单，
+  // 选订单用 GET /orders?afterable=true，2026-10-06 第 3 批）
   response: countedPageSchema(afterCardSchema, afterStatuses),
   errors: [],
 } as const satisfies Endpoint
