@@ -23,7 +23,7 @@ export type Query = {
   to?: string | undefined
   status?: 'unsettled' | 'settled' | 'voided' | undefined
   q?: string | undefined
-  filter?: 'outstanding' | 'overdue' | 'unsettled' | undefined
+  filter?: 'outstanding' | 'overdue' | 'unstatemented' | undefined
   tab?: 'statements' | 'unstatemented' | undefined
 }
 type PartyRef = { kind: StatementKind; id: number }
@@ -31,6 +31,23 @@ export function page<T extends { id: string }>(all: T[], query: Pick<Query, 'cur
   const cursor = query.cursor === undefined ? null : decodeCursor(query.cursor)
   const kept = cursor ? all.filter((r) => Number(r.id) < cursor[1]) : all
   return pageOf(kept, query.limit ?? PAGE_SIZE, (r) => [Number(r.id), Number(r.id)])
+}
+function pageByAmount<T extends { id: string; unstatementedCents: number }>(
+  all: T[],
+  query: Pick<Query, 'cursor' | 'limit'>,
+) {
+  const sorted = [...all].sort(
+    (a, b) => b.unstatementedCents - a.unstatementedCents || Number(b.id) - Number(a.id),
+  )
+  const cursor = query.cursor === undefined ? null : decodeCursor(query.cursor)
+  const kept = cursor
+    ? sorted.filter(
+        (r) =>
+          r.unstatementedCents < Number(cursor[0]) ||
+          (r.unstatementedCents === Number(cursor[0]) && Number(r.id) < cursor[1]),
+      )
+    : sorted
+  return pageOf(kept, query.limit ?? PAGE_SIZE, (r) => [r.unstatementedCents, Number(r.id)])
 }
 async function partyOf(tx: Db | Tx, kind: StatementKind, id: number) {
   return kind === 'customer'
@@ -171,9 +188,12 @@ export class StatementReads {
   }
   async summary(tx: Db | Tx, kind: StatementKind, id: number) {
     const party = await partyOf(tx, kind, id)
-    return found(
-      (await partySummaries(tx, { kind, parties: [party], today: this.clock.today() }))[0],
-    )
+    const summaries = await partySummaries(tx, {
+      kind,
+      parties: [party],
+      today: this.clock.today(),
+    })
+    return found(summaries.map(({ ready: _ready, ...summary }) => summary)[0])
   }
   async parties(tx: Db | Tx, kind: StatementKind, query: Query) {
     const rows =
@@ -188,13 +208,12 @@ export class StatementReads {
     const filtered = summaries.filter((r) => {
       if (query.filter === 'outstanding') return r.outstandingCents > 0
       if (query.filter === 'overdue') return r.overdueCents > 0
-      // 首页「待收款 / 待付款」：有没结清的对账单
-      return query.filter !== 'unsettled' || r.unsettledCount > 0
+      return query.filter !== 'unstatemented' || r.ready
     })
-    const result = page(
-      filtered.map((r) => ({ ...r, id: r.partyId })),
-      query,
-    )
+    const listed = filtered.map(({ ready: _ready, ...r }) => ({ ...r, id: r.partyId }))
+    // 「有未对账」按未对账金额从大到小，方便先开金额大的（2026-10-05 体验改版第 1 批）
+    const result =
+      query.filter === 'unstatemented' ? pageByAmount(listed, query) : page(listed, query)
     return { ...result, items: result.items.map(({ id: _id, ...summary }) => summary), actions: [] }
   }
   async ledger(tx: Db | Tx, viewer: Viewer, party: PartyRef, query: Query) {

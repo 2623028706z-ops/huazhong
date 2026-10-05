@@ -7,12 +7,18 @@
     <hz-profile
       wx:if="{{profile}}"
       name="{{profile.name}}"
-      sub="{{profile.sub}}"
+      lines="{{profile.lines}}"
       menus="{{profile.menus}}" dev-menus="{{profile.devMenus}}"
-      phone="{{profile.phone}}" contact-phone="{{profile.contactPhone}}" external="{{profile.external}}"
+      contact-phone="{{profile.contactPhone}}" external="{{profile.external}}"
       bind:select="onSelect"
       bind:logout="onLogout"
-    />
+    >
+      <view wx:if="{{statements}}" class="u-section">
+        <text class="u-section__title">{{texts.statements}}</text>
+        <view wx:if="{{!statements.length}}" class="u-card u-my-statements__empty">{{texts.noStatement}}</view>
+        <hz-card wx:for="{{statements}}" wx:key="id" row="{{item}}" status-kind="statementStatus" data-key="{{item.id}}" bind:press="onStatement" />
+      </view>
+    </hz-profile>
   </view>
 </view>
 <hz-confirm id="hz-confirm" />

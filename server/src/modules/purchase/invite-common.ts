@@ -24,7 +24,6 @@ export function notifyInvite(ctx: WriteContext, row: InviteRow) {
       { topic: 'invites', version: null },
       { topic: `supplier:${row.supplierId}`, version: null },
       { topic: 'demand', version: null },
-      { topic: 'todo:purchase', version: null },
     ],
     { supplierIds: [String(row.supplierId)] },
   )

@@ -3,7 +3,6 @@ import {
   labels,
   copy,
   redesignCopy,
-  formatMoney,
   type ModuleKey,
   type TodoModule,
   type TodoRow,
@@ -25,7 +24,7 @@ Component({
     common: [] as NonNullable<(typeof entriesOf)[ModuleKey]>['common'],
     masters: [] as NonNullable<(typeof entriesOf)[ModuleKey]>['masters'],
     mastersTitle: '',
-    todos: [] as (TodoRow & { amount: string })[],
+    todos: [] as TodoRow[],
     texts: {
       todos: copy.screen.title.todos,
       common: redesignCopy.common,
@@ -71,12 +70,7 @@ Component({
         this.setData({ failure: failureOf(result.failure, 'refresh') })
         return
       }
-      this.setData({
-        todos: result.data.rows.map((row) => ({
-          ...row,
-          amount: row.amountCents === undefined ? '' : formatMoney(row.amountCents),
-        })),
-      })
+      this.setData({ todos: result.data.rows })
     },
     onEntry(event: DetailEvent<string>) {
       const entry = [...this.data.common, ...this.data.masters].find(

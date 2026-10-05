@@ -8,8 +8,7 @@
     "hz-error": "/components/hz-error/index",
     "hz-action-bar": "/components/hz-action-bar/index",
     "hz-button": "/components/hz-button/index",
-    "hz-order-confirm": "/packages/sales/components/hz-order-confirm/index",
-    "hz-store-invite": "/packages/sales/components/hz-store-invite/index"
+    "hz-order-confirm": "/packages/sales/components/hz-order-confirm/index"
   },
   "enablePullDownRefresh": true
 }

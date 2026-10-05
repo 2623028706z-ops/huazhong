@@ -1,4 +1,4 @@
-// 邀请订货弹层（06 章 X2）：所有启用客户的启用门店按客户分组，门店多时可搜索；已绑定微信的灰显不可选。
+// 邀请订货弹层（06 章 X2，从 X8 客户页打开）：所有启用客户的启用门店按客户分组，门店多时可搜索；已绑定微信的灰显不可选。
 // 选中后没有登录手机号的就地填写（联系人为空时一并填），点「保存并邀请」才走「门店修改接口」保存（防误填），
 // 再 POST /stores/:id/invites 生成邀请；「发给门店」是 open-type="share"，转发用页面的 onShareAppMessage。
 // 有登录手机号的选中即生成邀请
@@ -52,6 +52,8 @@ Component({
   properties: {
     show: { type: Boolean, value: false },
     customers: { type: Array, value: [] as CustomerItem[] },
+    // X8 门店段点选了门店：打开就直接给这家生成邀请，不用再选
+    storeId: { type: String, value: '' },
   },
   data: {
     groups: [] as Group[],
@@ -107,6 +109,7 @@ Component({
         invited: null,
       })
       this.render()
+      if (this.data.storeId) this.pick(this.data.storeId)
     },
     render() {
       const inner = innerOf(this)
@@ -160,7 +163,10 @@ Component({
       this.triggerEvent('invited', null)
     },
     onPick(event: KeyEvent) {
-      const found = this.find(event.currentTarget.dataset.key)
+      this.pick(event.currentTarget.dataset.key)
+    },
+    pick(id: string) {
+      const found = this.find(id)
       if (!found || hasAction(found.store.actions, 'unbindStoreWechat')) return
       const { store, customer } = found
       const needPhone = store.loginPhone === null

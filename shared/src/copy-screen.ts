@@ -318,7 +318,7 @@ export const screen = {
   pickOne: '选一个',
   pickHint: '请选择',
   cancelInviteBody: '取消后供应商不能再填报，已发出的填报链接也会失效。',
-  inviteSentShare: (name: string) => `已邀请${name}填报，点「发给供应商」发给对方`,
+  inviteSentShare: (name: string) => `已邀请${name}填报，点开邀请「发给供应商」发给对方`,
   purchaseOrigin: '花众采购下单',
   supplyOrigin: (no: string) => `供应商填报\u3000\u3000${no}`,
   allReturned: '已全部退货',

@@ -1,6 +1,6 @@
 import { contract, copy, poStatuses, type PoCard } from '@huazhong/shared'
 import { hasAction } from '../core/actions'
-import type { KeyEvent } from '../core/events'
+import type { DetailEvent, KeyEvent } from '../core/events'
 import type { FailureView } from '../core/failure-view'
 import { emptyFilter, type FilterDimension } from '../core/filter'
 import type { PagedList } from '../core/list'
@@ -30,6 +30,14 @@ const data = {
   allLoaded: copy.state.allLoaded,
   canCreate: false,
   createText: copy.screen.title.createPo,
+  // 采购端顶上两段「采购单 / 填报邀请」（06 章 C3）；仓库端没有分段
+  segment: 'orders' as 'orders' | 'invites',
+  segmentTabs: [
+    { key: 'orders', text: copy.screen.title.purchaseOrders },
+    { key: 'invites', text: copy.screen.label.inviteDocs },
+  ],
+  supplierId: '',
+  inviteSearch: copy.screen.demandSearch,
 }
 interface Host {
   data: typeof data
@@ -43,7 +51,12 @@ const methods = {
   list: null as PagedList<PoCard> | null,
   onLoad(this: Host, query: Record<string, string | undefined>) {
     if (query.supplierId)
-      this.setData({ filter: { ...this.data.filter, picks: { supplier: query.supplierId } } })
+      this.setData({
+        supplierId: query.supplierId,
+        filter: { ...this.data.filter, picks: { supplier: query.supplierId } },
+      })
+    if (query.segment === 'invites' && this.data.kind === 'purchase')
+      this.setData({ segment: 'invites' })
     if (query.status) this.setData({ filter: { ...this.data.filter, status: query.status } })
     this.list = listOf(
       this,
@@ -67,6 +80,9 @@ const methods = {
     showList(this, ['pos'])
   },
   loadDimensions: loadSupplierDimensions,
+  onSegment(this: Host, event: DetailEvent<string>) {
+    this.setData({ segment: event.detail === 'invites' ? 'invites' : 'orders' })
+  },
   onOpen(this: Host, event: KeyEvent) {
     const page =
       this.data.kind === 'warehouse' ? 'warehouse/pages/receive' : 'purchase/pages/order-detail'

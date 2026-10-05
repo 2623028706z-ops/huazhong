@@ -17,8 +17,15 @@
       </view>
       <hz-tabs class="u-split__tabs" items="{{sections}}" value="{{section}}" bind:change="onSection" />
       <block wx:if="{{section==='stores'}}">      <text wx:if="{{stores.length === 0}}" class="u-info__meta">{{texts.noStores}}</text>
-      <view wx:for="{{stores}}" wx:key="id" class="u-split__item" data-key="{{item.id}}" bindtap="onOpen">
-        <hz-card row="{{item}}" />
+      <view wx:if="{{stores.length}}" class="u-card u-rows">
+        <view wx:for="{{stores}}" wx:key="id" class="u-rows__item"><view class="u-rows__line">
+          <view class="u-store-row__pick u-tap" data-key="{{item.id}}" bindtap="onPickStore"><view class="u-check u-store-row__radio {{item.picked ? 'u-check--on' : ''}}"><text wx:if="{{item.picked}}" class="hz-icon hz-icon--check"></text></view></view>
+          <view class="u-store-row__main" data-key="{{item.id}}" bindtap="onOpen">
+            <text class="u-rows__name u-ellipsis">{{item.name}}</text>
+            <hz-tag wx:if="{{item.disabled}}" text="{{texts.disabled}}" />
+            <text class="hz-icon hz-icon--chevron-right u-store-row__arrow"></text>
+          </view>
+        </view></view>
       </view>
 </block><block wx:else>      <text wx:if="{{groups.length === 0}}" class="u-info__meta">{{catalogTexts.empty}}</text>
       <view wx:for="{{groups}}" wx:key="id" wx:for-item="group" class="u-section">
@@ -40,7 +47,7 @@
     </scroll-view>
   </view>
 </block>
-<hz-action-bar wx:if="{{section==='stores' && canCreate}}"><hz-button text="{{texts.createStore}}" bind:press="onNewStore" /></hz-action-bar><block wx:elif="{{section==='catalog'}}"><view class="u-detail-third"><hz-button wx:if="{{canCopy}}" kind="text" text="{{catalogTexts.copy}}" bind:press="onOpenCopy" /></view><hz-action-bar><hz-button kind="secondary" text="{{catalogTexts.manage}}" bind:press="onManage" /><hz-button text="{{catalogTexts.add}}" disabled="{{categories.length===0}}" reason="{{catalogTexts.needCategory}}" bind:press="onOpenPick" /></hz-action-bar></block>
+<hz-action-bar wx:if="{{section==='stores' && canCreate}}"><hz-button kind="secondary" text="{{texts.invite}}" bind:press="onInvite" /><hz-button text="{{texts.createStore}}" bind:press="onNewStore" /></hz-action-bar><block wx:elif="{{section==='catalog'}}"><view class="u-detail-third"><hz-button wx:if="{{canCopy}}" kind="text" text="{{catalogTexts.copy}}" bind:press="onOpenCopy" /></view><hz-action-bar><hz-button kind="secondary" text="{{catalogTexts.manage}}" bind:press="onManage" /><hz-button text="{{catalogTexts.add}}" disabled="{{categories.length===0}}" reason="{{catalogTexts.needCategory}}" bind:press="onOpenPick" /></hz-action-bar></block>
 <hz-sheet show="{{customerSheet}}" title="{{editingCustomer ? texts.customerTitle : texts.newCustomerTitle}}" guard="{{customerChanged}}" footer bind:close="onCloseSheet">
   <view class="u-sheet-form">
     <view wx:if="{{editingCustomer}}" class="u-sheet-head">
@@ -74,3 +81,4 @@
   </view>
   <hz-button slot="footer" text="{{texts.confirmCopy}}" disabled="{{!copyPreview.copyCount}}" loading="{{copyBusy}}" bind:press="onCopyCatalog" />
 </hz-sheet>
+<hz-store-invite show="{{inviteSheet}}" customers="{{inviteCustomers}}" store-id="{{inviteStoreId}}" bind:close="onCloseInvite" bind:invited="onInvited" bind:updated="onStoreUpdated" />

@@ -13,7 +13,7 @@ export function landingOf(viewer: Viewer): Me['landing'] {
 export function menusOf(viewer: Viewer): Me['menus'] {
   switch (viewer.type) {
     case 'admin':
-      return ['inventory', 'logs', 'staff']
+      return ['logs', 'staff']
     case 'staff':
       return viewer.modules.includes('warehouse') ? ['logs'] : ['inventory', 'logs']
     // 门店、供应商的售后、对账从订单/采购单顶部分段进，「我的」没有可变入口

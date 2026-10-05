@@ -3,6 +3,7 @@
     "hz-cover": "/components/hz-cover/index",
     "hz-navbar": "/components/hz-navbar/index",
     "hz-profile": "/components/hz-profile/index",
+    "hz-card": "/components/hz-card/index",
     "hz-confirm": "/components/hz-confirm/index",
     "hz-state": "/components/hz-state/index",
     "hz-error": "/components/hz-error/index",

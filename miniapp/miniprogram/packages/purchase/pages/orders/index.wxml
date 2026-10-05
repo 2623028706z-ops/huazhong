@@ -1,2 +1,7 @@
 <import src="/views/po-list.wxml" />
-<template is="po-list" data="{{title, kind, statusKind, statuses, counts, dimensions, dateLabel, searchPlaceholder, filter, failure, skeleton, loaded, rows, emptyObject, done, allLoaded, canCreate, createText}}" />
+<!-- C3：顶上宋体两段「采购单 / 填报邀请」（06 章 C3）；两段都留着，切换时各自的筛选和已加载的列表不丢 -->
+<hz-navbar title="" back />
+<view class="u-list u-list--head"><hz-tabs big items="{{segmentTabs}}" value="{{segment}}" bind:change="onSegment" /></view>
+<view class="{{segment === 'invites' ? '' : 'u-gone'}}"><hz-invite-list supplier-id="{{supplierId}}" search-placeholder="{{inviteSearch}}" /></view>
+<view class="{{segment === 'invites' ? 'u-gone' : ''}}"><template is="po-list-body" data="{{searchPlaceholder, statusKind, statuses, counts, dimensions, dateLabel, filter, failure, skeleton, loaded, rows, emptyObject, done, allLoaded}}" /></view>
+<hz-action-bar wx:if="{{canCreate}}"><hz-button text="{{createText}}" bind:press="onCreate" /></hz-action-bar>

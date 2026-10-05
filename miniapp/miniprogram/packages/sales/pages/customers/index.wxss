@@ -10,3 +10,29 @@ page {
 .u-split__side {
   overflow-y: auto;
 }
+
+/* 门店段一行一家（06 章 X8）：行首单选圈 → 门店名 → 已停用 → 右箭头 */
+.u-store-row__pick {
+  display: flex;
+  flex: none;
+  align-items: center;
+  align-self: stretch;
+}
+
+.u-store-row__radio {
+  border-radius: 50%;
+}
+
+.u-store-row__main {
+  display: flex;
+  flex: 1;
+  gap: var(--hz-line-gap);
+  align-items: center;
+  align-self: stretch;
+  min-width: 0;
+}
+
+.u-store-row__arrow {
+  flex: none;
+  color: var(--hz-muted);
+}

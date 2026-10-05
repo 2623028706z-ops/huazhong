@@ -3,7 +3,6 @@
 import {
   contract,
   copy,
-  maskPhone,
   storeCreateSchema,
   storeUpdateSchema,
   type CustomerItem,
@@ -83,19 +82,12 @@ export function customerSideOf(customers: readonly CustomerItem[]) {
 
 // 右侧门店：名称、联系人、启用状态
 // 管理员看完整手机号，其他人打码（服务端已按角色处理，这里再保证列表只显示打码）
-export function storeRowsOf(customer: CustomerItem | undefined, isAdmin = false) {
-  const shown = (phone: string) => (isAdmin ? phone : maskPhone(phone))
+// 门店段每家一行（06 章 X8）：门店名 + 已停用标记 + 右箭头；联系人、电话进 X12 看
+export function storeRowsOf(customer: CustomerItem | undefined, picked = '') {
   return (customer?.stores ?? []).map((store) => ({
     id: store.id,
-    fields: [
-      // 右侧栏窄，两列放不下，联系人也单占一行
-      { label: copy.field.contact, value: store.contact, wide: true },
-      { label: copy.screen.label.contactPhone, value: shown(store.phone), wide: true },
-    ],
-    title: store.name,
-    total: store.contact,
-    // 非管理员列表里手机号中间四位打码，弹层里完整（02 章第 7 节）
-    meta: shown(store.phone),
-    tags: store.enabled ? [] : [{ text: copy.tag.disabled, warn: false }],
+    name: store.name,
+    disabled: !store.enabled,
+    picked: store.id === picked,
   }))
 }

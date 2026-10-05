@@ -45,6 +45,14 @@ export interface WriteContext {
   unchanged(): void
 }
 
+// 待办由业务数据推出来（03 章第 8.5 节）：采购「缺货花材」跟着采购需求变，
+// 财务「可开对账单」「逾期未收」跟着往来账变；发了这些主题就顺带刷新对应模块的待办
+function derivedTodo(topic: Topic): Topic | null {
+  if (topic === 'demand') return 'todo:purchase'
+  if (topic.startsWith('ar:') || topic.startsWith('ap:')) return 'todo:finance'
+  return null
+}
+
 class TxContext implements WriteContext {
   private logged = false
   private isUnchanged = false
@@ -79,7 +87,11 @@ class TxContext implements WriteContext {
     changes: { topic: Topic; version: number | null }[],
     scope: Partial<ChangeScope> = {},
   ): void {
-    for (const change of changes) {
+    const todos = changes.flatMap((change) => {
+      const todo = derivedTodo(change.topic)
+      return todo ? [{ topic: todo, version: null }] : []
+    })
+    for (const change of [...changes, ...todos]) {
       const previous = this.changes.get(change.topic)
       this.changes.set(
         change.topic,

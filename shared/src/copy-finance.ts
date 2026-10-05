@@ -113,6 +113,7 @@ export const financeCopy = {
   hasOutstanding: '有未收',
   hasPayable: '有未付',
   hasOverdue: '有逾期',
+  hasUnstatemented: '有未对账',
   cancel: '返回',
   saveChanges: '保存修改',
   confirm: '确定',

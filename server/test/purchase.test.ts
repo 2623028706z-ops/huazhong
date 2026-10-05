@@ -22,7 +22,7 @@ afterEach(async () => {
 })
 
 describe('采购单', () => {
-  test('B01 采购登录、待填报待办和权限', async () => {
+  test('B01 采购登录、缺货花材待办和权限', async () => {
     const purchase = await s.as('u4')
     expect(dataOf<Me>(await purchase.get('/me'))).toMatchObject({
       landing: 'module:purchase',
@@ -31,10 +31,14 @@ describe('采购单', () => {
     const todo = dataOf<{ count: number; rows: TodoRow[] }>(
       await purchase.get('/modules/purchase/todos'),
     )
+    // 采购待办只有「缺货花材」（默认需求区间里缺口 < 0 的种数）；待填报、待收货在等对方，不进待办
+    const demand = dataOf<{ mats: unknown[] }>(
+      await purchase.get('/purchase/demand?shortageOnly=true'),
+    )
     expect(todo.rows).toEqual([
-      { key: 'pendingInvites', label: '待填报邀请', count: 1 },
-      { key: 'pendingPurchaseOrders', label: '待收货采购单', count: 2 },
+      { key: 'shortageMaterials', label: '缺货花材', count: demand.mats.length },
     ])
+    expect(demand.mats.length).toBeGreaterThan(0)
     expect(todo.count).toBe(todo.rows.reduce((count, row) => count + row.count, 0))
     expect((await (await s.as('u5')).post('/purchase-orders', {})).status).toBe(403)
   })

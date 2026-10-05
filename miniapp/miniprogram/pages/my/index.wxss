@@ -1,0 +1,6 @@
+/* 门店、供应商「我的」对账卡：没有未结清时一张卡一句话，内边距同 hz-card（02 章间距档） */
+.u-my-statements__empty {
+  padding: var(--hz-card-pad-y) var(--hz-card-pad);
+  font-size: var(--hz-font-row);
+  color: var(--hz-muted);
+}

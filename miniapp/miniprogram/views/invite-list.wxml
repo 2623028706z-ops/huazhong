@@ -3,7 +3,7 @@
   <!-- 可不传：embedded -->
   <hz-navbar wx:if="{{!embedded}}" title="{{title}}" back="{{!supplier}}" />
   <view class="u-list">
-    <hz-filter-bar search-placeholder="{{searchPlaceholder}}" sections="{{sections}}" section="{{section}}" date-label="{{dateLabel}}" status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" dimensions="{{dimensions}}" value="{{filter}}" bind:change="onFilter" bind:section="onSection" />
+    <hz-filter-bar search-placeholder="{{searchPlaceholder}}" date-label="{{dateLabel}}" status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" dimensions="{{dimensions}}" value="{{filter}}" bind:change="onFilter" />
     <template is="list-state" data="{{failure,skeleton,loaded,rows,emptyObject}}" />
     <template is="cards" data="{{rows,statusKind,done,allLoaded}}" />
   </view>

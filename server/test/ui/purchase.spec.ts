@@ -94,9 +94,9 @@ test('B21 B24-F B25-F G11 需求来源、缺口预填和日期校验', async () 
   await tapText(form, copy.screen.title.createInvite)
   await waitData(form, 'reviewSheet', true)
   await form.callMethod('onReviewConfirm')
-  // 新建发出后换到 C9，「发给供应商」一点转发；返回回到需求页
-  const sent = await waitPage(mini, 'packages/purchase/pages/invite-detail/index')
-  await expect.poll(async () => sent.data('share.path') as Promise<unknown>).toContain('sig=')
+  // 新建发出后换到 C3 的填报邀请段（06 章 C7）；返回回到需求页
+  const sent = await waitPage(mini, 'packages/purchase/pages/orders/index')
+  expect(await sent.data('segment')).toBe('invites')
   await mini.navigateBack()
   await waitPage(mini, 'packages/purchase/pages/demand/index')
   await waitData(page, 'selected', [])

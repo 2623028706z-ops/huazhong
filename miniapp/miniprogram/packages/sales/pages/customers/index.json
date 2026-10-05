@@ -6,7 +6,7 @@
     "hz-error": "/components/hz-error/index",
     "hz-skeleton": "/components/hz-skeleton/index",
     "hz-side-list": "/components/hz-side-list/index",
-    "hz-card": "/components/hz-card/index",
+    "hz-store-invite": "/packages/sales/components/hz-store-invite/index",
     "hz-button": "/components/hz-button/index",
     "hz-action-bar": "/components/hz-action-bar/index",
     "hz-sheet": "/components/hz-sheet/index",

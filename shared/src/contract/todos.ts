@@ -1,13 +1,11 @@
-// 首页只展示后端计算的待办汇总，点击进入业务列表。
+// 首页只展示后端计算的待办汇总，点击进入业务列表。待办只放「该我动手」的事（03 章第 8.5 节）
 import * as z from 'zod'
 import { todoModules } from '../enums.ts'
-import { centsSchema } from '../rules.ts'
 import type { Endpoint } from './endpoint.ts'
 export const todoRowSchema = z.object({
   key: z.string(),
   label: z.string(),
   count: z.number().int().nonnegative(),
-  amountCents: centsSchema.optional(),
 })
 export type TodoRow = z.infer<typeof todoRowSchema>
 export const moduleTodos = {

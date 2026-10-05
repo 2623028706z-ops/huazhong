@@ -1,4 +1,5 @@
 // X2 销售订单（06 章 X2）：搜索（单号、客户、门店）+ 筛选状态、客户、下单日期；三行卡片；底栏「新建订单」（create）
+// 邀请订货在 X8 客户页底栏（2026-10-05 体验改版第 1 批）
 import {
   contract,
   copy,
@@ -8,7 +9,6 @@ import {
   type CustomerItem,
   type OrderCard,
   type OrderStatus,
-  type StoreItem,
 } from '@huazhong/shared'
 import { hasAction, canDo } from '../../../../core/actions'
 import type { KeyEvent, DetailEvent } from '../../../../core/events'
@@ -47,19 +47,15 @@ Page({
     selected: [] as { id: string; version: number; no: string }[],
     batchSheet: false,
     batchOrders: [] as { id: string; version: number; no: string; title: string }[],
-    inviteSheet: false,
-    inviteCustomers: [] as CustomerItem[],
     batchOverdue: [] as string[],
     batchText: redesignCopy.confirmMany(0),
     texts: {
       allSelected: redesignCopy.allSelected,
-      invite: copy.screen.action.inviteStore,
     },
     createText: copy.screen.action.createOrder,
   },
   cards: [] as OrderCard[],
   customers: [] as CustomerItem[],
-  sharing: null as { path: string; title: string } | null,
   dimensionsReady: false,
   dimensionsBusy: false,
   list: null as PagedList<OrderCard> | null,
@@ -208,34 +204,6 @@ Page({
     this.setData({ selected: [], batchSheet: false })
     await this.list?.refresh()
     void wx.showToast({ title: event.detail.message, icon: 'none' })
-  },
-  // 邀请订货：弹层（hz-store-invite）里选门店、必要时填登录手机号，生成邀请后点「发给门店」直接转发小程序卡片
-  async onInvite(): Promise<void> {
-    this.sharing = null
-    // 绑定、手机号状态随时会变：每次打开重新取，取不到再用缓存
-    const result = await loadCustomers()
-    if (result.ok) this.customers = result.data
-    this.setData({ inviteSheet: true, inviteCustomers: this.customers })
-  },
-  onCloseInvite() {
-    this.setData({ inviteSheet: false })
-  },
-  onInvited(event: DetailEvent<{ path: string; title: string } | null>) {
-    this.sharing = event.detail
-  },
-  // 弹层里补了登录手机号：同步页面缓存的门店，下次打开不用重新取
-  onStoreUpdated(event: DetailEvent<StoreItem>) {
-    const store = event.detail
-    this.customers = this.customers.map((customer) => ({
-      ...customer,
-      stores: customer.stores.map((s) => (s.id === store.id ? store : s)),
-    }))
-  },
-  onShareAppMessage(): WechatMiniprogram.Page.ICustomShareContent {
-    const invited = this.sharing
-    return invited
-      ? { title: invited.title, path: invited.path, imageUrl: '/assets/backdrop.jpg' }
-      : { title: copy.invite.storeTitle }
   },
   onOpen(event: KeyEvent) {
     void wx.navigateTo({ url: `${PAGES}/order-detail/index?id=${event.currentTarget.dataset.key}` })

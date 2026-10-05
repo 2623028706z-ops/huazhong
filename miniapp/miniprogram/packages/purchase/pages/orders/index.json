@@ -7,7 +7,9 @@
     "hz-state": "/components/hz-state/index",
     "hz-error": "/components/hz-error/index",
     "hz-action-bar": "/components/hz-action-bar/index",
-    "hz-button": "/components/hz-button/index"
+    "hz-button": "/components/hz-button/index",
+    "hz-tabs": "/components/hz-tabs/index",
+    "hz-invite-list": "/components/hz-invite-list/index"
   },
   "enablePullDownRefresh": true
 }

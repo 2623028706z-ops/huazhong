@@ -150,16 +150,16 @@ export const gridOf = (key: ModuleKey, top: boolean, noTabs: boolean) => {
     mastersTitle: entries.masters.length ? redesignCopy.masters : copy.tab.my,
   }
 }
+// 待办点进筛好的列表；待办只放「该我动手」的事（03 章第 8.5 节）
 export const todoUrls: Record<string, string> = {
   pendingOrders: pages('sales', 'orders', '?status=pending_confirm'),
   cancelRequests: pages('sales', 'orders', '?cancelRequested=true'),
   pendingAfters: pages('sales', 'afters', '?status=pending'),
   dueShipments: pages('shipping', 'list', '?status=to_ship&dueOnly=true'),
-  pendingInvites: pages('purchase', 'demand', '?tab=invites'),
-  pendingPurchaseOrders: pages('purchase', 'orders', '?status=to_receive'),
+  shortageMaterials: pages('purchase', 'demand'),
   pendingReceives: pages('warehouse', 'pending'),
   agedStock: pages('warehouse', 'stock', '?aged=true'),
-  receivable: pages('finance', 'customers', '?filter=outstanding'),
   overdueReceivable: pages('finance', 'customers', '?filter=overdue'),
-  payable: pages('finance', 'suppliers', '?filter=outstanding'),
+  customerStatementReady: pages('finance', 'customers', '?filter=unstatemented'),
+  supplierStatementReady: pages('finance', 'suppliers', '?filter=unstatemented'),
 }

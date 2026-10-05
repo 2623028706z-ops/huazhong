@@ -8,12 +8,13 @@ import {
 import { Inject, Injectable } from '@nestjs/common'
 import { and, count, countDistinct, eq, gt, sql, type SQL } from 'drizzle-orm'
 import type { Db, Tx } from '../../../db/client.ts'
-import { invites, purchaseOrders, stockBatches } from '../../../db/schema/index.ts'
+import { purchaseOrders, stockBatches } from '../../../db/schema/index.ts'
 import { Clock } from '../../common/clock.ts'
 import { DB } from '../../common/db.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 import type { WriteContext } from '../../common/write.service.ts'
 import { PoReads } from './po-reads.ts'
+import { PurchaseDemand } from './demand.ts'
 import { lockPo, notifyPo } from './purchase-common.ts'
 
 @Injectable()
@@ -22,6 +23,7 @@ export class PurchaseService {
     @Inject(DB) private readonly db: Db,
     private readonly clock: Clock,
     private readonly po: PoReads,
+    private readonly demand: PurchaseDemand,
   ) {}
   detail(executor: Db | Tx, viewer: Viewer, id: number) {
     return this.po.detail(executor, viewer, id)
@@ -38,20 +40,14 @@ export class PurchaseService {
   ) {
     notifyPo(ctx, row)
   }
+  // 采购只有「缺货花材」该自己动手；待填报邀请、待收货采购单在等供应商 / 仓库，不进待办（03 章第 8.5 节）。
+  // 口径同采购需求页：默认出货日期区间、余量为负的花材种数
   async purchaseTodos(_viewer: Viewer): Promise<OutputOf<typeof contract.moduleTodos>> {
-    const [invite] = await this.db
-      .select({ n: count() })
-      .from(invites)
-      .where(eq(invites.status, 'pending'))
-    const [po] = await this.db
-      .select({ n: count() })
-      .from(purchaseOrders)
-      .where(eq(purchaseOrders.status, 'to_receive'))
-    const rows = [
-      { key: 'pendingInvites', label: redesignCopy.pendingInviteTodo, count: invite?.n ?? 0 },
-      { key: 'pendingPurchaseOrders', label: redesignCopy.pendingPoTodo, count: po?.n ?? 0 },
-    ]
-    return { count: rows.reduce((n, row) => n + row.count, 0), rows }
+    const shortage = (await this.demand.demand({ shortageOnly: true })).mats.length
+    return {
+      count: shortage,
+      rows: [{ key: 'shortageMaterials', label: redesignCopy.shortageTodo, count: shortage }],
+    }
   }
   async warehouseTodos(_viewer: Viewer): Promise<OutputOf<typeof contract.moduleTodos>> {
     const [po] = await this.db

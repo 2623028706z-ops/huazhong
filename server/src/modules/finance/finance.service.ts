@@ -1,36 +1,39 @@
 import { statementCopy } from '@huazhong/shared'
 import { Injectable } from '@nestjs/common'
 import { statements } from '../../../db/schema/index.ts'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { StatementReads } from './statement-reads.ts'
+import { readyPartyCount } from './party-reads.ts'
 import { overdueDays } from '../../common/statements.ts'
-import { sumOf } from '../../common/domain/units.ts'
 import type { Viewer } from '../../common/domain/viewer.ts'
 @Injectable()
 export class FinanceService {
   constructor(private readonly reads: StatementReads) {}
+  // 首页待办只放财务该动手的事（03 章第 8.4 节）：逾期未收、可开对账单；
+  // 待收款、待付款是在等对方付钱，不进待办
   async todos(_viewer: Viewer) {
     return this.reads.read(async (tx) => {
-      const rows = await tx.select().from(statements).where(eq(statements.status, 'unsettled'))
-      const receivable = rows.filter((r) => r.kind === 'customer')
-      const payable = rows.filter((r) => r.kind === 'supplier')
-      const overdue = receivable.filter((r) => overdueDays(r.dueDate, this.reads.clock.today()) > 0)
+      const receivable = await tx
+        .select({ dueDate: statements.dueDate })
+        .from(statements)
+        .where(and(eq(statements.status, 'unsettled'), eq(statements.kind, 'customer')))
+      const today = this.reads.clock.today()
+      const overdue = receivable.filter((r) => overdueDays(r.dueDate, today) > 0).length
+      const customers = await readyPartyCount(tx, 'customer')
+      const suppliers = await readyPartyCount(tx, 'supplier')
       return {
-        // 逾期未收已经包含在待收款里，角标不重复计
-        count: receivable.length + payable.length,
+        count: overdue + customers + suppliers,
         rows: [
+          { key: 'overdueReceivable', label: statementCopy.overdueTodo, count: overdue },
           {
-            key: 'receivable',
-            label: statementCopy.receivableTodo,
-            count: receivable.length,
-            amountCents: sumOf(receivable, (r) => r.dueCents),
+            key: 'customerStatementReady',
+            label: statementCopy.customerReadyTodo,
+            count: customers,
           },
-          { key: 'overdueReceivable', label: statementCopy.overdueTodo, count: overdue.length },
           {
-            key: 'payable',
-            label: statementCopy.payableTodo,
-            count: payable.length,
-            amountCents: sumOf(payable, (r) => r.dueCents),
+            key: 'supplierStatementReady',
+            label: statementCopy.supplierReadyTodo,
+            count: suppliers,
           },
         ],
       }

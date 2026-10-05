@@ -23,7 +23,6 @@ type Segment = 'orders' | 'afters' | 'statements'
 interface SegmentState {
   filter: FilterValue
   rows: FinanceRow[]
-  counts: Record<string, number>
   loaded: boolean
   skeleton: boolean
   done: boolean
@@ -35,7 +34,6 @@ function blank(): SegmentState {
   return {
     filter: { ...emptyFilter },
     rows: [],
-    counts: {},
     loaded: false,
     skeleton: false,
     done: false,
@@ -179,11 +177,8 @@ function listFor(host: Host, segment: Segment, state: SegmentState) {
     viewHost,
     async (cursor) => {
       const result = await fetchSegment(segment, host.data.supplier, state.filter, cursor)
-      if (result.ok)
-        viewHost.setData({
-          counts: result.data.counts,
-          ...('cells' in result.data ? { cells: result.data.cells } : {}),
-        })
+      // 门店、供应商端的状态标签不带数：待确认、待发货、待处理、待收货都在等花众（03 章第 8.5 节）
+      if (result.ok && 'cells' in result.data) viewHost.setData({ cells: result.data.cells })
       return result
     },
     (row) => row,

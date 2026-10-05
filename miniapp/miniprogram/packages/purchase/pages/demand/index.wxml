@@ -1,9 +1,7 @@
 <hz-navbar title="{{title}}" back />
-<hz-invite-list wx:if="{{section==='invites'}}" supplier-id="{{inviteSupplierId}}" sections="{{sections}}" section="{{section}}" search-placeholder="{{texts.search}}" bind:section="onSection" />
-<block wx:else>
 <hz-state wx:if="{{failure.kind === 'page'}}" kind="{{failure.state}}" message="{{failure.message}}" bind:action="onFailureAction" />
 <view wx:else class="u-list">
-  <hz-filter-bar search-placeholder="{{texts.search}}" sections="{{sections}}" section="{{section}}" date-label="{{texts.shipDate}}" date-presets="{{datePresets}}" default-date="next7Days" value="{{dateFilter}}" bind:change="onDemandFilter" bind:section="onSection" />
+  <hz-filter-bar search-placeholder="{{texts.search}}" date-label="{{texts.shipDate}}" date-presets="{{datePresets}}" default-date="next7Days" value="{{dateFilter}}" bind:change="onDemandFilter"/>
   <view wx:if="{{overdue.count}}" class="u-note-warn" bindtap="onOverdue"><text>{{overdueText}} ›</text></view>
   <hz-error wx:if="{{failure && !sourceSheet}}" message="{{failure.message}}" retry="{{failure.retry}}" bind:retry="onFailureAction" />
   <hz-skeleton wx:if="{{!loaded}}" type="list" />
@@ -24,4 +22,3 @@
     </view>
   </view>
 </hz-sheet>
-</block>

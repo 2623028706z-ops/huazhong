@@ -12,6 +12,8 @@ Page({
       { key: 'all', text: f.all },
       { key: 'outstanding', text: f.hasOutstanding },
       { key: 'overdue', text: f.hasOverdue },
+      // 财务首页「客户可开对账」点进来停在这里，按未对账金额从大到小（03 章第 8.4 节）
+      { key: 'unstatemented', text: f.hasUnstatemented },
     ],
   },
 })

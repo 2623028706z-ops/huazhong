@@ -201,7 +201,7 @@ export const partyLedgerSchema = statementListSchema.extend({
 export type PartyLedger = z.infer<typeof partyLedgerSchema>
 const partyQuery = pageQuerySchema.extend({
   q: z.string().trim().optional(),
-  filter: z.enum(['outstanding', 'overdue', 'unsettled']).optional(),
+  filter: z.enum(['outstanding', 'overdue', 'unstatemented']).optional(),
 })
 const ledgerQuery = pageQuerySchema
   .extend({

@@ -1,12 +1,20 @@
 // X8 客户：左侧客户，右侧门店 / 订货目录；门店资料和目录产品分别进入 X12 / X13 整页。
-import { contract, copy, redesignCopy, type Action, type CustomerItem } from '@huazhong/shared'
+// 门店段底栏「邀请订货 / 新建门店」（2026-10-05 体验改版第 1 批，邀请订货从 X2 挪来）
+import {
+  contract,
+  copy,
+  redesignCopy,
+  type Action,
+  type CustomerItem,
+  type StoreItem,
+} from '@huazhong/shared'
 import { hasAction } from '../../../../core/actions'
 import type { DetailEvent, KeyEvent } from '../../../../core/events'
 import { unplacedErrorOf } from '../../../../core/form'
 import type { FailureView } from '../../../../core/failure-view'
 import { isChanged, syncUnloadAlert } from '../../../../core/guard'
 import { firstFailure, newIdempotencyKey, request, type Result } from '../../../../core/request'
-import { failureOf, loadMe } from '../../../../core/session'
+import { failureOf } from '../../../../core/session'
 import { showSuccess } from '../../../../core/toast'
 import { unwatch, pullToRefresh } from '../../../../core/live'
 import { catalogPanelData } from './catalog-state'
@@ -44,6 +52,10 @@ Page({
     stores: [] as ReturnType<typeof storeRowsOf>,
     canCreate: false,
     canCreateCustomer: false,
+    pickedStoreId: '',
+    inviteSheet: false,
+    inviteCustomers: [] as CustomerItem[],
+    inviteStoreId: '',
     customerSheet: false,
     customerChanged: false,
     editingCustomer: false,
@@ -56,6 +68,8 @@ Page({
       editCustomer: copy.screen.action.editCustomer,
       createCustomer: copy.screen.action.createCustomer,
       createStore: copy.screen.action.createStore,
+      invite: copy.screen.action.inviteStore,
+      disabled: copy.tag.disabled,
       customerTitle: copy.screen.title.editCustomer,
       newCustomerTitle: copy.screen.title.createCustomer,
       name: copy.screen.label.name,
@@ -68,7 +82,7 @@ Page({
     },
   },
   customers: [] as CustomerItem[],
-  isAdmin: false,
+  sharing: null as { path: string; title: string } | null,
   idempotencyKey: '',
   onLoad() {
     void wx.hideShareMenu({})
@@ -84,18 +98,16 @@ Page({
     syncUnloadAlert(false)
   },
   async load(selectId = ''): Promise<void> {
-    const [customers, page, me] = await Promise.all([
+    const [customers, page] = await Promise.all([
       loadCustomers(),
       request(contract.listCustomers, { query: {} }),
-      loadMe(),
     ])
-    if (!customers.ok || !page.ok || !me.ok) {
-      const failure = firstFailure([customers, page, me])
+    if (!customers.ok || !page.ok) {
+      const failure = firstFailure([customers, page])
       if (failure)
         this.setData({ failure: failureOf(failure, this.data.loaded ? 'refresh' : 'load') })
       return
     }
-    this.isAdmin = me.data.type === 'admin'
     await this.show(customers.data, page.data.actions, selectId)
   },
   async show(
@@ -118,10 +130,13 @@ Page({
   },
   select(customerId: string) {
     const customer = this.customers.find((c: CustomerItem) => c.id === customerId)
+    // 换了客户，原来点选的门店不再算
+    const picked = customerId === this.data.customerId ? this.data.pickedStoreId : ''
     this.setData({
       customerId,
       customerName: customer?.name ?? '',
-      stores: storeRowsOf(customer, this.isAdmin),
+      pickedStoreId: picked,
+      stores: storeRowsOf(customer, picked),
       groups: [],
     })
   },
@@ -156,6 +171,47 @@ Page({
     void wx.navigateTo({
       url: `/packages/sales/pages/store-form/index?customerId=${this.data.customerId}`,
     })
+  },
+  // 行首单选圈：点选一家门店，「邀请订货」就直接给这家；再点一次取消
+  onPickStore(event: KeyEvent) {
+    const id = event.currentTarget.dataset.key
+    const picked = id === this.data.pickedStoreId ? '' : id
+    this.setData({
+      pickedStoreId: picked,
+      stores: storeRowsOf(this.currentCustomer(), picked),
+    })
+  },
+  // 邀请订货：弹层（hz-store-invite，同 X2 原来那个）；点选了门店时直接给这家生成邀请
+  async onInvite(): Promise<void> {
+    this.sharing = null
+    // 绑定、手机号状态随时会变：每次打开重新取，取不到再用缓存
+    const result = await loadCustomers()
+    if (result.ok) this.customers = result.data
+    this.setData({
+      inviteSheet: true,
+      inviteCustomers: this.customers,
+      inviteStoreId: this.data.pickedStoreId,
+    })
+  },
+  onCloseInvite() {
+    this.setData({ inviteSheet: false })
+  },
+  onInvited(event: DetailEvent<{ path: string; title: string } | null>) {
+    this.sharing = event.detail
+  },
+  // 弹层里补了登录手机号：同步页面缓存的门店
+  onStoreUpdated(event: DetailEvent<StoreItem>) {
+    const store = event.detail
+    this.customers = this.customers.map((customer) => ({
+      ...customer,
+      stores: customer.stores.map((s) => (s.id === store.id ? store : s)),
+    }))
+  },
+  onShareAppMessage(): WechatMiniprogram.Page.ICustomShareContent {
+    const invited = this.sharing
+    return invited
+      ? { title: invited.title, path: invited.path, imageUrl: '/assets/backdrop.jpg' }
+      : { title: copy.invite.storeTitle }
   },
   onOpen(event: KeyEvent) {
     void wx.navigateTo({

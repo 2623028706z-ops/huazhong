@@ -58,18 +58,12 @@
   color: var(--hz-ink);
 }
 
-.hz-module-home__amount {
-  font-size: var(--hz-font-sm);
-}
-
-/* 待办为 0：整张卡变淡（数字、名称、金额都退成次要色），有数的卡才突出（2026-10-05） */
+/* 待办为 0：整张卡变淡（数字、名称都退成次要色），有数的卡才突出（2026-10-05） */
 .hz-module-home__todo--zero .hz-module-home__count,
-.hz-module-home__todo--zero .hz-module-home__label,
-.hz-module-home__todo--zero .hz-module-home__amount {
+.hz-module-home__todo--zero .hz-module-home__label {
   opacity: 0.6;
 }
 
-.hz-module-home__todo--zero .hz-module-home__label,
-.hz-module-home__todo--zero .hz-module-home__amount {
+.hz-module-home__todo--zero .hz-module-home__label {
   color: var(--hz-muted);
 }

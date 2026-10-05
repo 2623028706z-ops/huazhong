@@ -84,7 +84,7 @@ Page({
   },
   onInvites() {
     void wx.navigateTo({
-      url: `/packages/purchase/pages/demand/index?tab=invites&supplierId=${this.id}`,
+      url: `/packages/purchase/pages/orders/index?segment=invites&supplierId=${this.id}`,
     })
   },
   onFailureAction() {

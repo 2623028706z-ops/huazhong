@@ -1,8 +1,7 @@
 import { type StatementKind, type PartyLedger } from '@huazhong/shared'
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import type { Db, Tx } from '../../../db/client.ts'
-import { statements, receipts, payments } from '../../../db/schema/index.ts'
-import type { customers } from '../../../db/schema/index.ts'
+import { statements, receipts, payments, customers, suppliers } from '../../../db/schema/index.ts'
 import { sumOf, exactNumber } from '../../common/domain/units.ts'
 import { creditSourcesByParty, overdueDays, type CreditSource } from '../../common/statements.ts'
 import { sourcesByParty } from './sources.ts'
@@ -17,6 +16,22 @@ type Context = {
   sources: Map<number, StatementSource[]>
   credit: Map<number, CreditSource[]>
   dates: Dates
+}
+// 「可开对账单」：有已发货订单、已收货采购单或手工入库还没进有效对账单；
+// 只剩售后、退货、改价凭据的不算（03 章第 8.4 节，2026-10-05 体验改版第 1 批）
+const readyTypes: ReadonlySet<StatementSource['type']> = new Set(['order', 'po', 'wh'])
+function isReady(sources: StatementSource[] | undefined) {
+  return (sources ?? []).some((s) => readyTypes.has(s.type))
+}
+// 财务首页待办：可开对账单的往来单位家数
+export async function readyPartyCount(tx: Db | Tx, kind: StatementKind) {
+  const ids = (
+    kind === 'customer'
+      ? await tx.select({ id: customers.id }).from(customers)
+      : await tx.select({ id: suppliers.id }).from(suppliers)
+  ).map((r) => r.id)
+  const sources = await sourcesByParty(tx, kind, ids, { from: '0001-01-01', to: '9999-12-31' })
+  return ids.filter((id) => isReady(sources.get(id))).length
 }
 function lastFundDate(dates: Dates, id: number) {
   return (
@@ -54,7 +69,7 @@ type Summary = Pick<
   | 'overdueCents'
   | 'overdueDays'
 >
-function summaryOf(p: Party, c: Context): Summary {
+function summaryOf(p: Party, c: Context): Summary & { ready: boolean } {
   const own = c.rows.filter((r) => (r.customerId ?? r.supplierId) === p.id),
     unsettled = own.filter((r) => r.status === 'unsettled'),
     overdue = unsettled.filter((r) => overdueDays(r.dueDate, c.today) > 0)
@@ -86,6 +101,7 @@ function summaryOf(p: Party, c: Context): Summary {
     lastFundDate: lastFundDate(c.dates, p.id),
     overdueCents: sumOf(overdue, (r) => r.dueCents),
     overdueDays: Math.max(0, ...overdue.map((r) => overdueDays(r.dueDate, c.today))),
+    ready: isReady(c.sources.get(p.id)),
   }
 }
 export async function partySummaries(

@@ -18,6 +18,7 @@ const data = {
     { key: 'all', text: f.all },
     { key: 'outstanding', text: f.hasOutstanding },
     { key: 'overdue', text: f.hasOverdue },
+    { key: 'unstatemented', text: f.hasUnstatemented },
   ],
   rows: [] as ReturnType<typeof partyRowOf>[],
   loaded: false,
@@ -47,7 +48,7 @@ export const financePartiesPage = {
             filter:
               this.data.partyFilter === 'all'
                 ? undefined
-                : (this.data.partyFilter as 'outstanding' | 'overdue' | 'unsettled'),
+                : (this.data.partyFilter as 'outstanding' | 'overdue' | 'unstatemented'),
             cursor,
           },
         }),

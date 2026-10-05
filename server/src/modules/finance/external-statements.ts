@@ -29,6 +29,8 @@ function storeProjection(d: StatementDetail, viewer: Viewer) {
     amountCents: Math.max(amount, 0),
     dueCents: Math.max(amount, 0),
     storeAmountCents: amount,
+    wholeAmountCents: d.amountCents,
+    storeCount: new Set(d.groups.flatMap((g) => (g.storeId === null ? [] : [g.storeId]))).size,
     storeName: own[0]?.storeName ?? '',
     sourceCount: sources.filter((s) => s.type === 'order').length,
     shippedCents: sumOf(
@@ -43,9 +45,9 @@ function storeProjection(d: StatementDetail, viewer: Viewer) {
     actions: [],
   }
 }
+const supplierOnly = { storeAmountCents: null, wholeAmountCents: null, storeCount: null }
 function externalCard(d: StatementDetail, viewer: Viewer) {
-  const projected =
-    viewer.type === 'store' ? storeProjection(d, viewer) : { ...d, storeAmountCents: null }
+  const projected = viewer.type === 'store' ? storeProjection(d, viewer) : { ...d, ...supplierOnly }
   return projected === null ? null : externalStatementCardSchema.parse(projected)
 }
 export async function externalList(tx: Db | Tx, viewer: Viewer, query: Query, today: string) {
@@ -102,7 +104,7 @@ export async function externalDetail(tx: Db | Tx, viewer: Viewer, id: number, to
     return storeStatementDetailSchema.parse(found(storeProjection(detail, viewer) ?? undefined))
   return supplierStatementDetailSchema.parse({
     ...detail,
-    storeAmountCents: null,
+    ...supplierOnly,
     settlements: detail.settlements.filter((s) => s.status === 'valid' && s.reversedAt === null),
     actions: [],
   })

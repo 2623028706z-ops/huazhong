@@ -10,7 +10,6 @@
     "hz-sheet": "/components/hz-sheet/index",
     "hz-info-rows": "/components/hz-info-rows/index",
     "hz-demand-row": "/components/hz-demand-row/index",
-    "hz-invite-list": "/components/hz-invite-list/index",
     "hz-filter-bar": "/components/hz-filter-bar/index"
   },
   "enablePullDownRefresh": true

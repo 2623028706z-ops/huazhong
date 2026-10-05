@@ -201,7 +201,7 @@
 | `storeId`、`supplierId` | 门店、供应商账号的归属 ID，其他为 `null` |
 | `modules` | 有权限的模块码数组（`sales`、`shipping`、`purchase`、`warehouse`、`finance`）：管理员全部五个；员工取 `account_modules`；门店、供应商为 `[]` |
 | `landing` | `store_shop`（门店 → S1 订货）；`supplier_invites`（供应商 → P1 填报）；`module:<key>`（单模块员工）；`home`（管理员 / 多模块员工）。门店无 S0、供应商无 P0；仓库单岗位底栏首页 / 库存 / 我的，其他单岗位无模块底栏 |
-| `menus` | 「我的」里的入口码数组，前端按顺序显示：员工 `inventory`（没有仓库模块权限时才有）、`logs`、`methods`（有财务模块权限时）；管理员 `inventory`、`logs`、`methods`、`staff`（管理员也有库存查询，2026-10-05 确认）；门店、供应商 `contact`（门店从订单页分段进售后 / 对账，供应商从采购单页分段进对账）（2026-10-03 改版） |
+| `menus` | 「我的」里的入口码数组，前端按顺序显示：员工 `inventory`（没有仓库模块权限时才有）、`logs`；管理员 `logs`、`staff`（2026-10-05 体验改版第 1 批：管理员不再有库存查询）；收付款方式不是入口码，前端按 `modules` 含 `finance`（财务和管理员）显示；门店、供应商为空数组（「联系花众」和对账卡由前端按账号类型固定显示；门店从订单页分段进售后 / 对账，供应商从采购单页分段进对账）（2026-10-03 改版） |
 | `contactPhone` | 门店、供应商账号为 `CONTACT_PHONE`，员工和管理员为 `null` |
 
 首页导航和业务权限仍取 `GET /me.modules`。操作日志页单独取 `GET /logs.filterModules`（员工本人非公共历史涉及的模块，管理员全部模块），多于一项时显示筛选；调岗后历史模块与当前岗位不再等价，不沿用原先「去掉日志模块筛选字段」的实现。
@@ -210,7 +210,7 @@
 
 | 接口 | 谁 | 入参 → 出参 | 校验和错误 | 锁 / 日志 / 推送 |
 |---|---|---|---|---|
-| `GET /modules/:key/todos` | 有该模块权限 | → `{count,rows:[{key,label,count,amountCents?}]}`，行 count 为 0 也返回。销售 pendingOrders / cancelRequests / pendingAfters；发货 dueShipments（出货日期不晚于今天）；采购 pendingInvites / pendingPurchaseOrders；仓库 pendingReceives / agedStock（最老剩余批次满 STOCK_AGE_WARNING_DAYS 的花材种数）；财务 receivable（客户未结清 DZ 张数 + 合计）/ overdueReceivable（逾期客户 DZ 张数）/ payable（供应商未结清 DZ 张数 + 合计）。金额仅 receivable、payable 返回，其余省略；没有今日数字，顶层 count 是各行数量之和 | 财务只算已开有效对账单，未开来源留在对账页统计 | 订阅 todo:<key>、仓库另订阅 stock |
+| `GET /modules/:key/todos` | 有该模块权限 | → `{count,rows:[{key,label,count}]}`，行 count 为 0 也返回。销售 pendingOrders / cancelRequests / pendingAfters；发货 dueShipments（出货日期不晚于今天）；采购 shortageMaterials（`GET /purchase/demand` 默认区间、`shortageOnly=true` 的花材种数，含停用花材）；仓库 pendingReceives / agedStock（最老剩余批次满 STOCK_AGE_WARNING_DAYS 的花材种数）；财务 overdueReceivable（逾期客户 DZ 张数）/ customerStatementReady（有 `order` 来源还没进有效 DZ 的客户家数）/ supplierStatementReady（有 `po`、`wh` 来源还没进有效 DZ 的供应商家数）。只放「该我动手」的事，等对方的（待填报邀请、待收货采购单、待收款、待付款）不返回（2026-10-05 体验改版第 1 批）。行上不带金额；没有今日数字，顶层 count 是各行数量之和 | — | 订阅 todo:<key>、仓库另订阅 stock |
 | `GET /modules/todos` | 员工、管理员 | → `{counts:[{key,count}]}`，只含当前账号 `modules` 里有权限的模块（销售 / 发货 / 采购 / 仓库 / 财务，按模块顺序），无权限的模块不出现；`count` 与 `GET /modules/:key/todos` 顶层 `count` 同一口径（各行数量之和），0 也返回 | 门店、供应商 403；不新增权限规则 | 订阅 todo:*（花众首页角标） |
 | `GET /inventory` | 所有员工 | `?q=&categoryId=&cursor=&limit=` → 列表，项 `{ id, code, name, categoryId, categoryName, unit, enabled, stockQty }`；全部花材（含库存 0、含停用），按编码升序分页；`q` 匹配名称或编码；`stockQty` = 批次 `left_qty` 合计；列表级 `actions` 为 `[]` | — | 订阅 `stock` |
 | `GET /logs` | 员工、管理员 | `?module=&from=&to=&cursor=&limit=` → 列表 + `filterModules[]`（本人全部非公共历史操作涉及的模块，管理员为全部模块），项 `{ id, createdAt, module, kind, action, targetLabel, actorLabel }`（`module` 为 `null` 是公共）；按时间倒序；`from`、`to` 按上海日期筛 `created_at` | 员工始终加 `created_by=本人 AND module IS NOT NULL`，包括调岗前操作；传 `module` 只加筛选，不撤掉本人条件，不按当前岗位拒绝历史模块（2026-10-02 交叉审查确认）；管理员看全部含公共 | — |
@@ -280,7 +280,7 @@
 | `POST /store/orders/:id/cancel-request` | 门店 | `{ version, reason }`（原因选填） | 订单本店且 `to_ship`；已有待处理申请或被拒绝过 → `BUSINESS_RULE`「取消申请已被拒绝，请联系花众销售」；已发货 → `STALE` | 行锁订单；写 `order_cancel_requests`；订单 `version` +1；日志「申请取消」（销售模块）；推送 `order:<id>`、`orders` |
 | `POST /store/orders/:id/cancel-request/withdraw` | 门店 | `{ version }` | 订单本店，申请 `pending`；版本变了或销售已处理 → `STALE` | 行锁订单并复核版本；申请 `withdrawn`，订单 `version` +1；日志「撤回取消申请」；推送同上 |
 | `POST /store/afters` | 门店 | `{ orderId, lines[{orderLineId, qty, reason, description, imageFileIds[]}] }` + 幂等键 → 售后（`pending`） | 订单本店且 `shipped`；在售后申请期限内（04 第 8 节），否则 `BUSINESS_RULE`「已超过售后申请时间，请联系花众销售」；至少一行；`qty>0` 且 ≤ 可申请数量（可申请数量见 03 章第 4 节）→ `VALIDATION_FAILED`「售后数量须大于 0，且不超过实发数量减去已申请的售后」；问题说明选填；原因不是 `qty_mismatch`（少发、漏发）的每行须至少 1 张图片，缺 → `VALIDATION_FAILED`「请至少上传 1 张图片」；图片每行 ≤ `AFTER_IMAGE_MAX_COUNT` 张、`status=ok` | 行锁客户 → 订单；发号 AS；单价取发货单价，`requested_qty` = `qty`；日志「申请售后」；推送 `afters`、`todo:sales` |
-| `GET /store/statements` | 门店 | `?status=unsettled|settled&from=&to=&cursor=`（开单日期）→ `{unsettledCents,unstatementedCents,items,nextCursor,counts:{},actions:[]}`；items 为 DZ 单号、开单日期、付款截止、期间、发货单数、status、storeAmountCents | 只本店有关非作废 DZ；未结清金额取本店在未结清 DZ 的来源金额，未对账取本店未入单发货 / 售后净额；不含客户其他门店资金 | 订阅 ar:<customerId> |
+| `GET /store/statements` | 门店 | `?status=unsettled|settled&from=&to=&cursor=`（开单日期）→ `{unsettledCents,unstatementedCents,items,nextCursor,counts:{},actions:[]}`；items 为 DZ 单号、开单日期、付款截止、期间、发货单数、status、storeAmountCents，以及整张 DZ 的应收 `wholeAmountCents` 和有来源的门店数 `storeCount`（门店「我的」对账卡小字用，2026-10-05 体验改版第 1 批；详情同样带这两项，供应商为 null） | 只本店有关非作废 DZ；未结清金额取本店在未结清 DZ 的来源金额，未对账取本店未入单发货 / 售后净额；不含客户其他门店的来源明细和资金 | 订阅 ar:<customerId> |
 | `GET /store/statements/:id` | 门店 | → 单号、客户 / 本店、期间、日期、截止、结清日期、status、本店发货金额 / 售后金额 / storeAmountCents、本店发货单和售后；actions=[] | 不属于本店或作废 NOT_FOUND；不返回收款记录、抵扣多收、优惠、期初欠款、其他门店来源或操作权限 | 订阅 statement:<id> |
 
 门店的订单列表、详情、售后列表、详情复用第 4 节的 `GET /orders*`、`GET /afters*`，按本店过滤；售后金额只在门店的售后里返回，已关闭、已作废的不带金额。外部端（门店、供应商）的订单、采购单、售后，状态值照常返回 `voided`，前端显示成「已取消」、原因行写「取消原因」；门店、供应商列表传 `status=cancelled` 时同时列出 `cancelled` 和 `voided`（售后没有 `cancelled`，门店售后传 `status=cancelled` 即列 `voided`）（2026-10-03 改版，见 03 章第 3 节）。
@@ -377,7 +377,7 @@
 | 接口 | 谁 | 入参 → 出参 | 校验和错误 | 锁 / 日志 / 推送 |
 |---|---|---|---|---|
 | `GET /finance/receivables`、`GET /finance/payables` | 财务 | `?overdue=&cursor=` → 未结清客户 / 供应商 DZ 卡片，计数和金额按已开有效单 | overdue=true 只筛有截止且已逾期；未开来源不混进待办 | 订阅 todo:finance、ar:* / ap:* |
-| `GET /finance/customers`、`GET /finance/suppliers` | 财务 | `?q=&filter=outstanding|overdue&cursor=` → 每家 `{kind,partyId,partyName,enabled,outstandingCents,unsettledCents,unstatementedCents,creditCents,lastStatementTo,lastFundDate,overdueCents,overdueDays}`；客户未收 / 供应商未付 | 按 04 第 8 节全账组成计算；filter 未收 / 未付>0 或逾期>0；无日期筛资金账本 | 订阅 ar:* / ap:* |
+| `GET /finance/customers`、`GET /finance/suppliers` | 财务 | `?q=&filter=outstanding|overdue|unstatemented&cursor=` → 每家 `{kind,partyId,partyName,enabled,outstandingCents,unsettledCents,unstatementedCents,creditCents,lastStatementTo,lastFundDate,overdueCents,overdueDays}`；客户未收 / 供应商未付 | 按 04 第 8 节全账组成计算；filter 未收 / 未付>0 或逾期>0；`unstatemented` 只留有 `order` / `po` / `wh` 来源还没进有效 DZ 的往来单位，按 `unstatementedCents` 从大到小、id 倒序排（2026-10-05 体验改版第 1 批），其余按 id 倒序；无日期筛资金账本 | 订阅 ar:* / ap:* |
 | `GET /finance/customers/:id`、`GET /finance/suppliers/:id` | 财务 | `?tab=statements|unstatemented&status=&from=&to=&cursor=` → 总账组成、账期 / 期初欠款 / openingDebtEditable、退款历史、对账单卡片（含作废）或未对账来源（客户按门店分组）、actions createStatement/registerReceipt 或 registerPayment/refundCredit/editTerms | from/to 只筛开单日期或来源日期，汇总仍当前全账；无余额不显示退回；期初从未开过 DZ 才可编辑 | 订阅 ar:<id> / ap:<id> |
 | `GET /finance/statements/draft` | 财务 | `?kind=customer|supplier&partyId=&from=&to=` → `{kind,partyId,partyVersion,periodFrom,periodTo,creditCents,openingDebtCents,sources[{type,id,version,sourceNo,sourceDate,storeId?,parentType?,parentId?,amountCents,carriesAmount,previousPeriod,selected}],totals}` | 不传 `from` 时默认起点：这家上一张有效（未作废）对账单截止日的次日（不晚于 `to`），第一次对账取最早一笔未对账来源的日期，没有来源取 `to`；不传 `to` 默认今天；实际使用的 `periodFrom` / `periodTo` 在响应里返回，前端据此回显、可改；期间内及以前未对账来源，previousPeriod 默认勾；来源日期取实际发货 / 处理 / 收货 / 入库；采购主行净额和退货 / 改价凭据不重复合计 | 同一一致性快照读取；不生成全账凭据 |
 | `POST /finance/statements` | 财务 | `{kind,partyId,partyVersion,periodFrom,periodTo,note,creditCents,sources[{type,id,version?,amountCents}]}` + 幂等键 → DZ 详情 | 至少一个经济来源或首单期初欠款；所选不重复、有效未对账、同一往来方、日期不晚于期末；客户来源允许上期未对账；来源 / 设置版本或余额变化 STALE，latest 为最新 draft，整张不写；自动抵扣最多正金额，0 / 负额直接 settled，负额形成来源余额 | 锁往来方 → 所选来源（固定类型/id序）→ 余额来源，保存 statements/lines/credit_uses；发 DZ，日志新建对账单；通知 statement、来源详情、ar/ap、todo:finance |
@@ -458,7 +458,7 @@
 | `supplier:<supplierId>` | 供应商端的邀请、采购单列表 | 这家供应商 |
 | `catalog:<customerId>` | 订货目录 | 销售；这个客户的门店 |
 | `stock`、`demand` | 库存、采购需求 | 员工（库存查询）、仓库；采购（需求） |
-| `todo:<module>` | 模块首页待办行；花众首页（M3）订阅 `todo:*` 刷新模块角标 | 有该模块权限的员工 |
+| `todo:<module>` | 模块首页待办行；花众首页（M3）订阅 `todo:*` 刷新模块角标。写事务发了 `demand` 时服务端顺带发 `todo:purchase`，发了 `ar:<id>` / `ap:<id>` 时顺带发 `todo:finance`（待办由这些数据推出来） | 有该模块权限的员工 |
 | `account:<id>` | 账号被停用、解绑、改了模块 | 本人 |
 | `store_invites:<storeId>` | 门店邀请生成、使用 | 销售 |
 

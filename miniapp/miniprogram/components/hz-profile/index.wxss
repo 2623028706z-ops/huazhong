@@ -9,9 +9,23 @@
   font-weight: 600;
 }
 
-.hz-profile__sub {
+.hz-profile__lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--hz-line-gap);
+}
+
+/* 字段名次要色、值墨色；同一行字段之间两个全角空格的距离 */
+.hz-profile__line {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--hz-gap-page);
   font-size: var(--hz-font);
   color: var(--hz-muted);
+}
+
+.hz-profile__value {
+  color: var(--hz-ink);
 }
 
 /* 退出登录：页面最下面居中灰字，不用整行描边按钮（比上面的入口还抢眼，2026-10-05） */

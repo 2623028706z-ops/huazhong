@@ -587,7 +587,7 @@
 | 采购金额 `amountCents` | 实收前 qty × order_price_cents，收货后净实收 × price_cents；手工入库 qty × price_cents | 详情明细合计仍叫采购金额；应付仅在财务对账中用 |
 | 售后金额 `afterCents` | processed 的 afters.amount_cents | 开单按 processed_at 日期作为独立负额来源；未处理展示「待处理」 |
 | 所属对账单 `statement` | 未释放 statement_lines → 非 voided statements | `{id,no,status}` 或 null（「未对账」）；源业务单据不存冗余 statement_id 或收付款状态 |
-| 未结清 `unsettledCents` | statements.status=unsettled 的 due_cents 合计 | 无部分结清；用于财务首页已开单待收 / 未付 |
+| 未结清 `unsettledCents` | statements.status=unsettled 的 due_cents 合计 | 无部分结清；用于往来列表的未结清金额 |
 | 未对账 `unstatementedCents` | 有效已发货、processed 售后 / received 采购单、stocked_in 手工入库，排除有效 statement_lines 占用 | 来源按实际发货 / 处理 / 收货 / 入库日期；正负同口径，早于新开期间也作为上期未对账，不漏掉 |
 | 多收 / 多付 `creditCents` | 有效 receipts/payments.credit_cents + 非作废 statements.credit_generated_cents − 有效 credit_uses.amount_cents | 每来源余额非负；释放的去向不扣；来源负额单也计算，退款不再重复额外减一次 |
 | 财务往来未收 / 未付 `outstandingCents` | 未结清 + 未对账 + 尚未进有效首单的期初欠款 − 多收 / 多付 | 取 max(0,以上净额)，余额与未对账不按列表日期裁账；分别返回以上组成 |

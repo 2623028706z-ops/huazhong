@@ -1,10 +1,13 @@
 <import src="list.wxml" />
-<template name="po-list">
-  <hz-navbar title="{{title}}" back />
+<template name="po-list-body">
   <view class="u-list">
     <hz-filter-bar search-placeholder="{{searchPlaceholder}}" status-kind="{{statusKind}}" statuses="{{statuses}}" counts="{{counts}}" dimensions="{{dimensions}}" date-label="{{dateLabel}}" value="{{filter}}" bind:change="onFilter" />
     <template is="list-state" data="{{failure,skeleton,loaded,rows,emptyObject}}" />
     <template is="cards" data="{{rows,statusKind,done,allLoaded}}" />
   </view>
+</template>
+<template name="po-list">
+  <hz-navbar title="{{title}}" back />
+  <template is="po-list-body" data="{{searchPlaceholder, statusKind, statuses, counts, dimensions, dateLabel, filter, failure, skeleton, loaded, rows, emptyObject, done, allLoaded}}" />
   <hz-action-bar wx:if="{{kind === 'purchase' && canCreate}}"><hz-button text="{{createText}}" bind:press="onCreate" /></hz-action-bar>
 </template>

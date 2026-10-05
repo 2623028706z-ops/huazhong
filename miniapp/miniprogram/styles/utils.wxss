@@ -653,10 +653,6 @@
 
 /* scroll-view 里 gap 不生效：直接子卡片自己留 10px，标签行和第一张卡片之间同样 10px，底部留 12px。
    WXSS 不认属性选择器（原来写 view[data-key]，卡片之间只剩 2px），改用类名 */
-.u-split__item {
-  margin-bottom: var(--hz-card-gap);
-}
-
 .u-split__main > .u-split__tabs {
   display: block;
   margin-bottom: var(--hz-card-gap);
@@ -808,4 +804,14 @@
   display: block;
   margin-top: 0;
   text-align: center;
+}
+
+/* 页顶分段单独一块（采购单「采购单 / 填报邀请」），下边距交给下面的列表 */
+.u-list--head {
+  padding-bottom: 0;
+}
+
+/* 切走的分段先藏起来，回来时筛选和已加载的列表还在 */
+.u-gone {
+  display: none;
 }

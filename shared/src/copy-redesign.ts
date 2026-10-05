@@ -2,8 +2,15 @@ export const redesignCopy = {
   pendingOrderTodo: '待确认订单',
   pendingAfterTodo: '待处理售后',
   dueShipmentTodo: '今日应发',
-  pendingInviteTodo: '待填报邀请',
-  pendingPoTodo: '待收货采购单',
+  shortageTodo: '缺货花材',
+  // 门店、供应商「我的」对账卡（06 章 M4，2026-10-05 体验改版第 1 批）
+  myStatementTitle: '对账',
+  storeUnpaid: '本店未付',
+  supplierUnreceived: '未收货款',
+  noUnsettledStatement: '没有未结清的对账单',
+  wholeTotal: '整张合计',
+  wholeCoverage: (amount: string, customer: string, stores: number) =>
+    `${amount}（${customer} ${stores} 家店）`,
   afterImageRequired: '请至少上传 1 张图片',
   // 原因是「数量不符」（少发、漏发）时图片选填
   afterImagesOptional: '图片（选填）',

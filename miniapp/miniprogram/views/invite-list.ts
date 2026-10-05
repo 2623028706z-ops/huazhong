@@ -10,7 +10,6 @@ import { listHandlers, listOf, listQueryOf, showList } from './list'
 import { inviteRowOf } from './purchase'
 import { loadSupplierDimensions } from './purchase-load'
 
-const embeddedStatuses = ['pending', 'cancelled'] as const
 const data = {
   supplier: false,
   embedded: false,
@@ -63,15 +62,6 @@ async function showSupplier(host: InviteListHost) {
   void host.list?.refresh()
   watch(host, [`supplier:${me.data.supplierId ?? ''}`], () => void host.list?.refresh())
 }
-// 嵌在采购需求「待填报」里：只有待填报 / 已取消两种状态，默认待填报，没有日期筛选
-function embeddedPatch(host: InviteListHost, status: string | undefined) {
-  host.setData({
-    statuses: [...embeddedStatuses],
-    dateLabel: '',
-    filter: { ...host.data.filter, status: status ?? 'pending' },
-    defaultChosen: true,
-  })
-}
 const methods = {
   ...pullToRefresh,
   ...listHandlers,
@@ -81,7 +71,6 @@ const methods = {
       this.setData({ filter: { ...emptyFilter, picks: { supplier: query.supplierId } } })
     if (query.status)
       this.setData({ filter: { ...this.data.filter, status: query.status }, defaultChosen: true })
-    if (this.data.embedded) embeddedPatch(this, query.status)
     this.list = listOf(
       this,
       async (cursor) => {
@@ -90,7 +79,7 @@ const methods = {
           this.data.supplier ? contract.supplierInvites : contract.listInvites,
           {
             query: {
-              status: status ?? (this.data.embedded ? 'pending' : undefined),
+              status,
               from,
               to,
               supplierId: picks.supplier,
@@ -146,8 +135,8 @@ const methods = {
 }
 export const inviteListData = data
 export const inviteListMethods = methods
-// 页面版（供应商填报）不带分段；组件版用属性传进来
+// 页面版（供应商填报）没有搜索框；组件版用属性传进来
 export const inviteListPage = {
   ...methods,
-  data: { ...data, sections: [], section: '', searchPlaceholder: '' },
+  data: { ...data, searchPlaceholder: '' },
 }

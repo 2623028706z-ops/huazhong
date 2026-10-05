@@ -47,7 +47,7 @@ import {
   type PurchaseMode,
 } from './purchase-form-data'
 
-const INVITE_DETAIL = '/packages/purchase/pages/invite-detail/index'
+const INVITE_SEGMENT = '/packages/purchase/pages/orders/index?segment=invites'
 
 const data = {
   mode: 'po' as PurchaseMode,
@@ -350,9 +350,9 @@ const methods = {
     showSuccess(purchaseSuccessOf(this.data.mode, !!this.id, this.data.supplierName))
     if (this.data.mode === 'invite') {
       this.getOpenerEventChannel().emit?.('saved', { id: result.data.id })
-      // 新建：换到填报详情，那里一点「发给供应商」直接转发；返回就是需求页。修改：照旧返回详情
+      // 新建：换到采购单页的「填报邀请」段（06 章 C7），点邀请卡进详情转发；返回就是需求页。修改：照旧返回详情
       if (this.id) void wx.navigateBack()
-      else void wx.redirectTo({ url: `${INVITE_DETAIL}?id=${result.data.id}` })
+      else void wx.redirectTo({ url: INVITE_SEGMENT })
       return
     }
     void wx.navigateBack()

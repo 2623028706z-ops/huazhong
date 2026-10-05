@@ -71,8 +71,6 @@ Page({
     count: '',
     rows: [] as ReturnType<typeof rowsOf>,
     selected: [] as string[],
-    section: 'shortage',
-    sections: [] as { key: string; text: string; count: number }[],
     dateFilter: defaultFilter(),
     datePresets: ['today', 'tomorrow', 'next7Days', 'custom'],
     overdue: { count: 0, shipFrom: null as string | null, shipTo: null as string | null },
@@ -88,7 +86,6 @@ Page({
     sourceName: '',
     sourceTop: [] as SourceField[],
     sourceSections: [] as SourceSection[],
-    inviteSupplierId: '',
     allSelected: false,
     selectAllText: redesignCopy.allSelected,
     texts: {
@@ -100,13 +97,10 @@ Page({
     },
   },
   demand: null as Demand | null,
-  pendingInvites: 0,
   loadVersion: 0,
-  onLoad(query: Record<string, string | undefined>) {
-    if (query.supplierId) this.setData({ inviteSupplierId: query.supplierId })
-    if (query.tab === 'invites') this.setData({ section: 'invites' })
+  // 只看缺货花材（03 章第 8.2 节）；填报邀请在采购单页的「填报邀请」段
+  onLoad() {
     this.syncRange(this.data.dateFilter)
-    this.syncSections()
   },
   onShow() {
     void this.load()
@@ -120,22 +114,12 @@ Page({
     }
     this.setData({ from: range.from, to: range.to })
   },
-  syncSections() {
-    const shortage = this.demand?.mats.filter((m) => m.leftQty < 0 && m.enabled).length ?? 0
-    this.setData({
-      sections: [
-        { key: 'all', text: redesignCopy.all, count: 0 },
-        { key: 'shortage', text: redesignCopy.shortage, count: shortage },
-        { key: 'invites', text: redesignCopy.toSupply, count: this.pendingInvites },
-      ],
-    })
-  },
-  // 当前分段、搜索词下要列出的花材
+  // 搜索词下要列出的缺货花材
   visibleMats(): Mat[] {
     const keyword = this.data.dateFilter.keyword.trim()
     return (this.demand?.mats ?? []).filter(
       (m) =>
-        (this.data.section !== 'shortage' || m.leftQty < 0) &&
+        m.leftQty < 0 &&
         (!keyword ||
           m.name.includes(keyword) ||
           m.invites.some((invite) => invite.supplierName.includes(keyword))),
@@ -156,25 +140,21 @@ Page({
       selected,
       allSelected: pickable.length > 0 && pickable.every((m) => selected.includes(m.materialId)),
       rows: rowsOf(mats, selected),
-      count:
-        this.data.section === 'shortage' && demand.orderCount
-          ? [orders, copy.screen.shortageKinds(shortage)].join(copy.separator)
-          : orders,
-      emptyText:
-        !keyword && demand.orderCount && this.data.section === 'shortage'
-          ? copy.screen.noShortageHere
-          : '',
+      count: demand.orderCount
+        ? [orders, copy.screen.shortageKinds(shortage)].join(copy.separator)
+        : orders,
+      emptyText: !keyword && demand.orderCount ? copy.screen.noShortageHere : '',
       emptyObject: copy.screen.empty.demand,
       inviteText: countedOf(this.data.texts.invite, selected.length),
       createText: countedOf(this.data.texts.create, selected.length),
     })
-    this.syncSections()
   },
   async load() {
     const version = ++this.loadVersion
     const query = {
       from: this.data.from,
       to: this.data.to,
+      // 整份需求取回来，页面只列缺口（leftQty < 0）的花材
       shortageOnly: 'false',
     }
     const checked = checkedOf(contract.listPurchaseDemand.query.safeParse(query))
@@ -182,16 +162,12 @@ Page({
       this.setData({ dateError: Object.values(checked.fields)[0] ?? '' })
       return
     }
-    const [result, invites] = await Promise.all([
-      request(contract.listPurchaseDemand, { query }),
-      request(contract.listInvites, { query: { status: 'pending' } }),
-    ])
+    const result = await request(contract.listPurchaseDemand, { query })
     if (version !== this.loadVersion) return
     if (!result.ok) {
       this.setData({ failure: failureOf(result.failure, this.data.loaded ? 'refresh' : 'load') })
       return
     }
-    if (invites.ok) this.pendingInvites = invites.data.counts.pending ?? 0
     this.demand = result.data
     this.setData({
       loaded: true,
@@ -205,10 +181,6 @@ Page({
     })
     this.render()
     if (this.data.sourceSheet && this.data.sourceId) await this.openSource(this.data.sourceId)
-  },
-  onSection(event: DetailEvent<string>) {
-    this.setData({ section: event.detail })
-    this.render()
   },
   onDemandFilter(event: DetailEvent<FilterValue>) {
     // 清掉日期条件就回到默认的未来 7 天

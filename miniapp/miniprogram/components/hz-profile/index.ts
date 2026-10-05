@@ -1,6 +1,15 @@
 import { copy, redesignCopy } from '@huazhong/shared'
 import type { DetailEvent } from '../../core/events'
 const CONTACT_KEY = 'contact'
+// 身份行：每行几个带字段名的值，例如「岗位 管理员  登录手机号 …」（06 章 M4）
+interface Field {
+  label: string
+  value: string
+}
+interface Line {
+  key: string
+  fields: Field[]
+}
 interface Menu {
   key: string
   icon: string
@@ -9,15 +18,13 @@ interface Menu {
 Component({
   properties: {
     name: { type: String, value: '' },
-    sub: { type: String, value: '' },
-    phone: { type: String, value: '' },
+    lines: { type: Array, value: [] as Line[] },
     contactPhone: { type: String, value: '' },
     external: { type: Boolean, value: false },
     menus: { type: Array, value: [] as Menu[] },
     devMenus: { type: Array, value: [] as Menu[] },
   },
   data: {
-    separator: ' · ',
     entries: [] as Menu[],
     texts: {
       logout: copy.action.logout,

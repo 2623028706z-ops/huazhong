@@ -6,6 +6,5 @@
   <template is="cards" data="{{rows, statusKind, done, allLoaded,selection:filter.status==='pending_confirm'}}" />
 </view>
 <hz-action-bar wx:if="{{filter.status === 'pending_confirm'}}"><hz-button kind="secondary" text="{{texts.allSelected}}" bind:press="onSelectAll" /><hz-button text="{{batchText}}" disabled="{{!selected.length}}" bind:press="onOpenBatch" /></hz-action-bar>
-<hz-action-bar wx:elif="{{canCreate}}"><hz-button kind="secondary" text="{{texts.invite}}" bind:press="onInvite" /><hz-button text="{{createText}}" bind:press="onCreate" /></hz-action-bar>
+<hz-action-bar wx:elif="{{canCreate}}"><hz-button text="{{createText}}" bind:press="onCreate" /></hz-action-bar>
 <hz-order-confirm show="{{batchSheet}}" orders="{{batchOrders}}" overdue="{{batchOverdue}}" bind:close="onCloseBatch" bind:done="onBatchDone" />
-<hz-store-invite show="{{inviteSheet}}" customers="{{inviteCustomers}}" bind:close="onCloseInvite" bind:invited="onInvited" bind:updated="onStoreUpdated" />

@@ -244,33 +244,44 @@ describe('X8 客户页目录复制凭据', () => {
 
 describe('C2 需求卡片与草稿来源', () => {
   it('每张卡片显示实际shipFrom/shipTo，并携带需求快照；缺货只在前端按缺口筛', async () => {
-    mocks.request
-      .mockResolvedValueOnce({
-        ok: true,
-        data: {
-          from: '2026-10-01',
-          to: '2026-10-08',
-          orderCount: 1,
-          overdue: { count: 1, shipFrom: '2026-09-30', shipTo: '2026-09-30' },
-          actions: [],
-          mats: [
-            {
-              materialId: '1',
-              name: '花材',
-              unit: '枝',
-              enabled: true,
-              shipFrom: '2026-10-03',
-              shipTo: '2026-10-04',
-              needQty: 20,
-              stockQty: 5,
-              inTransitQty: 3,
-              leftQty: -12,
-              invited: true,
-            },
-          ],
-        },
-      })
-      .mockResolvedValueOnce({ ok: true, data: { counts: { pending: 2 } } })
+    mocks.request.mockResolvedValueOnce({
+      ok: true,
+      data: {
+        from: '2026-10-01',
+        to: '2026-10-08',
+        orderCount: 1,
+        overdue: { count: 1, shipFrom: '2026-09-30', shipTo: '2026-09-30' },
+        actions: [],
+        mats: [
+          {
+            materialId: '1',
+            name: '花材',
+            unit: '枝',
+            enabled: true,
+            shipFrom: '2026-10-03',
+            shipTo: '2026-10-04',
+            needQty: 20,
+            stockQty: 5,
+            inTransitQty: 3,
+            leftQty: -12,
+            invited: true,
+          },
+          {
+            materialId: '2',
+            name: '够用的花材',
+            unit: '枝',
+            enabled: true,
+            shipFrom: '2026-10-03',
+            shipTo: '2026-10-03',
+            needQty: 5,
+            stockQty: 10,
+            inTransitQty: 0,
+            leftQty: 5,
+            invited: false,
+          },
+        ],
+      },
+    })
     const page = await loadPage(() => import('../miniprogram/packages/purchase/pages/demand/index'))
     page.setData({
       from: '2026-10-01',
@@ -281,6 +292,8 @@ describe('C2 需求卡片与草稿来源', () => {
     })
     await invoke(page, 'load')
     const rows = page.data.rows as { range: string }[]
+    // 只看缺货：不缺的花材不列（2026-10-05 体验改版第 1 批，没有「全部 / 缺货 / 待填报」标签）
+    expect(rows).toHaveLength(1)
     expect(rows[0]?.range).toBe('2026-10-03 ~ 2026-10-04')
     expect(mocks.request.mock.calls[0]?.[1]).toMatchObject({ query: { shortageOnly: 'false' } })
     expect(await invoke(page, 'draft')).toMatchObject({
@@ -292,5 +305,21 @@ describe('C2 需求卡片与草稿来源', () => {
       lines: [{ qty: 12 }],
     })
     expect(page.data.overdue).toMatchObject({ count: 1 })
+  })
+})
+
+describe('X8 门店段一行一家', () => {
+  it('只给门店名、已停用和点选状态，不再带联系人、电话', async () => {
+    const { storeRowsOf } = await import('../miniprogram/packages/sales/pages/customers/form')
+    const customer = {
+      stores: [
+        { id: '1', name: '滨江店', enabled: true, contact: '陈女士', phone: '13800000000' },
+        { id: '2', name: '老店', enabled: false, contact: '', phone: '' },
+      ],
+    } as unknown as Parameters<typeof storeRowsOf>[0]
+    expect(storeRowsOf(customer, '1')).toEqual([
+      { id: '1', name: '滨江店', disabled: false, picked: true },
+      { id: '2', name: '老店', disabled: true, picked: false },
+    ])
   })
 })

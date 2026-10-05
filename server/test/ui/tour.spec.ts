@@ -61,7 +61,7 @@ const tours: [SeedAccountKey, Stop[]][] = [
       ['h4-delivery', `${ship}/delivery/index?id={o}`, { o: ['orders.no', 'SO-260928-030'] }],
       ['c1-buy-home', `${buy}/home/index`],
       ['c2-demand', `${buy}/demand/index`],
-      ['c2-demand-invites', `${buy}/demand/index?tab=invites`],
+      ['c3-pos-invites', `${buy}/orders/index?segment=invites`],
       ['c3-pos', `${buy}/orders/index`],
       [
         'c4-po-007',

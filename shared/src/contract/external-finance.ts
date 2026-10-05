@@ -21,7 +21,12 @@ const listQuery = pageQuerySchema
   .superRefine(checkDateRange)
 export const externalStatementCardSchema = statementCardSchema
   .omit({ actions: true, lockedReason: true })
-  .extend({ storeAmountCents: signedCentsSchema.nullable() })
+  .extend({
+    storeAmountCents: signedCentsSchema.nullable(),
+    // 门店「我的」对账卡小字：整张对账单的应收和覆盖几家店（供应商为 null，06 章 M4）
+    wholeAmountCents: centsSchema.nullable(),
+    storeCount: z.number().int().nonnegative().nullable(),
+  })
 export const externalStatementListSchema = pageSchema(externalStatementCardSchema).extend({
   counts: z.record(z.string(), z.number().int().nonnegative()),
   unsettledCents: signedCentsSchema,

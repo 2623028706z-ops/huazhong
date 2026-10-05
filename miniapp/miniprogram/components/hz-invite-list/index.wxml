@@ -1,1 +1,1 @@
-<import src="/views/invite-list.wxml" /><template is="invite-list" data="{{title, supplier, embedded, sections, section, searchPlaceholder, tabs, statusKind, statuses, counts, dimensions, dateLabel, filter, failure, skeleton, loaded, rows, emptyObject, done, allLoaded}}" />
+<import src="/views/invite-list.wxml" /><template is="invite-list" data="{{title, supplier, embedded, searchPlaceholder, tabs, statusKind, statuses, counts, dimensions, dateLabel, filter, failure, skeleton, loaded, rows, emptyObject, done, allLoaded}}" />

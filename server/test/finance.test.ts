@@ -73,7 +73,7 @@ async function voidStatement(d: StatementDetail) {
   )
 }
 
-test('D01 新种子使用整张DZ，首页只算已开对账单，门店只见本店金额', async () => {
+test('D01 新种子使用整张DZ，财务待办只算该动手的，门店只见本店金额', async () => {
   expect(await detail()).toMatchObject({
     no: 'DZ-260929-001',
     grossCents: 358800,
@@ -92,24 +92,20 @@ test('D01 新种子使用整张DZ，首页只算已开对账单，门店只见�
   const todos = dataOf<OutputOf<typeof contract.moduleTodos>>(
     await finance.get('/modules/finance/todos'),
   )
-  // 角标 = 待收款 + 待付款张数，逾期未收已含在待收款里，不重复计
-  expect(todos.count).toBe(1)
-  const unsettled = dataOf<OutputOf<typeof contract.listArCustomers>>(
-    await finance.get('/finance/customers?filter=unsettled'),
-  )
-  expect(unsettled.items.map((item) => item.partyName)).toEqual(['晨曦花艺'])
+  // 财务待办只放该动手的（03 章第 8.4 节）；待收款、待付款在等对方付钱，不进待办
   expect(todos.rows).toEqual([
-    { key: 'receivable', label: '待收款', count: 1, amountCents: 358800 },
     { key: 'overdueReceivable', label: '逾期未收', count: 0 },
-    { key: 'payable', label: '待付款', count: 0, amountCents: 0 },
+    { key: 'customerStatementReady', label: '客户可开对账', count: 0 },
+    { key: 'supplierStatementReady', label: '供应商可开对账', count: 1 },
   ])
+  expect(todos.count).toBe(todos.rows.reduce((count, row) => count + row.count, 0))
   const page = dataOf<OutputOf<typeof contract.storeStatements>>(
     await (await s.as('s1')).get('/store/statements'),
   )
   expect(page).toMatchObject({
     unsettledCents: 148800,
     unstatementedCents: 0,
-    items: [{ id: statementId, storeAmountCents: 148800, sourceCount: 1 }],
+    items: [{ id: statementId, storeAmountCents: 148800, wholeAmountCents: 358800, storeCount: 2 }],
   })
   const storeDetail = dataOf<OutputOf<typeof contract.storeStatementDetail>>(
     await (await s.as('s1')).get(`/store/statements/${statementId}`),
